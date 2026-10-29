@@ -1,7 +1,5 @@
 {
   "app/layout.tsx": 1,
-  "app/sites/[id]/performance/page.tsx": 3,
-  "app/sites/[id]/uptime/page.tsx": 1,
   "app/sites/[id]/visitors/[key]/page.tsx": 1,
   "app/sites/[id]/visitors/page.tsx": 1,
   "components/cdn/CdnLiveCard.tsx": 1,
@@ -18,6 +16,8 @@
   "components/settings/unified/tabs/SiteIntegrationsTab.tsx": 32,
   "components/setup/Confetti.tsx": 6,
   "components/sites/FleetCard.tsx": 6,
+  "components/surfaces/PerformanceSurface.tsx": 3,
+  "components/surfaces/UptimeSurface.tsx": 1,
   "components/theme/ThemePreview.tsx": 15,
   "components/ui/sparkline.tsx": 1,
   "components/uptime/uptimeMetrics.ts": 3,

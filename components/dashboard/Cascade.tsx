@@ -2,6 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
 // The blocks' page-flip motion (A2 cascade, locked 01-09-2026): the outgoing
@@ -65,13 +66,20 @@ export function CascadeRow({ index, children }: { index: number; children: React
  * must be computed against the FULL list so bars stay comparable across pages.
  * `color` overrides the tint (engagement score bars); inline colors also skip
  * the hover deepen, which is correct there.
+ *
+ * `className` (PULSE-197): appended to the default classes, for the one case
+ * where RowBar is no longer a DESCENDANT of its row's own click target — a
+ * row built from a separate overlay `<button>` sibling needs RowBar marked
+ * `pointer-events-none`, or it silently swallows clicks landing on the bar's
+ * width (it has no click handler of its own, so today it only "works"
+ * because it sits inside the clickable element and the click bubbles up).
  */
-export function RowBar({ width, index = 0, color }: { width: number; index?: number; color?: string }) {
+export function RowBar({ width, index = 0, color, className }: { width: number; index?: number; color?: string; className?: string }) {
   const reduced = useReducedMotion()
   return (
     <motion.div
       aria-hidden="true"
-      className="absolute inset-y-0.5 left-0.5 rounded-none bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] transition-colors duration-fast ease-apple"
+      className={cn('absolute inset-y-0.5 left-0.5 rounded-none bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] transition-colors duration-fast ease-apple', className)}
       style={color ? { backgroundColor: color } : undefined}
       initial={reduced ? false : { width: 0 }}
       animate={{ width: `${width}%` }}

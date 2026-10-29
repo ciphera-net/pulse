@@ -1,4 +1,5 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 /**
  * A server-resolved period (All time, PULSE-20) or the explicit dates — never both, so
@@ -70,7 +71,7 @@ export interface FunnelTrends {
   dates: string[]
   /** null per bucket when that bucket had zero entrants — an empty day is not a 0% day */
   overall: (number | null)[]
-  /** per-bucket entrant denominator, for gating small-n buckets */
+  /** per-bucket entrants: the denominator of each bucket's rate */
   entered: number[]
 }
 
@@ -78,12 +79,13 @@ export interface FunnelBreakdownEntry {
   value: string
   /**
    * Sessions that reached the target step, chained through every prior step.
-   * null when the row is under the n≥5 entrant floor — withheld, not zero.
+   * Always set on a returned row (since 26-08-2026); typed nullable only so the
+   * wire shape stays stable and readers keep their null guards.
    */
   visitors: number | null
   /** sessions that entered the funnel under this dimension value — the denominator */
   entrants: number
-  /** null when floored */
+  /** always set on a returned row; nullable for the same reason as `visitors` */
   conversion: number | null
 }
 
@@ -93,13 +95,13 @@ export interface FunnelBreakdown {
   entries: FunnelBreakdownEntry[]
 }
 
-export async function listFunnels(siteId: string): Promise<Funnel[]> {
-  const response = await apiRequest<{ funnels: Funnel[] }>(`/sites/${siteId}/funnels`)
+export async function listFunnels(site: SiteRef): Promise<Funnel[]> {
+  const response = await apiRequest<{ funnels: Funnel[] }>(sitePath(site, '/funnels'))
   return response?.funnels || []
 }
 
-export async function getFunnel(siteId: string, funnelId: string): Promise<Funnel> {
-  return apiRequest<Funnel>(`/sites/${siteId}/funnels/${funnelId}`)
+export async function getFunnel(site: SiteRef, funnelId: string): Promise<Funnel> {
+  return apiRequest<Funnel>(sitePath(site, `/funnels/${funnelId}`))
 }
 
 export async function createFunnel(siteId: string, data: CreateFunnelRequest): Promise<Funnel> {
@@ -116,9 +118,10 @@ export async function updateFunnel(siteId: string, funnelId: string, data: Creat
   })
 }
 
-export async function deleteFunnel(siteId: string, funnelId: string): Promise<void> {
+export async function deleteFunnel(siteId: string, funnelId: string, send: SendOptions = {}): Promise<void> {
   await apiRequest(`/sites/${siteId}/funnels/${funnelId}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 
@@ -133,25 +136,25 @@ export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'ord
 }
 
 /** Chained stats for EVERY funnel on the site in one request — the list surface. */
-export async function getAllFunnelStats(siteId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<Record<string, FunnelStats>> {
+export async function getAllFunnelStats(site: SiteRef, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<Record<string, FunnelStats>> {
   const params = new URLSearchParams()
   appendRange(params, startDate, endDate, period)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
-  const response = await apiRequest<{ stats: Record<string, FunnelStats> }>(`/sites/${siteId}/funnels/stats${queryString}`)
+  const response = await apiRequest<{ stats: Record<string, FunnelStats> }>(sitePath(site, `/funnels/stats${queryString}`))
   return response?.stats ?? {}
 }
 
-export async function getFunnelStats(siteId: string, funnelId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<FunnelStats> {
+export async function getFunnelStats(site: SiteRef, funnelId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<FunnelStats> {
   const params = new URLSearchParams()
   appendRange(params, startDate, endDate, period)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
-  return apiRequest<FunnelStats>(`/sites/${siteId}/funnels/${funnelId}/stats${queryString}`)
+  return apiRequest<FunnelStats>(sitePath(site, `/funnels/${funnelId}/stats${queryString}`))
 }
 
 export async function getFunnelTrends(
-  siteId: string, funnelId: string,
+  site: SiteRef, funnelId: string,
   startDate?: string, endDate?: string,
   interval: string = 'day', filters?: string, period?: string
 ): Promise<FunnelTrends> {
@@ -160,11 +163,11 @@ export async function getFunnelTrends(
   params.append('interval', interval)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
-  return apiRequest<FunnelTrends>(`/sites/${siteId}/funnels/${funnelId}/trends${queryString}`)
+  return apiRequest<FunnelTrends>(sitePath(site, `/funnels/${funnelId}/trends${queryString}`))
 }
 
 export async function getFunnelBreakdown(
-  siteId: string, funnelId: string,
+  site: SiteRef, funnelId: string,
   step: number, dimension: string,
   startDate?: string, endDate?: string,
   filters?: string, period?: string
@@ -175,5 +178,5 @@ export async function getFunnelBreakdown(
   appendRange(params, startDate, endDate, period)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
-  return apiRequest<FunnelBreakdown>(`/sites/${siteId}/funnels/${funnelId}/breakdown${queryString}`)
+  return apiRequest<FunnelBreakdown>(sitePath(site, `/funnels/${funnelId}/breakdown${queryString}`))
 }

@@ -1,121 +1,113 @@
 import { describe, it, expect } from 'vitest'
 import { aggregateJourney } from '../aggregate'
-import type { PathTransition } from '@/lib/api/journeys'
+import type { JourneyFlow, JourneyFlowColumn, JourneyFlowPage } from '@/lib/api/journeys'
 
-describe('aggregateJourney', () => {
-  it('returns empty array for empty input', () => {
-    const result = aggregateJourney([], { depth: 4, maxPagesPerStep: 20 })
-    expect(result).toEqual([])
+/** A column as the server sends it: exact totals, the top in rank order, the rest as (other). */
+const col = (top: JourneyFlowPage[], otherSessions = 0, otherPages = 0): JourneyFlowColumn => ({
+  total_sessions: top.reduce((s, [, n]) => s + n, 0) + otherSessions,
+  pages: top.length + otherPages,
+  top,
+  other_sessions: otherSessions,
+  other_pages: otherPages,
+})
+const EMPTY_COL = col([])
+
+const flowOf = (columns: JourneyFlowColumn[]): JourneyFlow => ({
+  depth: columns.length,
+  total_sessions: columns[0]?.total_sessions ?? 0,
+  columns,
+  links: [],
+})
+
+// The response §12.9 of the design shows (paths made up, each top shortened).
+const SPEC_FLOW = flowOf([
+  col([['/', 180], ['/blog/hello-world', 41]], 9, 7),
+  col([['/pricing', 120], ['/docs', 95]], 0, 0),
+  col([['/signup', 88], ['/docs/install', 31]], 0, 0),
+])
+
+describe('aggregateJourney (re-slicing the server flow)', () => {
+  it('returns no columns for an empty range', () => {
+    expect(aggregateJourney(flowOf([EMPTY_COL, EMPTY_COL, EMPTY_COL, EMPTY_COL]), { maxPagesPerStep: 20 })).toEqual([])
+    expect(aggregateJourney({ depth: 0, total_sessions: 0, columns: [], links: [] }, { maxPagesPerStep: 20 })).toEqual([])
   })
 
-  it('returns exactly `depth` steps when transitions cover all steps', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/', to_path: '/a', step_index: 0, session_count: 10 },
-      { from_path: '/a', to_path: '/b', step_index: 1, session_count: 7 },
-      { from_path: '/b', to_path: '/c', step_index: 2, session_count: 4 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 3, maxPagesPerStep: 20 })
-    expect(result).toHaveLength(3)
-    expect(result[0].index).toBe(0)
-    expect(result[1].index).toBe(1)
-    expect(result[2].index).toBe(2)
+  it('names the top pages in the order received and seeds (other) from the server', () => {
+    const [c0, c1] = aggregateJourney(SPEC_FLOW, { maxPagesPerStep: 20 })
+    expect(c0.pages).toEqual([
+      { path: '/', sessionCount: 180, isOther: false },
+      { path: '/blog/hello-world', sessionCount: 41, isOther: false },
+      { path: '(other)', sessionCount: 9, isOther: true },
+    ])
+    // * a column whose pages all fit has no (other) row
+    expect(c1.pages.some((p) => p.isOther)).toBe(false)
   })
 
-  it('step 0 uses from_path of transitions at step_index 0', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/', to_path: '/a', step_index: 0, session_count: 10 },
-      { from_path: '/b', to_path: '/c', step_index: 0, session_count: 5 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 2, maxPagesPerStep: 20 })
-    expect(result[0].pages.map((p) => p.path)).toEqual(['/', '/b'])
-    expect(result[0].pages[0].sessionCount).toBe(10)
-    expect(result[0].pages[1].sessionCount).toBe(5)
+  it('header totals are the columns\' exact totals, drop-off from those', () => {
+    const steps = aggregateJourney(SPEC_FLOW, { maxPagesPerStep: 20 })
+    expect(steps.map((s) => s.index)).toEqual([0, 1, 2])
+    expect(steps.map((s) => s.sessions)).toEqual([230, 215, 119])
+    expect(steps.map((s) => s.dropOffPercent)).toEqual([
+      0,
+      Math.round(((215 - 230) / 230) * 100),
+      Math.round(((119 - 215) / 215) * 100),
+    ])
   })
 
-  it('step k > 0 uses to_path of transitions at step_index = k-1', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/', to_path: '/a', step_index: 0, session_count: 10 },
-      { from_path: '/', to_path: '/b', step_index: 0, session_count: 5 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 2, maxPagesPerStep: 20 })
-    expect(result[1].pages.map((p) => p.path)).toEqual(['/a', '/b'])
+  it('takes total_sessions as sent, not a sum it recomputes', () => {
+    const c = col([['/a', 5]], 2, 1)
+    const steps = aggregateJourney(flowOf([{ ...c, total_sessions: 7 }, col([['/b', 7]])]), { maxPagesPerStep: 1 })
+    expect(steps[0].sessions).toBe(7)
   })
 
-  it('sums session counts for the same path in a step', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/', to_path: '/a', step_index: 0, session_count: 10 },
-      { from_path: '/', to_path: '/b', step_index: 0, session_count: 5 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 2, maxPagesPerStep: 20 })
-    expect(result[0].pages[0]).toEqual({ path: '/', sessionCount: 15, isOther: false })
+  it('folds the top beyond Paths into (other) with the server\'s own (other)', () => {
+    const flow = flowOf([col([['/a', 10], ['/b', 8], ['/c', 5], ['/d', 3]], 4, 2), col([['/x', 30]])])
+    const [c0] = aggregateJourney(flow, { maxPagesPerStep: 2 })
+    expect(c0.pages).toEqual([
+      { path: '/a', sessionCount: 10, isOther: false },
+      { path: '/b', sessionCount: 8, isOther: false },
+      { path: '(other)', sessionCount: 5 + 3 + 4, isOther: true },
+    ])
+    expect(c0.sessions).toBe(30)
   })
 
-  it('rolls paths beyond maxPagesPerStep into an (other) bucket', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/a', to_path: '/x', step_index: 0, session_count: 10 },
-      { from_path: '/b', to_path: '/x', step_index: 0, session_count: 8 },
-      { from_path: '/c', to_path: '/x', step_index: 0, session_count: 5 },
-      { from_path: '/d', to_path: '/x', step_index: 0, session_count: 3 },
-      { from_path: '/e', to_path: '/x', step_index: 0, session_count: 1 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 1, maxPagesPerStep: 3 })
-    const pages = result[0].pages
-    expect(pages).toHaveLength(4)
-    expect(pages.slice(0, 3).map((p) => p.path)).toEqual(['/a', '/b', '/c'])
-    expect(pages[3]).toEqual({ path: '(other)', sessionCount: 4, isOther: true })
+  it('adds (other) when only the cut folds pages, and when only the server folded them', () => {
+    const onlyCut = aggregateJourney(flowOf([col([['/a', 2], ['/b', 1]]), col([['/x', 3]])]), { maxPagesPerStep: 1 })
+    expect(onlyCut[0].pages.at(-1)).toEqual({ path: '(other)', sessionCount: 1, isOther: true })
+    const onlyServer = aggregateJourney(flowOf([col([['/a', 2]], 3, 2), col([['/x', 5]])]), { maxPagesPerStep: 5 })
+    expect(onlyServer[0].pages.at(-1)).toEqual({ path: '(other)', sessionCount: 3, isOther: true })
   })
 
-  it('does not create (other) bucket when pages fit within maxPagesPerStep', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/a', to_path: '/x', step_index: 0, session_count: 10 },
-      { from_path: '/b', to_path: '/x', step_index: 0, session_count: 5 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 1, maxPagesPerStep: 20 })
-    expect(result[0].pages).toHaveLength(2)
-    expect(result[0].pages.find((p) => p.isOther)).toBeUndefined()
+  it('never re-sorts: a tie at the cut keeps the server\'s byte order, not JavaScript\'s', () => {
+    // * U+FF01 (UTF-8 EF BC 81) sorts before U+1F600 (F0 9F 98 80) by bytes, which is
+    // * the server's order; JavaScript's < compares UTF-16 code units and puts the
+    // * emoji (a D83D surrogate) first. The first page received must be the one named.
+    expect('/😀' < '/！').toBe(true)
+    const flow = flowOf([col([['/！', 5], ['/😀', 5]]), col([['/x', 10]])])
+    const [c0] = aggregateJourney(flow, { maxPagesPerStep: 1 })
+    expect(c0.pages[0].path).toBe('/！')
+    expect(c0.pages[1]).toEqual({ path: '(other)', sessionCount: 5, isOther: true })
   })
 
-  it('calculates visitors as sum of session counts for the step', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/a', to_path: '/x', step_index: 0, session_count: 10 },
-      { from_path: '/b', to_path: '/y', step_index: 0, session_count: 5 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 2, maxPagesPerStep: 20 })
-    expect(result[0].visitors).toBe(15)
-    expect(result[1].visitors).toBe(15)
+  it('a column with exactly 50 pages has no (other) at Paths 50; 51 pages has one of one page', () => {
+    const fifty = Array.from({ length: 50 }, (_, i): JourneyFlowPage => [`/p${i}`, 100 - i])
+    const at50 = aggregateJourney(flowOf([col(fifty), col([['/x', 1]])]), { maxPagesPerStep: 50 })
+    expect(at50[0].pages).toHaveLength(50)
+    expect(at50[0].pages.some((p) => p.isOther)).toBe(false)
+    const at51 = aggregateJourney(flowOf([col(fifty, 1, 1), col([['/x', 1]])]), { maxPagesPerStep: 50 })
+    expect(at51[0].pages).toHaveLength(51)
+    expect(at51[0].pages[50]).toEqual({ path: '(other)', sessionCount: 1, isOther: true })
   })
 
-  it('drop-off % is 0 for step 0', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/', to_path: '/a', step_index: 0, session_count: 10 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 1, maxPagesPerStep: 20 })
-    expect(result[0].dropOffPercent).toBe(0)
+  it('trims empty trailing columns, keeping the ones sessions reached', () => {
+    const flow = flowOf([col([['/', 10]]), col([['/a', 10]]), col([['/b', 4]]), EMPTY_COL, EMPTY_COL])
+    const steps = aggregateJourney(flow, { maxPagesPerStep: 20 })
+    expect(steps).toHaveLength(3)
+    expect(steps[2].dropOffPercent).toBe(-60)
   })
 
-  it('drop-off % is calculated vs previous step', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/', to_path: '/a', step_index: 0, session_count: 10 },
-      { from_path: '/a', to_path: '/b', step_index: 1, session_count: 4 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 3, maxPagesPerStep: 20 })
-    expect(result[0].visitors).toBe(10)
-    expect(result[1].visitors).toBe(10)
-    expect(result[2].visitors).toBe(4)
-    expect(result[2].dropOffPercent).toBe(-60)
-  })
-
-  it('trims empty trailing steps', () => {
-    const transitions: PathTransition[] = [
-      { from_path: '/', to_path: '/a', step_index: 0, session_count: 10 },
-    ]
-    const result = aggregateJourney(transitions, { depth: 5, maxPagesPerStep: 20 })
-    expect(result).toHaveLength(2)
-  })
-
-  it('keeps at least one step even if transitions are all empty after step 0', () => {
-    const transitions: PathTransition[] = []
-    const result = aggregateJourney(transitions, { depth: 5, maxPagesPerStep: 20 })
-    expect(result).toEqual([])
+  it('drop-off is 0 at step 1', () => {
+    const steps = aggregateJourney(SPEC_FLOW, { maxPagesPerStep: 20 })
+    expect(steps[0].dropOffPercent).toBe(0)
   })
 })

@@ -17,7 +17,6 @@ export function isAuthedAppRoute(pathname: string): boolean {
   return (
     pathname === '/sites' ||
     pathname === '/sites/new' ||
-    pathname === '/notifications' ||
     pathname.startsWith('/settings')
   )
 }
@@ -62,6 +61,20 @@ export function isReportPrintRoute(pathname: string): boolean {
 }
 
 /**
+ * A public view of one site: /demo (the sample site) and a share link,
+ * /share/<id>, with every page under either (PUL-34). Anyone may open them,
+ * signed in or not, and each mounts its own shell from its own layout, so
+ * neither the marketing chrome nor the member shell may wrap them.
+ *
+ * `/share/` alone is not one (the page needs an id), and `/demonstration` is
+ * not /demo: the match is on whole path segments.
+ */
+export function isPublicSiteRoute(pathname: string | null | undefined): boolean {
+  if (!pathname) return false
+  return pathname === '/demo' || pathname.startsWith('/demo/') || /^\/share\/[^/]+(?:\/|$)/.test(pathname)
+}
+
+/**
  * Routes the onboarding wall never redirects away from. The wall sends an
  * owner of an unfinished workspace into the setup wizard; these are the pages
  * where that would destroy what the person came to do:
@@ -72,6 +85,9 @@ export function isReportPrintRoute(pathname: string): boolean {
  *     population the wall exists to catch — and the wizard has no way back to
  *     the pending request the assistant is waiting on (m3-frontend survey §6).
  *   - /r: someone reading a report a colleague shared (PULSE-133).
+ *   - /demo and /share: a public view of a site (PUL-34). The marketing hero
+ *     frames /demo, and a frame the wall sends into the setup wizard shows a
+ *     blank page (the wizard answers X-Frame-Options: DENY).
  */
 export function isExemptFromOnboardingWall(pathname: string | null | undefined): boolean {
   if (!pathname) return false
@@ -80,7 +96,8 @@ export function isExemptFromOnboardingWall(pathname: string | null | undefined):
     pathname.startsWith('/settings') ||
     pathname.startsWith('/join') ||
     pathname.startsWith('/connect') ||
-    isReportRoute(pathname)
+    isReportRoute(pathname) ||
+    isPublicSiteRoute(pathname)
   )
 }
 
@@ -99,6 +116,8 @@ export function isExemptFromOnboardingWall(pathname: string | null | undefined):
  *     review, 24-09-2026).
  *   - /r: reading a shared report is not a reason to be handed a workspace
  *     (PULSE-133).
+ *   - /demo and /share: viewing a public site is not a reason to be handed a
+ *     workspace (PUL-34).
  */
 export function isExemptFromWorkspaceProvisioning(pathname: string | null | undefined): boolean {
   if (!pathname) return false
@@ -106,6 +125,23 @@ export function isExemptFromWorkspaceProvisioning(pathname: string | null | unde
     pathname.startsWith('/setup') ||
     pathname.startsWith('/join') ||
     pathname.startsWith('/connect') ||
-    isReportRoute(pathname)
+    isReportRoute(pathname) ||
+    isPublicSiteRoute(pathname)
   )
+}
+
+/**
+ * The signed-out pages that load the interaction-capture companion
+ * (script.interactions.js). An ALLOW-list on purpose: it records the label of
+ * whatever control is clicked, and inside the app those labels carry site and
+ * team names. A route added later therefore does not load it until somebody
+ * decides it should. A shared dashboard (/share), a shared report (/r) and the
+ * claim pages are not here either: each shows or handles a customer's data.
+ */
+const INTERACTION_CAPTURE_ROUTES = new Set(['/', '/demo', '/login', '/signup'])
+
+export function isInteractionCaptureRoute(pathname: string | null | undefined): boolean {
+  if (!pathname) return false
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
+  return INTERACTION_CAPTURE_ROUTES.has(path)
 }

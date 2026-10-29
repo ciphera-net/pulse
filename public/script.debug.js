@@ -1,8 +1,10 @@
 /**
  * Pulse Analytics - Privacy-First Tracking Script
- * Lightweight, no cookies, no localStorage, no client-side identifiers. GDPR compliant.
- * Visits and visitors are identified server-side: a daily-rotating session hash and a
- * monthly-rotating visitor hash of IP + UA + domain, salted on the site's own calendar.
+ * Lightweight, no cookies, and nothing kept in the visitor's browser: the one exception is a
+ * site owner's own opt-out flag, written only when they visit their site with ?pulse-ignore,
+ * and read from localStorage on every load so their own visits are not counted.
+ * Visits are recognised server-side, from the IP address and the browser string; the browser
+ * holds no identifier.
  *
  * THIS script reads no page content. It records which page was seen, for how long, and how
  * far down it was scrolled — plus, where a link leaves the site or downloads a file, that
@@ -115,20 +117,17 @@
 
   const apiUrl = attr('api') || 'https://pulse-api.ciphera.net';
 
-  // * Identity is server-side: a daily-rotating session hash and a monthly-rotating
-  // * visitor hash of IP + UA + domain, salted on the site's own calendar. Zero
-  // * localStorage, zero cookies, no client-generated identifier.
+  // * Identity is server-side, from the IP address and the browser string: no cookie, nothing
+  // * written to storage (the opt-out flag above is only read), no client-generated identifier.
   // *
-  // * One thing the tab DOES hold (v1.4.0, identity-anchor design 17-09-2026): the
-  // * server-issued id of its most recent pageview, in sessionStorage, sent as
-  // * `anchor_id` with every later request. The IP is not stable inside one browsing
-  // * session — dual-stack clients alternate addresses per connection, IPv6 privacy
-  // * extensions rotate them on a timer, and a person moves between networks — and each
-  // * change re-minted a "new visitor". With the anchor the server copies the pageview's
-  // * identity instead of hashing a new address. It is not an identifier: the id already
-  // * exists server-side and already travels with every engagement beacon; it dies with
-  // * the tab, never crosses tabs, and is never a cookie or a header. See
-  // * Pulse/docs/plans/17-09-2026-identity-anchor-design.md
+  // * v1.7.0 writes NOTHING to the browser. Earlier versions kept two records in
+  // * sessionStorage: the tab's last pageview, so a reload did not count twice, and from
+  // * v1.4.0 the id of its most recent pageview, so the server could keep one visit together
+  // * when the address changed between full page loads. Both now live in this document's
+  // * memory only: custom events, single-page navigations and a page restored from the
+  // * back-forward cache still name the anchor (`anchor_id`), and nothing survives a full
+  // * page load. A reload is told to the server instead (`reload`, below), which applies the
+  // * five-second rule itself.
 
   // * Engagement beacon path — deliberately NOT '/api/v1/metrics'.
   // * EasyPrivacy carries a bare, domain-agnostic substring rule for that path (written
@@ -316,9 +315,6 @@
   // * back-forward cache). A restore from that cache is a new pageview, below.
   window.addEventListener('pagehide', function() { sendMetrics(true, true); });
 
-  // * Session ID is computed server-side from a daily-rotating hash of IP + UA + domain.
-  // * No client-side visitor ID storage needed.
-
   // * Normalize path: strip trailing slash, return pathname only.
   // * UTM extraction and query handling moved server-side.
   function cleanPath() {
@@ -330,43 +326,33 @@
     return pathname;
   }
 
-  // * Refresh dedup: skip pageview if the same path was tracked within 5 seconds
-  // * Prevents inflated pageview counts from F5/refresh while allowing genuine revisits.
-  // * The record also carries the pageview's id and engagement so far, so the reloaded
-  // * document can carry on reporting against the same pageview instead of going dark.
+  // * Refresh dedup: skip a pageview if this document tracked the same path within 5 seconds,
+  // * and keep reporting against that one (a fast back-and-forth through the back-forward
+  // * cache). The record carries the pageview's id and engagement so far. In memory only, so
+  // * it cannot see across a reload; the server's own five-second rule covers that.
   var REFRESH_DEDUP_WINDOW = 5000;
-  var DEDUP_STORAGE_KEY = 'ciphera_last_pv';
+  var lastPageview = null;
 
-  // * The tab's identity anchor: the most recent pageview id the server returned.
-  // * Most recent, not first, on purpose — a later pageview's identity was itself
-  // * inherited, so continuity is transitive, and when the server refuses a stale
-  // * anchor (a new month) the first pageview after that becomes the new anchor.
-  var ANCHOR_STORAGE_KEY = 'ciphera_anchor';
+  // * The anchor: the most recent pageview id the server returned, in memory only. Most
+  // * recent, not first, on purpose — a later pageview's identity was itself inherited, so
+  // * continuity is transitive.
   var anchorId = null;
-  try { anchorId = sessionStorage.getItem(ANCHOR_STORAGE_KEY) || null; } catch (e) {}
+
+  // * The browser's own verdict that this document is a reload, sent with its first pageview
+  // * only: later pageviews in the same document are navigations.
+  var reloaded = false;
+  try { reloaded = performance.getEntriesByType('navigation')[0].type === 'reload'; } catch (e) {}
 
   function rememberAnchor(id) {
-    if (!id) return;
-    anchorId = id;
-    try { sessionStorage.setItem(ANCHOR_STORAGE_KEY, id); } catch (e) {}
-  }
-
-  function readLastPageview() {
-    try {
-      var raw = sessionStorage.getItem(DEDUP_STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-    return null;
+    if (id) anchorId = id;
   }
 
   function rememberPageview() {
     if (!currentEventId) return;
-    try {
-      sessionStorage.setItem(DEDUP_STORAGE_KEY, JSON.stringify({
-        p: cleanPath(), t: pageStartTime, id: currentEventId,
-        e: Math.round(engagedMs / 1000), v: Math.round(visibleMs / 1000)
-      }));
-    } catch (e) {}
+    lastPageview = {
+      p: cleanPath(), t: pageStartTime, id: currentEventId,
+      e: Math.round(engagedMs / 1000), v: Math.round(visibleMs / 1000)
+    };
   }
 
   function adoptPageview(last) {
@@ -412,7 +398,7 @@
     // * Skip if same path was just tracked (refresh dedup) — and keep reporting against it.
     // * A negative age is a clock that stepped backwards; treating it as "just tracked"
     // * would blackout every pageview until the clock caught up.
-    var last = readLastPageview();
+    var last = lastPageview;
     var age = last ? Date.now() - last.t : -1;
     if (last && last.p === path && last.id && age >= 0 && age < REFRESH_DEDUP_WINDOW) {
       if (currentEventId !== last.id) {
@@ -481,6 +467,10 @@
       client_os_hint: clientOSHint,
     };
     if (anchorId) payload.anchor_id = anchorId;
+    if (reloaded) {
+      payload.reload = true;
+      reloaded = false;
+    }
 
     var startedAt = Date.now();
 

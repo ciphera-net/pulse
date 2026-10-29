@@ -4,10 +4,10 @@
  * @file Getting Started progress chip for the top bar: ring + count, with the
  * checklist as an anchored dropdown. Replaces the floating bottom-right pill.
  *
- * Mounted twice, same as NotificationCenter: GlassTopBar (hidden below md) and
- * ContentHeader (md:hidden). All state lives in useOnboarding()'s shared SWR
- * cache, so the two mounts cannot desync; the panel portals to document.body
- * with fixed positioning, the same escape-from-overflow pattern the bell uses.
+ * Mounted twice: GlassTopBar (hidden below md) and ContentHeader (md:hidden).
+ * All state lives in useOnboarding()'s shared SWR cache, so the two mounts
+ * cannot desync; the panel portals to document.body with fixed positioning to
+ * escape overflow.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -79,7 +79,7 @@ export default function OnboardingChip() {
     if (open) updatePosition()
   }, [open, updatePosition])
 
-  // Close on outside click or Escape — same contract as NotificationCenter.
+  // Close on outside click or Escape.
   useEffect(() => {
     if (!open) return
     function handleClickOutside(e: MouseEvent) {
@@ -214,8 +214,8 @@ export default function OnboardingChip() {
 
   return (
     <div className="relative" ref={wrapRef}>
-      {/* h-11 below md for the 44px touch minimum (same treatment as the bell
-          one button over); md:h-auto hands desktop back to the compact bar.
+      {/* h-11 below md for the 44px touch minimum (the same treatment as the
+          menu button); md:h-auto hands desktop back to the compact bar.
           The count is desktop-only — on the phone header the ring alone keeps
           the footprint icon-sized next to the truncating site name. */}
       <button

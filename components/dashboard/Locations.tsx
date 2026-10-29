@@ -3,9 +3,11 @@
 import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
 import type { ImportedProvenance, LanguageGroupStat } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { formatNumber } from '@/lib/utils/format'
+import type { MapHover } from './MapView'
+import { MapHeadline } from './MapHeadline'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { hasFlag } from '@/lib/flags'
 import iso3166 from 'iso-3166-2'
@@ -41,13 +43,18 @@ interface AudienceProps {
   dateRange: { start: string, end: string }
   // True range totals — the F9 denominator; no totals → no percentages.
   totals?: { pageviews: number; visitors: number }
+  /** The comparison period's visitors, for the map headline's trend (PUL-14). Absent or null: no trend. */
+  previousVisitors?: number | null
   // Active page filters, threaded into the modal fetch (F14).
   filters?: string
-  // Hidden on the anonymous share surface (no full-list endpoints there).
+  // False only on a customer's share link (its public-scoped read has no full-list
+  // endpoints); the demo site is served them, so it keeps this on.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): every list this card fetches on its own uses it instead of the dates. */
+  liveMinutes?: number
   /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
   importedCards?: Record<string, ImportedProvenance>
 }
@@ -83,8 +90,7 @@ export function getTimezoneCountry(tz: string): string {
 // * `flag_region` when it names a code we have art for, else the group key's
 // * CLDR likely-subtag region (e.g. "ja" -> "JP") when THAT has art, else ''
 // * (globe). `flag_region` already encodes "which member, if any, earned the
-// * flag" (the most-visited member that carries a region, or the floor's
-// * stricter rule on a shared dashboard) — this function only ever adds the
+// * flag" (the most-visited member that carries a region) — this function only ever adds the
 // * bare-key fallback and the hasFlag gate, never re-picks a member.
 function getGroupFlagCode(item: { language?: string; flag_region?: string | null }): string {
   const key = item.language ?? ''
@@ -138,7 +144,7 @@ function formatTimezone(tz: string): string {
   }
 }
 
-export default function Audience({ countries, cities, regions, languages, languageGroups, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: AudienceProps) {
+export default function Audience({ countries, cities, regions, languages, languageGroups, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, previousVisitors, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   type AudienceItem = {
     country?: string; city?: string; region?: string; language?: string; timezone?: string
@@ -159,6 +165,9 @@ export default function Audience({ countries, cities, regions, languages, langua
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [inView, setInView] = useState(false)
+  // The map's headline follows the hovered country (PUL-14); null shows the total.
+  const [mapHover, setMapHover] = useState<MapHover | null>(null)
+  const onHoverCountry = useCallback((hover: MapHover | null) => setMapHover(hover), [])
 
   useEffect(() => {
     const el = containerRef.current
@@ -289,9 +298,9 @@ export default function Audience({ countries, cities, regions, languages, langua
   const getItemFilterValues = (item: AudienceItem): string[] | undefined => {
     if (isLanguageGrouped) {
       if (item.members && item.members.length > 0) return item.members
-      // A grouped row with no `members` (a floored shared-dashboard payload,
-      // where onFilter is never passed anyway, or a backend that omitted it)
-      // still filters on SOMETHING sane: the group key itself.
+      // A grouped row with no `members` (a backend that omitted it, as a shared
+      // dashboard's did until 21-10-2026) still filters on SOMETHING sane: the
+      // group key itself.
       return item.language ? [item.language] : undefined
     }
     const v = getItemFilterValue(item)
@@ -350,7 +359,7 @@ export default function Audience({ countries, cities, regions, languages, langua
   const wantsFullList = memberFeatures && !isVisualTab && !isTabDisabled() && data.length > LIMIT
   const { data: fullData } = useFullDimensionList<AudienceItem>(
     wantsFullList ? fullListKind : null,
-    siteId, dateRange?.start, dateRange?.end, 250, filters,
+    siteId, dateRange?.start, dateRange?.end, 250, filters, liveMinutes,
   )
   // Gate on wantsFullList: stale hook-state from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
@@ -359,7 +368,7 @@ export default function Audience({ countries, cities, regions, languages, langua
   const pageCount = isVisualTab ? 1 : Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,
   // and a shrinking list clamps at read time.
-  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
 
   const displayedData = (!isVisualTab && hasData) ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -412,12 +421,21 @@ export default function Audience({ countries, cities, regions, languages, langua
             </div>
           ) : isVisualTab ? (
             hasData ? (
-              inView ? <MapView data={filterUnknown(countries) as { country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }[]} /> : null
+              inView ? (
+                <div className="flex h-full flex-col">
+                  <MapHeadline total={totals?.visitors ?? null} previous={previousVisitors ?? null} hover={mapHover} />
+                  <MapView
+                    data={filterUnknown(countries) as { country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }[]}
+                    onHoverCountry={onHoverCountry}
+                  />
+                </div>
+              ) : null
             ) : (
               <CardEmptyState
               live={live}
                 icon={<GlobeHemisphereWest />}
                 title="Your first visitor hasn't arrived"
+                publicTitle="No visitors yet"
                 description="Countries and cities will light up on this map as traffic flows in from around the world."
                 action={{
                 label: 'Install tracking script',
@@ -438,10 +456,8 @@ export default function Audience({ countries, cities, regions, languages, langua
                   const Row = canFilter ? 'button' : 'div'
                   // PULSE-173: "N regions" is a muted secondary next to the
                   // language name, shown only for a grouped row spanning more
-                  // than one locale — a shared-dashboard payload never has
-                  // locale_count at all (omitted, not zero), so this renders
-                  // nothing there, matching the contract's "on shared
-                  // dashboards there is no locale_count".
+                  // than one locale. A shared dashboard carries locale_count
+                  // too since the five-visitor floor went (21-10-2026).
                   const showRegionCount = isLanguageGrouped && (item.locale_count ?? 0) > 1
                   return (
                     <CascadeRow key={itemKey} index={idx}>

@@ -52,9 +52,18 @@ describe('renamePasskey', () => {
 describe('deletePasskey', () => {
   beforeEach(() => req.mockReset())
 
-  it('DELETEs the credential by encoded id', async () => {
+  it('DELETEs the credential by encoded id, carrying the re-auth token', async () => {
     req.mockResolvedValue(undefined)
-    await deletePasskey('cred/1')
-    expect(req).toHaveBeenCalledWith('/auth/webauthn/credentials/cred%2F1', { method: 'DELETE' })
+    await deletePasskey('cred/1', 'tok-123', { keepalive: true })
+    expect(req).toHaveBeenCalledWith('/auth/webauthn/credentials/cred%2F1', {
+      method: 'DELETE',
+      body: JSON.stringify({ reauth_token: 'tok-123' }),
+      keepalive: true,
+    })
+  })
+
+  it('refuses to send without a token, rather than send a blank credential', async () => {
+    await expect(deletePasskey('cred/1', '')).rejects.toThrow('Re-authentication token missing')
+    expect(req).not.toHaveBeenCalled()
   })
 })

@@ -82,7 +82,7 @@ describe('SessionTakeover', () => {
 
 describe('isAuthedAppRoute', () => {
   it('covers app routes and excludes public/marketing surfaces', () => {
-    for (const p of ['/sites', '/sites/new', '/sites/abc/uptime', '/notifications', '/settings/account']) {
+    for (const p of ['/sites', '/sites/new', '/sites/abc/uptime', '/settings/account']) {
       expect(isAuthedAppRoute(p), p).toBe(true)
     }
     // Public dashboard-shell routes server-render marketing for crawlers by
@@ -91,7 +91,9 @@ describe('isAuthedAppRoute', () => {
     // Warden, which is Teleport-gated and not in this repo — so /admin is no
     // longer an app route here, and asserting that is how a re-added one gets
     // noticed.
-    for (const p of ['/', '/pricing', '/integrations/gsc', '/installation', '/faq', '/login', '/setup/site', '/join', '/checkout', '/admin']) {
+    // '/notifications' is here for the same reason: the in-app inbox went on
+    // 20-10-2026 and next.config.ts redirects the page to the email settings.
+    for (const p of ['/', '/pricing', '/integrations/gsc', '/installation', '/faq', '/login', '/setup/site', '/join', '/checkout', '/admin', '/notifications']) {
       expect(isAuthedAppRoute(p), p).toBe(false)
     }
   })

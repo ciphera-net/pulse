@@ -1,4 +1,5 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 /**
  * @file Bing Webmaster Tools integration — site-level daily search stats.
@@ -75,30 +76,30 @@ export async function connectBing(siteId: string, apiKey: string, siteUrl: strin
   })
 }
 
-export async function getBingStatus(siteId: string): Promise<BingStatus> {
-  return apiRequest<BingStatus>(`/sites/${siteId}/integrations/bing/status`)
+export async function getBingStatus(site: SiteRef): Promise<BingStatus> {
+  return apiRequest<BingStatus>(sitePath(site, '/integrations/bing/status'))
 }
 
-export async function disconnectBing(siteId: string): Promise<void> {
-  await apiRequest(`/sites/${siteId}/integrations/bing`, { method: 'DELETE' })
+export async function disconnectBing(siteId: string, send: SendOptions = {}): Promise<void> {
+  await apiRequest(`/sites/${siteId}/integrations/bing`, { method: 'DELETE', keepalive: send.keepalive })
 }
 
 export async function getBingOverview(
-  siteId: string,
+  site: SiteRef,
   startDate: string,
   endDate: string
 ): Promise<{ overview: BingOverview; date_basis: BingDateBasis }> {
   return apiRequest<{ overview: BingOverview; date_basis: BingDateBasis }>(
-    `/sites/${siteId}/bing/overview?start_date=${startDate}&end_date=${endDate}`
+    sitePath(site, `/bing/overview?start_date=${startDate}&end_date=${endDate}`)
   )
 }
 
 export async function getBingDailyTotals(
-  siteId: string,
+  site: SiteRef,
   startDate: string,
   endDate: string
 ): Promise<{ daily_totals: BingDailyRow[]; date_basis: BingDateBasis }> {
   return apiRequest<{ daily_totals: BingDailyRow[]; date_basis: BingDateBasis }>(
-    `/sites/${siteId}/bing/daily-totals?start_date=${startDate}&end_date=${endDate}`
+    sitePath(site, `/bing/daily-totals?start_date=${startDate}&end_date=${endDate}`)
   )
 }

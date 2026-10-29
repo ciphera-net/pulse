@@ -1,6 +1,8 @@
 'use client'
 
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { CompactNumber } from '@/components/ui/compact-number'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
@@ -19,13 +21,14 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface StepHeaderProps {
   index: number
-  visitors: number
+  /** The column's exact session total, as the server counted it. */
+  sessions: number
   dropOffPercent: number
   /** True only for the first column whose drop-off actually renders. */
   showDropoffTip?: boolean
 }
 
-export function StepHeader({ index, visitors, dropOffPercent, showDropoffTip }: StepHeaderProps) {
+export function StepHeader({ index, sessions, dropOffPercent, showDropoffTip }: StepHeaderProps) {
   return (
     <div className="flex flex-col gap-0.5">
       {/* h-4 pins the row to the un-glyphed line height. The glyph's hit
@@ -38,12 +41,12 @@ export function StepHeader({ index, visitors, dropOffPercent, showDropoffTip }: 
         {index === 0 && <TermInfoTip term="journey_step" />}
       </span>
       <div className="flex items-baseline gap-1.5">
-        <AnimatedNumber
-          value={visitors}
-          format={(v) => Math.round(v).toLocaleString()}
-          className="text-sm font-semibold tabular-nums text-white"
-        />
-        <span className="text-xs text-neutral-500">visitors</span>
+        <CompactNumber value={sessions} className="text-sm font-semibold tabular-nums text-white">
+          <AnimatedNumber value={sessions} format={(v) => formatCompactNumber(Math.round(v))} />
+        </CompactNumber>
+        {/* Sessions, not visitors: every count on this chart is a session (a
+            visitor with two sessions is in a column twice). */}
+        <span className="text-xs text-neutral-500">{sessions === 1 ? 'session' : 'sessions'}</span>
         {dropOffPercent !== 0 && (
           <span className={`flex h-4 items-center gap-1 text-xs font-medium tabular-nums ${dropOffPercent < 0 ? 'text-red-400' : 'text-green-400'}`}>
             {dropOffPercent > 0 ? '+' : ''}{dropOffPercent}%

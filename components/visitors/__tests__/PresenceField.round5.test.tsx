@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { PresenceField } from '../PresenceField'
-import { monthBoundaries } from '@/lib/visitors/range'
 import type { VisitorRow } from '@/lib/api/visitors'
 
 // ─── Round 5 / 5b, the approved field ───────────────────────────────────
@@ -62,7 +61,28 @@ describe('the field draws the range, and says what it is not drawing', () => {
     const axis = [...container.querySelectorAll('div')].find((d) =>
       d.className.includes('bottom-2') && d.className.includes('justify-between'))!
     expect(note.closest('div')).not.toBe(axis)
-    expect(note.closest('p')?.className).toContain('top-2.5')
+    expect(note.closest('p')?.textContent).toMatch(/^Each dot is one visitor/)
+    expect(note.closest('[data-presence-plot]')).toBeNull()
+  })
+
+  // Decision L-A (27-10-2026): the caption and the live label are a header row in normal
+  // flow above the plot, so a caption that wraps grows the field instead of covering the
+  // dots or running into the label. jsdom has no layout; the structure is what is pinned.
+  it('puts the caption and the live label in one header row above the plot', () => {
+    const { container } = field({ activeCount: 3, undrawn: 130 })
+    const caption = [...container.querySelectorAll('p')].find((p) =>
+      (p.textContent ?? '').startsWith('Each dot is one visitor'))!
+    const live = [...container.querySelectorAll('p')].find((p) =>
+      (p.textContent ?? '').trim() === '3 on the site now')!
+    expect(caption.className).not.toMatch(/\babsolute\b/)
+    expect(live.className).not.toMatch(/\babsolute\b/)
+    expect(live.className).toContain('shrink-0')
+    expect(caption.parentElement).toBe(live.parentElement)
+    const plot = container.querySelector('[data-presence-plot]') as HTMLElement
+    expect(plot.style.height).toBe('152px')
+    expect(caption.parentElement!.nextElementSibling).toBe(plot)
+    expect(plot.querySelectorAll('[data-visitor-dot]').length).toBe(3)
+    expect(plot.querySelector('.border-dashed')).not.toBeNull()
   })
 
   it('takes the count from the CALLER — the field cannot know it', () => {
@@ -118,36 +138,20 @@ describe('no labels, and a dot lit from the roster', () => {
   })
 })
 
-describe('the month boundary', () => {
-  it('draws a hairline where identities reset', () => {
-    const b = [{ at: Date.parse('2026-08-31T22:00:00Z'), label: '1 Sept · identities reset' }]
-    const { container } = field({ boundaries: b })
-    expect(container.textContent).toMatch(/1 Sept · identities reset/)
+describe('no identity boundary (one-day identity)', () => {
+  // Every profile covers up to one day and every day counts visitors per day, so
+  // the field draws no "identities reset" marker: there is nothing to mark. The
+  // dashed now-line is the only line besides the gridlines.
+  it('draws no reset marker, whatever the range', () => {
+    // FROM..TO spans 1 September, where the old field drew its month marker.
+    const { container } = field({})
+    expect(container.textContent).not.toMatch(/identities reset/)
+    // The one dashed line left is the now-line at the right edge.
+    expect(container.querySelectorAll('.border-dashed')).toHaveLength(1)
   })
 
-  it('🔑 resolves the boundary in the SITE zone, not the reader’s', () => {
-    // 1 September 00:00 in Brussels is 31 August 22:00 UTC — a different calendar
-    // day. A boundary computed in the reader's zone would be drawn in the wrong
-    // place, which is the same defect class as the dates the audit found.
-    const from = Date.parse('2026-08-12T00:00:00Z')
-    const to = Date.parse('2026-09-10T00:00:00Z')
-    const brussels = monthBoundaries(from, to, 'Europe/Brussels')
-    const auckland = monthBoundaries(from, to, 'Pacific/Auckland')
-    expect(brussels).toHaveLength(1)
-    expect(brussels[0].at).toBe(Date.parse('2026-08-31T22:00:00Z'))
-    expect(auckland[0].at).toBe(Date.parse('2026-08-31T12:00:00Z'))
-    expect(brussels[0].at).not.toBe(auckland[0].at)
-  })
-
-  it('finds every boundary in a long range, and none in a short one', () => {
-    const long = monthBoundaries(
-      Date.parse('2026-06-15T00:00:00Z'), Date.parse('2026-09-15T00:00:00Z'), 'UTC')
-    expect(long.map((b) => new Date(b.at).toISOString().slice(0, 7))).toEqual(['2026-07', '2026-08', '2026-09'])
-    // A rolling window never spans a month.
-    expect(monthBoundaries(
-      Date.parse('2026-09-10T10:00:00Z'), Date.parse('2026-09-10T10:30:00Z'), 'UTC')).toEqual([])
-    // A range that ENDS exactly on a boundary does not draw one at its edge.
-    expect(monthBoundaries(
-      Date.parse('2026-08-15T00:00:00Z'), Date.parse('2026-09-01T00:00:00Z'), 'UTC')).toHaveLength(1)
+  it('the page no longer computes month boundaries', async () => {
+    const range = await import('@/lib/visitors/range')
+    expect('monthBoundaries' in range).toBe(false)
   })
 })

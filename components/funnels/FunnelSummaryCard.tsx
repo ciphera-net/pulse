@@ -21,15 +21,19 @@ import { guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 
 interface FunnelSummaryCardProps {
   funnel: Funnel
-  siteId: string
+  /**
+   * The funnel's detail page, in the scope the list is drawn in (`/sites/<id>/funnels/<funnel>`,
+   * `/demo/funnels/<funnel>`, …) with the current range query carried on. The list builds it with
+   * scopeHref, so this card knows no route.
+   */
+  href: string
   /** This funnel's stats from the page-level batched fetch (undefined while loading). */
   stats?: FunnelStats
   /** Previous-range stats for the delta badge. */
   prevStats?: FunnelStats
   /** True when the batched stats request failed. */
   statsError?: boolean
-  /** Current ?period/start/end query (with leading `?`) carried into the detail link. */
-  hrefQuery: string
+  /** Edit and delete exist only when true: the list passes false for any scope that cannot write. */
   canManage: boolean
   onEdit: (funnel: Funnel) => void
   onDelete: (funnel: { id: string; name: string }) => void
@@ -65,11 +69,10 @@ function DeltaBadge({ change }: { change: PctChangeResult }) {
 
 export function FunnelSummaryCard({
   funnel,
-  siteId,
+  href,
   stats,
   prevStats,
   statsError,
-  hrefQuery,
   canManage,
   onEdit,
   onDelete,
@@ -92,7 +95,7 @@ export function FunnelSummaryCard({
   return (
     <div className="group relative">
       <Link
-        href={`/sites/${siteId}/funnels/${funnel.id}${hrefQuery}`}
+        href={href}
         className="block rounded-none border border-border bg-card p-5 transition-colors duration-fast ease-apple hover:border-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -182,6 +185,7 @@ export function FunnelSummaryCard({
           <button
             type="button"
             aria-label={`Delete ${funnel.name}`}
+            aria-haspopup="dialog"
             onClick={() => onDelete({ id: funnel.id, name: funnel.name })}
             className="rounded-none border border-neutral-800 bg-card p-2 text-neutral-400 transition-colors duration-fast ease-apple hover:border-red-500/50 hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
           >

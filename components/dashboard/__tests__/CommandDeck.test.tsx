@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import CommandDeck from '@/components/dashboard/CommandDeck'
 import type { Stats, DailyStat } from '@/lib/api/stats'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 
 // The rail is what these tests pin. AnimatedNumber animates through framer
 // motion values (jsdom-hostile) — mock it to the formatted text; the visx chart
@@ -66,9 +67,9 @@ describe('CommandDeck rail', () => {
   it('renders the five metrics with their honest context lines', () => {
     render(<CommandDeck {...baseProps} />)
     expect(screen.getByText('Unique visitors')).toBeTruthy()
-    // 26-08 identity rebuild: the headline deduplicates people (monthly
-    // visitor hash), so the D5 relabel "distinct sessions" is retired.
-    expect(screen.getByText('unique people')).toBeTruthy()
+    // The headline counts visitors (one IP address and browser per day), not
+    // visits, so the D5 relabel "distinct sessions" is retired.
+    expect(screen.getByText('visitors, not visits')).toBeTruthy()
     expect(screen.getByText('single-page visits')).toBeTruthy()
     expect(screen.getByText('average')).toBeTruthy()
     // Engagement left the product 01-09-2026 — the rail is five tiles.
@@ -174,59 +175,31 @@ describe('CommandDeck rail sparklines (S4 restore, 19-08-2026)', () => {
   })
 })
 
-describe('CommandDeck — the visitors sentence follows the site’s identity window (11-09-2026)', () => {
+describe('CommandDeck — one visitors sentence on every site (one-day identity)', () => {
   // The rail row's canonical sentence reaches the reader through
   // aria-describedby → #deck-def-visitors. It is the one place the NUMBER and
-  // its meaning sit together, so it is where a site's window has to be said.
+  // its meaning sit together. The per-site identity setting is retired, so the
+  // sentence is the same everywhere: the dashboard, a share link, any site.
   const sentence = (container: HTMLElement) =>
     container.querySelector('#deck-def-visitors')?.textContent ?? ''
 
-  it('says a returning reader is never recognised on a site set to Session only', () => {
-    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={-1} />)
-    expect(sentence(container)).toContain('never recognised')
-    expect(sentence(container)).not.toMatch(/within each calendar month/)
-  })
-
-  it('names the window as a ceiling on a rolling window', () => {
-    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={7} />)
-    expect(sentence(container)).toContain('up to 7 days')
-    expect(sentence(container)).not.toMatch(/calendar month/)
-  })
-
-  it('asserts the calendar month only on a site that is on it', () => {
-    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={0} />)
-    expect(sentence(container)).toContain('within each calendar month')
-  })
-
-  it('🔴 asserts NO window when the call site cannot know it (the share surface)', () => {
+  it('states the one rule, verbatim (A1)', () => {
     const { container } = render(<CommandDeck {...baseProps} />)
-    expect(sentence(container)).not.toMatch(/within each calendar month|never recognised|up to \d/)
-    // and it still explains the number rather than falling silent
-    expect(sentence(container)).toContain('People, not visits')
+    expect(sentence(container)).toBe(IDENTITY_COPY.metricDefinition)
+    expect(sentence(container)).toContain('visitors over a range add up each day’s unique visitors')
+    expect(sentence(container)).not.toMatch(/month|never recognised|up to \d/)
   })
 
-  it('leaves the other four sentences alone whatever the window', () => {
-    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={-1} />)
+  it('leaves the other four sentences alone', () => {
+    const { container } = render(<CommandDeck {...baseProps} />)
     expect(container.querySelector('#deck-def-bounce_rate')?.textContent).toContain('exactly one pageview')
     expect(container.querySelector('#deck-def-pageviews')?.textContent).toContain('A reload counts again')
   })
 
-  /**
-   * 🔴 MEASURED ON STAGING, 11-09-2026: the deck rendered the window-NEUTRAL
-   * sentence on a site set to 7 days, because the authed dashboard page hands
-   * it `dashboard.site` — which the backend builds with NewPublicSiteResponse,
-   * the same whitelist the share surface gets, and which does not carry
-   * identity_window_days. The page must read the window off the AUTHED site
-   * record (useSite), never off the dashboard payload's site. A source pin,
-   * because rendering the page pulls in twenty hooks and the defect was one
-   * identifier.
-   */
-  it('the authed dashboard feeds the deck the window from the site RECORD, not the dashboard payload', () => {
-    const page = fs.readFileSync(path.resolve(__dirname, '../../../app/sites/[id]/page.tsx'), 'utf8')
-    // The record's other fields (its error, since PULSE-87) may be read beside it.
-    expect(page).toMatch(/const \{ data: siteRecord[^}]*\} = useSite\(siteId\)/)
-    expect(page).toContain('identityWindowDays={identityWindowOf(siteRecord)}')
-    expect(page).not.toContain('identityWindowOf(site)')
+  it('the dashboard no longer feeds the deck an identity window', () => {
+    const page = fs.readFileSync(path.resolve(__dirname, '../../surfaces/DashboardSurface.tsx'), 'utf8')
+    expect(page).not.toContain('identityWindowDays')
+    expect(page).not.toContain('identityWindowOf')
   })
 })
 
@@ -242,5 +215,41 @@ describe('CommandDeck tooltip zero semantics (04-09-2026)', () => {
     // No visits → no denominator → nothing measured. Zero here would claim
     // a perfect bounce rate for an hour nobody visited.
     expect(String(rateRows({ bounce_rate: null })[0].value)).toBe('—')
+  })
+})
+
+describe('CommandDeck large counts compact (owner ruling D11, PULSE-190)', () => {
+  it('the KPI tile shows compact text with the exact value as its accessible name', () => {
+    const { container } = render(
+      <CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903, pageviews: 13842117 }} />
+    )
+    expect(screen.getByText('4.2M')).toBeTruthy()
+    expect(screen.getByText('13.8M')).toBeTruthy()
+    const visitorsEl = container.querySelector('[aria-label="4,218,903"]')
+    expect(visitorsEl?.textContent).toBe('4.2M')
+    const pageviewsEl = container.querySelector('[aria-label="13,842,117"]')
+    expect(pageviewsEl?.textContent).toBe('13.8M')
+  })
+
+  it('below the threshold the tile still renders exact, with no tooltip wrapper', () => {
+    const { container } = render(<CommandDeck {...baseProps} />)
+    // baseProps' stats (317 visitors) never cross 10,000.
+    expect(screen.getByText('317')).toBeTruthy()
+    expect(container.querySelector('[aria-label="317"]')).toBeNull()
+  })
+
+  it('leaves the ratio/rate/duration tiles exact — only the two counts compact', () => {
+    render(<CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903 }} />)
+    expect(screen.getByText('81%')).toBeTruthy() // bounce_rate, untouched
+  })
+
+  it('the chart Y-axis and point tooltip read compact for visitors/pageviews too', () => {
+    render(<CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903 }} metric="visitors" />)
+    const rows = capturedTooltip.rows as (p: Record<string, unknown>) => { value: string | number }[]
+    expect(rows({ visitors: 4218903 })[0].value).toBe('4.2M')
+    // A rate metric's tooltip value is unaffected by the count rule.
+    render(<CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903 }} metric="bounce_rate" />)
+    const rateRows = capturedTooltip.rows as (p: Record<string, unknown>) => { value: string | number }[]
+    expect(rateRows({ bounce_rate: 81 })[0].value).toBe('81%')
   })
 })

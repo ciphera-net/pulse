@@ -1,4 +1,4 @@
-import { authFetch } from './client'
+import { authFetch, type SendOptions } from './client'
 
 export interface Organization {
   id: string
@@ -25,6 +25,10 @@ export interface OrganizationMember {
   organization_name?: string
   organization_slug?: string
   user_email?: string
+  // The member's stored avatar seed (PUL-21), folded in from the route's
+  // `avatar_seeds` map by getOrganizationMembers; null when they never
+  // generated one. Draw with personAvatarSeed({ userId, avatarSeed }).
+  avatar_seed?: string | null
 }
 
 export interface InviteLink {
@@ -112,9 +116,10 @@ export async function getOrganization(organizationId: string): Promise<Organizat
 }
 
 // Delete a team
-export async function deleteOrganization(organizationId: string): Promise<void> {
+export async function deleteOrganization(organizationId: string, send: SendOptions = {}): Promise<void> {
   await authFetch(`/organizations/${organizationId}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 
@@ -134,32 +139,39 @@ export async function updateOrganization(organizationId: string, name: string, s
 
 // Get team members
 export async function getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
-  const data = await authFetch<{ members: OrganizationMember[] }>(`/organizations/${organizationId}/members`)
-  return data.members || []
+  const data = await authFetch<{ members: OrganizationMember[]; avatar_seeds?: Record<string, string> }>(`/organizations/${organizationId}/members`)
+  // The route returns each member's stored avatar seed beside the roster
+  // (PUL-21); folding it into the rows means every caller has it, whichever
+  // way it fetched the list.
+  const seeds = data.avatar_seeds ?? {}
+  return (data.members || []).map((m) => ({ ...m, avatar_seed: seeds[m.user_id] ?? null }))
 }
 
 // Remove a member from the team
-export async function removeOrganizationMember(organizationId: string, userId: string): Promise<void> {
+export async function removeOrganizationMember(organizationId: string, userId: string, send: SendOptions = {}): Promise<void> {
   await authFetch(`/organizations/${organizationId}/members/${userId}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 
 // Leave a team. The owner is refused server-side (409) — the caller must
 // transfer ownership first; the UI keeps the row disabled for the owner
 // rather than round-tripping to find that out.
-export async function leaveOrganization(organizationId: string): Promise<void> {
+export async function leaveOrganization(organizationId: string, send: SendOptions = {}): Promise<void> {
   await authFetch(`/organizations/${organizationId}/leave`, {
     method: 'POST',
+    keepalive: send.keepalive,
   })
 }
 
 // Transfer ownership of a team to another member.
 // After a successful transfer the caller becomes a regular member.
-export async function transferOwnership(organizationId: string, targetUserId: string): Promise<void> {
+export async function transferOwnership(organizationId: string, targetUserId: string, send: SendOptions = {}): Promise<void> {
   await authFetch(`/organizations/${organizationId}/transfer-ownership`, {
     method: 'POST',
     body: JSON.stringify({ target_user_id: targetUserId }),
+    keepalive: send.keepalive,
   })
 }
 
@@ -178,8 +190,8 @@ export async function getInviteLinks(orgId: string): Promise<InviteLink[]> {
   return data.invite_links ?? []
 }
 
-export async function revokeInviteLink(orgId: string, linkId: string): Promise<void> {
-  await authFetch(`/organizations/${orgId}/invite-links/${linkId}`, { method: 'DELETE' })
+export async function revokeInviteLink(orgId: string, linkId: string, send: SendOptions = {}): Promise<void> {
+  await authFetch(`/organizations/${orgId}/invite-links/${linkId}`, { method: 'DELETE', keepalive: send.keepalive })
 }
 
 export async function acceptInviteLink(code: string): Promise<{ organization_id: string; metadata?: object }> {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import type { PathTransition } from '@/lib/api/journeys'
+import type { JourneyFlow } from '@/lib/api/journeys'
 import {
   chainThroughNode,
   chainThroughLink,
@@ -11,6 +11,7 @@ import {
   type ChainLink,
 } from '@/lib/journeys/chain'
 import { layoutSankey, NODE_WIDTH, type SankeyLink } from '@/lib/journeys/sankeyLayout'
+import { formatNumber, formatCompactNumber } from '@/lib/utils/format'
 import { StepHeader } from './StepHeader'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { TERMS } from '@/lib/dashboard/terms'
@@ -25,12 +26,11 @@ import { TERMS } from '@/lib/dashboard/terms'
 // ---------------------------------------------------------------------------
 
 interface SankeyJourneyProps {
-  transitions: PathTransition[]
-  depth: number
+  /** The bounded flow (GET /journeys/flow); its depth and totals are the server's. */
+  flow: JourneyFlow
   maxPagesPerStep?: number
   lens: string | null
   onLensChange: (path: string | null) => void
-  totalSessions: number
   periodLabel: string
 }
 
@@ -70,12 +70,10 @@ function linkPath(l: SankeyLink): string {
 }
 
 export default function SankeyJourney({
-  transitions,
-  depth,
+  flow,
   maxPagesPerStep = 20,
   lens,
   onLensChange,
-  totalSessions,
   periodLabel,
 }: SankeyJourneyProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -98,13 +96,13 @@ export default function SankeyJourney({
   // * Lens renders the chain subgraph; a lens with no flows in the current
   // * data falls back to the full graph (the toolbar chip stays clearable).
   const layout = useMemo(() => {
-    const opts = { depth, maxPagesPerStep, width: containerWidth }
+    const opts = { maxPagesPerStep, width: containerWidth }
     if (lens) {
-      const filtered = layoutSankey(transitions, { ...opts, lens })
+      const filtered = layoutSankey(flow, { ...opts, lens })
       if (filtered.nodes.length > 0) return filtered
     }
-    return layoutSankey(transitions, opts)
-  }, [transitions, depth, maxPagesPerStep, containerWidth, lens])
+    return layoutSankey(flow, opts)
+  }, [flow, maxPagesPerStep, containerWidth, lens])
 
   const chainLinks: ChainLink[] = layout.links
   // * Hovering a node highlights only the flow through that specific node
@@ -182,6 +180,11 @@ export default function SankeyJourney({
   if (layout.nodes.length === 0) return null
 
   const lastStepIndex = layout.steps[layout.steps.length - 1]?.index
+  // * The depth the server served, so the step clause describes the data on
+  // * screen (keepPreviousData can show the previous depth's flow while a new
+  // * depth loads).
+  const depth = flow.depth
+  const undrawn = layout.undrawnOtherHops
 
   return (
     <div>
@@ -202,7 +205,7 @@ export default function SankeyJourney({
           >
             <StepHeader
               index={s.index}
-              visitors={s.visitors}
+              sessions={s.sessions}
               dropOffPercent={s.dropOffPercent}
               showDropoffTip={s.index === firstDropoffIdx}
             />
@@ -264,7 +267,7 @@ export default function SankeyJourney({
                   x: e.clientX,
                   y: e.clientY,
                   title: `${pathOfNode(l.source)} → ${pathOfNode(l.target)}`,
-                  sub: `${l.value.toLocaleString()} sessions`,
+                  sub: `${formatCompactNumber(l.value)} sessions`,
                 })
               }}
               onMouseMove={(e) =>
@@ -294,7 +297,7 @@ export default function SankeyJourney({
                 transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
                 tabIndex={0}
                 role="button"
-                aria-label={`${n.path} — ${n.count.toLocaleString()} sessions`}
+                aria-label={`${n.path} — ${formatNumber(n.count)} sessions`}
                 aria-pressed={lens === n.path}
                 aria-describedby={n.path === '(other)' ? 'journeys-def-other' : undefined}
                 data-id={n.id}
@@ -307,7 +310,7 @@ export default function SankeyJourney({
                     x: e.clientX,
                     y: e.clientY,
                     title: n.path,
-                    sub: `${n.count.toLocaleString()} sessions`,
+                    sub: `${formatCompactNumber(n.count)} sessions`,
                   })
                 }}
                 onMouseMove={(e) =>
@@ -322,7 +325,7 @@ export default function SankeyJourney({
                     x: rect.right,
                     y: rect.top + rect.height / 2,
                     title: n.path,
-                    sub: `${n.count.toLocaleString()} sessions`,
+                    sub: `${formatCompactNumber(n.count)} sessions`,
                   })
                 }}
                 onBlur={() => {
@@ -376,13 +379,21 @@ export default function SankeyJourney({
         </div>
       )}
 
-      {/* Meta footer — sessions · effective depth · period */}
-      <div className="mt-4 border-t border-border pt-3 text-sm text-neutral-400">
-        {totalSessions.toLocaleString()} sessions tracked
+      {/* Meta footer — sessions · effective depth · undrawn (other) hops · period.
+          The undrawn clause is why the strips under a step header can sum to
+          less than the header; it appears only when there are any. */}
+      <div className="mt-4 border-t border-border pt-3 text-sm text-neutral-400" data-testid="journeys-footer">
+        {formatCompactNumber(flow.total_sessions)} sessions tracked
         {' · '}
         {layout.steps.length < depth
           ? `Showing ${layout.steps.length} of ${depth} steps — no traffic beyond step ${layout.steps.length} in this period`
           : `${layout.steps.length} steps`}
+        {undrawn > 0 && (
+          <>
+            {' · '}
+            {`${formatCompactNumber(undrawn)} ${undrawn === 1 ? 'hop' : 'hops'} from (other) to (other) not drawn`}
+          </>
+        )}
         {' · '}
         {periodLabel}
       </div>

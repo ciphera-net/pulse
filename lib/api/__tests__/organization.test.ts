@@ -114,7 +114,24 @@ describe('every organization.ts function targets Pulse (API_URL), never Ciphera 
     vi.stubGlobal('fetch', fetchSpy)
     const result = await org.getOrganizationMembers('o1')
     expect(lastCall(fetchSpy).url).toBe(`${API_URL}/api/v1/organizations/o1/members`)
-    expect(result).toEqual([{ user_id: 'u1' }])
+    // No avatar_seeds on the response (an older server): every row says null.
+    expect(result).toEqual([{ user_id: 'u1', avatar_seed: null }])
+  })
+
+  it('getOrganizationMembers folds the avatar_seeds map into each row (PUL-21)', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(okJson({
+      members: [{ user_id: 'u1' }, { user_id: 'u2' }],
+      avatar_seeds: { u2: 'Xk3f9Qe2LrT0vB7nWmZcAa' },
+    }))
+    vi.stubGlobal('fetch', fetchSpy)
+    // A different team id: the client dedupes identical GETs, and 'o1' was
+    // just fetched by the test above.
+    const result = await org.getOrganizationMembers('o2')
+    expect(lastCall(fetchSpy).url).toBe(`${API_URL}/api/v1/organizations/o2/members`)
+    expect(result).toEqual([
+      { user_id: 'u1', avatar_seed: null },
+      { user_id: 'u2', avatar_seed: 'Xk3f9Qe2LrT0vB7nWmZcAa' },
+    ])
   })
 
   it('removeOrganizationMember: DELETE /organizations/:id/members/:userId', async () => {

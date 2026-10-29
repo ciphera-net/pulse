@@ -1,10 +1,84 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { formatNumber, formatDate, getDateRange, formatDuration, formatUpdatedAgo, formatUpdatedLabel } from '../format'
+import {
+  formatNumber,
+  formatCompactNumber,
+  EM_DASH,
+  formatDate,
+  getDateRange,
+  formatDuration,
+  formatUpdatedAgo,
+  formatUpdatedLabel,
+} from '../format'
 
 describe('format (machine/number)', () => {
   it('formatNumber adds thousands separators', () => {
     expect(formatNumber(1234567)).toBe('1,234,567')
     expect(formatNumber(0)).toBe('0')
+  })
+
+  // PULSE-190 (owner ruling D11, 01-10-2026): large counts render compact on
+  // every page, exact value on hover/focus. Rule and every boundary mocked in
+  // Pulse/docs/data/01-10-2026-number-format-mocks/format-logic.mjs.
+  describe('formatCompactNumber', () => {
+    it('is exact, comma-grouped, below 10,000 — unchanged from formatNumber', () => {
+      expect(formatCompactNumber(9876)).toBe('9,876')
+      expect(formatCompactNumber(1234)).toBe('1,234')
+      expect(formatCompactNumber(999)).toBe('999')
+      expect(formatCompactNumber(1)).toBe('1')
+    })
+
+    it('one decimal below 100 of the compact unit', () => {
+      expect(formatCompactNumber(12345)).toBe('12.3K')
+      expect(formatCompactNumber(99900)).toBe('99.9K')
+      expect(formatCompactNumber(1400000)).toBe('1.4M')
+    })
+
+    it('no decimal once the digits before the unit reach 100', () => {
+      expect(formatCompactNumber(153000)).toBe('153K')
+      expect(formatCompactNumber(13800000)).toBe('13.8M')
+      expect(formatCompactNumber(100000)).toBe('100K')
+    })
+
+    it('rounding that crosses a unit boundary reads correctly', () => {
+      expect(formatCompactNumber(9999)).toBe('9,999') // one below the threshold, stays exact
+      expect(formatCompactNumber(10000)).toBe('10K') // the threshold itself
+      expect(formatCompactNumber(99950)).toBe('100K') // rounds up into the "no decimal" band, not "100.0K"
+      expect(formatCompactNumber(999950)).toBe('1M') // rounds up into the next unit, not "1000.0K"
+    })
+
+    it('the task brief\'s own worked examples, verbatim', () => {
+      expect(formatCompactNumber(4218903)).toBe('4.2M')
+      expect(formatCompactNumber(2104559)).toBe('2.1M')
+      expect(formatCompactNumber(918330)).toBe('918K')
+      expect(formatCompactNumber(412007)).toBe('412K')
+      expect(formatCompactNumber(88214)).toBe('88.2K')
+    })
+
+    it('negatives mirror the positive rule, sign preserved', () => {
+      expect(formatCompactNumber(-9876)).toBe('-9,876')
+      expect(formatCompactNumber(-12345)).toBe('-12.3K')
+      expect(formatCompactNumber(-99950)).toBe('-100K')
+    })
+
+    it('zero (and negative zero) render a plain "0", never "-0"', () => {
+      expect(formatCompactNumber(0)).toBe('0')
+      expect(formatCompactNumber(-0)).toBe('0')
+    })
+
+    it('null/undefined render the em dash — never a fabricated zero', () => {
+      expect(formatCompactNumber(null)).toBe(EM_DASH)
+      expect(formatCompactNumber(undefined)).toBe(EM_DASH)
+      expect(formatCompactNumber(null)).toBe('—')
+    })
+
+    it('is always en-US, regardless of the runtime locale', () => {
+      // Not de-DE's "." thousands / "," decimal, not fr-FR's narrow space —
+      // this file's suite runs under America/New_York (vitest.setup.ts) and
+      // the formatter must still read the American way.
+      expect(formatCompactNumber(1234567)).toBe('1.2M')
+      expect(formatCompactNumber(9876)).toContain(',')
+      expect(formatCompactNumber(9876)).not.toContain('.')
+    })
   })
 
   it('formatDate is machine YYYY-MM-DD from local parts', () => {

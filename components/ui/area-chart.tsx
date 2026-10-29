@@ -5,6 +5,7 @@ import { scaleLinear, scaleTime } from "d3-scale";
 import type { ScaleBand } from "d3-scale";
 import { localPoint, AreaClosed, LinePath, GridColumns, GridRows, ParentSize } from "@/lib/charts/primitives";
 import { formatDateShort, formatDateFull } from "@/lib/utils/formatDate";
+import { formatCompactNumber } from "@/lib/utils/format";
 import { bisector } from "d3-array";
 import { motion, useSpring } from "framer-motion";
 import {
@@ -101,6 +102,9 @@ export interface LineConfig {
   // missing bucket exactly where the line plots it — see
   // resolveTooltipYPositions.
   missingAsZero: boolean;
+  // Mirrors the Area's own `defined`: where it is false the line has a gap,
+  // so the hover dot hides there too (even under missingAsZero).
+  defined?: (d: Record<string, unknown>) => boolean;
 }
 
 export interface ChartSelection {
@@ -810,7 +814,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
             </div>
             <span className="whitespace-nowrap font-semibold text-white text-sm tabular-nums">
               {typeof row.value === "number"
-                ? row.value.toLocaleString()
+                ? formatCompactNumber(row.value)
                 : row.value}
             </span>
           </div>
@@ -1418,14 +1422,17 @@ export function resolvePlottedY(
 // no entry here and the dot call-site's `?? 0` fallback parked it at the
 // chart TOP while the line sat on the zero line). Without the flag a missing
 // bucket yields NO entry and the dot hides — pinning it anywhere would
-// fabricate a measurement the tooltip's em dash just denied.
+// fabricate a measurement the tooltip's em dash just denied. A bucket the
+// line's `defined` predicate rejects is a gap in the line, so it yields no
+// entry either — a dot on the zero line there would sit on nothing.
 export function resolveTooltipYPositions(
   point: Record<string, unknown>,
-  lines: readonly Pick<LineConfig, "dataKey" | "missingAsZero">[],
+  lines: readonly Pick<LineConfig, "dataKey" | "missingAsZero" | "defined">[],
   scale: (n: number) => number | undefined
 ): Record<string, number> {
   const yPositions: Record<string, number> = {};
   for (const line of lines) {
+    if (line.defined && !line.defined(point)) continue;
     const value = point[line.dataKey];
     if (typeof value === "number") {
       yPositions[line.dataKey] = scale(value) ?? 0;
@@ -1736,11 +1743,7 @@ export function YAxis({
     return values.map((value) => ({
       value,
       y: (yScale(value) ?? 0) + margin.top,
-      label: formatValue
-        ? formatValue(value)
-        : value >= 1000
-          ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
-          : value.toLocaleString(),
+      label: formatValue ? formatValue(value) : formatCompactNumber(value),
     }));
   }, [yScale, margin.top, numTicks, formatValue, innerHeight, yTickValues]);
 
@@ -1799,7 +1802,9 @@ export interface AreaProps {
   // (owner decision 19-08-2026: "no disappearing charts"). The tooltip still
   // reads the ORIGINAL value, so an empty hour shows '—', never a fake "0s":
   // continuity is a rendering choice, not a data claim. Mutually exclusive
-  // with breakAtMissing.
+  // with breakAtMissing. Composes with `defined`: a bucket the predicate
+  // rejects is still a gap (nothing was measured there at all), and every
+  // other missing value plots at zero.
   missingAsZero?: boolean;
   /**
    * Fade the stroke's first/last 15% via a gradient. Default preserves the
@@ -1819,8 +1824,8 @@ export interface AreaProps {
   /**
    * Custom "this point is measured" predicate — a gap wherever it is false.
    * Generalises breakAtMissing (which tests only null-ness): the funnel's
-   * conversion line breaks where FEWER THAN FIVE entrants exist even though a
-   * rate is present (the n≥5 floor), which a null test cannot express.
+   * conversion line (isMeasuredDay) tests the day's entrant count as well as
+   * its rate (a guard: the server already sends a null rate for an empty day).
    */
   defined?: (d: Record<string, unknown>) => boolean;
   /**
@@ -1840,6 +1845,11 @@ export interface AreaProps {
    * LineConfig; the Area itself does not draw the hover dot.
    */
   dotColor?: string;
+  /**
+   * Dash the whole line — the dashboard's previous-period series (PUL-19). Its
+   * hover lights a dashed copy (see the highlight below), never a solid one.
+   */
+  strokeDasharray?: string;
 }
 
 export function Area({
@@ -1865,6 +1875,7 @@ export function Area({
   pointOpacity = 0.5,
   // dotColor is consumed by the tooltip layer through LineConfig, not here.
   dotColor: _dotColor,
+  strokeDasharray,
 }: AreaProps) {
   const {
     data,
@@ -2021,6 +2032,21 @@ export function Area({
     [dataKey, yScale, missingAsZero]
   );
 
+  // A DASHED line cannot light its hovered stretch with the dash window below:
+  // the window REPLACES the line's own dash pattern, and the lit stretch turned
+  // solid (PUL-19 round 2). It lights a copy of itself instead — same path, same
+  // dashes — clipped to the same bucket-either-side window the solid line
+  // lights, so the dashes stay exactly where they are and only brighten.
+  const highlightClipId = `area-hl-clip-${dataKey}-${uniqueId}`;
+  const highlightX = useMemo(() => {
+    if (selection?.active) return { x0: selection.startX, x1: selection.endX };
+    if (!tooltipData) return null;
+    const s = data[Math.max(0, tooltipData.index - 1)];
+    const e = data[Math.min(data.length - 1, tooltipData.index + 1)];
+    if (!(s && e)) return null;
+    return { x0: xScale(xAccessor(s)) ?? 0, x1: xScale(xAccessor(e)) ?? 0 };
+  }, [selection, tooltipData, data, xScale, xAccessor]);
+
   const isHovering = tooltipData !== null || selection?.active === true;
   const easing = "var(--ease-apple)";
 
@@ -2154,6 +2180,7 @@ export function Area({
                   defined={definedFn}
                   innerRef={pathRef}
                   stroke={strokePaint}
+                  strokeDasharray={strokeDasharray}
                   strokeLinecap="round"
                   strokeWidth={strokeWidth}
                   x={(d) => xScale(xAccessor(d)) ?? 0}
@@ -2236,7 +2263,32 @@ export function Area({
         showLine &&
         isHovering &&
         isLoaded &&
-        pathRef.current && (
+        pathRef.current &&
+        (strokeDasharray ? (
+          highlightX && (
+            <>
+              <defs>
+                <clipPath id={highlightClipId}>
+                  <rect
+                    height={innerHeight + 40}
+                    width={Math.max(0, highlightX.x1 - highlightX.x0)}
+                    x={highlightX.x0}
+                    y={-20}
+                  />
+                </clipPath>
+              </defs>
+              <path
+                clipPath={`url(#${highlightClipId})`}
+                d={pathRef.current.getAttribute("d") || ""}
+                fill="none"
+                stroke={resolvedStroke}
+                strokeDasharray={strokeDasharray}
+                strokeLinecap="round"
+                strokeWidth={strokeWidth}
+              />
+            </>
+          )
+        ) : (
           <path
             d={pathRef.current.getAttribute("d") || ""}
             fill="none"
@@ -2246,7 +2298,7 @@ export function Area({
             strokeLinecap="round"
             strokeWidth={strokeWidth}
           />
-        )}
+        ))}
     </>
   );
 }
@@ -2537,6 +2589,7 @@ function extractAreaConfigs(children: ReactNode): LineConfig[] {
         strokeWidth: props.strokeWidth || 2,
         dotColor: props.dotColor,
         missingAsZero: props.missingAsZero ?? false,
+        defined: props.defined,
       });
     }
   });

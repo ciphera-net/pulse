@@ -12,8 +12,10 @@ export interface OpaqueReauthOptions {
    *  stores "<purpose>:<userID>" and requires both halves to match at consume,
    *  so a delete-account token can never buy an email change or vice versa.
    *  Required once ciphera-id #51 deploys; the older backend ignores the extra
-   *  field, which is why the frontends ship it FIRST. */
-  purpose: 'del' | 'eml' | 'enr'
+   *  field, which is why the frontends ship it FIRST.
+   *  'pkr' (16-10-2026) gates removing a passkey; its own purpose so one proof
+   *  cannot both add ('pky', passkey-enrol.ts) and remove one. */
+  purpose: 'del' | 'eml' | 'enr' | 'pkr'
 }
 
 /**

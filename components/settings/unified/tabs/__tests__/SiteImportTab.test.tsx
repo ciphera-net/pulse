@@ -88,9 +88,16 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred delete is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+
 import SiteImportTab from '../SiteImportTab'
 import { ImportError } from '@/lib/import/errors'
 import { toast } from '@ciphera-net/facet'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 // ─── fixtures ──────────────────────────────────────────────────────────────
 const PLAUSIBLE = { source: 'plausible', kind: 'upload_aggregate', enabled: true }
@@ -210,6 +217,7 @@ beforeEach(() => {
   h.getGoalStats.mockReset().mockResolvedValue([])
   ;(toast.success as any).mockClear()
   ;(toast.error as any).mockClear()
+  resetDeferred()
 })
 
 // ─── A1: the picker ────────────────────────────────────────────────────────
@@ -224,9 +232,11 @@ describe('the picker (A1)', () => {
     expect(within(block('Plausible')).getByRole('button', { name: 'Upload' })).toBeEnabled()
     expect(within(block('Matomo')).getByRole('button', { name: 'Connect' })).toBeEnabled()
     // Full colour, always (owner, Q-M11): never the Integrations idle treatment.
+    // The file name is the slug in hex (lib/comparisonLogos.ts), so no blocker list can match a tool's name.
+    const files: Record<string, string> = { plausible: '_706c61757369626c65', matomo: '_6d61746f6d6f' }
     for (const id of ['plausible', 'matomo']) {
       const img = screen.getByTestId(`import-logo-${id}`)
-      expect(img).toHaveAttribute('src', `https://cdn.ciphera.net/website/blog/tools/${id}.png`)
+      expect(img).toHaveAttribute('src', `https://cdn.ciphera.net/website/blog/tools/${files[id]}.png`)
       expect(img.closest('span')!.className).not.toMatch(/grayscale|opacity-60/)
     }
     expect(screen.getByText('One import per site. An uploaded export is read in your browser and never sent to Pulse.')).toBeInTheDocument()
@@ -487,24 +497,64 @@ describe('done (A7) and delete (A9)', () => {
     expect(screen.queryByText('It can take a minute before the dashboard shows the imported days.')).toBeNull()
   })
 
-  it('deletes through a confirm dialog, then reads the slot again', async () => {
+  it('names the import in a hold dialog, hides it at once on confirm, and sends nothing until the Undo window runs out', async () => {
     h.slot = { existing_import: status() }
     renderTab()
     const del = await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Delete imported data' })
     expect(del.className).toMatch(/text-destructive/)
     fireEvent.click(del)
-    const dialog = screen.getByRole('dialog', { name: 'Delete imported data' })
+    const dialog = screen.getByRole('dialog', { name: 'Delete imported data?' })
     expect(
       within(dialog).getByText(
         "This removes everything imported from Plausible from every chart, card, export and API answer. Data Pulse measured itself isn't touched.",
       ),
     ).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to delete' }))
+
+    // Gone at once; the slot reads as empty, and nothing has been sent yet.
+    expect(await screen.findByText('One import per site. An uploaded export is read in your browser and never sent to Pulse.')).toBeInTheDocument()
+    expect(h.deleteImport).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Imported data from Plausible deleted')
+
     const reads = h.getImportSlot.mock.calls.length
     h.slot = { existing_import: null }
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(h.deleteImport).toHaveBeenCalledWith(expect.objectContaining({ siteId: 's1', importId: 'imp-1' })))
+    await act(() => commitLast())
+    expect(h.deleteImport).toHaveBeenCalledWith(expect.objectContaining({ siteId: 's1', importId: 'imp-1', keepalive: false }))
     await waitFor(() => expect(h.getImportSlot.mock.calls.length).toBeGreaterThan(reads))
+  })
+
+  it('passes keepalive through to the request on a commit sent as the page closes', async () => {
+    h.slot = { existing_import: status() }
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Delete imported data' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await act(() => commitLast({ keepalive: true }))
+    expect(h.deleteImport).toHaveBeenCalledWith(expect.objectContaining({ siteId: 's1', importId: 'imp-1', keepalive: true }))
+  })
+
+  it('Undo restores the import and sends nothing', async () => {
+    h.slot = { existing_import: status() }
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Delete imported data' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
     expect(await screen.findByText('One import per site. An uploaded export is read in your browser and never sent to Pulse.')).toBeInTheDocument()
+
+    act(() => undoLast())
+    expect(await screen.findByText('1 Jan 2025 to 14 Sep 2026 · 622 days')).toBeInTheDocument()
+    expect(h.deleteImport).not.toHaveBeenCalled()
+  })
+
+  it('a rejected delete brings the import back, in the import error map\'s words', async () => {
+    h.slot = { existing_import: status() }
+    h.deleteImport.mockRejectedValueOnce(new Error('boom'))
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Delete imported data' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    expect(await screen.findByText('One import per site. An uploaded export is read in your browser and never sent to Pulse.')).toBeInTheDocument()
+
+    await act(() => commitLast())
+    expect(toast.error).toHaveBeenCalledWith("Pulse can't be reached. The import is paused where it was; it continues when you try again.")
+    expect(await screen.findByText('1 Jan 2025 to 14 Sep 2026 · 622 days')).toBeInTheDocument()
   })
 })
 
@@ -831,21 +881,23 @@ describe('double presses, races and malformed answers', () => {
     expect(prepared.upload).toHaveBeenCalledTimes(1)
   })
 
-  it('deletes once for two presses of the dialog\'s Delete in one batch, and says only that it worked', async () => {
+  it('defers one delete for two presses of the dialog\'s hold button in one batch', async () => {
     h.slot = { existing_import: status() }
-    const pending: Array<{ resolve: () => void; reject: (e: unknown) => void }> = []
-    h.deleteImport.mockImplementation(() => new Promise<void>((resolve, reject) => pending.push({ resolve, reject })))
     renderTab()
     fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Delete imported data' }))
-    const confirm = within(screen.getByRole('dialog', { name: 'Delete imported data' })).getByRole('button', { name: 'Delete' })
+    const confirm = within(screen.getByRole('dialog', { name: 'Delete imported data?' })).getByRole('button', { name: 'Hold to delete' })
     act(() => {
       confirm.click()
       confirm.click()
     })
-    expect(h.deleteImport).toHaveBeenCalledTimes(1)
+    // The deletingRef guard still holds: a second press lands before the
+    // re-render that empties the slot, and must not queue a second delete.
+    expect(deferred).toHaveLength(1)
+    expect(h.deleteImport).not.toHaveBeenCalled()
+
     h.slot = { existing_import: null }
-    await act(async () => pending[0].resolve())
-    expect(toast.success).toHaveBeenCalledWith('Imported data from Plausible deleted')
+    await act(() => commitLast())
+    expect(h.deleteImport).toHaveBeenCalledTimes(1)
     expect(toast.error).not.toHaveBeenCalled()
   })
 

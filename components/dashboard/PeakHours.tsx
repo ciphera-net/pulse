@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Clock } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { addDays, spanDays } from '@/lib/view/view'
+import { formatCompactNumber } from '@/lib/utils/format'
 
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -65,8 +66,8 @@ function isSummable(metric: Metric): boolean {
 }
 
 function formatMetricValue(value: number, metric: Metric): string {
-  if (metric === 'pageviews') return `${value.toLocaleString()} pageviews`
-  if (metric === 'visitors') return `${value.toLocaleString()} visits`
+  if (metric === 'pageviews') return `${formatCompactNumber(value)} pageviews`
+  if (metric === 'visitors') return `${formatCompactNumber(value)} visits`
   if (metric === 'avg_duration') {
     const mins = Math.floor(value / 60)
     const secs = Math.round(value % 60)
@@ -254,7 +255,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
         </div>
       ) : hasData ? (
         <>
-          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[3px] relative" ref={gridRef}>
+          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[2px] relative" ref={gridRef}>
             {/* Hour axis on TOP, per the approved mockup. */}
             <div className="flex items-center gap-1.5 mb-1">
               <span className="w-7 flex-shrink-0" />
@@ -283,21 +284,27 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
                 </span>
                 <div
                   className="flex-1"
-                  style={{ display: 'grid', gridTemplateColumns: `repeat(${BUCKETS}, 1fr)`, gap: '3px' }}
+                  style={{ display: 'grid', gridTemplateColumns: `repeat(${BUCKETS}, 1fr)`, gap: '2px' }}
                 >
                   {buckets.map((value, bucket) => {
                     const isHoveredCell = hovered?.day === dayIdx && hovered?.bucket === bucket
                     const isBestCell = bestTime?.day === dayIdx && bestTime?.bucket === bucket
                     const isActive = value > 0
                     const highlightColor = getHighlightColor(value, max)
+                    // PUL-14 (gallery pair 9, option B): while one cell is hovered the
+                    // rest dim to half, so the hovered hour stands out and the week's
+                    // pattern stays readable.
+                    const isDimmed = hovered !== null && !isHoveredCell
 
                     return (
                       <div
                         key={`${animKey}-${dayIdx}-${bucket}`}
                         className={[
-                          'aspect-square w-full rounded-none border cursor-default transition-transform ease-apple duration-fast',
-                          'border-neutral-800',
-                          isActive ? 'animate-cell-highlight' : '',
+                          // Filled, borderless square cells (PUL-14 option B): an empty
+                          // hour is a neutral-800 fill rather than a hollow outline.
+                          'aspect-square w-full rounded-none cursor-default transition-[transform,opacity] ease-apple duration-fast',
+                          isActive ? 'animate-cell-highlight' : 'bg-neutral-800',
+                          isDimmed ? 'opacity-50' : '',
                           isHoveredCell ? 'scale-110 z-10 relative' : '',
                           isBestCell && !isHoveredCell ? 'ring-1 ring-brand-orange/40' : '',
                         ].join(' ')}
@@ -322,8 +329,8 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
               {HIGHLIGHT_COLORS.map((color, i) => (
                 <div
                   key={i}
-                  className="w-[10px] h-[10px] rounded-none border border-neutral-800"
-                  style={{ backgroundColor: color }}
+                  className={`w-[10px] h-[10px] rounded-none${i === 0 ? ' bg-neutral-800' : ''}`}
+                  style={i === 0 ? undefined : { backgroundColor: color }}
                 />
               ))}
               <span className="text-micro-label text-neutral-500">More</span>

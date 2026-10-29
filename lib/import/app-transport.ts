@@ -28,10 +28,13 @@ import type { Transport, TransportResponse } from './client'
 
 export const appTransport: Transport = async (request): Promise<TransportResponse> => {
   try {
+    // `keepalive` (PUL-28): apiRequest is the first expression here, so a
+    // page-leave delete still reaches fetch() in the caller's tick.
     const body = await apiRequest<unknown>(request.path, {
       method: request.method,
       body: request.body ?? undefined,
       signal: request.signal,
+      ...(request.keepalive ? { keepalive: true } : {}),
     })
     return { status: body === undefined ? 204 : 200, body: body ?? null, retryAfterSeconds: null }
   } catch (e) {

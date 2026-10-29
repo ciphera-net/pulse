@@ -28,7 +28,13 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: toastMock,
 }))
 
+// The hold dialog is facet-hold's own suite; here a confirm is one click,
+// matching how the real HoldDialog awaits onConfirm (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+
 import TwoFactorPanel from '../TwoFactorPanel'
+import { resetDeferred } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 beforeEach(() => {
   auth.user = { id: 'u1', totp_enabled: false }
@@ -36,6 +42,7 @@ beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset())
   toastMock.success.mockClear()
   toastMock.error.mockClear()
+  resetDeferred()
 })
 
 describe('TwoFactorPanel', () => {
@@ -73,32 +80,68 @@ describe('TwoFactorPanel', () => {
     expect(screen.getByRole('dialog', { name: 'Turn on two-factor authentication' })).toBeInTheDocument()
   })
 
-  it('turns two-factor off with a recovery code, sending only the second factor', async () => {
+  it('turns two-factor off with a recovery code, holding to confirm and sending only the second factor, no Undo', async () => {
     auth.user = { id: 'u1', totp_enabled: true }
     api.disable2FA.mockResolvedValue(undefined)
     render(<TwoFactorPanel />)
     expect(screen.getByText('On')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Turn off…' }))
-    const dialog = screen.getByRole('dialog', { name: 'Turn off two-factor authentication' })
+    const trigger = screen.getByRole('button', { name: 'Turn off…' })
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'Turn off two-factor authentication?' })
     fireEvent.click(within(dialog).getByRole('radio', { name: 'Recovery code' }))
     fireEvent.change(within(dialog).getByLabelText('Recovery code'), { target: { value: ' cccc-3333 ' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Turn off' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to turn off' }))
+    // PUL-28 ruling 6: the hold sends at once, no Undo bar, and no success
+    // toast is deferred behind one either.
     await waitFor(() => expect(api.disable2FA).toHaveBeenCalledWith('', { recovery_code: 'cccc-3333' }))
     expect(auth.refresh).toHaveBeenCalled()
+    expect(toastMock.success).toHaveBeenCalledWith('Two-factor authentication is off.')
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('regenerates recovery codes against an app code and shows the new set', async () => {
+  it('keeps the turn-off dialog open and reports a wrong code inside it', async () => {
+    auth.user = { id: 'u1', totp_enabled: true }
+    api.disable2FA.mockRejectedValue(new Error('invalid'))
+    render(<TwoFactorPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Turn off two-factor authentication?' })
+    fireEvent.change(within(dialog).getByLabelText('Code from your app'), { target: { value: '000000' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to turn off' }))
+    expect(await within(dialog).findByText("That code didn't work. Try the current one from your app.")).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Turn off two-factor authentication?' })).toBeInTheDocument()
+    expect(auth.refresh).not.toHaveBeenCalled()
+  })
+
+  it('regenerates recovery codes against an app code, holding to confirm, and shows the new set', async () => {
     auth.user = { id: 'u1', totp_enabled: true }
     api.regenerateRecoveryCodes.mockResolvedValue({ recovery_codes: ['dddd-4444'] })
     render(<TwoFactorPanel />)
-    fireEvent.click(screen.getByRole('button', { name: 'Regenerate…' }))
-    const dialog = screen.getByRole('dialog', { name: 'Regenerate recovery codes' })
+    const trigger = screen.getByRole('button', { name: 'Regenerate…' })
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'Issue new recovery codes?' })
     fireEvent.change(within(dialog).getByLabelText('Code from your app'), { target: { value: '654321' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Regenerate' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to issue new codes' }))
     await waitFor(() => expect(api.regenerateRecoveryCodes).toHaveBeenCalledWith('', { totp_code: '654321' }))
+    // The regenerate dialog hands off to the codes dialog rather than being
+    // stomped closed by HoldDialog's own auto-close on a resolved confirm.
     const codes = await screen.findByRole('dialog', { name: 'Your recovery codes' })
     expect(within(codes).getByText('dddd-4444')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Issue new recovery codes?' })).toBeNull()
+  })
+
+  it('keeps the regenerate dialog open and reports a wrong code inside it', async () => {
+    auth.user = { id: 'u1', totp_enabled: true }
+    api.regenerateRecoveryCodes.mockRejectedValue(new Error('invalid'))
+    render(<TwoFactorPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Issue new recovery codes?' })
+    fireEvent.change(within(dialog).getByLabelText('Code from your app'), { target: { value: '111111' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to issue new codes' }))
+    expect(await within(dialog).findByText("That code didn't work. Try the current one from your app.")).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Issue new recovery codes?' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Your recovery codes' })).toBeNull()
   })
 
   it('offers no recovery-codes row while two-factor is off', () => {

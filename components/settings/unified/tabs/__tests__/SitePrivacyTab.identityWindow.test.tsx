@@ -1,18 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 
 /**
- * The visitor-identity window: phase 3 of
- * docs/plans/11-09-2026-configurable-identity-window-design.md, decisions
- * B / D1 / E2 (owner, 11-09-2026; artifact c42c362f).
+ * Visitor identity on the Privacy tab, one-day identity
+ * (docs/plans/25-10-2026-pulse-one-day-identity-copy.md §6, decisions S-C and P-A).
  *
- * Three things a test can pin and a screenshot cannot:
- *   D1 · an UNSET site (stored 0) reads "Calendar month (current)" and never
- *        preselects 30 days. 0 and 30 are different keys, and saving 30 on an
- *        unset site re-mints every identity on it;
- *   E2 · the footer is quiet until the Select differs from the SAVED value;
- *   the payload carries the raw column value, and the Visitor views caption
- *   follows the saved window instead of asserting the month.
+ * The per-site identity window is retired: a reader is recognised for one day
+ * at most and there is no setting. So the tab has no Visitor identity panel and
+ * no rail entry for one, the identity statement ends the Visitor views caption,
+ * a save never sends identity_window_days (a stored value has no effect), and a
+ * muted notice under the legal note tells a site that pasted the earlier policy
+ * text to replace it.
  */
 
 const useSiteMock = vi.fn()
@@ -93,7 +92,7 @@ const makeSite = (over: Record<string, unknown> = {}) => ({
   allowed_query_params: [] as string[],
   filter_bots: true,
   visitor_views_enabled: true,
-  // The column is NOT NULL DEFAULT 0 on the server: an unset site sends 0.
+  // Old rows still carry the retired column; nothing on the tab may read it.
   identity_window_days: 0,
   ...over,
 })
@@ -101,10 +100,8 @@ const makeSite = (over: Record<string, unknown> = {}) => ({
 function mountWith(site: Record<string, unknown>) {
   useSiteMock.mockReturnValue({ data: site, error: undefined, mutate: vi.fn().mockResolvedValue(undefined) })
   const utils = render(<SitePrivacyTab siteId="s1" />)
-  const select = () => screen.getByLabelText('Visitor identity window') as HTMLSelectElement
-  const options = () => [...select().options].map((o) => o.textContent)
-  const footer = () => utils.container.querySelector('[data-identity-window-footer]') as HTMLElement
-  return { ...utils, select, options, footer }
+  const caption = () => screen.getByText(/Turns on the Visitors page/)
+  return { ...utils, caption }
 }
 
 beforeEach(() => {
@@ -112,144 +109,79 @@ beforeEach(() => {
   updateSite.mockResolvedValue({})
 })
 
-describe('SitePrivacyTab: the visitor-identity panel (decision B)', () => {
-  it('is its own panel, directly below Visitor views, with an entry in the section rail', () => {
-    mountWith(makeSite())
-    const sections = [...document.querySelectorAll('section[id^="section-"]')].map((s) => s.id)
-    expect(sections.indexOf('section-visitor-identity')).toBe(sections.indexOf('section-visitor-views') + 1)
-    expect(screen.getByRole('heading', { name: /^visitor identity$/i })).toBeInTheDocument()
+describe('SitePrivacyTab: no Visitor identity panel (decision S-C)', () => {
+  it('has no identity section, heading, Select, footer or rail entry', () => {
+    const { container } = mountWith(makeSite({ identity_window_days: 7 }))
+    expect(container.querySelector('#section-visitor-identity')).toBeNull()
+    expect(screen.queryByRole('heading', { name: /^visitor identity$/i })).toBeNull()
+    expect(screen.queryByLabelText('Visitor identity window')).toBeNull()
+    expect(container.querySelector('[data-identity-window-footer]')).toBeNull()
     const rail = screen.getByRole('navigation', { name: 'Privacy sections' })
-    expect(rail.textContent).toContain('Visitor identity')
-    expect(screen.getByText('Recognise a returning reader for')).toBeInTheDocument()
+    expect(rail.textContent).not.toContain('Visitor identity')
+    expect(rail.textContent).toContain('Visitor views')
   })
 
-  it('offers the four windows the owner chose, and only those, on a site with a real window', () => {
-    const { select, options } = mountWith(makeSite({ identity_window_days: 7 }))
-    expect(select().value).toBe('7')
-    expect(options()).toEqual(['Session only', '24 hours', '7 days', '30 days'])
-  })
-})
-
-describe('SitePrivacyTab: the unset default (decision D1)', () => {
-  it('🔴 reads "Calendar month (current)" and never preselects 30 days', () => {
-    const { select, options } = mountWith(makeSite({ identity_window_days: 0 }))
-    expect(select().value).toBe('0')
-    expect(select().selectedOptions[0].textContent).toBe('Calendar month (current)')
-    expect(select().value).not.toBe('30')
-    // pushed in AFTER the four options, exactly as Data Retention does it
-    expect(options()).toEqual(['Session only', '24 hours', '7 days', '30 days', 'Calendar month (current)'])
-  })
-
-  it('treats a payload that predates the column as unset, not as 30 days, and the copy agrees with the control', () => {
-    const site = makeSite()
-    delete (site as Record<string, unknown>).identity_window_days
-    const { select, footer } = mountWith(site)
-    expect(select().value).toBe('0')
-    expect(select().selectedOptions[0].textContent).toBe('Calendar month (current)')
-    // The Select says the calendar month, so the footer and the caption beside
-    // it must say the same. The authed record's column is NOT NULL DEFAULT 0,
-    // and one screen may not call the same site "unset" and "unknown" at once.
-    expect(footer().textContent).toContain('rest of the calendar month')
-    expect(screen.getByText(/reset every calendar month/)).toBeInTheDocument()
-  })
-
-  it('drops the "(current)" entry the moment a real window is chosen', () => {
-    const { select, options } = mountWith(makeSite({ identity_window_days: 0 }))
-    fireEvent.change(select(), { target: { value: '7' } })
-    expect(select().value).toBe('7')
-    expect(options()).toEqual(['Session only', '24 hours', '7 days', '30 days'])
-  })
-})
-
-describe('SitePrivacyTab: the footer (decision E2)', () => {
-  it('is NOT dirty on open: state and baseline come from the same source', async () => {
+  it('is not dirty on open, whatever the retired column holds', async () => {
     mountWith(makeSite({ identity_window_days: 7 }))
-    await waitFor(() => expect(screen.getByText('Recognise a returning reader for')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Turns on the Visitors page/)).toBeInTheDocument())
     expect(screen.queryByText(/Unsaved changes/i)).toBeNull()
   })
+})
 
-  it('stays quiet, what the site does today, until the Select differs from the saved value', () => {
-    const { select, footer } = mountWith(makeSite({ identity_window_days: 0 }))
-    expect(footer().getAttribute('data-identity-window-footer')).toBe('quiet')
-    expect(footer().className).not.toContain('border-l-primary')
-    expect(footer().textContent).toContain('recognised for the rest of the calendar month')
-    expect(footer().textContent).not.toContain('re-mints')
-
-    fireEvent.change(select(), { target: { value: '1' } })
-    expect(footer().getAttribute('data-identity-window-footer')).toBe('warning')
-    expect(footer().className).toContain('border-l-2')
-    expect(footer().className).toContain('border-l-primary')
-    expect(footer().textContent).toContain('Saving this re-mints every identity from now on.')
-    expect(footer().textContent).toContain('cannot be applied backwards')
-
-    // choosing the saved value again silences it
-    fireEvent.change(select(), { target: { value: '0' } })
-    expect(footer().getAttribute('data-identity-window-footer')).toBe('quiet')
+describe('SitePrivacyTab: the Visitor views caption carries the identity statement (C1)', () => {
+  it('ends with the statement, and says "one day at most" once', () => {
+    const { caption } = mountWith(makeSite())
+    const text = caption().textContent ?? ''
+    expect(text.endsWith(IDENTITY_COPY.settingsStatement)).toBe(true)
+    expect(text).not.toContain(IDENTITY_COPY.scope)
+    expect(text.match(/one day at most/g)).toHaveLength(1)
+    expect(text).toContain('Turning it on or off is recorded in your audit trail')
   })
 
-  it('describes today in the saved window’s words, not the month, on a site set to Session only', () => {
-    const { footer } = mountWith(makeSite({ identity_window_days: -1 }))
-    expect(footer().textContent).toContain('never recognised on a later visit')
-    expect(footer().textContent).not.toMatch(/calendar month/)
-  })
-
-  it('discard restores the saved value and silences the footer', async () => {
-    const { select, footer } = mountWith(makeSite({ identity_window_days: 7 }))
-    fireEvent.change(select(), { target: { value: '-1' } })
-    expect(footer().getAttribute('data-identity-window-footer')).toBe('warning')
-    await waitFor(() => expect(screen.getByText(/Unsaved changes/i)).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: /discard/i }))
-    expect(select().value).toBe('7')
-    expect(footer().getAttribute('data-identity-window-footer')).toBe('quiet')
+  it('reads the same on every site, whatever value the retired column holds', () => {
+    const texts = new Set<string>()
+    for (const days of [-1, 0, 1, 7, 30, undefined]) {
+      const site = makeSite({ identity_window_days: days })
+      if (days === undefined) delete (site as Record<string, unknown>).identity_window_days
+      const { caption, unmount } = mountWith(site)
+      texts.add(caption().textContent ?? '')
+      unmount()
+    }
+    expect(texts.size).toBe(1)
+    const [text] = texts
+    expect(text).not.toMatch(/calendar month|Session only|up to (?:7|30) days|exactly/)
   })
 })
 
 describe('SitePrivacyTab: the wire', () => {
-  it('saves identity_window_days as the raw column value, a number', async () => {
-    const { select } = mountWith(makeSite({ identity_window_days: 0 }))
-    fireEvent.change(select(), { target: { value: '1' } })
+  it('never sends identity_window_days, so a save leaves the stored value alone', async () => {
+    const { container } = mountWith(makeSite({ identity_window_days: 7 }))
+    fireEvent.click(container.querySelectorAll('[role="switch"]')[0])
     await waitFor(() => expect(screen.getByText(/Unsaved changes/i)).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }))
     await waitFor(() => expect(updateSite).toHaveBeenCalledTimes(1))
     const [id, payload] = updateSite.mock.calls[0] as [string, Record<string, unknown>]
     expect(id).toBe('s1')
-    expect(payload.identity_window_days).toBe(1)
-    expect(typeof payload.identity_window_days).toBe('number')
+    expect('identity_window_days' in payload).toBe(false)
     // and the site's name travels with it. PUT requires it, and sending the
     // domain instead once renamed a site to its domain (VisitorsOffRoom's scar)
     expect(payload.name).toBe('Demo')
   })
-
-  it('sends the saved value unchanged when nothing on this panel was touched', async () => {
-    const { container } = mountWith(makeSite({ identity_window_days: 7 }))
-    // dirty the tab elsewhere
-    const toggles = container.querySelectorAll('[role="switch"]')
-    fireEvent.click(toggles[0])
-    await waitFor(() => expect(screen.getByText(/Unsaved changes/i)).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: /save changes/i }))
-    await waitFor(() => expect(updateSite).toHaveBeenCalledTimes(1))
-    const payload = updateSite.mock.calls[0][1] as Record<string, unknown>
-    expect(payload.identity_window_days).toBe(7)
-  })
 })
 
-describe('SitePrivacyTab: the Visitor views caption follows the saved window (phase 4)', () => {
-  it('asserts the calendar month only on a site that is on the calendar month', () => {
-    mountWith(makeSite({ identity_window_days: 0 }))
-    expect(screen.getByText(/reset every calendar month/)).toBeInTheDocument()
-  })
-
-  it('says a returning reader is never recognised on a site set to Session only', () => {
-    mountWith(makeSite({ identity_window_days: -1 }))
-    expect(screen.queryByText(/reset every calendar month/)).toBeNull()
-    const caption = screen.getByText(/Turns on the Visitors page/)
-    expect(caption.textContent).toContain('never recognised on a later visit')
-  })
-
-  it('names the window as "up to" on a rolling window, never "exactly"', () => {
-    mountWith(makeSite({ identity_window_days: 30 }))
-    const caption = screen.getByText(/Turns on the Visitors page/)
-    expect(caption.textContent).toContain('for up to 30 days')
-    expect(caption.textContent).not.toMatch(/calendar month|exactly/)
+describe('SitePrivacyTab: the policy-text notice (decision P-A)', () => {
+  it('is a muted line directly under the legal note, above the policy text', () => {
+    const { container } = mountWith(makeSite())
+    const section = container.querySelector('#section-privacy-policy') as HTMLElement
+    const legal = screen.getByText(/is not legal advice/)
+    const notice = screen.getByText(IDENTITY_COPY.policyNotice)
+    expect(section.contains(notice)).toBe(true)
+    expect(legal.nextElementSibling).toBe(notice)
+    expect(notice.tagName).toBe('P')
+    expect(notice.className).toContain('text-muted-foreground')
+    // nothing louder than the line above it: no rule, no fill
+    expect(notice.className).not.toMatch(/border|bg-/)
+    const pre = section.querySelector('pre') as HTMLElement
+    expect(notice.compareDocumentPosition(pre) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

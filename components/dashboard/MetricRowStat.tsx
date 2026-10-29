@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { type DimensionRateRow } from '@/lib/dashboard/metrics'
 
 // ---------------------------------------------------------------------------
@@ -17,26 +17,31 @@ interface MetricRowStatProps {
   totals?: { pageviews: number; visitors: number }
   /** Twin-column mode (the Pages card): visitors + views, equal weight. */
   views?: boolean
+  /** Appended to the root's classes (PULSE-197: `pointer-events-none` for a
+   *  row whose click target is a separate overlay sibling, not an ancestor). */
+  className?: string
 }
 
-export function MetricRowStat({ row, totals, views }: MetricRowStatProps) {
+export function MetricRowStat({ row, totals, views, className }: MetricRowStatProps) {
   const visitors = row.visitors ?? 0
   const denom = totals?.visitors ?? 0
   const pct = denom > 0 ? `${Math.round((visitors / denom) * 100)}%` : ''
   return (
-    <div className="relative flex items-center gap-2 ml-4">
+    <div className={cn('relative flex items-center gap-2 ml-4', className)}>
       {pct && (
-        <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+        // The hover % SLIDES in where it can be seen (PUL-20, owner pick B,
+        // 12-10-2026): 12 px over 400 ms on an even curve. It was 8 px / 250 ms
+        // on ease-apple, which front-loads the motion — 93% visible after
+        // 100 ms, so it read as appearing, not sliding. It LEAVES in 150 ms
+        // (the resting state's duration), so moving down a list leaves no
+        // trail of fading numbers.
+        <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-3 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-fast md:group-hover:duration-slow ease-in-out">
           {pct}
         </span>
       )}
-      <span className={cn('text-sm font-semibold text-neutral-400', views && 'w-12 text-right tabular-nums')}>
-        {formatNumber(visitors)}
-      </span>
+      <CompactNumber value={visitors} className={cn('text-sm font-semibold text-neutral-400', views && 'w-12 text-right')} />
       {views && (
-        <span className="w-12 text-right tabular-nums text-sm font-semibold text-neutral-400">
-          {formatNumber(row.pageviews)}
-        </span>
+        <CompactNumber value={row.pageviews} className="w-12 text-right text-sm font-semibold text-neutral-400" />
       )}
     </div>
   )

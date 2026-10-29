@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 
 // Pins the 404-vs-error split on the funnel DETAIL route. The load-bearing
 // case is the first one: the error object is a PLAIN OBJECT carrying `status`,
@@ -10,6 +10,8 @@ import { render } from '@testing-library/react'
 // test, so the guard holds the fix, not just the happy path.
 
 const mockFunnelDetail = vi.fn()
+const deleteFunnel = vi.fn()
+const routerPush = vi.fn()
 
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: () => ({ data: undefined }),
@@ -19,10 +21,15 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useFunnelStats: () => ({ data: undefined, error: undefined, isValidating: false, mutate: vi.fn() }),
 }))
 
+vi.mock('@/lib/api/funnels', () => ({
+  deleteFunnel: (...a: unknown[]) => deleteFunnel(...a),
+  updateFunnel: vi.fn(),
+}))
+
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'site-1', funnelId: 'funnel-1' }),
   usePathname: () => '/sites/site-1/funnels/funnel-1',
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), push: (...a: unknown[]) => routerPush(...a) }),
   useSearchParams: () => new URLSearchParams(),
 }))
 
@@ -65,21 +72,47 @@ vi.mock('@/components/skeletons', () => ({
   FunnelDetailSkeleton: () => <div data-testid="skeleton" />,
 }))
 
+vi.mock('@/components/dashboard/MetricInfoTip', () => ({ TermInfoTip: () => null }))
+vi.mock('@/components/dashboard/FilterButton', () => ({ default: () => null }))
+vi.mock('@/components/dashboard/FilterPills', () => ({ default: () => null }))
+vi.mock('@/components/dashboard/filter/FilterBuilder', () => ({ default: () => null }))
+vi.mock('@/components/ui/DateRangePicker', () => ({ default: () => null }))
+
 vi.mock('framer-motion', () => ({
   motion: { div: ({ className }: { className?: string }) => <div className={className} /> },
 }))
 
+const toastError = vi.fn()
 vi.mock('@ciphera-net/facet', () => ({
-  toast: { success: () => {}, error: () => {} },
+  toast: { success: () => {}, error: (...a: unknown[]) => toastError(...a) },
   Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
   ),
   // lib/utils re-exports cn from facet; EmptyState/ErrorCard break without it.
   cn: (...parts: unknown[]) => parts.filter(Boolean).join(' '),
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 
+// The page calls useDeferredRemoval() unconditionally (PUL-28), which throws
+// outside an UndoProvider; the hold dialog and the Undo window are
+// facet-hold's own suite, not this file's.
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+
 import FunnelDetailPage from '../page'
+import { SiteScopeProvider, memberScope } from '@/lib/scope/SiteScope'
 import { ApiError } from '@/lib/api/client'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
+
+// The page hands the route's funnel id to a surface that reads the site from the scope
+// (PUL-34), so it renders under the member scope the site layout provides. Public mode has
+// its own suite: components/surfaces/__tests__/FunnelDetailSurface.test.tsx.
+const renderPage = () =>
+  render(
+    <SiteScopeProvider scope={memberScope('site-1')}>
+      <FunnelDetailPage />
+    </SiteScopeProvider>,
+  )
 
 const errorState = (error: unknown) => ({
   data: undefined,
@@ -90,33 +123,85 @@ const errorState = (error: unknown) => ({
 
 beforeEach(() => {
   mockFunnelDetail.mockReset()
+  deleteFunnel.mockReset().mockResolvedValue(undefined)
+  routerPush.mockReset()
+  toastError.mockReset()
+  resetDeferred()
 })
 
 describe('funnel detail 404-vs-error split', () => {
   it('renders "Funnel not found" for a 404 that is NOT an ApiError instance (chunk-split shape)', () => {
     mockFunnelDetail.mockReturnValue(errorState({ status: 404 }))
-    const { getByText, queryByText } = render(<FunnelDetailPage />)
+    const { getByText, queryByText } = renderPage()
     expect(getByText('Funnel not found')).toBeTruthy()
     expect(queryByText("Couldn't load this funnel")).toBeNull()
   })
 
   it('renders "Funnel not found" for a real ApiError 404 too', () => {
     mockFunnelDetail.mockReturnValue(errorState(new ApiError('not found', 404)))
-    const { getByText } = render(<FunnelDetailPage />)
+    const { getByText } = renderPage()
     expect(getByText('Funnel not found')).toBeTruthy()
   })
 
   it('renders the retryable ErrorCard for a non-404 failure, never "not found"', () => {
     mockFunnelDetail.mockReturnValue(errorState(new ApiError('boom', 500)))
-    const { getByText, queryByText } = render(<FunnelDetailPage />)
+    const { getByText, queryByText } = renderPage()
     expect(getByText("Couldn't load this funnel")).toBeTruthy()
     expect(queryByText('Funnel not found')).toBeNull()
   })
 
   it('renders the ErrorCard for a status-less error (no fabricated 404)', () => {
     mockFunnelDetail.mockReturnValue(errorState(new Error('network down')))
-    const { getByText, queryByText } = render(<FunnelDetailPage />)
+    const { getByText, queryByText } = renderPage()
     expect(getByText("Couldn't load this funnel")).toBeTruthy()
     expect(queryByText('Funnel not found')).toBeNull()
+  })
+})
+
+const FUNNEL = { id: 'funnel-1', site_id: 'site-1', name: 'Signup flow', description: null, steps: [], created_at: '', updated_at: '' }
+const funnelState = (over: Record<string, unknown> = {}) => ({ data: FUNNEL, error: undefined, isLoading: false, mutate: vi.fn(), ...over })
+
+describe('funnel detail: delete through a hold dialog, navigating at once (PUL-28)', () => {
+  it('navigates to the list at once, with nothing sent until the Undo window runs out', async () => {
+    mockFunnelDetail.mockReturnValue(funnelState())
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const dialog = screen.getByRole('dialog', { name: 'Delete "Signup flow"?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to delete' }))
+
+    expect(routerPush).toHaveBeenCalledWith('/sites/site-1/funnels')
+    expect(deleteFunnel).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('"Signup flow" deleted')
+
+    await commitLast()
+    expect(deleteFunnel).toHaveBeenCalledWith('site-1', 'funnel-1', { keepalive: false })
+  })
+
+  it('passes keepalive through to the request on a commit sent as the page closes', async () => {
+    mockFunnelDetail.mockReturnValue(funnelState())
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await commitLast({ keepalive: true })
+    expect(deleteFunnel).toHaveBeenCalledWith('site-1', 'funnel-1', { keepalive: true })
+  })
+
+  it('Undo sends nothing', async () => {
+    mockFunnelDetail.mockReturnValue(funnelState())
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    undoLast()
+    expect(deleteFunnel).not.toHaveBeenCalled()
+  })
+
+  it('a rejected delete says so', async () => {
+    deleteFunnel.mockRejectedValueOnce(new Error())
+    mockFunnelDetail.mockReturnValue(funnelState())
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await commitLast()
+    expect(toastError).toHaveBeenCalledWith('Couldn\'t delete "Signup flow". Try again.')
   })
 })

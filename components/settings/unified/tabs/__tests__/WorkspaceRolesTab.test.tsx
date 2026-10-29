@@ -55,10 +55,6 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: any) => <>{children}</>,
 }))
 
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title }: any) => (open ? <div role="dialog">{title}</div> : null),
-}))
-
 import WorkspaceRolesTab from '../WorkspaceRolesTab'
 
 const groups: PermissionGroup[] = [

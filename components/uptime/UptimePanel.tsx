@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { curveLinear } from 'd3-shape'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { shiftDayKey } from '@/lib/utils/siteTime'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { useUptimeResponseTimes } from '@/lib/swr/dashboard'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -78,6 +79,11 @@ interface UptimePanelProps {
   period?: string | null
   /** Sent instead of the dates when the SERVER resolves the view (All time). */
   apiPeriod?: string
+  /**
+   * A public view (the demo, PUL-34): nobody looking at it enabled anything, so the empty
+   * note drops its "of enabling" hint. Nothing else about the panel differs: it only reads.
+   */
+  publicView?: boolean
 }
 
 // ─── Availability strip: one state bar per bucket (unchanged marks) ──
@@ -224,7 +230,7 @@ function ChecksStrip({ series }: { series: UptimePoint[] }) {
         </g>
       </svg>
       <div className="pointer-events-none absolute flex justify-end" style={{ left: 0, top: padT, width: margin.left - 8, transform: 'translateY(-50%)' }}>
-        <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{max}</span>
+        <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatCompactNumber(max)}</span>
       </div>
     </div>
   )
@@ -255,7 +261,7 @@ function TLSNote({ monitor }: { monitor: UptimeMonitor }) {
 
 // ─── Panel ───────────────────────────────────────────────────────
 
-export default function UptimePanel({ siteId, monitor, dateRange, incidents, timezone, utcDaysBefore, period, apiPeriod }: UptimePanelProps) {
+export default function UptimePanel({ siteId, monitor, dateRange, incidents, timezone, utcDaysBefore, period, apiPeriod, publicView = false }: UptimePanelProps) {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
@@ -322,7 +328,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
       case 'checks':
         // * No series loaded is "—", not a fabricated hard zero.
         return {
-          text: data == null ? '—' : totalChecks.toLocaleString('en-US'),
+          text: data == null ? '—' : formatCompactNumber(totalChecks),
           sub: `every ${Math.round(monitor.check_interval_seconds / 60)} m`,
         }
     }
@@ -349,9 +355,9 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
   const cardRows = useCallback((p: Record<string, unknown>) => {
     const h = p as unknown as UptimePoint
     return [
-      { color: 'var(--chart-foreground-muted)', label: 'Checks', value: String(h.samples) },
-      { color: NEG, label: 'Failed', value: String(h.failed) },
-      { color: DEGRADED, label: 'Degraded', value: String(h.degraded) },
+      { color: 'var(--chart-foreground-muted)', label: 'Checks', value: formatCompactNumber(h.samples) },
+      { color: NEG, label: 'Failed', value: formatCompactNumber(h.failed) },
+      { color: DEGRADED, label: 'Degraded', value: formatCompactNumber(h.degraded) },
       { color: 'var(--chart-1)', label: 'Response time', value: h.avgMs == null ? '—' : fmtMs(h.avgMs) },
       { color: 'var(--chart-1)', label: 'p95', value: h.p95Ms == null ? '—' : fmtMs(h.p95Ms) },
     ]
@@ -472,7 +478,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
         ) : !isLoading && series.length === 0 ? (
           <div className="pointer-events-none absolute inset-y-0 left-40 right-0 flex flex-col items-center justify-center sm:left-48">
             <p className="text-sm text-neutral-400">No checks in this period yet.</p>
-            <p className="mt-1 text-xs text-neutral-500">The first check lands within a minute of enabling.</p>
+            {!publicView && <p className="mt-1 text-xs text-neutral-500">The first check lands within a minute of enabling.</p>}
           </div>
         ) : null}
       </div>

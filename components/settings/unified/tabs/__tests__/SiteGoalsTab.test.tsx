@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import { MastheadSlotProvider } from '@/components/settings/shell-slots'
 
 // --- Mocks ---------------------------------------------------------------
@@ -26,19 +26,11 @@ vi.mock('@/lib/api/goals', () => ({
   deleteGoal: (...a: unknown[]) => deleteGoal(...a),
 }))
 
-// ConfirmDialog is exercised by its own suite (WorkspaceApiKeysTab's stub is
-// the house precedent) - stub it so this tab's tests stay about the tab, not
-// about the shared Radix dialog plumbing.
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title, description, onConfirm }: any) =>
-    open ? (
-      <div role="dialog">
-        <p>{title}</p>
-        <p>{description}</p>
-        <button onClick={onConfirm}>Confirm delete</button>
-      </div>
-    ) : null,
-}))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred delete is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 vi.mock('@ciphera-net/facet', () => ({
   // `@/lib/utils` re-exports cn from facet; the real panel primitives call it.
@@ -47,7 +39,7 @@ vi.mock('@ciphera-net/facet', () => ({
   Input: (props: any) => <input {...props} />,
   Spinner: () => <span>loading</span>,
   toast: { success: vi.fn(), error: vi.fn() },
-  getAuthErrorMessage: () => 'error',
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 
 // M5/M6: stub framer-motion (real motion timing can never make a jsdom run
@@ -58,6 +50,8 @@ vi.mock('@ciphera-net/facet', () => ({
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 import SiteGoalsTab from '../SiteGoalsTab'
+import { toast } from '@ciphera-net/facet'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const SOURCE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'SiteGoalsTab.tsx')
 const SOURCE = readFileSync(SOURCE_PATH, 'utf8')
@@ -89,8 +83,10 @@ beforeEach(() => {
   useGoals.mockReset().mockReturnValue(goalsState())
   createGoal.mockClear()
   updateGoal.mockClear()
-  deleteGoal.mockClear()
+  deleteGoal.mockReset().mockResolvedValue(undefined)
   mutate.mockClear()
+  vi.mocked(toast.error).mockClear()
+  resetDeferred()
   document.body.innerHTML = ''
 })
 
@@ -237,15 +233,58 @@ describe('SiteGoalsTab (Facet structured panels)', () => {
     expect(createGoal).not.toHaveBeenCalled()
   })
 
-  it('confirms delete through the shared ConfirmDialog naming the goal, not a bare confirm', async () => {
+  it('names the goal in a hold dialog, not a bare confirm', async () => {
     renderTab()
     fireEvent.click(screen.getByLabelText('Delete Sign up'))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Delete this goal?')).toBeInTheDocument()
-    expect(screen.getByText(/"Sign up" and everything recorded against it/)).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', { name: 'Delete "Sign up"?' })
+    expect(within(dialog).getByText(/"Sign up" and everything recorded against it/)).toBeInTheDocument()
+    expect(within(dialog).queryByText(/cannot be undone/i)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Hold to delete' })).toBeInTheDocument()
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete' }))
-    await waitFor(() => expect(deleteGoal).toHaveBeenCalledWith('s1', 'g1'))
+  it('hides the goal at once on confirm, with nothing sent until the Undo window runs out', async () => {
+    renderTab()
+    fireEvent.click(screen.getByLabelText('Delete Sign up'))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+
+    expect(screen.queryByText('Sign up')).toBeNull()
+    expect(deleteGoal).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('"Sign up" deleted')
+
+    await act(() => commitLast())
+    expect(deleteGoal).toHaveBeenCalledWith('s1', 'g1', { keepalive: false })
+    expect(mutate).toHaveBeenCalledTimes(1)
+  })
+
+  it('passes keepalive through to the request on a commit sent as the page closes', async () => {
+    renderTab()
+    fireEvent.click(screen.getByLabelText('Delete Sign up'))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await act(() => commitLast({ keepalive: true }))
+    expect(deleteGoal).toHaveBeenCalledWith('s1', 'g1', { keepalive: true })
+  })
+
+  it('Undo restores the goal and sends nothing', async () => {
+    renderTab()
+    fireEvent.click(screen.getByLabelText('Delete Sign up'))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    expect(screen.queryByText('Sign up')).toBeNull()
+
+    act(() => undoLast())
+    expect(screen.getByText('Sign up')).toBeInTheDocument()
+    expect(deleteGoal).not.toHaveBeenCalled()
+  })
+
+  it('a rejected delete brings the goal back and says so', async () => {
+    renderTab()
+    deleteGoal.mockRejectedValueOnce(new Error())
+    fireEvent.click(screen.getByLabelText('Delete Sign up'))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    expect(screen.queryByText('Sign up')).toBeNull()
+
+    await act(() => commitLast())
+    expect(toast.error).toHaveBeenCalledWith("Couldn't delete \"Sign up\". Try again.")
+    expect(screen.getByText('Sign up')).toBeInTheDocument()
   })
 
   it('hides the CTA and all row actions when the user cannot manage goals', () => {

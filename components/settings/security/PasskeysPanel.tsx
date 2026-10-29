@@ -3,12 +3,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, Modal, toast } from '@ciphera-net/facet'
-import { Fingerprint } from '@phosphor-icons/react'
+import { HoldDialog } from '@ciphera-net/facet-hold'
+import { Fingerprint, Prohibit } from '@phosphor-icons/react'
 import { listPasskeys, deletePasskey, renamePasskey, type PasskeyCredential } from '@/lib/api/webauthn'
+import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
+import { reauthErrorMessage } from '@/lib/auth/tessera/reauth-error'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 import { formatDateTimeFull } from '@/lib/utils/formatDate'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
@@ -36,8 +40,14 @@ export default function PasskeysPanel({ onAdd }: Props) {
   const [renaming, setRenaming] = useState<PasskeyCredential | null>(null)
   const [name, setName] = useState('')
   const [removing, setRemoving] = useState<PasskeyCredential | null>(null)
+  const [removePassword, setRemovePassword] = useState('')
+  const [removeError, setRemoveError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const reducedMotion = useReducedMotion()
+  const removeLater = useDeferredRemoval()
+  const pendingKeys = usePendingKeys()
+  // Hidden at once while its removal waits behind the Undo bar (PUL-28).
+  const visiblePasskeys = (passkeys ?? []).filter((pk) => !pendingKeys.has(`passkey:${pk.id}`))
 
   const load = useCallback(async () => {
     setFailed(false)
@@ -84,20 +94,41 @@ export default function PasskeysPanel({ onAdd }: Props) {
     }
   }
 
-  const remove = async () => {
-    if (!removing) return
-    try {
-      await deletePasskey(removing.id)
-      toast.success('Passkey removed.')
-    } catch {
-      toast.error("Couldn't remove the passkey. Try again.")
-    } finally {
-      setRemoving(null)
-      await load()
-    }
+  const closeRemove = () => {
+    setRemoving(null)
+    setRemovePassword('')
+    setRemoveError(null)
   }
 
-  const canAdd = passkeys !== null && passkeys.length === 0
+  // The hold's pre-step proves the password, the way deleting the account does
+  // (step-up bucket, 16-10-2026 ruling A): a passkey signs in without a second
+  // factor, so a stolen session must not be able to take the owner's away. A
+  // wrong password sets the dialog's own error and rejects, which keeps the
+  // dialog open. On success the single-use `pkr` token rides into the deferred
+  // DELETE: the passkey hides at once and the request sends when the Undo
+  // window runs out (PUL-28), well inside the token's 5 minutes.
+  const confirmRemove = async () => {
+    if (!removing) return
+    setRemoveError(null)
+    let reauthToken: string
+    try {
+      reauthToken = await performSessionOpaqueReauth({ password: removePassword, purpose: 'pkr' })
+    } catch (err) {
+      setRemoveError(reauthErrorMessage(err))
+      throw err
+    }
+    const pk = removing
+    closeRemove()
+    removeLater({
+      key: `passkey:${pk.id}`,
+      message: 'Passkey removed',
+      send: ({ keepalive }) => deletePasskey(pk.id, reauthToken, { keepalive }),
+      refresh: load,
+      failure: "Couldn't remove the passkey. Try again.",
+    })
+  }
+
+  const canAdd = passkeys !== null && visiblePasskeys.length === 0
 
   return (
     <SettingsPanel
@@ -134,7 +165,7 @@ export default function PasskeysPanel({ onAdd }: Props) {
               this panel can ever run — see the one-passkey cap in the class
               doc comment above. */}
           <AnimatePresence mode="wait" initial={false}>
-            {passkeys.length === 0 ? (
+            {visiblePasskeys.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={reducedMotion ? false : { opacity: 0 }}
@@ -150,7 +181,7 @@ export default function PasskeysPanel({ onAdd }: Props) {
                 />
               </motion.div>
             ) : (
-              passkeys.map((pk) => (
+              visiblePasskeys.map((pk) => (
                 <motion.div
                   key={pk.id}
                   layout={!reducedMotion}
@@ -181,6 +212,7 @@ export default function PasskeysPanel({ onAdd }: Props) {
                           variant="ghost"
                           size="sm"
                           className="text-muted-foreground transition-colors duration-fast ease-apple hover:text-destructive motion-reduce:transition-none"
+                          aria-haspopup="dialog"
                           onClick={() => setRemoving(pk)}
                         >
                           Remove
@@ -206,14 +238,32 @@ export default function PasskeysPanel({ onAdd }: Props) {
         </form>
       </Modal>
 
-      <ConfirmDialog
+      <HoldDialog
         open={removing !== null}
-        onOpenChange={(o) => { if (!o) setRemoving(null) }}
+        onOpenChange={(o) => { if (!o) closeRemove() }}
         title="Remove this passkey?"
         description="You'll sign in with your password until you add another one."
-        confirmLabel="Remove passkey"
-        onConfirm={remove}
-      />
+        holdLabel="Hold to remove"
+        icon={<Prohibit weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        disabled={!removePassword}
+        error={removeError}
+        onConfirm={confirmRemove}
+      >
+        <div>
+          <label htmlFor="passkey-remove-password" className="mb-1.5 block text-sm font-medium text-foreground">
+            Your password
+          </label>
+          <Input
+            id="passkey-remove-password"
+            type="password"
+            autoComplete="current-password"
+            value={removePassword}
+            onChange={(e) => setRemovePassword(e.target.value)}
+            placeholder="Enter your password"
+          />
+          <p className="mt-1.5 text-xs text-muted-foreground">Required to confirm it&apos;s you.</p>
+        </div>
+      </HoldDialog>
     </SettingsPanel>
   )
 }

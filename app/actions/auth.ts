@@ -13,7 +13,6 @@ const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
 interface AuthResponse {
   access_token: string
   refresh_token: string
-  id_token: string
   expires_in: number
   /**
    * The one-time vault-key hand-off nonce (ciphera-id#98).

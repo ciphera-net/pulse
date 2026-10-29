@@ -69,7 +69,7 @@ export function SourceHeader({
 /** "Delete imported data": the shared destructive outline, never a filled button (§6). */
 export function DeleteImportButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
-    <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} onClick={onClick} disabled={disabled}>
+    <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} onClick={onClick} disabled={disabled} aria-haspopup="dialog">
       Delete imported data
     </Button>
   )

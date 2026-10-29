@@ -30,6 +30,19 @@ export const DASHBOARD_REALTIME_MINUTES = 5
 /** What every block in realtime mode says when the window is empty (owner copy, 25-09). */
 export const REALTIME_EMPTY_LINE = 'Nobody on the site in the last 5 minutes.'
 
+/**
+ * How often a PUBLIC view in realtime mode refreshes the dashboard and every live list
+ * together. A member's page is told by the realtime socket that something changed; a
+ * public view holds no socket (the stream is a ticketed, member-only connection), so it
+ * asks on a timer instead, at the cadence the live fan-out already uses as its backstop
+ * (lib/swr/dashboard.ts: the live dashboard and the live lists refresh every 15 s).
+ *
+ * One coordinated tick rather than leaving each key to its own timer: SWR re-arms each
+ * key after its own request completes, so the rail and the cards would drift apart by up
+ * to a tick, and a card must never lag the KPI rail above it (PULSE-192).
+ */
+export const PUBLIC_LIVE_POLL_MS = 15_000
+
 /** Periods served as a rolling window, mapped to their width in minutes. */
 export const REALTIME_ROLLING_MINUTES: Partial<Record<Period, number>> = {
   realtime: DASHBOARD_REALTIME_MINUTES,

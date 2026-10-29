@@ -33,14 +33,16 @@
 #     BUNNY_STORAGE_SCRIPTS_PASSWORD returns 401 on write, and
 #     BUNNY_EDGE_STORAGE_SCRIPTS_PASSWORD reads fine but cannot PUT — both verified
 #     26-08-2026. A read probe succeeding proves nothing about write access.
-#   AWS_ACCESS_KEY_ID       (exoscale_cdn_scripts_key)     — backup leg
-#   AWS_SECRET_ACCESS_KEY   (exoscale_cdn_scripts_secret)  — backup leg
+#   AWS_ACCESS_KEY_ID       — backup leg: a key that can write the ciphera-scripts bucket
+#   AWS_SECRET_ACCESS_KEY   — backup leg (Infomaniak object storage since 29-10-2026)
 #   BUNNY_API_KEY           (for the versions.json purge only)
 #
 # Usage: scripts/publish-scripts.sh
 set -euo pipefail
 
-ENDPOINT="https://sos-ch-dk-2.exo.io"
+ENDPOINT="https://s3.pub1.infomaniak.cloud"
+# Infomaniak object storage: region us-east-1, and no aws-chunked checksums (the store does not support them).
+export AWS_DEFAULT_REGION=us-east-1 AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 BUCKET="ciphera-scripts"
 STORAGE_ZONE="ciphera-cdn-scripts"
 STORAGE_HOST="https://storage.bunnycdn.com"
@@ -99,7 +101,6 @@ for f in "$VDIR"/*.js; do
     --endpoint-url "$ENDPOINT" \
     --content-type "application/javascript" \
     --cache-control "public, max-age=31536000, immutable" \
-    --acl public-read \
     --quiet
 done
 
@@ -123,7 +124,6 @@ aws s3 cp /tmp/versions.json "s3://$BUCKET/versions.json" \
   --endpoint-url "$ENDPOINT" \
   --content-type "application/json" \
   --cache-control "public, max-age=300" \
-  --acl public-read \
   --quiet
 
 # versions.json is the only mutable object here — purge its edge cache so the

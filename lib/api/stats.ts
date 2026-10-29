@@ -1,5 +1,6 @@
 import apiRequest from './client'
 import { Site } from './sites'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -19,12 +20,10 @@ export interface Stats {
   // multiplied out in the browser.
   bounce_visits?: number
   duration_measured_visits?: number
-  // The rates' shared DENOMINATOR. Load-bearing since migration 163: `visitors`
-  // used to BE the session count and the examples divided by it; it now counts
-  // people (monthly dedup), so a visit numerator over `visitors` prints a
-  // fraction that cannot produce the rate beside it. Since the visits split
-  // (26-08-2026) this counts VISITS — 30-minute-inactivity runs — not days.
-  // Optional for the same reason as the two above: a backend that does not send
+  // The rates' shared DENOMINATOR. Over a range `visitors` is the sum of each day's unique
+  // visitors, so a visit numerator over `visitors` prints a fraction that cannot produce the
+  // rate beside it. Since the visits split (26-08-2026) this counts VISITS (30-minute-inactivity
+  // runs), not days. Optional for the same reason as the two above: a backend that does not send
   // it gets NO example, never a wrong one.
   visits?: number
 }
@@ -197,16 +196,14 @@ export interface LanguageGroupStat {
   bounce_rate: number | null
   avg_duration: number | null
   /** The distinct raw stored tags in the group, ordered by visitors desc
-   *  (tags only, no counts). ABSENT (not empty — omitted) on a floored
-   *  shared-dashboard payload: listing them would reveal that a locale under
-   *  the n≥5 floor exists inside an otherwise-visible group. */
+   *  (tags only, no counts). Optional: a backend before 21-10-2026 omitted
+   *  it on a shared dashboard (the five-visitor floor, since removed). */
   members?: string[]
-  /** `members.length`, mirrored so a card need not compute it. Omitted for
-   *  the same reason as `members` on a floored payload. */
+  /** `members.length`, mirrored so a card need not compute it. Optional for
+   *  the same reason as `members`. */
   locale_count?: number
   /** Uppercased region subtag of the group's most-visited member that HAS a
-   *  region subtag; `null` when no member has one, or (on a floored payload)
-   *  when that member itself sits under the floor. */
+   *  region subtag; `null` when no member has one. */
   flag_region: string | null
 }
 
@@ -255,8 +252,7 @@ export interface DeviceStat {
 // LITERAL yyyy-mm-ddThh:mm prefix is the site's wall clock under both the old
 // (Z-stamped) and new wire formats — parse it with parseSiteWallClock and read
 // UTC getters, never local ones. The four averages are nullable like Stats';
-// a null bucket is "not measured" (or floored on a public-scoped read) and
-// draws as a GAP, not a zero.
+// a null bucket is "not measured" and draws as a GAP, not a zero.
 export interface DailyStat {
   date: string
   pageviews: number
@@ -337,9 +333,12 @@ function buildQuery(
 }
 
 /** Factory for endpoints that return an array nested under a response key. */
+// * `minutes` is realtime mode's rolling window (PULSE-192). When set it REPLACES the
+// * dates and the period (buildQuery sends only minutes=), exactly as the dashboard
+// * fan-out does, so a card's full list describes the same window as the KPI rail.
 function createListFetcher<T>(path: string, field: string, defaultLimit = 10) {
-  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string, period?: string): Promise<T[]> =>
-    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit, filters, period })}`)
+  return (site: SiteRef, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string, period?: string, minutes?: number): Promise<T[]> =>
+    apiRequest<Record<string, T[]>>(sitePath(site, `/${path}${buildQuery({ startDate, endDate, limit, filters, period, minutes })}`))
       .then(r => r?.[field] || [])
 }
 
@@ -368,8 +367,8 @@ export const getTimezones = createListFetcher<TimezoneStat>('timezones', 'timezo
  * `createListFetcher`, which has no fixed-param hook and reads the wrong key)
  * so the plain per-locale fetcher is untouched.
  */
-export function getLanguageGroups(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string): Promise<LanguageGroupStat[]> {
-  return apiRequest<Record<string, LanguageGroupStat[]>>(`/sites/${siteId}/languages${buildQuery({ startDate, endDate, limit, filters, period, group: 'language' })}`)
+export function getLanguageGroups(site: SiteRef, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string, minutes?: number): Promise<LanguageGroupStat[]> {
+  return apiRequest<Record<string, LanguageGroupStat[]>>(sitePath(site, `/languages${buildQuery({ startDate, endDate, limit, filters, period, minutes, group: 'language' })}`))
     .then(r => r?.language_groups || [])
 }
 export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
@@ -378,29 +377,32 @@ export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campai
 
 // ─── Stats & Realtime ───────────────────────────────────────────────
 
-export function getStats(siteId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<StatsResponse> {
-  return apiRequest<StatsResponse>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters, period })}`)
+export function getStats(site: SiteRef, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<StatsResponse> {
+  return apiRequest<StatsResponse>(sitePath(site, `/stats${buildQuery({ startDate, endDate, filters, period })}`))
 }
 
+/** @deprecated Read the public surface through getStats(publicSiteRef(id), …) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
   return apiRequest<Stats>(`/public/sites/${siteId}/stats${buildQuery({ startDate, endDate })}`)
 }
 
-export function getRealtime(siteId: string): Promise<RealtimeStats> {
-  return apiRequest<RealtimeStats>(`/sites/${siteId}/realtime`)
+export function getRealtime(site: SiteRef): Promise<RealtimeStats> {
+  return apiRequest<RealtimeStats>(sitePath(site, '/realtime'))
 }
 
+/** @deprecated Read the public surface through getRealtime(publicSiteRef(id)) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicRealtime(siteId: string): Promise<RealtimeStats> {
   return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime`)
 }
 
 // ─── Daily Stats ────────────────────────────────────────────────────
 
-export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string, period?: string): Promise<DailyStat[]> {
-  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval, filters, period })}`)
+export function getDailyStats(site: SiteRef, startDate?: string, endDate?: string, interval?: string, filters?: string, period?: string): Promise<DailyStat[]> {
+  return apiRequest<{ stats: DailyStat[] }>(sitePath(site, `/daily${buildQuery({ startDate, endDate, interval, filters, period })}`))
     .then(r => r?.stats || [])
 }
 
+/** @deprecated Read the public surface through getDailyStats(publicSiteRef(id), …) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DailyStat[]> {
   return apiRequest<{ stats: DailyStat[] }>(`/public/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval })}`)
     .then(r => r?.stats || [])
@@ -430,9 +432,7 @@ export interface DashboardData {
    *  Absent (a backend that predates the grouping rollout) and `null` (no
    *  grouped view for this response: the range holds imported language
    *  history, or a cached response from before the field existed) both mean
-   *  the card shows `languages` instead, no error. Floored like every other
-   *  dimension on a shared dashboard; see LanguageGroupStat for what a
-   *  floored group omits. */
+   *  the card shows `languages` instead, no error. */
   language_groups?: LanguageGroupStat[] | null
   timezones: TimezoneStat[]
   browsers: BrowserStat[]
@@ -441,9 +441,8 @@ export interface DashboardData {
   screen_resolutions: ScreenResolutionStat[]
   goal_counts?: GoalCountStat[]
   scroll_depth?: ScrollDepthDistribution
-  // Campaign rows joined the payload 02-09-2026 (floored on public-scoped
-  // reads like every dimension) so the share surface can render the
-  // Campaigns card without the member-only /campaigns endpoint.
+  // Campaign rows joined the payload 02-09-2026 so the share surface can
+  // render the Campaigns card without the member-only /campaigns endpoint.
   campaigns?: CampaignStat[]
   date_range?: { start: string; end: string }
   /**
@@ -451,16 +450,6 @@ export interface DashboardData {
    * "All time" past a year, where the server picks week or month (PULSE-20).
    */
   interval?: 'minute' | 'hour' | 'day' | 'week' | 'month'
-  /** What the minimum-cell-size floor withheld. Present ONLY on a shared dashboard
-   *  and ONLY when something was withheld, so its presence is itself the signal that
-   *  this payload was served anonymously.
-   *
-   *  A shared dashboard drops every dimension row describing fewer than
-   *  `min_cell_size` people, because the payload carries fifteen dimensions computed
-   *  over the same sessions and small cells in several of them join into one person.
-   *  The counts are reported rather than silently applied so a viewer can see that
-   *  the rows do not sum to the total on purpose. */
-  suppression?: DashboardSuppression
   /**
    * Whether the headline and the chart include imported history, and which days
    * (PULSE-83). Speaks for the headline and the series; each card speaks for
@@ -476,16 +465,10 @@ export interface DashboardData {
   imported_cards?: Record<string, ImportedProvenance>
   /**
    * The goal counts' own provenance (M12-f): whether the Events card's numbers
-   * include imported days. A field of its own, not an `imported_cards` key. The
-   * focused goals endpoints carry the same thing as `imported`.
+   * include imported days. A field of its own, not an `imported_cards` key.
+   * `/goals/stats` carries the same thing as `imported`.
    */
   imported_goals?: ImportedProvenance
-}
-
-export interface DashboardSuppression {
-  min_cell_size: number
-  rows_withheld: number
-  pageviews_withheld: number
 }
 
 export interface ScrollDepthDistribution {
@@ -496,10 +479,11 @@ export interface ScrollDepthDistribution {
   total_sessions: number
 }
 
-export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string, minutes?: number): Promise<DashboardData> {
-  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, filters, period, minutes })}`)
+export function getDashboard(site: SiteRef, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string, minutes?: number): Promise<DashboardData> {
+  return apiRequest<DashboardData>(sitePath(site, `/dashboard${buildQuery({ startDate, endDate, limit, interval, filters, period, minutes })}`))
 }
 
+/** @deprecated Read the public surface through getDashboard(publicSiteRef(id), …) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicDashboard(
   siteId: string,
   startDate?: string,
@@ -512,53 +496,6 @@ export function getPublicDashboard(
     `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, period })}`
   )
 }
-
-// ─── Focused Dashboard Endpoints ────────────────────────────────────
-
-export interface DashboardOverviewData {
-  site: Site
-  stats: Stats
-  realtime_visitors: number
-  daily_stats: DailyStat[]
-  date_range?: { start: string; end: string }
-}
-
-export interface DashboardPagesData {
-  top_pages: TopPage[]
-  entry_pages: TopPage[]
-  exit_pages: TopPage[]
-}
-
-export interface DashboardLocationsData {
-  countries: CountryStat[]
-  cities: CityStat[]
-  regions: RegionStat[]
-  languages: LanguageStat[]
-  timezones: TimezoneStat[]
-}
-
-export interface DashboardDevicesData {
-  browsers: BrowserStat[]
-  os: OSStat[]
-  devices: DeviceStat[]
-  screen_resolutions: ScreenResolutionStat[]
-}
-
-export interface DashboardReferrersData {
-  top_referrers: TopReferrer[]
-  channels?: ChannelStat[]
-}
-
-export interface DashboardGoalsData {
-  goal_counts: GoalCountStat[]
-  /** M12-f: whether the goal counts include imported days, like every merged card. */
-  imported?: ImportedProvenance
-}
-
-export function getDashboardOverview(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string): Promise<DashboardOverviewData> {
-  return apiRequest<DashboardOverviewData>(`/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval, filters })}`)
-}
-
 
 // ---------------------------------------------------------------------------
 // The Pages surface (PULSE-18).
@@ -596,34 +533,9 @@ export interface PagesTableData {
   pages: PageTableRow[]
 }
 
-export function getPagesTable(siteId: string, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string): Promise<PagesTableData> {
-  return apiRequest<PagesTableData>(`/sites/${siteId}/pages/table${buildQuery({ startDate, endDate, period, limit, filters })}`)
+export function getPagesTable(site: SiteRef, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string): Promise<PagesTableData> {
+  return apiRequest<PagesTableData>(sitePath(site, `/pages/table${buildQuery({ startDate, endDate, period, limit, filters })}`))
 }
-
-export function getDashboardPages(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardPagesData> {
-  return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
-
-export function getDashboardLocations(siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250, filters?: string): Promise<DashboardLocationsData> {
-  return apiRequest<DashboardLocationsData>(`/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit, filters })}`)
-}
-
-
-export function getDashboardDevices(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardDevicesData> {
-  return apiRequest<DashboardDevicesData>(`/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
-
-export function getDashboardReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardReferrersData> {
-  return apiRequest<DashboardReferrersData>(`/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
-
-export function getDashboardGoals(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardGoalsData> {
-  return apiRequest<DashboardGoalsData>(`/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
 
 // ─── Event Properties ────────────────────────────────────────────────
 
@@ -637,16 +549,16 @@ export interface EventPropertyValue {
   count: number
 }
 
-export function getEventPropertyKeys(siteId: string, eventName: string, startDate?: string, endDate?: string): Promise<EventPropertyKey[]> {
-  return apiRequest<{ keys: EventPropertyKey[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate })}`)
+export function getEventPropertyKeys(site: SiteRef, eventName: string, startDate?: string, endDate?: string, minutes?: number): Promise<EventPropertyKey[]> {
+  return apiRequest<{ keys: EventPropertyKey[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, minutes })}`))
     .then(r => r?.keys || [])
 }
 
 // `period` wins over the dates when given (buildQuery): the server resolves a
 // token like `1h` or `today` in the SITE's timezone, which a date-only fetch
 // cannot express — the same reason the campaigns fetch threads it.
-export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string): Promise<EventPropertyValue[]> {
-  return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period })}`)
+export function getEventPropertyValues(site: SiteRef, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string, minutes?: number): Promise<EventPropertyValue[]> {
+  return apiRequest<{ values: EventPropertyValue[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period, minutes })}`))
     .then(r => r?.values || [])
 }
 

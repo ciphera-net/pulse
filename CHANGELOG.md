@@ -94,30 +94,32 @@ public read API's — see that entry for what it does and does not cover.
   with optional filters. It is additive, like every change to the public API, and it
   is what the assistant's breakdown tool calls.
 
-- **Choose how long a returning reader is recognised.** Settings → Privacy has a new
-  **Visitor identity** panel: *Session only*, *24 hours*, *7 days* or *30 days*. Until
-  you choose, a site keeps today's behaviour — a returning reader is recognised for the
-  rest of the calendar month in your site's timezone — and the menu shows that as
-  *Calendar month (current)*.
+- **Choose how long a returning reader is recognised (retired 27-10-2026).** Settings →
+  Privacy had a **Visitor identity** panel: *Session only*, *24 hours*, *7 days* or *30
+  days*. Until a site chose, it kept the calendar-month behaviour that ran from
+  26-08-2026 to 26-10-2026: a returning reader was recognised for the rest of the
+  calendar month in the site's timezone, and the menu showed that as *Calendar month
+  (current)*. A visitor is now recognised for one day at most (see *A visitor is
+  recognised for one day, at most*, under Changed). This entry is kept as history.
 
-  **A window is a ceiling, not a promise.** A reader first seen near the end of a
-  window is recognised for less than it, exactly as a reader first seen on the 30th is
-  recognised for one day today. Every sentence in the product now says "up to".
+  **A window was a ceiling, not a promise.** A reader first seen near the end of a
+  window was recognised for less than it, exactly as a reader first seen on the 30th was
+  recognised for one day. Every sentence in the product said "up to".
 
-  **Session only changes what "visitors" means on that site.** No visitor identity is
-  written at all, so a reader is counted once per day and never recognised on a later
-  visit — the number becomes daily session counting, the way it was for every site
-  before 26 August 2026. The dashboard's *Unique visitors* definition, the Visitors
-  page and the privacy-policy snippet all say so on a site set that way, rather than
-  asserting the month. The public read API's `visitors` field keeps its name and its
-  shape; on such a site it inherits the same meaning, and **the day you change the
-  window is a measurement boundary for that site** — identities before it cannot be
-  re-derived, so a range that crosses it counts a returning reader once on each side.
+  **Session only changed what "visitors" meant on that site.** No visitor identity was
+  written at all, so a reader was counted once per day and never recognised on a later
+  visit: the number became daily session counting, the way it was for every site before
+  26 August 2026. The dashboard's *Unique visitors* definition, the Visitors page and
+  the privacy-policy snippet all said so on a site set that way, rather than asserting
+  the month. The public read API's `visitors` field kept its name and its shape; on such
+  a site it inherited the same meaning, and **the day you changed the window was a
+  measurement boundary for that site**: identities before it could not be re-derived, so
+  a range that crossed it counted a returning reader once on each side.
 
-  **Changing the window is deliberate and recorded.** The panel says what the change
-  costs before you save it — every identity is re-minted from that moment, readers
-  recognised under the old window count as new people, and nothing can be applied
-  backwards — and every change is written to your audit trail.
+  **Changing the window was deliberate and recorded.** The panel said what the change
+  cost before you saved it: every identity was re-minted from that moment, readers
+  recognised under the old window counted as new people, and nothing could be applied
+  backwards. Every change was written to your audit trail.
 
 - **Optional interaction capture: see what visitors did, not only which pages they
   saw.** A second, optional script records the **label of a button or link that was
@@ -176,6 +178,9 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Fixed
 
+- When the dashboard failed to load, the error replaced the whole page, including the
+  date picker and the realtime toggle, so the only way to try another range was to
+  edit the address. The toolbar now stays above the error, and Retry is unchanged.
 - Uptime and Pages offered *Last 1 hour* and *Last 24 hours* over data kept by the
   day, and showed whole days under those labels. The rows are gone (#742).
 - Journeys offered *Today*, which was always empty: journeys for a day are built
@@ -204,21 +209,23 @@ public read API's — see that entry for what it does and does not cover.
   ones**, and turning it on is a deliberate act by a site owner that is recorded in
   your organisation's audit trail. Settings → Site → Privacy → Visitor views.
 
-  **What a "visitor" is here, exactly.** A server-derived pseudonymous key, re-minted
-  at the start of every calendar month in your site's timezone. It carries no name, no
-  email, no account, no cookie and nothing stored on the reader's device, it cannot be
-  linked to the same person on another site, and at the end of the month it stops
-  existing — a returning reader comes back as a new visitor, under a new name. The
-  page says so on its face rather than in a footnote. History begins **26 Aug 2026**,
-  the day monthly identity was introduced; the date picker will not offer earlier days,
-  because earlier rows have no monthly key at all and showing them would label
-  per-day identities as if they were per-month ones.
+  **What a "visitor" was here, exactly (26-08-2026 to 26-10-2026).** A server-derived
+  pseudonymous key, re-minted at the start of every calendar month in your site's
+  timezone. It carried no name, no email, no account, no cookie and nothing stored on
+  the reader's device, it could not be linked to the same person on another site, and at
+  the end of the month it stopped existing: a returning reader came back as a new
+  visitor, under a new name. The page said so on its face rather than in a footnote.
+  History began **26 Aug 2026**, the day monthly identity was introduced; the date
+  picker did not offer earlier days, because earlier rows had no monthly key at all and
+  showing them would have labelled per-day identities as if they were per-month ones.
+  Since 27-10-2026 each profile covers one IP address and browser on one day (see *A
+  visitor is recognised for one day, at most*, under Changed).
 
   **What it deliberately cannot reach.** Visitor-level data never appears on a public
   share link, in the public read API, in an export, or on the internal admin surface —
   four exclusions pinned by tests rather than by convention, because Pulse runs a live
   public demo through the share surface. Sessions Cerberus has convicted stay invisible
-  here exactly as everywhere else. The n≥5 privacy floor on the public API is untouched.
+  here exactly as everywhere else.
 
   Some of our own wording had to change with it: several pages said Pulse keeps "no
   individual records" or is "architecturally incapable of identifying individual
@@ -227,6 +234,14 @@ public read API's — see that entry for what it does and does not cover.
   true the moment this page existed, so it has been rewritten rather than left to age.
 
 ### Changed
+
+- **A visitor is recognised for one day, at most.** From each site’s own midnight at the start of 27-10-2026, Pulse derives one id per visitor per day from the IP address and browser, with a random key made for that site and that day. Five minutes after the site’s day ends, Ciphera deletes the key and keeps no copy of it, so Pulse cannot recompute that day’s ids. Requests from the same IP address and browser are one visitor and one session within a day, and a reader first seen at 23:50 is recognised for ten minutes. No visitor id is written any more.
+
+  **Visitors over a range add up each day’s unique visitors**, so a returning reader counts once for each day. This is the one rule for every day since a site joined Pulse. `visitor_id` is NULL on every row written before a site’s switch to one-day identity: the monthly ids of 26-08-2026..26-10-2026 were nulled on 27-10-2026, day-state and the day archive were rebuilt, and multi-day visitor figures for that period are restated upward. Imported history keeps the visitor figures its source reported. The public read API’s and MCP’s `visitors` field keeps its name and type, so there is no wire change.
+
+  **The identity window setting is retired**: Session only, 24 hours, 7 days, 30 days and calendar month are gone, and values stored on sites have no effect. **Tracking script 1.7.0 keeps nothing in the browser** (no cookie, session storage or local storage) apart from the opt-out flag a site owner sets in their own browser, only when they open their own site with `?pulse-ignore`; a reload within five seconds still counts once because the server applies that rule. Visitor views keep working, but each profile covers up to one day: profiles of 26-08-2026..26-10-2026 were rebuilt as one-day profiles on 27-10-2026, so a link to a month-long profile no longer resolves.
+
+  **In the dashboard:** Settings → Privacy has no Visitor identity panel. The Visitor views caption now says how long a reader is recognised, and a note under the privacy-policy text asks you to replace it if you pasted the earlier version. The Visitors page reads "Data begins 26 Aug 2026 · each profile covers up to one day" and no longer shows a "% returning" share, which only ever described the rows on screen. A visitor's page shows when they were first seen, with no month ribbon and no reset date. On narrow screens the dot field's caption wraps above the dots instead of running into the live count.
 
 - **One view switcher, the same on every page.** The date menu now lists the same
   twelve rows everywhere: *Today, Yesterday, Last 7 days, Last 30 days, Last 3 months,
@@ -265,6 +280,17 @@ public read API's — see that entry for what it does and does not cover.
   days* and *Last 30 days* available and the rest greyed: "A shared dashboard shows
   fixed ranges." The live count under the site name is the same small dot and number,
   for display only.
+
+- **Share links open in Pulse's own dashboard.** A link shows the pages it shares in a
+  read-only version of the dashboard, with the same charts and cards you see. Its side
+  rail lists only those pages, and a page the link does not share says "This page isn't
+  shared." What a link shares, and who can open it, have not changed.
+
+- **The live demo is the real dashboard, on a sample site.**
+  [pulse.ciphera.net/demo](https://pulse.ciphera.net/demo) opens every page of Pulse
+  (Dashboard, Pages, Journeys, Funnels, Performance, Uptime, Search and CDN) on Halden
+  Cycles, a bike shop that does not exist. It has thirteen months of generated data, and
+  new visits keep arriving while you look. The demo is labelled *Sample data*.
 
 - The top bar reads "Updated 6 seconds ago" instead of "Live · 6 seconds ago": it is
   about when the page last refreshed, not about who is on the site.
@@ -370,22 +396,39 @@ public read API's — see that entry for what it does and does not cover.
   `js.ciphera.net/script.js` embed, which carries no integrity attribute, picks the
   fix up automatically.
 
-- **"Unique visitors" now counts people, and 26-08-2026 is a measurement boundary.**
-  Visitor identity used to rotate every day, so a returning reader was re-counted
-  once per day (and the public API's `visitors` field inherited that). Since
-  26-08-2026, identity is deduplicated within each calendar month in the site's own
-  timezone: a returning reader counts once, on the dashboard and in the public read
-  API's `visitors` field alike — same field, corrected meaning, no wire change.
-  Expect the number to step down; that is the correction, not a traffic drop. Days
-  before the boundary can never be re-deduplicated (the address the identity derives
-  from is discarded on arrival and was never stored), so ranges reaching back keep
-  per-day counting for those days. Session boundaries also moved from UTC midnight
-  to the site's own midnight, which ends the long-standing off-by-one between the
-  headline and the daily chart — and means the chart's daily values can now sum to
-  more than the headline, correctly: the difference is your returning readers.
+- **"Unique visitors" counted a returning reader once per calendar month, from 26-08-2026
+  to 26-10-2026.** Visitor identity used to rotate every day, so a returning reader was
+  re-counted once per day (and the public API's `visitors` field inherited that). From
+  26-08-2026 to 26-10-2026, identity was deduplicated within each calendar month in the
+  site's own timezone: a returning reader counted once, on the dashboard and in the
+  public read API's `visitors` field alike (same field, no wire change). Since
+  27-10-2026 a visitor is recognised for one day at most, and multi-day visitor figures
+  for that period are restated upward as the sum of each day's unique visitors (see *A
+  visitor is recognised for one day, at most*, under Changed). Session boundaries also
+  moved from UTC midnight to the site's own midnight on 26-08-2026, which ended the
+  long-standing off-by-one between the headline and the daily chart.
 
 ### Removed
 
+- **Small numbers are no longer hidden anywhere.** Every row and every metric
+  now shows at any size, filtered or not. A shared dashboard shows the same top
+  rows your team sees for the same range, a page or a city with one visitor
+  included, and the line naming what it had hidden is gone. The read API, the
+  CLI and the MCP tools answer a filter that matches one visitor with its real
+  numbers, list a page in realtime however few visitors it has, and keep a small
+  day's averages and a small filtered row in the exports. Funnel breakdowns list
+  a value however few entrants it had, and a funnel's Daily chart no longer
+  skips a day with fewer than five entrants. Fields kept for older clients say
+  nothing was withheld (`suppressed` is `false`, the export headers are `0`).
+  Filters stay off on a shared link, and its ranges stay fixed.
+
+- **The notification bell and the `/notifications` page are gone. Pulse notifications arrive by email.** The
+  emails now link straight into Pulse. You switch off a category's emails in Settings → Account → Notifications,
+  and `/notifications` redirects there, so bookmarks and older links keep working. The tour's "Alerts land here"
+  step, the `g n` shortcut and the command palette's Notifications entry went with the page. Failed-payment,
+  invoice and refund notices go by email to the workspace's billing contact, as they always have; the
+  workspace's other members saw them only in the bell, so they no longer get them. The "Site added" notification
+  is retired: it told the person who had just added a site that they had added one.
 - **The dashboard's Export button and its PDF are gone.** Export lives in
   Settings → Site → Export now (see *Added*). The shared dashboard and the live
   demo lose their Export button too: a shared link is for looking at the

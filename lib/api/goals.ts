@@ -1,4 +1,5 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 export interface Goal {
   id: string
@@ -19,8 +20,8 @@ export interface UpdateGoalRequest {
   event_name: string
 }
 
-export async function listGoals(siteId: string): Promise<Goal[]> {
-  const res = await apiRequest<{ goals: Goal[] }>(`/sites/${siteId}/goals`)
+export async function listGoals(site: SiteRef): Promise<Goal[]> {
+  const res = await apiRequest<{ goals: Goal[] }>(sitePath(site, '/goals'))
   return res?.goals ?? []
 }
 
@@ -38,8 +39,9 @@ export async function updateGoal(siteId: string, goalId: string, data: UpdateGoa
   })
 }
 
-export async function deleteGoal(siteId: string, goalId: string): Promise<void> {
+export async function deleteGoal(siteId: string, goalId: string, send: SendOptions = {}): Promise<void> {
   await apiRequest(`/sites/${siteId}/goals/${goalId}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }

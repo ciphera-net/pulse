@@ -20,7 +20,7 @@ vi.mock('@/lib/api/notifications-preferences', () => ({
 const toastError = vi.fn()
 // Toggle keeps its real switch semantics (role + aria-checked) and forwards
 // the naming props Facet's Toggle forwards, the same stand-in
-// AccountSecurityAlertsTab's test uses.
+// AccountSecurityAlertsPanel's test uses.
 // The panel line names the container from the ONE team-state signal (PULSE-59).
 let mockTeamState: 'alone' | 'team' | null = 'team'
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
@@ -37,6 +37,13 @@ vi.mock('@ciphera-net/facet', () => ({
   ),
   toast: { error: (...a: any[]) => toastError(...a), success: vi.fn() },
   getAuthErrorMessage: (e: Error) => e?.message ?? '',
+}))
+
+// The Ciphera ID account alerts are their own panel, tested on their own
+// (AccountSecurityAlertsPanel.test.tsx); here a marker stands in so this
+// file only asserts the composition and the Email panel's own copy.
+vi.mock('@/components/settings/AccountSecurityAlertsPanel', () => ({
+  default: () => <section data-panel="account-security-alerts" />,
 }))
 
 import MyPreferencesTab from '../MyPreferencesTab'
@@ -161,17 +168,28 @@ describe('MyPreferencesTab (one switch per category)', () => {
     render(<MyPreferencesTab />)
     await screen.findByText('Billing')
     expect(screen.getByRole('heading', { name: 'Email' })).toBeInTheDocument()
-    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
-    expect(desc.textContent).toMatch(/Switch it off per category/)
+    const desc = screen.getByText(/Notifications arrive by email as they happen/)
+    expect(desc.textContent).toMatch(/Switch off a category to stop its emails/)
     expect(desc.textContent).toMatch(/yours, not the team's/)
+    // Email-only since 20-10-2026: nothing may promise an in-app copy.
+    expect(desc.textContent).not.toMatch(/in the app|in-app/i)
     expect(desc.textContent).not.toMatch(/[—–]/)
+  })
+
+  it("says where the billing notices a member does not get go (D2)", async () => {
+    // Invoices, failed payments and refunds are emailed to the team's billing
+    // email only. With no in-app copy left, a caption that listed them under an
+    // Always on chip promised every member a notice they never receive.
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(screen.getByText(/Invoices, failed payments and refunds go to the team's billing email\./)).toBeInTheDocument()
   })
 
   it('says only "These settings are yours." to somebody alone (PULSE-59)', async () => {
     mockTeamState = 'alone'
     render(<MyPreferencesTab />)
     await screen.findByText('Billing')
-    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
+    const desc = screen.getByText(/Notifications arrive by email as they happen/)
     expect(desc.textContent).toMatch(/These settings are yours\.$/)
     expect(desc.textContent).not.toMatch(/team|workspace/i)
   })
@@ -251,6 +269,19 @@ describe('MyPreferencesTab (one switch per category)', () => {
     expect(screen.queryByRole('button', { name: /^Purge/ })).toBeNull()
     expect(screen.queryByText(/Notification history/)).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('captions Security as the API-keys-only email it is now (new-device and password alerts moved to Ciphera ID)', async () => {
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(screen.getByText('API keys created in your team.')).toBeInTheDocument()
+    expect(screen.queryByText(/new device sign-ins/i)).not.toBeInTheDocument()
+  })
+
+  it('renders the account-alerts panel below the Email panel (16-10-2026, OPS-17)', async () => {
+    const { container } = render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(container.querySelector('[data-panel="account-security-alerts"]')).toBeInTheDocument()
   })
 
   it('renders an empty row when the registry returns no categories', async () => {

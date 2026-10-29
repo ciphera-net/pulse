@@ -8,7 +8,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
-import { formatNumber, formatConvertTime } from '@/lib/utils/format'
+import { formatNumber, formatCompactNumber, formatConvertTime } from '@/lib/utils/format'
 import { guardedPctChange, guardedPointChange } from '@/lib/utils/pctChange'
 import { formatDateFullUTC, formatDateShortUTC } from '@/lib/utils/formatDate'
 import { FunnelRail } from './FunnelRail'
@@ -21,10 +21,12 @@ import { FunnelRail } from './FunnelRail'
 // strip height and the stack carries the dashboard's card:
 //
 //   Conversion — the instrument with a `defined` predicate: a day is measured
-//                only with ≥5 entrants AND a rate; everything else is a GAP (a
-//                gap is a fact, a bridge is a guess, and a 1-visitor day plotted
-//                at 100% is noise sold as measurement). The per-day dots stay —
-//                they are the evidence marks — drawn where the line is defined.
+//                when anyone entered and it has a rate; a day nobody entered is
+//                a GAP (a gap is a fact, a bridge is a guess). Such a day is
+//                drawn however few entered (since 22-10-2026; days under five
+//                entrants were left out before): a one-entrant day reads 0% or
+//                100%, and its Entered row says how few it was. The per-day dots
+//                stay — they are the evidence marks — drawn where the line is defined.
 //   Entered    — the instrument, every day
 //   Completed  — orange bars (the funnel's own accent; zero days draw nothing),
 //                a hand-rolled member on the stack's scale and cursor
@@ -36,7 +38,6 @@ import { FunnelRail } from './FunnelRail'
 const BRAND = '#FD5E0F'
 const STRIP_H = 92
 const STRIP_MARGIN = { top: 8, right: 16, bottom: 6, left: 48 }
-const MIN_RATE_ENTRANTS = 5
 
 interface DayPoint extends Record<string, unknown> {
   date: Date
@@ -46,7 +47,8 @@ interface DayPoint extends Record<string, unknown> {
   completed: number | null
 }
 
-const measured = (d: Record<string, unknown>) => typeof d.rate === 'number' && (d.entered as number) >= MIN_RATE_ENTRANTS
+/** A day's rate is a measurement when anyone entered that day and the server gave a rate. */
+export const isMeasuredDay = (d: Record<string, unknown>) => typeof d.rate === 'number' && (d.entered as number) > 0
 
 export function FunnelDailyInstrument({
   siteId,
@@ -111,10 +113,12 @@ export function FunnelDailyInstrument({
         conversion != null && prevLast?.conversion != null
           ? guardedPointChange(conversion, prevLast.conversion, prevEntered)
           : null,
-      conversionContext: entered != null && entered > 0 ? `${last?.visitors ?? 0} of ${formatNumber(entered)}` : undefined,
-      entered: entered != null ? formatNumber(entered) : '—',
+      conversionContext: entered != null && entered > 0 ? `${formatCompactNumber(last?.visitors ?? 0)} of ${formatCompactNumber(entered)}` : undefined,
+      entered: entered != null ? formatCompactNumber(entered) : '—',
+      enteredExact: entered != null ? formatNumber(entered) : undefined,
       enteredDelta: entered != null && prevStats ? guardedPctChange(entered, prevEntered, prevEntered) : null,
-      completed: stats ? formatNumber(last?.visitors ?? 0) : '—',
+      completed: stats ? formatCompactNumber(last?.visitors ?? 0) : '—',
+      completedExact: stats ? formatNumber(last?.visitors ?? 0) : undefined,
       completedContext:
         stats?.median_convert_seconds != null ? `median ${formatConvertTime(stats.median_convert_seconds)}` : undefined,
     }
@@ -127,16 +131,16 @@ export function FunnelDailyInstrument({
   const cardRows = useCallback((p: Record<string, unknown>) => {
     const h = p as DayPoint
     return [
-      { color: 'var(--chart-1)', label: 'Conversion', value: measured(h) ? `${Math.round(h.rate as number)}%` : '—' },
-      { color: 'var(--chart-1)', label: 'Entered', value: formatNumber(h.entered) },
-      { color: BRAND, label: 'Completed', value: h.completed != null ? formatNumber(h.completed) : '—' },
+      { color: 'var(--chart-1)', label: 'Conversion', value: isMeasuredDay(h) ? `${Math.round(h.rate as number)}%` : '—' },
+      { color: 'var(--chart-1)', label: 'Entered', value: formatCompactNumber(h.entered) },
+      { color: BRAND, label: 'Completed', value: h.completed != null ? formatCompactNumber(h.completed) : '—' },
     ]
   }, [])
 
   const rows = [
     { key: 'rate' as const, rail: <FunnelRail label="Conversion" value={rails.conversion} delta={rails.conversionDelta} context={rails.conversionContext} className="h-full" /> },
-    { key: 'entered' as const, rail: <FunnelRail label="Entered" value={rails.entered} delta={rails.enteredDelta} context="reached step 1" className="h-full" /> },
-    { key: 'completed' as const, rail: <FunnelRail label="Completed" value={rails.completed} context={rails.completedContext} className="h-full" /> },
+    { key: 'entered' as const, rail: <FunnelRail label="Entered" value={rails.entered} exactValue={rails.enteredExact} delta={rails.enteredDelta} context="reached step 1" className="h-full" /> },
+    { key: 'completed' as const, rail: <FunnelRail label="Completed" value={rails.completed} exactValue={rails.completedExact} context={rails.completedContext} className="h-full" /> },
   ]
 
   return (
@@ -145,7 +149,6 @@ export function FunnelDailyInstrument({
           the one liveness indicator; two chips on one screen read as noise. */}
       <div className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-3">
         <span className="text-sm font-medium text-neutral-200">Daily</span>
-        <span className="truncate text-xs text-neutral-500">rate marked only where ≥{MIN_RATE_ENTRANTS} entered</span>
       </div>
 
       {error ? (
@@ -210,8 +213,8 @@ function DayStrip({ series, kind, dashedTail }: { series: DayPoint[]; kind: 'rat
           curve={curveLinear}
           dashedTailFrom={dashedTail && series.length >= 2 ? series.length - 2 : undefined}
           dataKey={kind}
-          // The n≥5 floor: a rate is a measurement only with enough entrants.
-          defined={isRate ? measured : undefined}
+          // A day nobody entered has no rate: a gap, never a bridge.
+          defined={isRate ? isMeasuredDay : undefined}
           fadeStrokeEdges={false}
           fill={STRIP_INK}
           fillOpacity={isRate ? 0 : 0.15}
@@ -225,7 +228,7 @@ function DayStrip({ series, kind, dashedTail }: { series: DayPoint[]; kind: 'rat
           dotColor={STRIP_MARKER}
           strokeWidth={2}
         />
-        <YAxis formatValue={(v) => (isRate ? `${Math.round(v)}%` : formatNumber(Math.round(v)))} numTicks={3} />
+        <YAxis formatValue={(v) => (isRate ? `${Math.round(v)}%` : formatCompactNumber(Math.round(v)))} numTicks={3} />
         <ChartTooltip showCard={false} showDatePill={false} />
       </AreaChart>
     </div>
@@ -282,7 +285,7 @@ function CompletedBars({ series }: { series: DayPoint[] }) {
       </svg>
       {[max, 0].map((v) => (
         <div className="pointer-events-none absolute flex justify-end" key={v} style={{ left: 0, top: y(v), width: margin.left - 8, transform: 'translateY(-50%)' }}>
-          <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatNumber(Math.round(v))}</span>
+          <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatCompactNumber(Math.round(v))}</span>
         </div>
       ))}
     </div>

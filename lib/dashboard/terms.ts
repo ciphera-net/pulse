@@ -1,5 +1,5 @@
 import type { MetricType } from '@/lib/dashboard/metrics'
-import { describeIdentityWindow, type IdentityWindowDays } from '@/lib/visitors/identityWindow'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import { DOCS_ORIGIN } from '@/lib/docs'
 
 // ---------------------------------------------------------------------------
@@ -33,21 +33,16 @@ export interface GlossaryTerm {
 export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   visitors: {
     title: 'Unique visitors',
-    // 🔴 THE STATIC SENTENCE IS THE ONE TRUE OF EVERY SITE. Since 11-09-2026 a
-    // site chooses how long a returning reader is recognised (Settings →
-    // Privacy → Visitor identity), and on a site set to "Session only" the
-    // number no longer counts people across days at all. A call site that
-    // knows the site's window resolves through visitorsTerm() below and gets
-    // the sentence for THAT window; a call site that cannot know it (the
-    // public share payload does not carry the column) gets this, which
-    // asserts nothing a window could make false.
-    definition: describeIdentityWindow(undefined).metricDefinition,
+    // One definition for every site and for share links: the per-site identity setting is
+    // retired, so there is no per-site variant. It states the one rule (visitors over a range
+    // add up each day's unique visitors) and names no date.
+    definition: IDENTITY_COPY.metricDefinition,
     docs: 'dashboard#unique-visitors',
   },
   pageviews: {
     title: 'Total pageviews',
     definition:
-      'Every page a visitor saw in the range, bots and excluded traffic removed. A reload counts again. In a single-page app each change of path counts, but a link that only changes the query string or the # fragment does not — that is state on the same page. A page that loads in a background tab counts when it is first shown.',
+      'Every page a visitor saw in the range, bots and excluded traffic removed. A reload counts again, unless it comes within 5 seconds of the page loading. In a single-page app each change of path counts, but a link that only changes the query string or the # fragment does not. That is state on the same page. A page that loads in a background tab counts when it is first shown.',
     docs: 'dashboard#total-pageviews',
   },
   pages_per_visit: {
@@ -59,7 +54,7 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   bounce_rate: {
     title: 'Bounce rate',
     definition:
-      'Share of visits with exactly one pageview — a reload counts as a second, so it ends the bounce. A visit ends after 30 minutes of inactivity. Deltas are percentage points.',
+      'Share of visits with exactly one pageview. A reload more than five seconds later counts as a second pageview, so it ends the bounce. A visit ends after 30 minutes of inactivity. Deltas are percentage points.',
     docs: 'dashboard#bounce-rate',
   },
   avg_duration: {
@@ -68,30 +63,6 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
       'Average length of a visit — the time its pages were visible and in use. The clock pauses while the tab is hidden and after two minutes without scrolling, clicking or typing, so a tab left open does not count. Unmeasured visits are excluded, not counted as zero. A visit ends after 30 minutes of inactivity.',
     docs: 'dashboard#visit-duration',
   },
-}
-
-/**
- * The "Unique visitors" term for a site whose identity window is KNOWN.
- *
- * Same title, same docs link, a definition that says what the number means on
- * this site: the calendar month by default, "up to 7 days" on a rolling
- * window, and on "Session only" that a returning reader is never recognised.
- * Passing `undefined` returns the static entry — the sentence true everywhere.
- */
-export function visitorsTerm(identityWindowDays: IdentityWindowDays | undefined): GlossaryTerm {
-  if (identityWindowDays === undefined) return METRIC_TERMS.visitors
-  return { ...METRIC_TERMS.visitors, definition: describeIdentityWindow(identityWindowDays).metricDefinition }
-}
-
-/**
- * The "Visitor identity" term for a site whose window is KNOWN — the roster
- * heading's InfoTip on the Visitors page, where a reader is looking at
- * individual rows and is most likely to assume more permanence than there is.
- * Same title; the definition names this site's window.
- */
-export function visitorIdentityTerm(identityWindowDays: IdentityWindowDays | undefined): GlossaryTerm {
-  if (identityWindowDays === undefined) return TERMS.visitor_identity
-  return { ...TERMS.visitor_identity, definition: describeIdentityWindow(identityWindowDays).identityDefinition }
 }
 
 /**
@@ -107,17 +78,12 @@ export function visitorIdentityTerm(identityWindowDays: IdentityWindowDays | und
  * resolves through DIMENSION_TERM below.
  */
 export const TERMS: Record<string, GlossaryTerm> = {
-  // The Visitors surface. Both entries exist to say the SAME thing the metric
-  // glossary's `visitors` entry says, at the surface where a reader is looking
-  // at individual rows and is most likely to assume more permanence than there
-  // is — one sentence family, three places, no third definition.
-  // 🔴 Window-neutral, like METRIC_TERMS.visitors: since 11-09-2026 a site
-  // chooses its identity window, so the static entry may not assert the month.
-  // The Visitors roster resolves through visitorIdentityTerm() below with the
-  // site's window and gets the sentence for THAT window.
+  // The Visitors surface. It says the SAME thing the metric glossary's `visitors` entry says,
+  // at the surface where a reader is looking at individual rows and is most likely to assume
+  // more permanence than there is: one sentence family, no per-site variant.
   visitor_identity: {
     title: 'Visitor identity',
-    definition: describeIdentityWindow(undefined).identityDefinition,
+    definition: IDENTITY_COPY.identityDefinition,
   },
   availability: {
     title: 'Availability',
@@ -226,7 +192,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   pages: {
     title: 'Pages',
     definition:
-      'Pageviews count page loads, so a reload adds one. Visitors counts people, deduplicated monthly — a reload adds no visitor, and neither does a return trip. Bounce and duration stay session-scoped: they describe a visit, not a person.',
+      'Pageviews count page loads, so a reload more than five seconds later adds one. A reload adds no visitor, and neither does a return trip on the same day; a reader who returns on another day counts again. Visitors over a range add up each day’s unique visitors. Bounce and duration stay session-scoped: they describe a visit, not a visitor.',
     docs: 'dashboard#pages',
   },
   peak_hours: {
@@ -602,7 +568,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   journey_other_bucket: {
     title: '(other) — journeys',
     definition:
-      'Pages beyond a step\'s Paths limit are rolled into one row, not dropped: counts are kept, identities collapse. (other) to (other) hops are not drawn.',
+      'Pages beyond a step\'s Paths limit are rolled into one row, not dropped: counts are kept, identities collapse. (other) to (other) hops are not drawn; the footer says how many.',
     docs: 'user-journeys#journey-other-bucket',
   },
   journey_step: {
@@ -612,17 +578,11 @@ export const TERMS: Record<string, GlossaryTerm> = {
       // so this must count from 1 too — a panel that says "0" beside a header
       // reading "Step 1" teaches the reader the wrong thing about the very
       // label it is attached to.
-      'Each column is one hop: step 1 is where sessions started, step k is where they were after k−1 recorded hops. Counts are out of that column\'s total.',
+      'Each column is one hop: step 1 is where sessions started, step k is where they were after k−1 recorded hops. Counts are sessions, out of that column\'s total; a one-page session made no hop, so it is in no column.',
     docs: 'user-journeys#journey-step',
   },
 
   // ── funnels ──
-  funnel_breakdown_floor: {
-    title: 'Funnel breakdown privacy floor',
-    definition:
-      'Values with fewer than 5 entrants are withheld entirely — no row, never a zero — so a small slice and an empty one look the same and iterating a dimension cannot isolate one visitor.',
-    docs: 'funnels#funnel-breakdown-floor',
-  },
   funnel_exit_pages: {
     title: 'Exit pages (funnels)',
     definition:

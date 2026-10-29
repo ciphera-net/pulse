@@ -20,12 +20,22 @@ import { NextResponse } from "next/server";
  * The payload is attacker-controllable — this route is unauthenticated by
  * necessity, since a crashed page cannot be trusted to hold a session — so the
  * fields are truncated here as well as at the sender.
+ *
+ * The page address is logged without its query string or fragment: those can
+ * carry one-time tokens and state parameters. The senders post the pathname
+ * only; this strips it again for any older client still in a browser.
  */
 const MAX = { message: 500, stack: 2000, url: 500 } as const;
 
 function clip(value: unknown, max: number): string | undefined {
   if (typeof value !== "string" || value === "") return undefined;
   return value.length > max ? `${value.slice(0, max)}…` : value;
+}
+
+function withoutQuery(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const cut = value.search(/[?#]/);
+  return cut === -1 ? value : value.slice(0, cut);
 }
 
 export async function POST(request: Request) {
@@ -36,7 +46,7 @@ export async function POST(request: Request) {
       // The component that looped / threw. Without this the message alone is
       // a minified error code and nothing more.
       stack: clip(payload.stack, MAX.stack),
-      url: clip(payload.url, MAX.url),
+      url: withoutQuery(clip(payload.url, MAX.url)),
       timestamp: clip(payload.timestamp, 40),
       chunkRecovery: typeof payload.chunkRecovery === "boolean" ? payload.chunkRecovery : undefined,
     }));

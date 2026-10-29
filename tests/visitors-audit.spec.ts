@@ -130,7 +130,7 @@ test('3 · deep roster pagination and a second page of visits', async ({ page })
 
   // A visitor with 25 visits: the visits list pages at 20.
   await page.goto(`${BASE}/sites/${SCALE}/visitors/${MANY_VISITS}?period=30`)
-  await expect(page.getByText('newest first')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/oldest first · newest \d+/)).toBeVisible({ timeout: 30_000 })
   const visitRows = page.locator('button[aria-expanded]').filter({ hasText: /\d+ pages?\s·/ })
   await expect(visitRows.first()).toBeVisible()
   expect(await visitRows.count(), 'first page of visits').toBe(20)
@@ -150,10 +150,6 @@ test('3 · deep roster pagination and a second page of visits', async ({ page })
   expect(secondCount).toBe(5)
   expect(await visitRows.first().innerText(), 'page 2 shows the same rows as page 1').not.toBe(firstVisitLabel)
   await page.screenshot({ path: `${SHOTS}/3b-visits-page2.png`, fullPage: true })
-
-  // The month ribbon is built from the visits the page has. On page 2 it can
-  // therefore only know about 5 of 25 — capture it for the record.
-  await page.screenshot({ path: `${SHOTS}/3c-ribbon-on-visits-page2.png` })
 })
 
 // ════════════════════════════════════════════════════════════════════
@@ -205,7 +201,7 @@ test('5 · a NARROWED site shows nothing its settings no longer collect', async 
   // Now one click deeper — the visits list and the trail are different handlers.
   await page.locator('a[href*="/visitors/"]').first().click()
   await page.waitForURL(/\/visitors\/[0-9a-f]{32}/)
-  await expect(page.getByText('newest first')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/oldest first · newest \d+/)).toBeVisible({ timeout: 30_000 })
   const detail = await page.locator('body').innerText()
   await page.screenshot({ path: `${SHOTS}/5b-narrow-detail.png`, fullPage: true })
   expect(detail, 'the visits list leaked a page path the site does not collect').not.toContain('SECRET-PATH')
@@ -257,7 +253,7 @@ test('7 · the failure states: 404, 400, error card, empty range', async ({ page
   await page.goto(`${BASE}/sites/${SCALE}/visitors/${'0'.repeat(32)}?period=30`)
   await expect(page.getByText('No such visitor in this range')).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: `${SHOTS}/7a-404.png` })
-  // The screen tells the reader the identity may belong to another month —
+  // The screen tells the reader the profile may belong to another day —
   // so it owes them a way to change the range.
   const pickerOn404 = await page.getByRole('button', { name: /Last 30 days|Custom|Today/i }).count()
   // eslint-disable-next-line no-console
@@ -392,17 +388,17 @@ test('10 · a viewer in another timezone sees the SITE\'s days, not their own', 
   })
   const page = await ctx.newPage()
   await page.goto(`${BASE}/sites/${SCALE}/visitors/${MANY_VISITS}?period=30`)
-  await expect(page.getByText('newest first')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/oldest first · newest \d+/)).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: `${SHOTS}/10a-detail-auckland.png`, fullPage: true })
 
-  const reset = await page.locator('text=/this identity resets/').first().innerText()
+  const firstSeen = await page.getByText(/^First seen /).first().innerText()
   const firstVisit = await page
     .locator('button[aria-expanded]')
     .filter({ hasText: /\d+ pages?\s·/ })
     .first()
     .innerText()
   // eslint-disable-next-line no-console
-  console.log(`AUCKLAND reset line : ${reset.replace(/\n/g, ' ')}`)
+  console.log(`AUCKLAND first seen : ${firstSeen.replace(/\n/g, ' ')}`)
   // eslint-disable-next-line no-console
   console.log(`AUCKLAND first visit: ${firstVisit.replace(/\n/g, ' | ')}`)
 
@@ -415,23 +411,23 @@ test('10 · a viewer in another timezone sees the SITE\'s days, not their own', 
   })
   const page2 = await ctx2.newPage()
   await page2.goto(`${BASE}/sites/${SCALE}/visitors/${MANY_VISITS}?period=30`)
-  await expect(page2.getByText('newest first')).toBeVisible({ timeout: 30_000 })
+  await expect(page2.getByText(/oldest first · newest \d+/)).toBeVisible({ timeout: 30_000 })
   await page2.screenshot({ path: `${SHOTS}/10b-detail-brussels.png`, fullPage: true })
-  const reset2 = await page2.locator('text=/this identity resets/').first().innerText()
+  const firstSeen2 = await page2.getByText(/^First seen /).first().innerText()
   const firstVisit2 = await page2
     .locator('button[aria-expanded]')
     .filter({ hasText: /\d+ pages?\s·/ })
     .first()
     .innerText()
   // eslint-disable-next-line no-console
-  console.log(`BRUSSELS reset line : ${reset2.replace(/\n/g, ' ')}`)
+  console.log(`BRUSSELS first seen : ${firstSeen2.replace(/\n/g, ' ')}`)
   // eslint-disable-next-line no-console
   console.log(`BRUSSELS first visit: ${firstVisit2.replace(/\n/g, ' | ')}`)
 
-  // The server resolves this range and this month in the SITE's timezone. Two
+  // The server resolves this range and these days in the SITE's timezone. Two
   // readers of the same site must be shown the same day for the same visit.
   expect(firstVisit, 'the same visit renders on different days for different viewers').toBe(firstVisit2)
-  expect(reset, 'the identity reset date depends on who is looking').toBe(reset2)
+  expect(firstSeen, 'the first-seen date depends on who is looking').toBe(firstSeen2)
 
   await ctx.close()
   await ctx2.close()

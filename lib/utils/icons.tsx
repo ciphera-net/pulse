@@ -131,6 +131,14 @@ interface ReferrerEntry {
    * (Direct, Shared Link) and for brands that are not a referring site.
    */
   domain?: string
+  /**
+   * PUL-23: true when the registry has NO curated artwork for this brand. Its
+   * mark is then its `domain`'s favicon from the same-origin proxy, like any
+   * uncurated referrer, and `icon` (the house globe) is only the fallback when
+   * that fetch misses. Without it a known-but-uncurated brand drew a globe
+   * forever, because a registry hit skips the favicon path.
+   */
+  favicon?: true
 }
 
 /**
@@ -146,7 +154,9 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   // ── Social / platforms ──
   google:      { display: 'Google',      icon: () => brandIcon('google', 'Google'), domain: 'google.com' },
   facebook:    { display: 'Facebook',    icon: () => brandIcon('facebook', 'Facebook'),    aliases: ['fb'], domain: 'facebook.com' },
-  x:           { display: 'X',           icon: () => brandIcon('x', 'X'),                  hostnames: ['t.co', 'x.com', 'twitter.com'], domain: 'x.com' },
+  // `twitter`: the backend's label for this platform ("Twitter", from
+  // utm_source or the in-app user agent) joins the X row (PUL-23).
+  x:           { display: 'X',           icon: () => brandIcon('x', 'X'),                  aliases: ['twitter'], hostnames: ['t.co', 'x.com', 'twitter.com'], domain: 'x.com' },
   linkedin:    { display: 'LinkedIn',    icon: () => brandIcon('linkedin', 'LinkedIn'), domain: 'linkedin.com' },
   instagram:   { display: 'Instagram',   icon: () => brandIcon('instagram', 'Instagram'),  aliases: ['ig'], domain: 'instagram.com' },
   github:      { display: 'GitHub',      icon: () => brandIcon('github', 'GitHub'), domain: 'github.com' },
@@ -158,13 +168,29 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   pinterest:   { display: 'Pinterest',   icon: () => brandIcon('pinterest', 'Pinterest'), domain: 'pinterest.com' },
   threads:     { display: 'Threads',     icon: () => brandIcon('threads', 'Threads'), domain: 'threads.net' },
   discord:     { display: 'Discord',     icon: () => brandIcon('discord', 'Discord'), domain: 'discord.com' },
-  tumblr:      { display: 'Tumblr',      icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'tumblr.com' },
-  quora:       { display: 'Quora',       icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'quora.com' },
+  tumblr:      { display: 'Tumblr',      icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, domain: 'tumblr.com' },
+  quora:       { display: 'Quora',       icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, domain: 'quora.com' },
+  medium:      { display: 'Medium',      icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, domain: 'medium.com' },
+  tiktok:      { display: 'TikTok',      icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, domain: 'tiktok.com' },
+  // PUL-23: the backend stores these as two-word labels ("Product Hunt",
+  // "Hacker News", "Stack Overflow") when it falls back to utm_source, hence
+  // the spaced aliases. Without an entry the label was URL-parsed as a host.
+  producthunt: { display: 'Product Hunt', icon: () => brandIcon('producthunt', 'Product Hunt'), aliases: ['product hunt'], domain: 'producthunt.com' },
+  hackernews:  { display: 'Hacker News', icon: () => brandIcon('ycombinator', 'Hacker News'), aliases: ['hacker news'], hostnames: ['news.ycombinator.com'], domain: 'news.ycombinator.com' },
+  // PUL-24: utm_source values measured on production. Judge.me's own icon is behind a bot wall
+  // (the favicon proxy misses it), so its row shows the globe until a mark is supplied. Shopify
+  // Email is an email campaign, not a site anyone came from: no domain, so domain mode keeps its
+  // name and it has no open link.
+  judgeme:     { display: 'Judge.me',    icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, hostnames: ['judge.me'], domain: 'judge.me' },
+  zalo:        { display: 'Zalo',        icon: () => brandIcon('zalo', 'Zalo'), hostnames: ['zalo.me'], domain: 'zalo.me' },
+  shopifyemail: { display: 'Shopify Email', icon: () => brandIcon('shopify', 'Shopify Email'), aliases: ['shopify email', 'shopify_email'] },
+  stackoverflow: { display: 'Stack Overflow', icon: () => brandIcon('stackoverflow', 'Stack Overflow'), aliases: ['stack overflow'], domain: 'stackoverflow.com' },
 
   // ── Search engines ──
   bing:        { display: 'Bing',        icon: () => brandIcon('bing', 'Bing'), domain: 'bing.com' },
   duckduckgo:  { display: 'DuckDuckGo',  icon: () => brandIcon('duckduckgo', 'DuckDuckGo'), domain: 'duckduckgo.com' },
   brave:       { display: 'Brave',       icon: () => brandIcon('brave', 'Brave'), domain: 'search.brave.com' },
+  yahoo:       { display: 'Yahoo',       icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, domain: 'yahoo.com' },
 
   // ── AI assistants ──
   chatgpt:     { display: 'ChatGPT',     icon: () => brandIcon('openai', 'ChatGPT'),                  hostnames: ['chat.openai.com', 'openai.com'], domain: 'chatgpt.com' },
@@ -174,8 +200,9 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   copilot:     { display: 'Copilot',     icon: () => brandIcon('githubcopilot', 'Copilot'),            hostnames: ['copilot.microsoft.com'], domain: 'copilot.microsoft.com' },
   deepseek:    { display: 'DeepSeek',    icon: () => brandIcon('deepseek', 'DeepSeek'),                hostnames: ['chat.deepseek.com'], domain: 'deepseek.com' },
   grok:        { display: 'Grok',        icon: () => brandIcon('x', 'Grok'),                           hostnames: ['grok.x.ai', 'x.ai'], domain: 'grok.com' },
-  you:         { display: 'You.com',     icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'you.com' },
-  phind:       { display: 'Phind',       icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'phind.com' },
+  you:         { display: 'You.com',     icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, domain: 'you.com' },
+  phind:       { display: 'Phind',       icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, domain: 'phind.com' },
+  metaai:      { display: 'Meta AI',     icon: () => brandIcon('meta', 'Meta AI'), aliases: ['meta ai'], hostnames: ['meta.ai'], domain: 'meta.ai' },
 
   // ── Browsers as referrers ──
   googlechrome: { display: 'Google Chrome', icon: () => <img src={cdnUrl('/icons/browsers/chrome.svg')} alt="Chrome" width={ICON_SIZE} height={ICON_SIZE} className="inline-block" />, hostnames: ['googlechrome.github.io'] },
@@ -234,16 +261,88 @@ function getReferrerLabel(hostname: string): string {
   return parts[0] ?? withoutWww
 }
 
+// A host never contains whitespace. Chrome's URL parser does not reject one:
+// it percent-encodes it, so `new URL('https://Product Hunt').hostname` is
+// "product%20hunt" (Firefox and Safari throw). The Referrers card printed that
+// as "Product%20hunt" (PUL-23). Every host parse below checks this first.
+const HAS_WHITESPACE = /\s/
+
 function getReferrerHostname(referrer: string): string | null {
   if (!referrer || typeof referrer !== 'string') return null
   const trimmed = referrer.trim()
   if (REFERRER_NO_FAVICON.has(trimmed.toLowerCase())) return null
+  if (HAS_WHITESPACE.test(trimmed)) return null
   try {
     const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
     return url.hostname.toLowerCase()
   } catch {
     return null
   }
+}
+
+/**
+ * PULSE-197 — "is this referrer a real, openable website" for the Referrers
+ * row's own open-the-site link. NOT `getReferrerHostname` reused unmodified:
+ * that function's only existing caller (`getReferrerFavicon`) bails out on a
+ * bare, undotted value *before* ever constructing a URL, so reusing it here
+ * would have shipped a dead `https://chatgpt/` link for the raw label
+ * "ChatGPT" (`new URL('https://ChatGPT')` parses without error — nothing
+ * stops a URL constructor from accepting a one-label host with no TLD).
+ *
+ * The rule:
+ *   1. One of the special non-URL values (direct/shared link/unknown/'') → no link.
+ *   2. A DOTTED raw value → trust it as a real hostname (same URL-parse
+ *      `getReferrerHostname` does, but gated on the dot FIRST — the exact
+ *      gate `getReferrerFavicon` applies before it ever reaches a bare brand
+ *      label).
+ *   3. A bare (undotted) value that exactly matches a REGISTRY brand or alias
+ *      (e.g. "ChatGPT", "fb") → that brand's own address (`domain`), else its
+ *      first declared hostname (`hostnames[0]`), else no link: a brand with
+ *      no address of its own (Shopify Email) is not guessed one.
+ *   4. A bare value that matches NO registry entry → no link — a referrer
+ *      label with nowhere real to send a click (an in-app name the tracker
+ *      recorded, not a brand this registry knows).
+ *
+ * `https://${hostname}/` is always the SITE's home, not the specific
+ * referring URL — a merged row can represent several referring URLs on one
+ * domain, and opening the home domain is the legible, always-safe choice.
+ */
+export function getOpenHostname(referrer: string | null | undefined): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const trimmed = referrer.trim()
+  const lower = trimmed.toLowerCase()
+  if (REFERRER_NO_FAVICON.has(lower)) return null
+  if (lower.includes('.') && !HAS_WHITESPACE.test(trimmed)) {
+    try {
+      // A real scheme check, not startsWith('http'): a schemeless hostname such as
+      // httpbin.org or http2.pro starts with those letters too and must still link.
+      const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`)
+      if (url.hostname.includes('.')) return url.hostname.toLowerCase()
+    } catch {
+      // Not a parseable URL even with a dot — fall through to the
+      // bare-registry check below. (A value with whitespace never gets here:
+      // Chrome would percent-encode it into a fake host, so it goes straight
+      // to the registry, where a spaced alias such as "product hunt" lives.)
+    }
+  }
+  const key = REFERRER_REGISTRY[lower] ? lower : ALIAS_TO_KEY[lower]
+  const entry = key ? REFERRER_REGISTRY[key] : null
+  if (!entry) return null
+  // The platform's own address first (PUL-23). `hostnames` lists the hosts a
+  // referrer can ARRIVE from, which include shorteners and redirectors:
+  // hostnames[0] sent "X" to t.co, "WhatsApp" to l.wl.co and "Claude" to
+  // anthropic.com.
+  if (entry.domain) return entry.domain
+  if (entry.hostnames && entry.hostnames.length) return entry.hostnames[0]
+  // No address of its own (Shopify Email: an email campaign). Never a guessed
+  // `${key}.com`, which would link "Shopify Email" to shopifyemail.com (PUL-24).
+  return null
+}
+
+/** The referring site's home URL, or null when `getOpenHostname` finds none. */
+export function getOpenUrl(referrer: string | null | undefined): string | null {
+  const hostname = getOpenHostname(referrer)
+  return hostname ? `https://${hostname}/` : null
 }
 
 /**
@@ -282,6 +381,11 @@ function resolveReferrer(referrer: string): ReferrerEntry | null {
 
 // ── Public API (same signatures as before) ──
 
+/** True when the value resolves to a registry brand (any spelling the registry knows). */
+export function isKnownReferrerBrand(referrer: string | null | undefined): boolean {
+  return typeof referrer === 'string' && resolveReferrer(referrer) !== null
+}
+
 export function getReferrerIcon(referrerName: string): ReactNode {
   if (!referrerName) return <Globe className="w-5 h-5 text-neutral-400" />
   const entry = resolveReferrer(referrerName)
@@ -306,14 +410,16 @@ export function getReferrerDisplayName(referrer: string): string {
   return capitalizeLabel(getReferrerLabel(hostname))
 }
 
-// A value is a host when it is dot-separated labels of [a-z0-9-], with an
-// optional :port — no spaces, no scheme. Deliberately stricter than
+// A value is a host when it is dot-separated labels of [a-z0-9_-], with an
+// optional :port, or a single label WITH a port (localhost:3000, a LAN machine
+// on :8000; PUL-24): no spaces, no scheme. A single label without a port is
+// still a name ("Newsletter"). Deliberately stricter than
 // getReferrerHostname above (which URL-parses ANYTHING, so a bare brand
 // word like "ChatGPT" comes back as a one-label "hostname"): referrer-domain
 // mode (PULSE-171) must tell "this raw value IS the address" apart from
 // "this is a brand name", and a permissive check would show a fabricated
 // address for a host-less row.
-const HOST_LIKE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+(?::\d+)?$/i
+const HOST_LIKE = /^(?:[a-z0-9_-]+(?:\.[a-z0-9_-]+)+(?::\d+)?|[a-z0-9_-]+:\d+)$/i
 
 /**
  * The lowercased host, or null when `referrer` doesn't look like one. Never
@@ -348,9 +454,12 @@ export function getReferrerFavicon(referrer: string): string | null {
   if (!referrer || typeof referrer !== 'string') return null
   const normalized = referrer.trim().toLowerCase()
   if (REFERRER_NO_FAVICON.has(normalized)) return null
-  if (!normalized.includes('.')) return null
-  // Known brand → skip favicon service, use registry icon
-  if (resolveReferrer(referrer)) return null
+  // Known brand → its curated registry icon, so no favicon. A known brand with
+  // NO curated artwork (`favicon: true`) draws its own domain's favicon instead,
+  // whatever spelling the row carries (PUL-23): "Yahoo" and "yahoo.com" alike.
+  const entry = resolveReferrer(referrer)
+  if (entry) return entry.favicon && entry.domain ? `${FAVICON_SERVICE_URL}?domain=${entry.domain}&sz=32` : null
+  if (!normalized.includes('.') || HAS_WHITESPACE.test(normalized)) return null
   try {
     const url = new URL(referrer.startsWith('http') ? referrer : `https://${referrer}`)
     return `${FAVICON_SERVICE_URL}?domain=${url.hostname.toLowerCase()}&sz=32`

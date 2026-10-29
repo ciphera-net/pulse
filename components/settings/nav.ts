@@ -16,7 +16,6 @@ import {
   Lock,
   DeviceMobile,
   BellRinging,
-  EnvelopeSimple,
   Terminal,
   Heartbeat,
   DownloadSimple,
@@ -125,12 +124,12 @@ const INVITE_PEOPLE: NavTab = { label: 'Invite people', href: '/settings/organiz
 const ACCOUNT_TABS: NavTab[] = [
   { label: 'Profile', href: '/settings/account/profile', description: 'Display name and email.', icon: User },
   { label: 'Security', href: '/settings/account/security', description: 'Password, two-factor and passkeys.', icon: Lock },
-  { label: 'Devices', href: '/settings/account/devices', description: 'Trusted devices and security activity.', icon: DeviceMobile },
-  // BellRinging, deliberately distinct from the org tab's Bell.
-  { label: 'Notifications', href: '/settings/account/notifications', description: 'Which categories email you.', icon: BellRinging },
-  // EnvelopeSimple, not a third bell: these are the emails Ciphera ID sends
-  // about the ACCOUNT, a different system from Pulse's own notifications.
-  { label: 'Security alerts', href: '/settings/account/security-alerts', description: 'Emails Ciphera ID sends about your account.', icon: EnvelopeSimple },
+  { label: 'Devices', href: '/settings/account/devices', description: "Where you're signed in.", icon: DeviceMobile },
+  // BellRinging, deliberately distinct from the org tab's Bell. Security
+  // alerts folded in here (16-10-2026, OPS-17): /settings/account/security-alerts
+  // redirects to this route; Ciphera ID's own account alerts are its "Your
+  // account" panel, below the Email one.
+  { label: 'Notifications', href: '/settings/account/notifications', description: 'Which emails you get.', icon: BellRinging },
 ]
 
 /**

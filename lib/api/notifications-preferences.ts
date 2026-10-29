@@ -4,10 +4,10 @@ import apiRequest from '@/lib/api/client'
 //
 // Iris's preferences document rides the proxy GET verbatim. Category metadata
 // (display names, criticality, suppressible) comes from the wire, never from
-// a client-side table. A person's whole expression for a category is `email`:
-// in-app is always on (the receipt IS the in-app delivery), and digest, quiet
-// hours, mute, the in-app toggle and the retention override were retired by
-// owner ruling on 21-09-2026 (plan
+// a client-side table. A person's whole expression for a category is `email`,
+// and email is the only delivery since the in-app inbox went on 20-10-2026.
+// Digest, quiet hours, mute, the in-app toggle and the retention override were
+// retired on 21-09-2026 (plan
 // docs/plans/21-09-2026-notification-simplification-plan.md, workspace root).
 //
 // Only the fields this app reads are typed. Iris release A still carries the

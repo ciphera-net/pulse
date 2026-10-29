@@ -34,16 +34,11 @@ vi.mock('@/lib/api/sites', () => ({
   listSites: (...a: unknown[]) => listSites(...a),
 }))
 
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title, description, onConfirm }: any) =>
-    open ? (
-      <div role="dialog">
-        <p>{title}</p>
-        <p>{description}</p>
-        <button onClick={onConfirm}>Confirm revoke</button>
-      </div>
-    ) : null,
-}))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred revoke is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 vi.mock('@ciphera-net/facet', () => ({
   // lib/utils (and the panel primitives) re-export cn from facet.
@@ -83,9 +78,12 @@ vi.mock('@ciphera-net/facet', () => ({
     </button>
   ),
   toast: { success: vi.fn(), error: vi.fn() },
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 
 import WorkspaceApiKeysTab from '../WorkspaceApiKeysTab'
+import { toast } from '@ciphera-net/facet'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const ROLE = { id: 'r1', organization_id: 'org1', name: 'Viewer', slug: 'viewer', is_builtin: true, color: null, permissions: [], site_scoped: false, created_at: '', updated_at: '' }
 const SITE = { id: 's1', user_id: 'u1', domain: 'example.com', name: 'Example' }
@@ -124,6 +122,7 @@ beforeEach(() => {
   revokeApiKey.mockReset()
   listRoles.mockReset().mockResolvedValue({ roles: [ROLE] })
   listSites.mockReset().mockResolvedValue([SITE])
+  resetDeferred()
   document.body.innerHTML = ''
 })
 
@@ -237,19 +236,77 @@ describe('WorkspaceApiKeysTab (Facet structured panels)', () => {
     expect(screen.getByText('Your new API key')).toBeInTheDocument()
   })
 
-  it('revokes a key through the confirm dialog', async () => {
+  it('hides the key at once and sends nothing until the hold is confirmed', async () => {
     listApiKeys.mockResolvedValue({ api_keys: [makeKey({})] })
-    revokeApiKey.mockResolvedValue({ revoked: true })
     renderTab()
 
     const revokeBtn = await screen.findByLabelText('Revoke Grafana')
     fireEvent.click(revokeBtn)
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    listApiKeys.mockResolvedValue({ api_keys: [makeKey({ revoked_at: '2026-02-01T00:00:00Z' })] })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm revoke' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Revoke "Grafana"?' })
+    expect(dialog.textContent).toContain('stops working immediately')
+    expect(dialog.textContent).not.toMatch(/cannot be undone/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to revoke' }))
 
-    await waitFor(() => expect(revokeApiKey).toHaveBeenCalledWith('k1'))
+    await waitFor(() => expect(screen.queryByTestId('api-key-row-k1')).toBeNull())
+    expect(revokeApiKey).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('"Grafana" revoked')
+  })
+
+  it('commitLast() sends the revoke with keepalive false and refreshes the list', async () => {
+    listApiKeys.mockResolvedValue({ api_keys: [makeKey({})] })
+    revokeApiKey.mockResolvedValue({ revoked: true })
+    renderTab()
+
+    fireEvent.click(await screen.findByLabelText('Revoke Grafana'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+
+    listApiKeys.mockResolvedValue({ api_keys: [makeKey({ revoked_at: '2026-02-01T00:00:00Z' })] })
+    await commitLast()
+    expect(revokeApiKey).toHaveBeenCalledWith('k1', { keepalive: false })
+    await waitFor(() => expect(listApiKeys).toHaveBeenCalledTimes(2))
+    // The refreshed list brings the key back, now revoked.
+    expect(await screen.findByText('Grafana')).toBeInTheDocument()
+    expect(screen.getByText('Revoked')).toBeInTheDocument()
+  })
+
+  it('commitLast({ keepalive: true }) passes keepalive through to the request', async () => {
+    listApiKeys.mockResolvedValue({ api_keys: [makeKey({})] })
+    revokeApiKey.mockResolvedValue({ revoked: true })
+    renderTab()
+
+    fireEvent.click(await screen.findByLabelText('Revoke Grafana'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+
+    await commitLast({ keepalive: true })
+    expect(revokeApiKey).toHaveBeenCalledWith('k1', { keepalive: true })
+  })
+
+  it('undoLast() restores the key and sends nothing', async () => {
+    listApiKeys.mockResolvedValue({ api_keys: [makeKey({})] })
+    renderTab()
+
+    fireEvent.click(await screen.findByLabelText('Revoke Grafana'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+    await waitFor(() => expect(screen.queryByTestId('api-key-row-k1')).toBeNull())
+
+    undoLast()
+    expect(await screen.findByTestId('api-key-row-k1')).toBeInTheDocument()
+    expect(revokeApiKey).not.toHaveBeenCalled()
+  })
+
+  it('a rejected revoke brings the key back and shows the house error', async () => {
+    listApiKeys.mockResolvedValue({ api_keys: [makeKey({})] })
+    revokeApiKey.mockRejectedValueOnce(new Error('Server error'))
+    renderTab()
+
+    fireEvent.click(await screen.findByLabelText('Revoke Grafana'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+    await waitFor(() => expect(screen.queryByTestId('api-key-row-k1')).toBeNull())
+
+    await commitLast()
+    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(await screen.findByTestId('api-key-row-k1')).toBeInTheDocument()
   })
 
   it('renders each key through the shared PanelRow grid, not a hand-rolled row', async () => {
@@ -363,12 +420,13 @@ describe('WorkspaceApiKeysTab (Facet structured panels)', () => {
 
     // Simulate the row leaving the list the same way any reload can: the
     // next fetch the revoke flow triggers returns one fewer row. (Today's
-    // confirmRevoke keeps a revoked key visible, dimmed, rather than
-    // dropping it, so this exercises the removal path generically rather
-    // than asserting that revoke itself deletes rows.)
+    // hold keeps a revoked key visible, dimmed, rather than dropping it, so
+    // this exercises the removal path generically rather than asserting
+    // that revoke itself deletes rows.)
     listApiKeys.mockResolvedValue({ api_keys: [makeKey({ id: 'k1', name: 'Grafana' })] })
     fireEvent.click(screen.getByLabelText('Revoke Departing'))
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm revoke' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to revoke' }))
+    await commitLast()
 
     await waitFor(() => expect(screen.queryByTestId('api-key-row-k2')).toBeNull(), { timeout: 2000 })
     expect(screen.getByTestId('api-key-row-k1')).toBeInTheDocument()

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
 import type { PerformanceCheck, PerformanceAttempt, PerformanceConfig } from '@/lib/api/performance'
+import { SITE_PAGES, SiteScopeProvider, memberScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // Page-level tests for the states that used to fail SILENTLY. Each one pins a
 // distinction the old page collapsed, and in every case the wrong behaviour
@@ -12,11 +13,14 @@ const mockConfig = vi.fn()
 const mockLatest = vi.fn()
 const mockHistory = vi.fn()
 
+// The module exports ONLY the reads this page may make. A hook it imports from
+// anywhere else dies on "No X export is defined on the mock", which is what keeps
+// a public view from quietly growing a read the public surface does not serve.
 vi.mock('@/lib/swr/dashboard', () => ({
-  useSite: () => mockSite(),
-  usePerformanceConfig: () => mockConfig(),
-  usePerformanceLatest: () => mockLatest(),
-  usePerformanceHistory: () => mockHistory(),
+  useSite: (...args: unknown[]) => mockSite(...args),
+  usePerformanceConfig: (...args: unknown[]) => mockConfig(...args),
+  usePerformanceLatest: (...args: unknown[]) => mockLatest(...args),
+  usePerformanceHistory: (...args: unknown[]) => mockHistory(...args),
 }))
 
 // The visible strategy comes from ?strategy=. It has to be settable, because
@@ -26,8 +30,9 @@ let searchParams = new URLSearchParams()
 const setStrategyParam = (v?: 'mobile' | 'desktop') => {
   searchParams = new URLSearchParams(v === 'desktop' ? 'strategy=desktop' : '')
 }
+// No `useParams` here on purpose: the surface reads its site from the scope, so a
+// call to it would die on the mock instead of quietly reading the wrong place.
 vi.mock('next/navigation', () => ({
-  useParams: () => ({ id: 'site-1' }),
   useSearchParams: () => searchParams,
 }))
 
@@ -42,7 +47,18 @@ vi.mock('@/components/skeletons', () => ({
 // X prop" on stderr, and test output that is noisy by default is test output
 // nobody reads when it starts saying something real.
 vi.mock('framer-motion', () => ({
-  motion: { div: ({ className }: { className?: string }) => <div className={className} /> },
+  motion: {
+    div: ({ className }: { className?: string }) => <div className={className} />,
+    // ScoreGauge (PUL-14): notches and the rolling number render as plain elements.
+    polygon: ({ points, fill, className }: { points?: string; fill?: string; className?: string }) => <polygon points={points} fill={fill} className={className} />,
+    span: ({ className, children }: { className?: string; children?: unknown }) => (
+      <span className={className}>{typeof children === 'object' && children && 'get' in children ? String((children as { get: () => unknown }).get()) : (children as React.ReactNode)}</span>
+    ),
+  },
+  useReducedMotion: () => true,
+  useMotionValue: (v: number) => { let cur = v; return { get: () => cur, set: (n: number) => { cur = n }, jump: (n: number) => { cur = n } } },
+  useSpring: (mv: unknown) => mv,
+  useTransform: (mv: { get: () => number }, fn: (v: number) => string) => ({ get: () => fn(mv.get()) }),
 }))
 vi.mock('@ciphera-net/facet', () => ({
   toast: { success: () => {}, error: () => {} },
@@ -79,8 +95,16 @@ vi.mock('@/lib/api/performance', async importOriginal => {
   return { ...actual, getPerformanceCheck: vi.fn(), getPerformanceLatest: vi.fn(), triggerPerformanceCheck: vi.fn(), updatePerformanceConfig: vi.fn() }
 })
 
-import PerformancePage from '../page'
-import { getPerformanceCheck } from '@/lib/api/performance'
+import PerformanceRoute from '../page'
+import PerformanceSurface from '@/components/surfaces/PerformanceSurface'
+import { getPerformanceCheck, getPerformanceLatest, triggerPerformanceCheck, updatePerformanceConfig } from '@/lib/api/performance'
+
+// /sites/<id>/performance renders under the member scope (app/sites/[id]/SiteLayoutShell.tsx).
+const PerformancePage = () => (
+  <SiteScopeProvider scope={memberScope('site-1')}>
+    <PerformanceRoute />
+  </SiteScopeProvider>
+)
 
 const config = (over: Partial<PerformanceConfig> = {}): PerformanceConfig => ({
   site_id: 'site-1',
@@ -549,4 +573,183 @@ describe('Performance page — the filmstrip must not impose a device shape', ()
       }
     })
   }
+})
+
+// ─── The same page under a PUBLIC scope (PUL-34) ────────────────────────────────
+//
+// /demo renders this surface too, read-only, through the public routes that mirror
+// the member ones. `useCan` is mocked to TRUE for this whole file, so every absence
+// asserted below is the SCOPE's doing, not a viewer who lacks the permission: a
+// signed-in member can open the demo, and must not be offered a write there.
+
+const publicScope = (over: Partial<SiteScope> = {}): SiteScope => ({
+  siteId: 'site-1',
+  mode: 'public',
+  basePath: '/demo',
+  pages: SITE_PAGES,
+  demo: true,
+  fidelity: 'full',
+  ...over,
+})
+
+const renderUnder = (scope: SiteScope) =>
+  render(
+    <SiteScopeProvider scope={scope}>
+      <PerformanceSurface />
+    </SiteScopeProvider>,
+  )
+
+const failedLastAttempt = () => {
+  mockLatest.mockReturnValue({
+    data: {
+      checks: [check()],
+      attempts: [attempt({ id: 'chk-2', status: 'error', error: 'chrome timeout', runs: 0, checked_at: '2026-08-14T21:15:00Z' })],
+    },
+    error: undefined,
+    isLoading: false,
+    mutate: vi.fn(),
+  })
+}
+
+describe('Performance page — read from the scope', () => {
+  it('asks every read for the SCOPE\'s site, as a member and in public', () => {
+    // The surface has no useParams to fall back on (the mock above does not export it),
+    // so these ids can only have come from the scope.
+    for (const scope of [memberScope('site-1'), publicScope()]) {
+      vi.clearAllMocks()
+      renderUnder(scope)
+      expect(mockSite).toHaveBeenCalledWith('site-1')
+      expect(mockConfig).toHaveBeenCalledWith('site-1')
+      expect(mockLatest).toHaveBeenCalledWith('site-1')
+      expect(mockHistory).toHaveBeenCalledWith('site-1', 'mobile')
+    }
+  })
+
+  it('reads a historical check by the plain id for a member', async () => {
+    mockHistory.mockReturnValue({
+      data: [check({ id: 'h-12aug', checked_at: '2026-08-12T09:00:00Z' }), check({ id: 'h-13aug', checked_at: '2026-08-13T09:00:00Z' })],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+    vi.mocked(getPerformanceCheck).mockResolvedValue(check({ id: 'h-13aug' }))
+    const { getByLabelText } = renderUnder(memberScope('site-1'))
+    await act(async () => {
+      fireEvent.click(getByLabelText('Previous check'))
+    })
+    expect(getPerformanceCheck).toHaveBeenCalledWith('site-1', 'h-13aug')
+  })
+
+  it('reads a historical check through the PUBLIC surface in a public scope', async () => {
+    // The check navigator is the one read this page makes outside the SWR hooks. Under a
+    // public scope it must address the site as a public ref, which lib/api turns into
+    // /public/sites/<id>/performance/checks/<checkId>: a plain id would send the
+    // visitor's request to the member route, which refuses it.
+    mockHistory.mockReturnValue({
+      data: [check({ id: 'h-12aug', checked_at: '2026-08-12T09:00:00Z' }), check({ id: 'h-13aug', checked_at: '2026-08-13T09:00:00Z' })],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+    vi.mocked(getPerformanceCheck).mockResolvedValue(check({ id: 'h-13aug' }))
+    const { getByLabelText } = renderUnder(publicScope())
+    await act(async () => {
+      fireEvent.click(getByLabelText('Previous check'))
+    })
+    expect(getPerformanceCheck).toHaveBeenCalledTimes(1)
+    expect(getPerformanceCheck).toHaveBeenCalledWith({ id: 'site-1', public: true }, 'h-13aug')
+  })
+})
+
+describe('Performance page — a public scope writes nothing', () => {
+  it('has no control that writes, even for a viewer who holds the permission', () => {
+    // The last attempt failed, so a member is offered Run Check twice: in the header and
+    // inline on the failure line. That is the fixture that makes this absence meaningful.
+    failedLastAttempt()
+    const member = renderUnder(memberScope('site-1'))
+    expect(member.getAllByRole('button', { name: 'Run Check' })).toHaveLength(2)
+    expect(member.getByRole('button', { name: 'Disable' })).toBeTruthy()
+    member.unmount()
+
+    const { container, queryByRole, getByRole } = renderUnder(publicScope())
+    expect(queryByRole('button', { name: 'Run Check' })).toBeNull()
+    expect(queryByRole('button', { name: 'Disable' })).toBeNull()
+    expect(container.textContent).not.toContain('Enable performance monitoring')
+    // Rendering it asks for nothing of its own: no write, no poll, no check read until
+    // somebody steps to an older one. Every other read is a data hook, which the scope routes.
+    expect(updatePerformanceConfig).not.toHaveBeenCalled()
+    expect(triggerPerformanceCheck).not.toHaveBeenCalled()
+    expect(getPerformanceLatest).not.toHaveBeenCalled()
+    expect(getPerformanceCheck).not.toHaveBeenCalled()
+    // The page itself is all there: the failure is still reported, the last good numbers
+    // still show, and the strategy switch (a read) is still offered.
+    expect(container.textContent).toContain('Check failed')
+    expect(container.textContent).toContain('72')
+    expect(getByRole('radio', { name: 'Desktop' })).toBeTruthy()
+  })
+
+  it('says there is nothing yet when monitoring is off, and offers nothing to set up', () => {
+    mockConfig.mockReturnValue({ data: config({ enabled: false }), error: undefined, isLoading: false, mutate: vi.fn() })
+    const { container, queryByRole } = renderUnder(publicScope())
+    const text = container.textContent ?? ''
+    expect(text).toContain('No performance checks yet')
+    expect(text).toContain('Performance monitoring is off for this site.')
+    // Nothing to switch on: no control but the glyphs that explain a term, and no
+    // frequency to pick.
+    const controls = [...container.querySelectorAll('button')].filter(
+      (b) => !/^(About |What this counts)/.test(b.getAttribute('aria-label') ?? ''),
+    )
+    expect(controls).toHaveLength(0)
+    expect(container.querySelector('select')).toBeNull()
+    expect(queryByRole('button', { name: /enable/i })).toBeNull()
+    expect(text).not.toContain('Check frequency')
+    expect(text).not.toContain('Enable performance monitoring')
+    // And the member still gets the enable state: the same fixture, a different scope.
+    const member = renderUnder(memberScope('site-1'))
+    expect(member.container.textContent).toContain('Enable performance monitoring')
+  })
+
+  it('words a failed request for a visitor, not for the member who runs the checks', () => {
+    mockConfig.mockReturnValue({ data: undefined, error: new Error('500'), isLoading: false, mutate: vi.fn() })
+    const visitor = renderUnder(publicScope())
+    expect(visitor.container.textContent).toContain("Couldn't load performance settings")
+    expect(visitor.container.textContent).not.toContain('Your checks')
+    visitor.unmount()
+    const member = renderUnder(memberScope('site-1'))
+    expect(member.container.textContent).toContain('Your checks are unaffected')
+  })
+
+  it('links nowhere into the member app', () => {
+    const { container } = renderUnder(publicScope())
+    const internal = [...container.querySelectorAll('a')].filter((a) => (a.getAttribute('href') ?? '').startsWith('/'))
+    expect(internal).toHaveLength(0)
+    expect(container.innerHTML).not.toContain('/settings')
+  })
+})
+
+describe('Performance page — a scope that cannot show it', () => {
+  const cannotShow: [string, SiteScope][] = [
+    ['a share link (scoped reads)', publicScope({ demo: false, fidelity: 'scoped', pages: ['dashboard'], basePath: '/share/site-1' })],
+    ['a public scope whose site did not share the page', publicScope({ pages: ['dashboard', 'pages'] })],
+  ]
+
+  for (const [name, scope] of cannotShow) {
+    it(`says so, and reads nothing: ${name}`, () => {
+      const { container } = renderUnder(scope)
+      const text = container.textContent ?? ''
+      // Not a skeleton that never resolves: the page says what it is and that it is not shared.
+      expect(text).toContain("This page isn't shared.")
+      expect(container.querySelector('.animate-pulse')).toBeNull()
+      // No request was even started, so none can fail.
+      expect(mockSite).not.toHaveBeenCalled()
+      expect(mockConfig).not.toHaveBeenCalled()
+      expect(mockLatest).not.toHaveBeenCalled()
+      expect(mockHistory).not.toHaveBeenCalled()
+      expect(getPerformanceCheck).not.toHaveBeenCalled()
+    })
+  }
+
+  it('is not the member\'s: a member scope always shows the page', () => {
+    const { container } = renderUnder(memberScope('site-1'))
+    expect(container.textContent).not.toContain('This page is not shared')
+    expect(mockConfig).toHaveBeenCalled()
+  })
 })

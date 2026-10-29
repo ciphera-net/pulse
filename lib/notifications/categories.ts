@@ -1,7 +1,9 @@
-import type { Category } from './types'
+/** The registry's category ids (immutable there; only display names move). */
+export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle'
 
 /**
- * Category ORDER and fallback vocabulary.
+ * Category ORDER and fallback vocabulary, for Account → Notifications: the
+ * last reader since the in-app inbox went on 20-10-2026.
  *
  * 🔴 THE REGISTRY IS THE VOCABULARY (round-3 ruling R3-3: one vocabulary, from
  * the registry; short forms DERIVE from the registry name, never a second
@@ -12,7 +14,7 @@ import type { Category } from './types'
  * old list ("Site events", "Team activity", "Platform announcements") was the
  * 3-of-6 drift the ruling killed.
  *
- * This list also fixes the FAMILY ORDER (page tabs, settings bands): billing,
+ * This list also fixes the FAMILY ORDER the settings render: billing,
  * security, uptime, site, team, system, lifecycle.
  */
 export interface NotificationCategory {
@@ -39,17 +41,3 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   // correctly the wire reports it.
   { id: 'lifecycle', label: 'Getting started', critical: false },
 ]
-
-/**
- * R3-3's shortening, applied to a REGISTRY name (never to a local constant):
- * strip the qualifier words the ruling names. Registry names are already
- * short today ("Uptime", "System"), so this is usually the identity — it
- * exists so a future longer registry name shortens by rule, not by a second
- * list.
- */
-export function shortLabel(displayName: string): string {
-  return displayName
-    .replace(/^Uptime monitoring$/i, 'Uptime')
-    .replace(/^Platform announcements$/i, 'Platform')
-    .replace(/^Site activity$/i, 'Site activity')
-}

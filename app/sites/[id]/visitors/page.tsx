@@ -22,14 +22,11 @@ import { REALTIME_EMPTY_LINE, REALTIME_MODES, REALTIME_ROLLING_MINUTES } from '@
 import { serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useDataWindow, useSite, useVisitors } from '@/lib/swr/dashboard'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
+import { Avatar, visitorAvatarSeed } from '@ciphera-net/facet-avatar'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
-import {
-  IDENTITY_WINDOW_CALENDAR_MONTH,
-  describeIdentityWindow,
-  identityWindowOf,
-  type IdentityWindowDays,
-} from '@/lib/visitors/identityWindow'
-import { VISITORS_MIN_DATE, monthBoundaries, presenceTicks } from '@/lib/visitors/range'
+import { CompactNumber } from '@/components/ui/compact-number'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
+import { VISITORS_MIN_DATE, presenceTicks } from '@/lib/visitors/range'
 import { formatLongDay } from '@/lib/view/view'
 import type { VisitorRow } from '@/lib/api/visitors'
 import { displayDomain } from '@/lib/utils/displayDomain'
@@ -159,42 +156,12 @@ export default function VisitorsPage() {
   // about where the reader is standing.
   const siteTimezone = data?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
 
-  // The site's identity window (Settings → Privacy → Visitor identity). Every
-  // sentence on this page that used to assert "the calendar month" reads it
-  // instead: on a site set to "Session only" a returning reader is never
-  // recognised, and the page has to say so where the readers are listed.
-  // Unknown while the site row is still loading, and the copy says something
-  // true of every window until it arrives.
-  const identityWindow = identityWindowOf(site)
-
-  // 🔴 EVERYTHING BELOW IS ABOVE THE EARLY RETURNS ON PURPOSE. `boundaries` is a
-  // useMemo, and a hook after a conditional `return` runs in a different order on
-  // the render where the toggle-off room shows — React's rules-of-hooks error,
-  // caught by eslint before it could ship. The two lines it depends on come with
-  // it so the three stay together.
   const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes, siteTimezone)
-  // A rolling window never spans a month, so live mode gets no boundary.
-  //
-  // 🔴 AND ONLY A CALENDAR-MONTH SITE GETS THE MONTH MARKERS. The field draws
-  // "identities reset" at each month boundary; on a site set to 7 days or
-  // Session only that is not where identities reset, so the marker would be a
-  // false label on a true line. A windowed site gets no markers rather than
-  // wrong ones — its bucket edges are the backend's civil-day arithmetic, and
-  // drawing them here would be a second implementation of it (the per-site
-  // marker on reads is owed in the design doc, §9.6 item 3). None while the
-  // site row is still unknown, either.
-  const boundaries = useMemo(
-    () =>
-      rollingMinutes != null || identityWindow !== IDENTITY_WINDOW_CALENDAR_MONTH
-        ? []
-        : monthBoundaries(from, to, siteTimezone),
-    [rollingMinutes, identityWindow, from, to, siteTimezone],
-  )
 
   if (site && site.visitor_views_enabled === false) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader identityWindow={identityWindow} />
+        <PageHeader />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -205,7 +172,7 @@ export default function VisitorsPage() {
     // SWR copy after somebody disabled it in another tab). Trust the API.
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader identityWindow={identityWindow} />
+        <PageHeader />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -222,18 +189,11 @@ export default function VisitorsPage() {
   // What the field is NOT drawing. The field cannot compute this — it is handed a
   // bounded page on purpose — so the page, which knows the range total, tells it.
   const undrawn = Math.max(0, total - fieldVisitors.length)
-  const returningShare =
-    visitors.length > 0
-      ? Math.round((visitors.filter((v) => v.visits > 1).length / visitors.length) * 100)
-      : 0
   const pageviews = visitors.reduce((sum, v) => sum + v.pageviews, 0)
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-      <PageHeader
-        toolbar={{ picker, liveCount: activeNow, live, onToggleLive: toggleRealtime }}
-        identityWindow={identityWindow}
-      />
+      <PageHeader toolbar={{ picker, liveCount: activeNow, live, onToggleLive: toggleRealtime }} />
 
       <div className="mt-5">
         <PresenceField
@@ -243,9 +203,8 @@ export default function VisitorsPage() {
           ticks={ticks}
           activeCount={activeNow}
           undrawn={undrawn}
-          boundaries={boundaries}
           highlightKey={highlightKey}
-          caption="Each dot is one visitor · nearer the right, more recently seen"
+          caption="Each dot is one visitor · the same reader on two days can be two dots · nearer the right, more recently seen"
           emptyLabel={isLoading ? 'Loading…' : live ? REALTIME_EMPTY_LINE : 'No visitors in this range'}
         />
       </div>
@@ -255,9 +214,8 @@ export default function VisitorsPage() {
           'Rolling window · resolves against the live tracker'
         ) : (
           <>
-            <span className="tabular-nums text-neutral-300">{total}</span> visitors this range ·{' '}
-            <span className="tabular-nums text-neutral-300">{returningShare}%</span> returning ·{' '}
-            <span className="tabular-nums text-neutral-300">{pageviews}</span> pageviews on this
+            <CompactNumber value={total} className="text-neutral-300" /> visitors this range ·{' '}
+            <CompactNumber value={pageviews} className="text-neutral-300" /> pageviews on this
             page · sorted by {sort.replace('_', ' ')}
           </>
         )}
@@ -270,13 +228,11 @@ export default function VisitorsPage() {
               same pixels — and it is the only way a screen-reader user can jump to the
               roster, or know that the rows beneath belong to it. */}
           <h2 className="flex items-center gap-1 text-sm font-medium text-white">
-            {/* The heading and its InfoTip follow the site's window: "This
-                month's readers" is only true of a calendar-month site. */}
-            {live ? 'On the site now' : describeIdentityWindow(identityWindow).rosterHeading}
-            <TermInfoTip term="visitor_identity" identityWindowDays={identityWindow} />
+            {live ? 'On the site now' : IDENTITY_COPY.rosterHeading}
+            <TermInfoTip term="visitor_identity" />
           </h2>
           <span className="bg-brand-orange/10 px-2 py-1 text-xs tabular-nums text-brand-ink">
-            {live ? `${activeNow} right now` : `${total} in range`}
+            {live ? <><CompactNumber value={activeNow} /> right now</> : <><CompactNumber value={total} /> in range</>}
           </span>
         </div>
 
@@ -325,7 +281,7 @@ export default function VisitorsPage() {
             <EmptyState
               icon={<UsersThree className="size-6" weight="regular" />}
               title="No visitors in this range"
-              description={describeIdentityWindow(identityWindow).emptyRangeHint}
+              description={IDENTITY_COPY.emptyRangeHint}
             />
           )
         ) : (
@@ -376,7 +332,6 @@ export default function VisitorsPage() {
 
 function PageHeader({
   toolbar,
-  identityWindow,
 }: {
   /** Absent when the page has nothing to range over (visitor views switched off). */
   toolbar?: {
@@ -387,16 +342,12 @@ function PageHeader({
     live: boolean
     onToggleLive: () => void
   }
-  /** The site's identity window; undefined while unknown. */
-  identityWindow?: IdentityWindowDays
 }) {
-  const copy = describeIdentityWindow(identityWindow)
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 pt-6">
       <div>
         <h1 className="text-2xl font-medium text-white">Visitors</h1>
-        <p className="mt-1 text-sm text-neutral-400">{copy.headline}</p>
-        <p className="mt-1 text-xs text-neutral-600">Data begins {formatLongDay(VISITORS_MIN_DATE)} · {copy.resetCaption}</p>
+        <p className="mt-1 text-xs text-neutral-600">Data begins {formatLongDay(VISITORS_MIN_DATE)} · {IDENTITY_COPY.headerCaption}</p>
       </div>
 
       {toolbar && (
@@ -489,6 +440,8 @@ function VisitorRowLink({
       onBlur={() => onHighlight(null)}
       className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 transition-colors duration-fast ease-apple last:border-b-0 hover:bg-neutral-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
     >
+      {/* Seeded by the visitor key, exactly as the pseudonym is (PUL-21): it changes with the key, which lasts one day at most, and nothing new travels with the row. */}
+      <Avatar seed={visitorAvatarSeed(visitor.visitor_key)} size={32} />
       <div className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-medium text-white">{name}</span>

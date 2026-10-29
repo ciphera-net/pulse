@@ -4,10 +4,11 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TIMING } from '@/lib/motion'
 import { Target } from '@phosphor-icons/react'
-import { formatNumber } from '@/lib/utils/format'
-import { EmptyState } from '@/components/ui/EmptyState'
+import { CompactNumber } from '@/components/ui/compact-number'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { useSiteRef } from '@/lib/scope/SiteScope'
 import { docsUrl } from '@/lib/docs'
 
 interface GoalStatsProps {
@@ -17,10 +18,13 @@ interface GoalStatsProps {
   // Render only the list, no card chrome/header — for composition inside the
   // Content section's tabbed card (Scroll depth · Events).
   bare?: boolean
-  // Off on the public share surface (02-09-2026): expanding a row fetches the
-  // member-strict event-properties endpoints, so the rows render plain there —
-  // no chevron, no aria-expanded, no fetch to fail.
+  // Off on a customer's share link (02-09-2026): expanding a row fetches the
+  // event-properties endpoints, which its public-scoped read is not served, so the
+  // rows render plain there — no chevron, no aria-expanded, no fetch to fail. The
+  // demo site is served them, so it keeps this on.
   memberFeatures?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): the property breakdown uses it instead of the dates. */
+  liveMinutes?: number
 }
 
 interface PropertyCache {
@@ -40,13 +44,28 @@ export function goalLabel(row: Pick<GoalCountStat, 'event_name' | 'display_name'
   return row.display_name ?? row.event_name.replace(/_/g, ' ')
 }
 
-export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true }: GoalStatsProps) {
+export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true, liveMinutes }: GoalStatsProps) {
+  // The drill-down reads the property lists directly, not through a hook, so it resolves the read itself: on /demo
+  // these are the public routes, for a member the member ones (PUL-34).
+  const site = useSiteRef(siteId)
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
   const emptySlots = Math.max(0, LIMIT - list.length)
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [propertyCache, setPropertyCache] = useState<Record<string, PropertyCache>>({})
+
+  // The breakdowns describe ONE window. When the window changes (another range, or
+  // entering/leaving realtime), what was fetched for the old one is dropped rather than
+  // shown under the new one (PULSE-192). Adjusted during render, React's pattern for
+  // state derived from props, so no frame shows the old window's rows.
+  const windowKey = liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`
+  const [cachedWindow, setCachedWindow] = useState(windowKey)
+  if (cachedWindow !== windowKey) {
+    setCachedWindow(windowKey)
+    setPropertyCache({})
+    setExpanded(new Set())
+  }
 
   const toggleExpand = useCallback(async (eventName: string) => {
     setExpanded(prev => {
@@ -59,21 +78,23 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
       return next
     })
 
-    // Fetch properties on first expand
-    if (!propertyCache[eventName]) {
+    // Fetch properties on first expand. A live window moves on its own, so a live
+    // breakdown is fetched afresh on every expand rather than kept.
+    const expanding = !expanded.has(eventName)
+    if (expanding && (liveMinutes != null || !propertyCache[eventName])) {
       setPropertyCache(prev => ({
         ...prev,
         [eventName]: { keys: [], values: {}, loading: true },
       }))
 
       try {
-        const keys = await getEventPropertyKeys(siteId, eventName, dateRange.start, dateRange.end)
+        const keys = await getEventPropertyKeys(site, eventName, dateRange.start, dateRange.end, liveMinutes)
         const values: Record<string, EventPropertyValue[]> = {}
 
         // Fetch all property values in parallel
         await Promise.all(
           keys.map(async (k) => {
-            const vals = await getEventPropertyValues(siteId, eventName, k.key, dateRange.start, dateRange.end)
+            const vals = await getEventPropertyValues(site, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes)
             values[k.key] = vals
           })
         )
@@ -89,7 +110,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
         }))
       }
     }
-  }, [propertyCache, siteId, dateRange.start, dateRange.end])
+  }, [expanded, propertyCache, site, dateRange.start, dateRange.end, liveMinutes])
 
   const content = (
     <>
@@ -135,9 +156,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
                     events total is not on the wire — any denominator this
                     card could compute would be share-of-visible-rows. */}
                 <div className="relative flex items-center gap-2 ml-4">
-                  <span className="text-sm font-semibold text-neutral-400">
-                    {formatNumber(row.count)}
-                  </span>
+                  <CompactNumber value={row.count} className="text-sm font-semibold text-neutral-400" />
                 </div>
               </>
             )
@@ -201,9 +220,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
                                   <span className="relative text-xs font-medium text-white truncate">
                                     {v.value}
                                   </span>
-                                  <span className="relative text-sm font-semibold text-neutral-400 ml-4">
-                                    {formatNumber(v.count)}
-                                  </span>
+                                  <CompactNumber value={v.count} className="relative text-sm font-semibold text-neutral-400 ml-4" />
                                 </div>
                               )
                             })}
@@ -225,7 +242,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
           ))}
         </div>
       ) : (
-        <EmptyState
+        <CardEmptyState
           icon={<Target />}
           title="No events tracked yet"
           description="Add pulse.track('event') where actions happen on your site, then see conversion counts here."

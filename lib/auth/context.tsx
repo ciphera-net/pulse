@@ -34,12 +34,18 @@ interface User {
   email: string
   display_name?: string
   totp_enabled: boolean
+  /**
+   * The stored seed of this person's generated avatar (PUL-21), from
+   * id-backend's /auth/user/me: null until they press "Generate a new avatar".
+   * Draw with personAvatarSeed({ userId: id, avatarSeed: avatar_seed }).
+   * Random and derived from nothing, so not PII: it is a plain server field,
+   * never vault data.
+   */
+  avatar_seed?: string | null
   org_id?: string
   role?: string
   preferences?: {
     email_notifications?: {
-      new_file_received: boolean
-      file_downloaded: boolean
       login_alerts: boolean
       password_alerts: boolean
       two_factor_alerts: boolean
@@ -80,6 +86,55 @@ interface User {
  * treats 'unknown' as 'locked' is the bug this replaces.
  */
 export type VaultState = 'unknown' | 'open' | 'locked'
+
+/**
+ * What this browser keeps of the session across a reload: the user WITHOUT the
+ * vault-opened PII.
+ *
+ * 🔴 THE EMAIL AND DISPLAY NAME LIVE IN MEMORY ONLY. They come out of the
+ * zero-knowledge vault; writing them to localStorage would leave the decrypted
+ * values readable by anything that can read this origin's storage, long after
+ * the vault key is gone. The stored object restores the session on reload and
+ * the vault effect in the provider re-merges the PII from the vault.
+ *
+ * Exported for its tests.
+ */
+export function persistUser(user: object): void {
+  const { email: _email, display_name: _displayName, ...rest } = user as Record<string, unknown>
+  void _email
+  void _displayName
+  localStorage.setItem('user', JSON.stringify(rest))
+}
+
+/** Rewrites a 'user' entry stored by an earlier build, which carried the PII. */
+export function scrubStoredUserPii(): void {
+  const stored = localStorage.getItem('user')
+  if (!stored) return
+  try {
+    const parsed = JSON.parse(stored)
+    if (parsed && typeof parsed === 'object' && ('email' in parsed || 'display_name' in parsed)) {
+      persistUser(parsed)
+    }
+  } catch {
+    // * Unparseable: nothing here to scrub.
+  }
+}
+
+/**
+ * Empty every Cache Storage cache. The service worker's runtime caches hold
+ * pages and API responses fetched under the session that is ending, so they
+ * must not outlive it. Environments without Cache Storage (insecure origins,
+ * older browsers) have nothing to clear.
+ */
+export async function clearCacheStorage(): Promise<void> {
+  if (typeof caches === 'undefined') return
+  try {
+    const keys = await caches.keys()
+    await Promise.all(keys.map((key) => caches.delete(key)))
+  } catch (e) {
+    logger.warn('Could not clear Cache Storage at sign-out', e)
+  }
+}
 
 export function mergeVaultPii(
   prev: User | null,
@@ -197,7 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!prev) return prev
         if (prev.org_id === active && prev.role === role) return prev
         const merged = { ...prev, org_id: active, role }
-        localStorage.setItem('user', JSON.stringify(merged))
+        persistUser(merged)
         return merged
       })
     } catch {
@@ -273,7 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: userData.email || '',
       display_name: userData.display_name,
     }
-    localStorage.setItem('user', JSON.stringify(enriched))
+    persistUser(enriched)
     localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
     setUser(enriched)
     router.refresh()
@@ -292,7 +347,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             org_id: prev?.org_id,
             role: prev?.role,
           }
-          localStorage.setItem('user', JSON.stringify(merged))
+          persistUser(merged)
           return merged
         })
       })
@@ -330,6 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // trusted, and a key that survives it is a key nobody chose to keep.
     // Awaited: the navigation below would otherwise race the delete.
     await forgetVaultKeys()
+    await clearCacheStorage()
     // * Logout ends with a full navigation to /login, which starts a fresh
     // * attempt. Anything still pending belongs to the session being ended.
     forgetAllPendingAuth()
@@ -450,7 +506,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           org_id: active ?? prev?.org_id,
           role: active ? role : prev?.role,
         }
-        localStorage.setItem('user', JSON.stringify(merged))
+        persistUser(merged)
         return merged
       })
     } catch (e) {
@@ -542,6 +598,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // * no way back. Only the server saying "this credential is dead" ends the
         // * session; an unreachable server proves nothing.
         // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3, §5.3
+        if (typeof window !== 'undefined') scrubStoredUserPii()
         const cachedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null
         let definitiveReject = false
         if (!session && cachedUser) {
@@ -586,7 +643,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (session) {
             setUser(session)
-            localStorage.setItem('user', JSON.stringify(session))
+            persistUser(session)
             localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
 
             // * PULSE DECIDES THE ACTIVE TEAM (Phase 2, PULSE-89). session.org_id
@@ -648,22 +705,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // * Fetch full profile from API; org_id/role come from the team
             // * resolution above, never from this response.
             // * For ZKE users the server returns empty email/display_name — preserve
-            // * the values from the session (JWT payload / localStorage).
+            // * the values from the session (JWT payload).
             try {
               const userData = await apiRequest<User>('/auth/user/me')
-              // * Check localStorage for anything a previous session unlocked.
-              let cachedPII: Partial<User> = {}
-              const stored = localStorage.getItem('user')
-              if (stored) { try { cachedPII = JSON.parse(stored) } catch { /* ignore */ } }
+              // * The stored user carries no email or name (persistUser); the
+              // * vault effect below re-merges them in memory.
               const merged = {
                 ...userData,
-                email: userData.email || cachedPII.email || session.email,
-                display_name: userData.display_name || cachedPII.display_name,
+                email: userData.email || session.email,
+                display_name: userData.display_name,
                 org_id: activeOrgId,
                 role: activeRole,
               }
-              setUser(merged)
-              localStorage.setItem('user', JSON.stringify(merged))
+              // * Keep what the vault effect may already have named in memory.
+              setUser((prev) => prev && prev.id === merged.id
+                ? { ...merged, email: merged.email || prev.email, display_name: merged.display_name || prev.display_name }
+                : merged)
+              persistUser(merged)
             } catch (e) {
               logger.error('Failed to fetch full profile', e)
               setUser((prev) => (prev ? { ...prev, org_id: activeOrgId, role: activeRole } : prev))
@@ -748,7 +806,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
         if (!cancelled && session) {
-          localStorage.setItem('user', JSON.stringify(session))
+          persistUser(session)
           localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
           setUser(session)
           reportClientEvent('session_recovered_on_live_tab')
@@ -796,6 +854,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('ciphera_last_activity')
       // A sibling tab signed out, which is a sign-out. Same rule 1.
       void forgetVaultKeys()
+      void clearCacheStorage()
       setUser(null)
       // * hadPriorSession deliberately NOT cleared: this browser demonstrably
       // * had a session (a sibling tab just ended it). Clearing it here was one
@@ -852,7 +911,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const role = await resolveActiveTeamRole(ensured.organization.id)
               const merged = { ...user, id: user?.id ?? '', email: user?.email ?? '', totp_enabled: user?.totp_enabled ?? false, org_id: ensured.organization.id, role }
               setUser(merged)
-              localStorage.setItem('user', JSON.stringify(merged))
+              persistUser(merged)
               // 🔴 An org-context switch, so the cache goes with it. The
               // shared org list (lib/swr/organizations.ts) is keyed by user,
               // not org, and may already hold the empty answer this branch
@@ -994,14 +1053,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                      role,
                    }
                    setUser(merged)
-                   localStorage.setItem('user', JSON.stringify(merged))
+                   persistUser(merged)
                  } catch {
                    // * The account's own profile does not change when it
                    // * switches teams; only org_id/role do, and both are
                    // * already known here.
                    const merged = { ...user, id: user?.id ?? '', email: user?.email ?? '', totp_enabled: user?.totp_enabled ?? false, org_id: firstOrg.organization_id, role }
                    setUser(merged)
-                   localStorage.setItem('user', JSON.stringify(merged))
+                   persistUser(merged)
                  }
                  // * Same org-context switch, same purge as the branch above.
                  swrMutate(() => true, undefined, { revalidate: true })

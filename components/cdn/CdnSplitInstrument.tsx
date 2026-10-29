@@ -4,7 +4,8 @@ import { useCallback, useMemo } from 'react'
 import { curveLinear } from 'd3-shape'
 
 import { cn } from '@/lib/utils'
-import { formatNumber } from '@/lib/utils/format'
+import { formatCompactNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { extractCountryCode, extractCity } from '@/lib/utils/bunnyDatacenter'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import type { BunnyOverview, BunnyRegionEntry } from '@/lib/api/bunny'
@@ -107,7 +108,7 @@ function fmtMetric(key: CdnMetricKey, v: number | null): string {
     case 'originMs':
       return fmtOriginMs(v)
     case 'errors':
-      return formatNumber(Math.round(v))
+      return formatCompactNumber(Math.round(v))
   }
 }
 
@@ -231,7 +232,7 @@ function CdnErrorBars({ series }: { series: CdnPoint[] }) {
           key={v}
           style={{ left: 0, top: y(v), width: margin.left - 8, transform: 'translateY(-50%)' }}
         >
-          <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatNumber(Math.round(v))}</span>
+          <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatCompactNumber(Math.round(v))}</span>
         </div>
       ))}
     </div>
@@ -279,7 +280,9 @@ export function Rail({
       {ghost ? (
         <span className="mt-0.5 text-xl font-semibold tabular-nums text-neutral-600">—</span>
       ) : typeof value === 'number' ? (
-        <AnimatedNumber value={value} format={(v) => formatNumber(Math.round(v))} className="mt-0.5 text-xl font-semibold tabular-nums text-white" />
+        <CompactNumber value={value} className="mt-0.5 text-xl font-semibold tabular-nums text-white">
+          <AnimatedNumber value={value} format={(v) => formatCompactNumber(Math.round(v))} />
+        </CompactNumber>
       ) : (
         <span className="mt-0.5 text-xl font-semibold tabular-nums text-white">{value}</span>
       )}
@@ -376,13 +379,13 @@ function StatusBand({ mix }: { mix: StatusMix }) {
             return (
               <span key={s.k} className={s.text}>
                 {s.k} <span className="tabular-nums">{pct >= 10 ? pct.toFixed(0) : pct.toFixed(1)}%</span>{' '}
-                <span className="tabular-nums text-neutral-600">{formatNumber(s.v)}</span>
+                <CompactNumber value={s.v} className="text-neutral-600" />
               </span>
             )
           })}
         </div>
         <span className="flex items-center gap-1 text-neutral-600">
-          of {formatNumber(mix.total)} responses
+          of <CompactNumber value={mix.total} /> responses
           <TermInfoTip term="cdn_status_band" />
         </span>
       </div>
@@ -410,9 +413,7 @@ function OriginLedger({ series }: { series: CdnPoint[] }) {
             <span className="w-[88px] tabular-nums text-neutral-400">{cdnDayLabel(p.date)}</span>
             <span className="flex-1 text-right tabular-nums text-neutral-300">{fmtBytes(p.bandwidthOrigin)}</span>
             <span className="flex-1 text-right tabular-nums text-neutral-400">{fmtOriginMs(p.originMs)}</span>
-            <span className={cn('flex-1 text-right tabular-nums', errs > 0 ? 'text-red-400' : 'text-neutral-600')}>
-              {formatNumber(errs)}
-            </span>
+            <CompactNumber value={errs} className={cn('flex-1 text-right', errs > 0 ? 'text-red-400' : 'text-neutral-600')} />
           </div>
         )
       })}
@@ -520,7 +521,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
           ghost={railGhost}
           infoTip={<TermInfoTip term="cdn_cache_hit_rate" />}
           delta={overview ? <PointsDelta cur={overview.cache_hit_rate} prev={overview.prev_cache_hit_rate} prevBase={overview.prev_total_requests} /> : null}
-          context={sumReq > 0 ? `${formatNumber(sumReqCached)} of ${formatNumber(sumReq)} requests` : undefined}
+          context={sumReq > 0 ? `${formatCompactNumber(sumReqCached)} of ${formatCompactNumber(sumReq)} requests` : undefined}
         />
       ),
     },
@@ -630,11 +631,11 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
       rail: (
         <Rail
           label="Errors"
-          value={railGhost ? '—' : formatNumber(sumErr)}
+          value={railGhost ? '—' : formatCompactNumber(sumErr)}
           ghost={railGhost}
           infoTip={<TermInfoTip term="cdn_errors" />}
           delta={overview ? <DeltaBadge change={guardedPctChange(overview.total_errors, overview.prev_total_errors, overview.prev_total_requests)} invert /> : null}
-          context={sum5xx > 0 ? `${formatNumber(sum5xx)} × 5xx` : '4xx and 5xx'}
+          context={sum5xx > 0 ? `${formatCompactNumber(sum5xx)} × 5xx` : '4xx and 5xx'}
         />
       ),
     },
@@ -645,9 +646,9 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
     return [
       { color: 'var(--chart-1)', label: 'Origin traffic', value: fmtBytes(h.bandwidthOrigin) },
       { color: 'var(--chart-1)', label: 'Origin latency', value: fmtOriginMs(h.originMs) },
-      { color: NEG_MUTED, label: '4xx', value: formatNumber(h.e4xx) },
-      { color: NEG, label: '5xx', value: formatNumber(h.e5xx) },
-      { color: 'var(--chart-foreground-muted)', label: '3xx redirects', value: formatNumber(h.e3xx) },
+      { color: NEG_MUTED, label: '4xx', value: formatCompactNumber(h.e4xx) },
+      { color: NEG, label: '5xx', value: formatCompactNumber(h.e5xx) },
+      { color: 'var(--chart-foreground-muted)', label: '3xx redirects', value: formatCompactNumber(h.e3xx) },
     ]
   }, [])
 

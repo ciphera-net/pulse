@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { serializeFilters, parseFiltersFromURL, type DimensionFilter } from '@/lib/filters'
+import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // Journeys page state (07-09-2026 simplification).
@@ -124,13 +125,18 @@ export function useJourneyFilters(): JourneyFilters {
 
   // Memory, read once after mount (never during render — SSR and the first
   // client render must agree; see useUrlDateRange for the incident).
+  // A public page (/demo, /share/<id>; PUL-34) has none: these keys are a
+  // member's own, in the same origin's storage, so a pick on the demo (or in
+  // the home page's frame of it) would change that member's Journeys page.
+  // The URL still carries the choice there.
+  const isPublic = useOptionalSiteScope()?.mode === 'public'
   const [remembered, setRemembered] = useState<Remembered | null>(null)
   useEffect(() => {
-    setRemembered({
+    setRemembered(isPublic ? { depth: null, density: null } : {
       depth: readStoredInt(DEPTH_KEY, DEPTH_MIN, DEPTH_MAX),
       density: readStoredInt(DENSITY_KEY, DENSITY_MIN, DENSITY_MAX),
     })
-  }, [])
+  }, [isPublic])
   const ready = remembered !== null
 
   const urlHasDepth = searchParams.has('depth')
@@ -199,18 +205,18 @@ export function useJourneyFilters(): JourneyFilters {
       const clamped = Math.max(DEPTH_MIN, Math.min(DEPTH_MAX, n))
       updateUrl({ depth: clamped })
       setRemembered((r) => ({ ...(r ?? { depth: null, density: null }), depth: clamped }))
-      store(DEPTH_KEY, String(clamped))
+      if (!isPublic) store(DEPTH_KEY, String(clamped))
     },
-    [updateUrl],
+    [updateUrl, isPublic],
   )
   const setDensity = useCallback(
     (n: number) => {
       const snapped = snapDensity(Math.max(DENSITY_MIN, Math.min(DENSITY_MAX, n)))
       updateUrl({ density: snapped })
       setRemembered((r) => ({ ...(r ?? { depth: null, density: null }), density: snapped }))
-      store(DENSITY_KEY, String(snapped))
+      if (!isPublic) store(DENSITY_KEY, String(snapped))
     },
-    [updateUrl],
+    [updateUrl, isPublic],
   )
   const setLens = useCallback((path: string | null) => updateUrl({ lens: path || null }), [updateUrl])
   const setDimensionFilters = useCallback(

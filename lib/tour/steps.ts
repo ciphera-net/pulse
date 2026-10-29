@@ -2,9 +2,11 @@ import { TOUR_ANCHORS, tourSelector, type TourAnchor, type DimensionCardKey } fr
 
 /**
  * The approved tour script (design round 24-08-2026, artifact "The Guided
- * Minute"): a centered welcome plus seven anchored steps, dashboard-only,
+ * Minute"): a centered welcome plus six anchored steps, dashboard-only,
  * closing on the sidebar nav. Copy shipped as approved; edits here are
- * copy edits, not design changes.
+ * copy edits, not design changes. The seventh step ("Alerts land here", on
+ * the bell) went with the in-app inbox on 20-10-2026: notifications are
+ * email-only.
  */
 export interface TourStepDef {
   /** Registered anchor, or null for the centered welcome step. */
@@ -21,7 +23,7 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
   {
     anchor: null,
     title: 'Welcome to Pulse Analytics',
-    body: 'A one-minute tour of your dashboard — where the numbers live, how to filter them, and where alerts land. You can leave at any point.',
+    body: 'A one-minute tour of your dashboard: where the numbers live and how to filter them. You can leave at any point.',
   },
   {
     anchor: TOUR_ANCHORS.metricRail,
@@ -60,13 +62,6 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
     align: 'start',
   },
   {
-    anchor: TOUR_ANCHORS.notificationBell,
-    title: 'Alerts land here',
-    body: 'Uptime, performance and billing notifications, with email for the critical ones.',
-    side: 'bottom',
-    align: 'end',
-  },
-  {
     anchor: TOUR_ANCHORS.sidebarNav,
     title: 'More than the dashboard',
     body: 'Uptime, Search, CDN and Performance each have their own page — all live in this rail.',
@@ -86,7 +81,7 @@ export function stepSelector(def: TourStepDef): string | null {
 }
 
 /**
- * The visible mount for a step's anchor. `notification-bell` renders twice
+ * The visible mount for a step's anchor. `onboarding-chip` renders twice
  * (desktop bar + mobile header) — the first DOM match can be `display: none`,
  * so pick by `offsetParent`, never document order.
  */

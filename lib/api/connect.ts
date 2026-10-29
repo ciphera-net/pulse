@@ -1,4 +1,4 @@
-import apiRequest from '@/lib/api/client'
+import apiRequest, { type SendOptions } from '@/lib/api/client'
 
 /**
  * The Pulse Analytics MCP consent API and Settings → Connected apps
@@ -87,10 +87,12 @@ export interface Connection {
 }
 
 export const listConnectedApps = () =>
-  apiRequest<{ connections: Connection[] }>('/connected-apps')
+  // avatar_seeds (PUL-21): the stored avatar seeds of the people who connected
+  // these apps, including anyone who has since left the team.
+  apiRequest<{ connections: Connection[]; avatar_seeds?: Record<string, string> }>('/connected-apps')
 
-export const disconnectApp = (connectionId: string) =>
-  apiRequest<unknown>(`/connected-apps/${encodeURIComponent(connectionId)}`, { method: 'DELETE' })
+export const disconnectApp = (connectionId: string, send: SendOptions = {}) =>
+  apiRequest<unknown>(`/connected-apps/${encodeURIComponent(connectionId)}`, { method: 'DELETE', keepalive: send.keepalive })
 
 /**
  * The server's refusal codes on approve, so the page can say what went wrong

@@ -319,8 +319,13 @@ const responseCache = new Map<string, CachedResponse>()
 function getRequestKey(endpoint: string, options: RequestInit): string {
   const method = options.method || 'GET'
   const body = options.body || ''
-  const team = endpoint.startsWith('/auth') ? '' : getActiveTeam() ?? ''
+  const team = endpoint.startsWith('/auth') || isPublicEndpoint(endpoint) ? '' : getActiveTeam() ?? ''
   return `${method}:${endpoint}:${body}:${team}`
+}
+
+/** `/public/*`: the anonymous surface, which no session header reaches (see buildSessionHeaders). */
+function isPublicEndpoint(endpoint: string): boolean {
+  return endpoint.startsWith('/public/')
 }
 
 /**
@@ -351,6 +356,15 @@ function cleanupExpiredEntries(): void {
  * must be skipped, otherwise it burns the single-use OPAQUE login state on a
  * pointless retry.
  */
+/**
+ * How a destructive action's request is sent (PUL-28). `keepalive: true` when
+ * the Undo window is cut short by the page being hidden or left: the request
+ * must reach fetch() in the same tick and survive the page (see apiRequest).
+ */
+export interface SendOptions {
+  keepalive?: boolean
+}
+
 export interface ApiRequestOptions extends RequestInit {
   skipAuthRetry?: boolean // * Set to true to skip automatic refresh on 401
 }
@@ -377,6 +391,12 @@ function buildSessionHeaders(
   base: Record<string, string>,
 ): Record<string, string> {
   const headers: Record<string, string> = { ...base }
+
+  // * The public share surface takes no credential at all (PUL-34 Phase 2): /demo and
+  // * /share/<id> read it whether or not the visitor is signed in, and a signed-in
+  // * visitor's token and team must not travel with an anonymous read. A password
+  // * unlock rides the share-session cookie, which `credentials: 'include'` still sends.
+  if (isPublicEndpoint(endpoint)) return headers
 
   const bearer = getAccessToken()
   if (bearer && !headers['Authorization'] && !headers['authorization']) {
@@ -408,7 +428,16 @@ async function apiRequest<T>(
   // * Team readiness gate (Fix 1, PULSE-89 review) — see waitForTeamGate. The
   // * 401 refresh-and-retry below runs later in this SAME call, so it inherits
   // * whatever this wait already resolved without waiting again.
-  if (!isTeamGateExempt(endpoint)) {
+  // *
+  // * 🔴 A `keepalive` request is a confirmed action sent while the page is
+  // * being hidden or left (the Undo window's commit, PUL-28). It must reach
+  // * fetch() in THIS tick: any await in front of it, even on an
+  // * already-resolved promise, yields to the browser, which may tear the page
+  // * down before the request leaves. So once the gate has resolved (always,
+  // * on a page where an action could be confirmed) it is skipped; the fetch
+  // * below is the first expression of the request IIFE and runs synchronously.
+  const sendInThisTick = options.keepalive === true && teamGateResolved
+  if (!isTeamGateExempt(endpoint) && !sendInThisTick) {
     await waitForTeamGate()
   }
 

@@ -19,7 +19,11 @@ export interface TourEventPayload {
   event: TourEventName
   /** 'auto' = first-run auto-start; 'manual' = palette or other explicit entry. */
   trigger?: 'auto' | 'manual'
-  /** 0 = welcome, 1..7 = counted steps. */
+  /**
+   * 0 = welcome, 1..6 = counted steps. Until 20-10-2026 there were seven, and
+   * step 6 was the bell: from that day 6 names "More than the dashboard", so a
+   * step count read across the date is an instrument boundary.
+   */
   step?: number
 }
 

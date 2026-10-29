@@ -1,6 +1,6 @@
 import { DEFAULT_GEO_DATA_LEVEL, type Site } from '@/lib/api/sites'
 import { formatRetentionMonths } from '@/lib/plans'
-import { describeIdentityWindow, identityWindowOf } from '@/lib/visitors/identityWindow'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import { env } from '@/lib/env'
 
 // Zod-validated URL, guaranteed to be a `string`. The schema for
@@ -38,30 +38,26 @@ export function generatePrivacySnippet(site: Site): string {
   if (screen) parts.push('screen resolution')
   if (audience) parts.push('browser language and timezone')
 
-  const list =
-    parts.length > 0
-      ? parts.join(', ')
-      : 'minimal anonymous data about site usage (e.g. that a page was viewed)'
-
+  // Customers paste this into their own privacy policy, so it states only what holds for every site: no claim of
+  // anonymity, of no consent being needed, or of nothing being stored in the browser.
   // The DNT sentence is a factual claim about this site's setting (PULSE-164) —
   // it appears only while respect_dnt is actually true, never unconditionally.
   const p1 =
-    'We use Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Pulse.' +
+    'We use Pulse to understand how visitors use our site. Pulse does not use cookies.' +
     (respectDnt ? ' We respect Do Not Track (DNT) browser settings.' : '')
 
-  let p2 = `We collect anonymous data: ${list}. `
+  let p2 = parts.length > 0 ? `We collect: ${parts.join(', ')}. ` : 'We collect only that a page was viewed. '
   if (filterBots) {
     p2 += 'Known bots and referrer spam are excluded from our analytics. '
   }
   if (retentionMonths > 0) {
     p2 += `Raw event data is automatically deleted after ${formatRetentionMonths(retentionMonths)}. `
   }
-  // How long a returning visitor is recognised (Settings → Privacy → Visitor
-  // identity). The snippet describes the SAVED window, like every other line
-  // here: a site on "Session only" tells its readers they are never recognised
-  // again, and a site on a rolling window names the ceiling as "at most".
-  p2 += `${describeIdentityWindow(identityWindowOf(site)).policySentence} `
-  p2 += `Data is processed in a privacy-preserving way and is not used to identify individuals. For more information, see Pulse's documentation: ${DOCS_URL}`
+  // How a visitor is counted. One fixed sentence for every site: the identifier lasts one day at
+  // most and its key is deleted shortly after the day ends. Customers paste this into their own
+  // policy, so it names the inputs (IP address, user-agent string).
+  p2 += `${IDENTITY_COPY.policySentence} `
+  p2 += `We do not use this data to identify individuals. For more information, see Pulse's documentation: ${DOCS_URL}`
 
   return `${p1}\n\n${p2}`
 }

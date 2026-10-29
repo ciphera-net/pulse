@@ -59,6 +59,38 @@ describe('middleware', () => {
       expect(res.headers.get('Location')).toBeNull()
     })
 
+    // The demo's pages (PUL-34): /demo/pages, /demo/funnels/<id>, … are the product's real
+    // pages over the sample site. Only the bare /demo was public, so a link to any other page
+    // opened signed out would have bounced to /login.
+    it('allows every page of the demo, and a share link\'s pages, without auth', () => {
+      for (const path of ['/demo', '/demo/pages', '/demo/journeys', '/demo/funnels', '/demo/funnels/f-1', '/demo/performance', '/share/abc123/pages', '/share/abc123/funnels/f-1']) {
+        const res = middleware(createRequest(path))
+        expect(res.headers.get('Location'), path).toBeNull()
+      }
+    })
+
+    it('does not open anything else that merely starts with /demo', () => {
+      for (const path of ['/demonstration', '/demos', '/demo-site']) {
+        const res = middleware(createRequest(path))
+        expect(res.headers.get('Location'), path).toContain('/login')
+      }
+    })
+
+    // 🔑 The edge caches /demo* for 300 s under a key that ignores cookies, so the answer for a
+    // signed-in visitor must be exactly the answer for an anonymous one: no redirect, no cookie
+    // set, no header that differs. (The page itself reads nothing from the session either.)
+    it('answers the demo identically for a signed-in visitor and an anonymous one', () => {
+      const session = { pulse_access: 'a.b.c', pulse_refresh: 'r' }
+      for (const path of ['/demo', '/demo/pages', '/demo/funnels/f-1', '/share/abc123', '/share/abc123/pages']) {
+        const anonymous = middleware(createRequest(path))
+        const signedIn = middleware(createRequest(path, session))
+        expect(signedIn.headers.get('Location'), path).toBeNull()
+        expect(signedIn.headers.get('set-cookie'), path).toBeNull()
+        expect(Object.fromEntries(signedIn.headers.entries()), path).toEqual(Object.fromEntries(anonymous.headers.entries()))
+        expect(signedIn.status, path).toBe(anonymous.status)
+      }
+    })
+
     it('allows /docs without auth', () => {
       const res = middleware(createRequest('/docs'))
       expect(res.headers.get('Location')).toBeNull()

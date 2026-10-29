@@ -1,4 +1,5 @@
 import type { GSCDailyTotal, GSCOverview } from '@/lib/api/gsc'
+import { formatCompactNumber } from '@/lib/utils/format'
 
 // ---------------------------------------------------------------------------
 // Shared vocabulary for the Search Console instrument panel: the four metrics,
@@ -131,10 +132,15 @@ export function rollupSeries(daily: GSCDailyTotal[], g: Granularity): SeriesPoin
 
 // ─── Display formatting ──────────────────────────────────────────
 
+/** clicks/impressions are counts (PULSE-190 compacts these); ctr/position are rates. */
+export function isCountMetric(key: MetricKey): boolean {
+  return key === 'clicks' || key === 'impressions'
+}
+
 export function formatMetricValue(key: MetricKey, v: number): string {
   if (key === 'ctr') return `${(v * 100).toFixed(1)}%`
   if (key === 'position') return v.toFixed(1)
-  return Intl.NumberFormat('en-US', { notation: v >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(v)
+  return formatCompactNumber(v)
 }
 
 export function overviewValue(overview: GSCOverview, key: MetricKey): number {

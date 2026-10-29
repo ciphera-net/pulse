@@ -50,11 +50,13 @@ describe('numbers', () => {
   it('writes changes with the arrow of the number', () => {
     expect(changeText({ value: 38, unit: '%' })).toBe('↑ 38%')
     expect(changeText({ value: -4, unit: 'pp' })).toBe('↓ 4pp')
-    expect(changeText({ value: 2.5, unit: '%' })).toBe('↑ 2.5%')
+    expect(changeText({ value: 2.5, unit: '%' })).toBe('↑ 3%')
   })
 
   it('writes headline values as the dashboard does, and null as an em dash', () => {
-    expect(formatHeadline('visitors', 17240)).toBe('17,240')
+    // PULSE-190: compact from 10,000 — 17,240 crosses it.
+    expect(formatHeadline('visitors', 17240)).toBe('17.2K')
+    expect(formatHeadline('visitors', 9876)).toBe('9,876')
     expect(formatHeadline('bounce_rate', 58.4)).toBe('58%')
     expect(formatHeadline('visit_duration', 112)).toBe('1m 52s')
     expect(formatHeadline('pageviews', null)).toBe('—')
@@ -71,7 +73,9 @@ describe('numbers', () => {
     expect(axisTicks(6480)).toEqual([0, 2000, 4000, 6000, 8000])
     expect(axisTicks(90)).toEqual([0, 25, 50, 75, 100])
     expect(axisTicks(0)).toEqual([0, 1, 2, 3, 4])
-    expect([2500, 8000, 1_200_000, 400].map(tickLabel)).toEqual(['2.5k', '8k', '1.2M', '400'])
+    // PULSE-190: exact below 10,000 (the old 1,000-threshold lowercase 'k' is
+    // gone), compact from there.
+    expect([2500, 8000, 12000, 1_200_000, 400].map(tickLabel)).toEqual(['2,500', '8,000', '12K', '1.2M', '400'])
   })
 })
 
@@ -106,5 +110,14 @@ describe('dates', () => {
     expect(siteDay('2026-09-30T22:00:00Z', 'UTC', 2026)).toBe('30 Sep')
     expect(siteDay('2027-01-05T12:00:00Z', 'Europe/Brussels', 2026)).toBe('5 Jan 2027')
     expect(siteDayTime('2026-09-28T12:02:00Z', 'Europe/Brussels')).toBe('28 Sep 2026, 14:02')
+  })
+})
+
+describe('changeText', () => {
+  it('rounds percentages like the dashboard, and keeps one decimal for points', () => {
+    expect(changeText({ value: 95.9, unit: '%' })).toBe('↑ 96%')
+    expect(changeText({ value: -1.4, unit: '%' })).toBe('↓ 1%')
+    expect(changeText({ value: -2.2, unit: 'pp' })).toBe('↓ 2.2pp')
+    expect(changeText({ value: 4, unit: 'pp' })).toBe('↑ 4pp')
   })
 })

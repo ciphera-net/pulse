@@ -1,0 +1,289 @@
+'use client'
+
+import { siteDaysCaption } from '@/lib/utils/timezones'
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type CreateFunnelRequest } from '@/lib/api/funnels'
+import { useSite, useFunnels, useFunnelListStats, useDataWindow } from '@/lib/swr/dashboard'
+import { previousDateRange } from '@/lib/hooks/periodUrl'
+import { toast, PlusIcon, Button } from '@ciphera-net/facet'
+import { FunnelsListSkeleton } from '@/components/skeletons'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { NotShared } from '@/components/public/states'
+import { ErrorCard } from '@/components/ui/ErrorCard'
+import { FunnelSummaryCard } from '@/components/funnels/FunnelSummaryCard'
+import { FunnelStatusLine } from '@/components/funnels/FunnelStatusLine'
+import { FunnelSimple } from '@phosphor-icons/react'
+import { DeleteFunnelDialog } from '@/components/funnels/DeleteFunnelDialog'
+import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
+import DateRangePicker from '@/components/ui/DateRangePicker'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
+import { useCan } from '@/lib/auth/permissions'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
+import { canWrite, scopeHref, servesPage, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+
+// * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
+// * cross-link). Parsed defensively — malformed input just opens nothing.
+function parsePrefill(raw: string | null): FunnelPrefill | null {
+  if (!raw) return null
+  try {
+    const p = JSON.parse(raw)
+    if (!p || typeof p !== 'object') return null
+    const rawSteps = Array.isArray(p.steps) ? p.steps.slice(0, 8) : []
+    const steps = rawSteps
+      .filter((s: unknown): s is Record<string, unknown> => !!s && typeof s === 'object')
+      .map((s: Record<string, unknown>, i: number) => ({
+        name: typeof s.name === 'string' && s.name ? s.name : `Step ${i + 1}`,
+        value: typeof s.value === 'string' ? s.value : '',
+        type: s.type === 'contains' || s.type === 'regex' ? (s.type as string) : 'exact',
+        category: s.category === 'event' ? ('event' as const) : ('page' as const),
+      }))
+    return {
+      name: typeof p.name === 'string' ? p.name : undefined,
+      description: typeof p.description === 'string' ? p.description : undefined,
+      steps: steps.length > 0 ? steps : undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+function FunnelsNotAvailable() {
+  return (
+    <EmptyState
+      icon={<FunnelSimple />}
+      title="This page is not available"
+      description="The site owner has not shared it."
+    />
+  )
+}
+
+function FunnelsUnavailable() {
+  return (
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+      <FunnelsNotAvailable />
+    </div>
+  )
+}
+
+export default function FunnelsSurface() {
+  const scope = useSiteScope()
+  if (!servesPage(scope, 'funnels')) return <NotShared scope={scope} />
+  return <FunnelsList scope={scope} />
+}
+
+function FunnelsList({ scope }: { scope: SiteScope }) {
+  const searchParams = useSearchParams()
+  const siteId = scope.siteId
+  // * Write controls exist for a member only. `useCan` answers for whoever is SIGNED IN, and a
+  // * member who opens the demo holds the permission in their own team and still changes
+  // * nothing here, so the scope decides first.
+  const member = canWrite(scope)
+  const permitted = useCan('funnels.manage')
+  const canManageFunnels = member && permitted
+
+  const { data: site } = useSite(siteId)
+  const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
+  const dataWindow = useDataWindow(siteId, 'funnels')
+  const { period, dateRange, periodReady, picker } = useUrlDateRange({
+    surface: 'funnels',
+    window: dataWindow,
+    timezone: site?.timezone,
+    retentionMonths: site?.data_retention_months,
+    daysCaption: siteDaysCaption(site?.timezone),
+  })
+  // Fetch with nothing until the remembered preset is read — otherwise every
+  // bare-URL mount spends a 30-day request on the placeholder period and can
+  // flash its numbers. `dateRange` stays the picker's DISPLAY value.
+  const fetchRange = useMemo(
+    () => fetchableRange(periodReady, dateRange),
+    [periodReady, dateRange],
+  )
+
+  // * ONE batched stats request per range for the whole list (plus one for the
+  // * previous range, feeding the delta badges) — this page used to fan out
+  // * two requests per funnel per 60s poll.
+  const allPeriod = serverResolvedPeriod(periodReady, period)
+  const { data: listStats, error: listStatsError } = useFunnelListStats(siteId, fetchRange.start, fetchRange.end, undefined, allPeriod)
+  // All time has no previous period — nothing precedes the whole of history.
+  const prevRange = useMemo(() => (period === 'all' ? null : previousDateRange(fetchRange)), [fetchRange, period])
+  const { data: prevListStats } = useFunnelListStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
+  const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
+  const removeLater = useDeferredRemoval()
+  // A funnel whose delete is waiting behind the Undo bar (PUL-28) is hidden now.
+  const pendingKeys = usePendingKeys()
+  const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
+  const [modalOpen, setModalOpen] = useState<boolean>(() => parsePrefill(searchParams.get('prefill')) !== null || searchParams.get('create') === '1')
+  const [editingFunnel, setEditingFunnel] = useState<Funnel | null>(null)
+
+  // * Consume the prefill/create params once — the modal is open, the URL cleaned
+  useEffect(() => {
+    if (!searchParams.get('prefill') && !searchParams.get('create')) return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('prefill')
+    url.searchParams.delete('create')
+    window.history.replaceState({}, '', url.toString())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const domain = site?.domain
+    document.title = domain ? `Funnels · ${domain} | Pulse` : 'Funnels | Pulse'
+  }, [site?.domain])
+
+  // The funnel disappears at once; the delete is sent when the Undo window
+  // runs out (PUL-28).
+  const handleDelete = () => {
+    if (!deletingFunnel) return
+    const { id, name } = deletingFunnel
+    removeLater({
+      key: `funnel:${id}`,
+      message: `"${name}" deleted`,
+      send: ({ keepalive }) => deleteFunnel(siteId, id, { keepalive }),
+      refresh: mutate,
+      failure: `Couldn't delete "${name}". Try again.`,
+    })
+  }
+
+  // * First-ever load only — refetches keep the previous list mounted.
+  if (isLoading && !funnels) return <FunnelsListSkeleton />
+  // * No list, no error, nothing in flight: the read was not made (a scope the server does not
+  // * answer). That is "not available", never "No funnels yet", which would claim an empty site.
+  if (!funnels && !funnelsError) return <FunnelsUnavailable />
+
+  // * Detail links carry the current range so the page opens where you were.
+  const qs = searchParams.toString()
+  const hrefQuery = qs ? `?${qs}` : ''
+  const list = (funnels ?? []).filter((funnel) => !pendingKeys.has(`funnel:${funnel.id}`))
+
+  return (
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold text-neutral-200 mb-1">Funnels</h1>
+          <p className="text-sm text-neutral-400">Track user journeys and identify drop-off points</p>
+          {/* Provenance describes numbers — with zero funnels there are none
+              to describe, so the line stays off the empty page. */}
+          {list.length > 0 && <FunnelStatusLine timezone={site?.timezone} />}
+        </div>
+        <div className="flex items-center gap-2">
+          <DateRangePicker {...picker} />
+          {/* * The empty state below carries its own create CTA — showing this
+           * header button too meant two identical orange CTAs on one screen. */}
+          {canManageFunnels && list.length > 0 && (
+            <Button variant="default" size="toolbar" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+              <PlusIcon className="w-4 h-4" />
+              Create funnel
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {funnelsError ? (
+        // F8: only an actual 404 (the site itself is gone) earns "Site not
+        // found" — "your funnels are safe" was actively misleading for it.
+        // Duck-typed like the dashboard's device, NOT instanceof: chunk-split
+        // bundles can hold two ApiError classes, and instanceof across them is
+        // false for a real 404 (measured on staging — the 404 rendered the
+        // generic card).
+        (funnelsError as { status?: number })?.status === 404 ? (
+          member ? (
+            <EmptyState
+              icon={<FunnelSimple />}
+              title="Site not found"
+              description="It may have been deleted, or the link points to a site you don't have access to."
+              action={{ label: 'Back to your sites', href: '/' }}
+            />
+          ) : (
+            // * The public surface answers 404 for a page its owner did not share. There is no
+            // * "your sites" to go back to: that list is a member's.
+            <FunnelsNotAvailable />
+          )
+        ) : (
+          <ErrorCard
+            title="Couldn't load funnels"
+            description={
+              member
+                ? 'The funnels request failed. Your funnels are safe — this is a loading problem.'
+                : 'The funnels request failed. This is usually temporary.'
+            }
+            onRetry={() => { void mutate() }}
+          />
+        )
+      ) : list.length === 0 ? (
+        <EmptyState
+          icon={<FunnelSimple />}
+          title="No funnels yet"
+          description={
+            !member
+              ? 'Funnels track how visitors move through a site. This site has not set up any.'
+              : canManageFunnels
+                ? 'Create a funnel to track how visitors move through your site and where they drop off.'
+                : 'Funnels track how visitors move through your site. They are set up by teammates with the analytics permission.'
+          }
+          action={canManageFunnels ? { label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } } : undefined}
+        />
+      ) : (
+        <div className="grid gap-3">
+          {list.map((funnel, index) => (
+            <motion.div
+              key={funnel.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: DURATION_BASE, ease: EASE_APPLE, delay: Math.min(index * 0.04, 0.12) }}
+            >
+              <FunnelSummaryCard
+                funnel={funnel}
+                href={scopeHref(scope, 'funnels', `/${funnel.id}${hrefQuery}`)}
+                stats={listStats?.[funnel.id]}
+                prevStats={prevListStats?.[funnel.id]}
+                statsError={!!listStatsError}
+                canManage={canManageFunnels}
+                onEdit={(f) => { setEditingFunnel(f); setModalOpen(true) }}
+                onDelete={setDeletingFunnel}
+              />
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {canManageFunnels && (
+        <DeleteFunnelDialog
+          open={!!deletingFunnel}
+          funnelName={deletingFunnel?.name ?? ''}
+          onCancel={() => setDeletingFunnel(null)}
+          onConfirm={handleDelete}
+        />
+      )}
+
+      {modalOpen && canManageFunnels && (
+        <FunnelModal
+          isOpen={modalOpen}
+          siteId={siteId}
+          // * fetchRange, not the picker's display value — the preview must
+          // * measure the same site-day-anchored window the cards fetch, or
+          // * the modal and the page can disagree about the same funnel.
+          dateRange={fetchRange}
+          apiPeriod={allPeriod}
+          onClose={() => { setModalOpen(false); setEditingFunnel(null); setPrefill(null) }}
+          initialData={editingFunnel ?? undefined}
+          prefill={!editingFunnel ? prefill ?? undefined : undefined}
+          onSubmit={async (data: CreateFunnelRequest) => {
+            if (editingFunnel) {
+              await updateFunnel(siteId, editingFunnel.id, data)
+              toast.success('Funnel updated')
+            } else {
+              await createFunnel(siteId, data)
+              toast.success('Funnel created')
+            }
+            mutate()
+          }}
+        />
+      )}
+    </div>
+  )
+}

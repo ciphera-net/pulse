@@ -689,11 +689,15 @@ steps:
       - event: push
         branch: main
     environment:
+      # The backup copy is on Infomaniak object storage (path-style, region us-east-1, checksums only when
+      # required) with a key that can write this one bucket.
       AWS_ACCESS_KEY_ID:
-        from_secret: exoscale_cdn_scripts_key
+        from_secret: cdn_scripts_backup_access_key
       AWS_SECRET_ACCESS_KEY:
-        from_secret: exoscale_cdn_scripts_secret
-      AWS_DEFAULT_REGION: ch-dk-2
+        from_secret: cdn_scripts_backup_secret_key
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
       BUNNY_API_KEY:
         from_secret: bunny_api_key
       BUNNY_STORAGE_PASSWORD:
@@ -714,7 +718,7 @@ steps:
         cat public/script-sri.json
       # Primary origin: Bunny Edge Storage (js.ciphera.net reads from the ciphera-cdn-scripts zone).
       - |
-      # Backup origin: Exoscale SOS (write-through durability copy).
+      # Backup copy: Infomaniak object storage since 29-10-2026 (write-through durability copy; Exoscale SOS before).
       # ⚠️ FIXED 25-07-2026 — THIS UPLOADED ONLY TO A BUCKET NOBODY SERVES.
       # js.ciphera.net is Bunny pull zone 5736065, which has an EMPTY OriginUrl and
       # StorageZoneId 1688531: it serves from BUNNY STORAGE (zone ciphera-cdn-scripts),
@@ -749,13 +753,49 @@ steps:
             "https://storage.bunnycdn.com/ciphera-cdn-scripts/$file" >/dev/null \
             || { echo "PRIMARY (Bunny Storage) upload FAILED for $file — production would stay stale"; exit 1; }
           aws s3 cp "public/$file" "s3://ciphera-scripts/$file" \
-            --endpoint-url https://sos-ch-dk-2.exo.io \
+            --endpoint-url https://s3.pub1.infomaniak.cloud \
             --content-type "$ct" \
             --cache-control "public, max-age=7200" \
-            --acl public-read \
             --quiet
         done
-        echo "Scripts uploaded to Bunny Storage (primary) + SOS (backup)"
+        echo "Scripts uploaded to Bunny Storage (primary) + the object-storage backup copy"
+      # Versioned copies for the dashboard's SRI snippet, which pins
+      # https://js.ciphera.net/v<version>/<file> with an integrity hash (public/script-versions.json).
+      # Until 25-10-2026 nothing published them, so every versioned URL answered 404 and a site
+      # installed with that snippet loaded no tracker at all. A versioned file is IMMUTABLE: sites
+      # pin its hash, so one already published with other bytes fails the step (bump
+      # SCRIPT_VERSION) rather than being overwritten. The rolling files above are the same bytes.
+      - |
+        ver=$(sed -n 's/.*"version": *"\([0-9][0-9.]*\)".*/\1/p' public/script-versions.json)
+        [ -n "$ver" ] || { echo "🔴 no version in public/script-versions.json"; exit 1; }
+        for file in script.js script.interactions.js; do
+          [ -f "public/$file" ] || continue
+          held=$(mktemp)
+          code=$(curl -sS -o "$held" -w '%{http_code}' --max-time 60 -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            "https://storage.bunnycdn.com/ciphera-cdn-scripts/v$ver/$file") || code=unreachable
+          case "$code" in
+            200)
+              if cmp -s "$held" "public/$file"; then
+                echo "v$ver/$file: already published with these bytes"; rm -f "$held"; continue
+              fi
+              echo "🔴 v$ver/$file is already published with OTHER bytes; sites pin its hash, so bump SCRIPT_VERSION"; exit 1 ;;
+            404) ;;
+            *) echo "🔴 could not read v$ver/$file from Bunny Storage (HTTP $code)"; exit 1 ;;
+          esac
+          rm -f "$held"
+          curl -fsS --max-time 120 -X PUT \
+            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            -H "Content-Type: application/javascript" \
+            --data-binary "@public/$file" \
+            "https://storage.bunnycdn.com/ciphera-cdn-scripts/v$ver/$file" >/dev/null \
+            || { echo "🔴 PRIMARY (Bunny Storage) upload FAILED for v$ver/$file"; exit 1; }
+          aws s3 cp "public/$file" "s3://ciphera-scripts/v$ver/$file" \
+            --endpoint-url https://s3.pub1.infomaniak.cloud \
+            --content-type application/javascript \
+            --cache-control "public, max-age=31536000, immutable" \
+            --quiet
+          echo "v$ver/$file: published"
+        done
       # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy for the full TTL
       - sleep 30
       - |
@@ -765,3 +805,73 @@ steps:
             -H "AccessKey: $BUNNY_API_KEY"
         done
         echo "CDN cache purged"
+      # 🔴 VERIFY WHAT THE EDGE SERVES, AND PURGE AGAIN UNTIL IT IS THE COMMITTED BYTES (25-10-2026).
+      # On 18-09-2026 the purge above raced replication across the storage zone's regions:
+      # the edge re-fetched the OLD script from a region that had not caught up and served it
+      # for two hours, with this step green. A purge is a request, not a result. So every
+      # served file is fetched back (no query string: a cache-busting `?` would cache a copy
+      # under another key and prove nothing) and compared to the file just uploaded.
+      #
+      # ⚠️ EVERY ENCODING IS ITS OWN CACHE OBJECT. The edge answers `Vary: Accept-Encoding` and
+      # fills identity, gzip, br and zstd separately, from different storage servers (measured
+      # 25-10-2026: four variants of script.js cached at three different times). A current
+      # Chrome or Firefox asks for `gzip, deflate, br, zstd` and is served zstd, so checking
+      # the plain fetch alone would miss what most visitors run. Each variant is fetched with
+      # its own Accept-Encoding, decoded, and hashed.
+      #
+      # A mismatch waits 30 s, purges that file again and re-checks, up to ten checks (about
+      # four and a half minutes); every purge is followed by a check. A refused purge (401,
+      # 403: a wrong BUNNY_API_KEY) fails at once instead of waiting out the retries.
+      - apk add --no-cache brotli zstd >/dev/null
+      - |
+        ver=$(sed -n 's/.*"version": *"\([0-9][0-9.]*\)".*/\1/p' public/script-versions.json)
+        [ -n "$ver" ] || { echo "🔴 no version in public/script-versions.json"; exit 1; }
+        for pair in script.js:script.js script.debug.js:script.debug.js script.interactions.js:script.interactions.js \
+            script.interactions.debug.js:script.interactions.debug.js script-sri.json:script-sri.json \
+            "v$ver/script.js:script.js" "v$ver/script.interactions.js:script.interactions.js"; do
+          served=$(echo "$pair" | cut -d: -f1)
+          file=$(echo "$pair" | cut -d: -f2)
+          [ -f "public/$file" ] || continue
+          want=$(openssl dgst -sha384 -binary "public/$file" | openssl base64 -A)
+          raw=$(mktemp)
+          body=$(mktemp)
+          ok=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if [ "$attempt" != 1 ]; then
+              sleep 30
+              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
+                "https://api.bunny.net/purge?url=https://js.ciphera.net/$served&async=false" \
+                -H "AccessKey: $BUNNY_API_KEY") || code=unreachable
+              case "$code" in
+                2??) ;;
+                401|403) echo "🔴 $served: Bunny refused the purge (HTTP $code); check BUNNY_API_KEY"; exit 1 ;;
+                *) echo "$served: the purge failed (HTTP $code); checking anyway" ;;
+              esac
+            fi
+            stale=""
+            for enc in identity gzip br zstd; do
+              if [ "$enc" = identity ]; then
+                ce=$(curl -fsS --max-time 30 -o "$raw" -w '%header{content-encoding}' "https://js.ciphera.net/$served") || ce=fetch-failed
+              else
+                ce=$(curl -fsS --max-time 30 -H "Accept-Encoding: $enc" -o "$raw" -w '%header{content-encoding}' "https://js.ciphera.net/$served") || ce=fetch-failed
+              fi
+              case "$ce" in
+                "") cp "$raw" "$body" ;;
+                gzip) gzip -dc < "$raw" > "$body" || ce=undecodable ;;
+                br) brotli -dc < "$raw" > "$body" || ce=undecodable ;;
+                zstd) zstd -dcq < "$raw" > "$body" || ce=undecodable ;;
+              esac
+              case "$ce" in
+                ""|gzip|br|zstd)
+                  got=$(openssl dgst -sha384 -binary "$body" | openssl base64 -A)
+                  [ "$got" = "$want" ] || stale="$stale $enc:sha384-$got" ;;
+                *) stale="$stale $enc:$ce" ;;
+              esac
+            done
+            if [ -z "$stale" ]; then ok=true; break; fi
+            echo "$served, check $attempt: the upload is sha384-$want; the edge serves$stale"
+          done
+          rm -f "$raw" "$body"
+          $ok || { echo "🔴 $served: the edge still serves other bytes after ten checks; production runs the previous script"; exit 1; }
+          echo "$served: every variant (identity, gzip, br, zstd) serves the uploaded bytes (sha384-$want)"
+        done

@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 import type { DataWindow, Surface } from '@/lib/view/view'
 
 /**
@@ -11,6 +12,6 @@ export interface DataWindowResponse {
   surfaces: Partial<Record<Surface, DataWindow | null>>
 }
 
-export async function getDataWindow(siteId: string): Promise<DataWindowResponse> {
-  return apiRequest<DataWindowResponse>(`/sites/${siteId}/data-window`)
+export async function getDataWindow(site: SiteRef): Promise<DataWindowResponse> {
+  return apiRequest<DataWindowResponse>(sitePath(site, '/data-window'))
 }

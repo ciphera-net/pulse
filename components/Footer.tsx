@@ -37,7 +37,7 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
   {
     heading: 'Guides',
     links: [
-      { name: 'Cookieless analytics', href: '/cookieless-analytics' },
+      { name: 'Analytics without cookies', href: '/cookieless-analytics' },
       { name: 'GDPR-compliant analytics', href: '/gdpr-compliant-analytics' },
       { name: 'GA alternative', href: '/google-analytics-alternative' },
       { name: 'No cookie banner', href: '/analytics-without-cookie-banner' },
@@ -76,15 +76,17 @@ function FooterLinkItem({
   Component: React.ElementType
 }) {
   if (link.external) {
+    // The outbound arrow turns orange while its link is hovered, like every
+    // outbound arrow in the app (PUL-22).
     return (
       <a
         href={link.href}
         target="_blank"
         rel="noopener noreferrer"
-        className={LINK_CLASS}
+        className={`group ${LINK_CLASS}`}
       >
         {link.name}
-        <ArrowUpRightIcon aria-hidden="true" className="ml-1 inline h-3 w-3" />
+        <ArrowUpRightIcon aria-hidden="true" className="ml-1 inline h-3 w-3 transition-colors duration-fast motion-reduce:transition-none group-hover:text-brand-ink" />
       </a>
     )
   }
@@ -127,8 +129,7 @@ export function Footer({ LinkComponent = Link }: FooterProps) {
                 </span>
               </Link>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                Simple, privacy-first web analytics. No cookies, no tracking, no
-                consent banners — insight without surveillance.
+                Simple, privacy-first web analytics. Sets no cookies: insight without surveillance.
               </p>
               {/* Social block mirrors ciphera-website's Footer verbatim: same
                   order (GitHub, LinkedIn, X, Discord), same inline SVG glyphs, same

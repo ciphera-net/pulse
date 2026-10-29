@@ -1,7 +1,10 @@
-import Script from 'next/script'
 import { Toaster } from '@ciphera-net/facet'
+import { UndoProvider } from '@ciphera-net/facet-hold'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
+import InteractionScript from '@/components/InteractionScript'
+import PulseOwnTracker from '@/components/PulseOwnTracker'
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import type { Metadata, Viewport } from 'next'
 import { Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
@@ -19,7 +22,7 @@ const SITE_URL = 'https://pulse.ciphera.net'
 // * the template appends the brand — see `title` below.
 const SITE_TITLE = 'Pulse Analytics — Privacy-First Web Analytics'
 const SITE_DESCRIPTION =
-  'Simple, privacy-focused web analytics. No cookies, no tracking. GDPR compliant.'
+  'Privacy-first web analytics. Sets no cookies and does no fingerprinting. Script under 3 KB, hosted in Switzerland.'
 
 const geist = Geist({
   subsets: ['latin'],
@@ -112,30 +115,23 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        {/* Outbound-link tracking is OFF on Pulse's own install. A customer
-            clicking a link from inside their dashboard would otherwise record
-            THEIR destination — their own pages, and the sites they link out to —
-            into Pulse's own analytics (owner ruling, 08-09-2026). File downloads
-            stay on: they resolve to Ciphera's own domains and carry no customer
-            destination. */}
-        <Script
-          defer
-          data-domain="pulse.ciphera.net"
-          data-no-outbound=""
-          src="https://js.ciphera.net/script.js"
-        />
-        {/* Interaction capture — the optional companion (11-09-2026). Records the
-            label of a clicked control, how MUCH was copied (never the text) and a
-            form's field count (never a value, never a field name).
-            🔑 data-no-outbound above is on the CORE tag and has no companion
-            equivalent: the companion deliberately leaves outbound links alone, so
-            one click never becomes two events, and the 08-09 ruling that Pulse
-            must not record customers' destinations is unaffected by this tag.
-            It carries no data-domain: it calls the core through window.pulse. */}
-        <Script defer src="https://js.ciphera.net/script.interactions.js" />
+        {/* Pulse's own tracking tag, in a top-level window only: the home page
+            frames /demo, and a frame is not a visit. Outbound-link tracking stays
+            OFF on it (owner ruling, 08-09-2026); see components/PulseOwnTracker.tsx. */}
+        <PulseOwnTracker />
+        <ServiceWorkerRegister />
+        {/* Interaction capture loads on the signed-out pages only; see
+            components/InteractionScript.tsx. */}
+        <InteractionScript />
         <SWRProvider>
           <AuthProvider>
-            <LayoutContent>{children}</LayoutContent>
+            {/* One Undo bar for the whole app (PUL-28): a confirmed destructive
+                action is sent only when its window runs out. Above the routes,
+                so a delete that navigates (a site) keeps its Undo; inside the
+                auth provider, whose session the deferred request needs. */}
+            <UndoProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </UndoProvider>
             <Toaster />
           </AuthProvider>
         </SWRProvider>

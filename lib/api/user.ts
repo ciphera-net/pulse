@@ -1,4 +1,4 @@
-import apiRequest, { ApiError } from './client'
+import apiRequest, { ApiError, type SendOptions } from './client'
 
 interface OwnsOrgsBody {
   error: 'owns_organizations'
@@ -53,12 +53,16 @@ export interface DeletionBlocker {
 /**
  * What deleting this account would take with it, read BEFORE anything is typed.
  *
- * 🔑 The same read the refusal uses. Pulse could list its own organizations
- * instead, but then the screen a person agrees to and the check that enforces it
- * would be two answers, free to drift apart.
+ * 🔑 Reads from PULSE, not Ciphera ID (PULSE-91 / Phase 4 of
+ * `Pulse/docs/plans/26-09-2026-pulse-owns-teams-design.md` §7): the sole-owner
+ * rule now lives where the teams do, so this is the same read the 409 check
+ * itself uses — no second answer to drift apart from it. `deleteAccount` below
+ * is unchanged and still calls Ciphera ID with the confirmed ids; ID relays
+ * Pulse's 409 unchanged through Phase 4. The path has no `/auth` prefix, so
+ * `apiRequest` routes it to pulse-api.
  */
 export async function getDeletionPreview(): Promise<DeletionBlocker[]> {
-  const res = await apiRequest<{ organizations?: DeletionBlocker[] }>('/auth/user/deletion-preview')
+  const res = await apiRequest<{ organizations?: DeletionBlocker[] }>('/account/deletion-preview')
   return res.organizations ?? []
 }
 
@@ -94,7 +98,7 @@ export function ownedOrganizationsMessage(
   return `${summary}\n${lines.join('\n')}\n\nGo to Settings → Team.`
 }
 
-export async function deleteAccount(reauthToken: string, organizationIds: string[] = []): Promise<void> {
+export async function deleteAccount(reauthToken: string, organizationIds: string[] = [], send: SendOptions = {}): Promise<void> {
   // Loud-fail: never POST an empty token (the ceremony returning "" means the mint
   // failed — the caller must retry a fresh ceremony, not send a blank credential).
   if (!reauthToken) throw new Error('Re-authentication token missing')
@@ -107,6 +111,7 @@ export async function deleteAccount(reauthToken: string, organizationIds: string
       // not in this list, so the server refuses again and shows the new one,
       // rather than destroying something nobody agreed to.
       body: JSON.stringify({ reauth_token: reauthToken, delete_organizations: organizationIds }),
+      keepalive: send.keepalive,
     })
   } catch (err) {
     // * B.1 D1: server returns HTTP 409 with a structured list of organizations
@@ -123,26 +128,6 @@ export async function deleteAccount(reauthToken: string, organizationIds: string
   }
 }
 
-export interface Session {
-  id: string
-  client_ip: string
-  user_agent: string
-  created_at: string
-  expires_at: string
-  is_current: boolean
-}
-
-export async function getUserSessions(): Promise<{ sessions: Session[] }> {
-  // Current session is identified server-side via the httpOnly refresh token cookie
-  return apiRequest<{ sessions: Session[] }>('/auth/user/sessions')
-}
-
-export async function revokeSession(sessionId: string): Promise<void> {
-  return apiRequest<void>(`/auth/user/sessions/${sessionId}`, {
-    method: 'DELETE',
-  })
-}
-
 /**
  * The PUT body. Every key is REQUIRED here on purpose: the write replaces the
  * whole `email_notifications` block, so a partial body silently resets
@@ -152,15 +137,13 @@ export async function revokeSession(sessionId: string): Promise<void> {
  * security-alert key it has never been given a value for, so that "never
  * chosen" stays distinguishable from "switched off" — absent means ON and the
  * sender treats it that way. Hydrate a UI from a defaults spread
- * (AccountSecurityAlertsTab does), never by reading one of those keys direct.
+ * (AccountSecurityAlertsPanel does), never by reading one of those keys direct.
  * The auth-context type still declares them required because Facet's
  * ProfileSettings prop type does; that surface has notifications suppressed
  * and never reads them, so it is a naming mismatch rather than a live bug.
  */
 export interface UserPreferences {
   email_notifications: {
-    new_file_received: boolean
-    file_downloaded: boolean
     login_alerts: boolean
     password_alerts: boolean
     two_factor_alerts: boolean

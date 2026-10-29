@@ -9,7 +9,7 @@ import { FleetSparkline } from '@/components/sites/FleetSparkline'
 import { usePagePreview } from '@/lib/swr/dashboard'
 import { DOCS_ORIGIN } from '@/lib/docs'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { useCan } from '@/lib/auth/permissions'
 import { displayDomain } from '@/lib/utils/displayDomain'
 
@@ -275,13 +275,12 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
               {overviewError ? (
                 <div className="text-sm font-medium leading-tight text-red-400">couldn&apos;t load</div>
               ) : overview ? (
-                <div
-                  className={`text-[21px] font-bold leading-tight tabular-nums ${
+                <CompactNumber
+                  value={overview.visitors_today}
+                  className={`block text-[21px] font-bold leading-tight ${
                     stalled ? 'text-neutral-500' : 'text-neutral-50'
                   }`}
-                >
-                  {formatNumber(overview.visitors_today)}
-                </div>
+                />
               ) : (
                 <div className="ml-auto h-6 w-12 animate-skeleton-fade bg-neutral-800" />
               )}

@@ -8,12 +8,12 @@ import { CaretUp, CaretDown, CircleNotch, FileText, House, Lightning, Plus, Tras
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
 import { previewFunnel, type FunnelStats } from '@/lib/api/funnels'
 import { FunnelColumns } from '@/components/funnels/FunnelColumns'
-import { getDashboardPages, getDashboardGoals } from '@/lib/api/stats'
+import { getTopPages, getGoalStats } from '@/lib/api/stats'
 import { getDateRange } from '@/lib/utils/dateRanges'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { SegmentedControl } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
-import { formatNumber } from '@/lib/utils/format'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
@@ -231,7 +231,7 @@ function SuggestInput({
                   {it.label ?? it.value}
                 </span>
                 <span className="shrink-0 text-xs tabular-nums text-neutral-500">
-                  {formatNumber(it.count)}
+                  {formatCompactNumber(it.count)}
                 </span>
               </button>
             ))
@@ -343,9 +343,9 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
     if (!isOpen || !siteId) return
     let alive = true
     const range = getDateRange(30)
-    getDashboardPages(siteId, range.start, range.end, 50)
-      .then((d) => {
-        if (alive) setPageItems(d.top_pages.map((p) => ({ value: p.path, count: p.pageviews })))
+    getTopPages(siteId, range.start, range.end, 50)
+      .then((pages) => {
+        if (alive) setPageItems(pages.map((p) => ({ value: p.path, count: p.pageviews })))
       })
       .catch(() => {
         if (alive) {
@@ -353,11 +353,11 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
           setPageItems([])
         }
       })
-    getDashboardGoals(siteId, range.start, range.end, 50)
-      .then((d) => {
+    getGoalStats(siteId, range.start, range.end, 50)
+      .then((goals) => {
         if (alive)
           setGoalItems(
-            d.goal_counts.map((g) => ({
+            goals.map((g) => ({
               value: g.event_name,
               label: g.display_name ?? g.event_name,
               count: g.count,

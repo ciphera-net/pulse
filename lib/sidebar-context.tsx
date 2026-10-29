@@ -5,6 +5,27 @@ import { isTourActive } from '@/lib/tour/constants'
 
 const SIDEBAR_KEY = 'pulse_sidebar_collapsed'
 
+// * Storage can be refused outright: Safari with all cookies blocked, a locked-down
+// * profile, a sandboxed frame. The members' shell only mounts after a sign-in, which
+// * needs storage anyway; the public pages (/demo, /share/<id>, PUL-34) mount for
+// * anyone, so a refusal must cost the remembered preference and nothing else. Neither
+// * helper throws.
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) !== 'false'
+  } catch {
+    return true
+  }
+}
+
+function rememberCollapsed(collapsed: boolean): void {
+  try {
+    localStorage.setItem(SIDEBAR_KEY, String(collapsed))
+  } catch {
+    // * Not remembered; the rail still moves.
+  }
+}
+
 interface SidebarState {
   collapsed: boolean
   toggle: () => void
@@ -22,25 +43,25 @@ const SidebarContext = createContext<SidebarState>({
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === 'undefined') return true
-    return localStorage.getItem(SIDEBAR_KEY) !== 'false'
+    return readCollapsed()
   })
 
   const toggle = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev
-      localStorage.setItem(SIDEBAR_KEY, String(next))
+      rememberCollapsed(next)
       return next
     })
   }, [])
 
   const expand = useCallback(() => {
     setCollapsed(false)
-    localStorage.setItem(SIDEBAR_KEY, 'false')
+    rememberCollapsed(false)
   }, [])
 
   const collapse = useCallback(() => {
     setCollapsed(true)
-    localStorage.setItem(SIDEBAR_KEY, 'true')
+    rememberCollapsed(true)
   }, [])
 
   // Keyboard shortcut: [ to toggle

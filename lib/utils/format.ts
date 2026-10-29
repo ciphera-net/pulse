@@ -13,6 +13,41 @@ export function formatNumber(num: number): string {
   return new Intl.NumberFormat('en-US').format(num)
 }
 
+/** A value we do not have — never a fabricated zero. Matches lib/visitors/format.ts's EM_DASH. */
+export const EM_DASH = '—'
+
+/**
+ * Large counts, compact — owner ruling D11 (01-10-2026, PULSE-190): every page
+ * reads a large number at a glance, with the exact value reachable on
+ * hover/focus (see components/ui/compact-number.tsx, the one place this and
+ * `formatNumber` meet for a given value).
+ *
+ * The rule, mocked and measured in
+ * Pulse/docs/data/01-10-2026-number-format-mocks/format-logic.mjs:
+ *   - below 10,000: exact, comma-grouped (unchanged from `formatNumber`).
+ *   - from 10,000: `Intl.NumberFormat` compact notation, ONE decimal — EXCEPT
+ *     no decimal once the digits before the unit reach 100 ("153K" not
+ *     "153.0K"; "1.4M" but "13.8M" not "13.80M"). This is what keeps a
+ *     boundary-crossing rounding legible ("99,950" → "100K", not "100.0K").
+ *   - null/undefined → the em dash, never 0 — a value we never measured is
+ *     not a measured zero.
+ *   - always `en-US`, never the browser's own locale (same rule `formatNumber`
+ *     already holds — see PeakHours.tsx and filter/ValuePicker.tsx, which
+ *     used to read the VIEWER's locale instead).
+ */
+export function formatCompactNumber(num: number | null | undefined): string {
+  if (num === null || num === undefined) return EM_DASH
+  if (num === 0) return '0' // guards -0, which Intl renders as "-0"
+  const abs = Math.abs(num)
+  if (abs < 10000) return formatNumber(num)
+  const compact1 = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(num)
+  const match = compact1.match(/^(-?[\d.]+)([A-Za-z]*)$/)
+  if (match && Math.abs(parseFloat(match[1])) >= 100) {
+    return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 0 }).format(num)
+  }
+  return compact1
+}
+
 /** Format date to YYYY-MM-DD (uses local timezone) — machine/API format */
 export function formatDate(date: Date): string {
   const y = date.getFullYear()

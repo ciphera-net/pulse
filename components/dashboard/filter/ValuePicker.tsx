@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DIMENSION_LABELS, type FilterSuggestion } from '@/lib/filters'
 import { getFilterValueIcon } from '@/lib/utils/icons'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 // ---------------------------------------------------------------------------
@@ -138,7 +139,7 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
       <span className="truncate text-white flex-1 min-w-0">{label}</span>
       {count !== undefined && (
         <span className="text-xs text-neutral-500 tabular-nums flex-shrink-0">
-          {count.toLocaleString()}
+          {formatCompactNumber(count)}
         </span>
       )}
     </button>

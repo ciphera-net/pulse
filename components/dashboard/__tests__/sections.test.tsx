@@ -34,7 +34,10 @@ describe('ContentSignals', () => {
 
   it('defaults to scroll depth with the session count and COMPUTED percentages', () => {
     render(<ContentSignals {...props} />)
-    expect(screen.getByText('129 sessions')).toBeTruthy()
+    // The count renders through CompactNumber (PULSE-190), so "129" and
+    // " sessions" are now sibling text nodes — match on the wrapping
+    // element's full text rather than a single text node.
+    expect(screen.getAllByText((_, node) => node?.textContent === '129 sessions').length).toBeGreaterThan(0)
     // The computed values, not the static threshold labels (review finding:
     // asserting '25%' matched the row LABEL and a broken calc stayed green):
     // 117/129 = 91%, 92/129 = 71%, 68/129 = 53%, 36/129 = 28%.
@@ -49,7 +52,7 @@ describe('ContentSignals', () => {
     expect(screen.getByText('30')).toBeTruthy()
     expect(screen.queryByText(/\d+%/)).toBeNull()
     // The scroll session count belongs to the scroll tab's header only.
-    expect(screen.queryByText('129 sessions')).toBeNull()
+    expect(screen.queryAllByText((_, node) => node?.textContent === '129 sessions').length).toBe(0)
   })
 
   // M12 (owner pick A, W-M12-5): the header's right slot says so when the

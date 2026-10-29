@@ -72,7 +72,7 @@ describe('ContentStats pagination (blocks round, 01-09-2026)', () => {
     // 8 rows > LIMIT 7 — no interaction needed; the card fetches ahead so
     // page flips are instant.
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
-      'pages', 'site-1', '2026-07-20', '2026-08-18', 100, 'country:is:DE',
+      'pages', 'site-1', '2026-07-20', '2026-08-18', 100, 'country:is:DE', undefined,
     )
   })
 
@@ -124,7 +124,7 @@ describe('ContentStats pagination (blocks round, 01-09-2026)', () => {
   it('never arms the full-list fetch on the share surface, but still pages its payload', () => {
     render(<ContentStats {...baseProps} totals={totals} memberFeatures={false} />)
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
-      null, 'site-1', '2026-07-20', '2026-08-18', 100, undefined,
+      null, 'site-1', '2026-07-20', '2026-08-18', 100, undefined, undefined,
     )
     fireEvent.click(screen.getByLabelText('Next page'))
     expect(screen.getByText('/contact')).toBeTruthy()

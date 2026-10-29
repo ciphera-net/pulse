@@ -8,6 +8,7 @@ import { useGSCDailyTotals } from '@/lib/swr/dashboard'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
@@ -22,6 +23,7 @@ import {
   serializeActiveMetrics,
   rollupSeries,
   formatMetricValue,
+  isCountMetric,
   overviewValue,
   overviewPrev,
   type Granularity,
@@ -263,7 +265,11 @@ export function InstrumentCore({
               >
                 <span {...railProps} className={cn(RAIL_W, 'flex shrink-0 items-center justify-between gap-2 border-r border-border px-4')}>
                   <span className="truncate text-sm text-neutral-500">{METRIC_LABEL[key]}</span>
-                  <span className="text-xs tabular-nums text-neutral-500">{formatMetricValue(key, value)}</span>
+                  {isCountMetric(key) ? (
+                    <CompactNumber value={value} className="text-xs text-neutral-500" />
+                  ) : (
+                    <span className="text-xs tabular-nums text-neutral-500">{formatMetricValue(key, value)}</span>
+                  )}
                 </span>
                 <span className="flex items-center px-4 text-xs text-neutral-600 transition-colors duration-fast ease-apple group-hover:text-neutral-400">
                   Show
@@ -292,11 +298,17 @@ export function InstrumentCore({
               >
                 <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px] bg-brand-orange" />
                 <span className="text-sm text-neutral-400">{METRIC_LABEL[key]}</span>
-                <AnimatedNumber
-                  value={value}
-                  format={(v) => formatMetricValue(key, v)}
-                  className="mt-0.5 text-xl font-semibold tabular-nums text-white"
-                />
+                {isCountMetric(key) ? (
+                  <CompactNumber value={value} className="mt-0.5 text-xl font-semibold tabular-nums text-white">
+                    <AnimatedNumber value={value} format={(v) => formatMetricValue(key, v)} />
+                  </CompactNumber>
+                ) : (
+                  <AnimatedNumber
+                    value={value}
+                    format={(v) => formatMetricValue(key, v)}
+                    className="mt-0.5 text-xl font-semibold tabular-nums text-white"
+                  />
+                )}
                 <DeltaBadge change={delta} invert={invert} />
                 {term && (
                   <span id={`search-def-${key}`} className="sr-only">

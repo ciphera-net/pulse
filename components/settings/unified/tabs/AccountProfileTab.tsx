@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, SegmentedControl, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
+import { usePendingKeys, whilePending } from '@/lib/hold/pending'
+import { Trash } from '@phosphor-icons/react'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
+import { regenerateAvatarSeed } from '@/lib/api/avatar'
 import { usePreferences, type TimeDisplay } from '@/lib/hooks/usePreferences'
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -16,6 +21,8 @@ import {
   type DeletionBlocker,
 } from '@/lib/api/user'
 import { ApiError } from '@/lib/api/client'
+import { readStatus } from '@/lib/api/status'
+import { reauthErrorMessage } from '@/lib/auth/tessera/reauth-error'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -180,23 +187,28 @@ export function expiryPhrase(expiresAt: string | null, now: number): string {
   return `it expires in about ${minutes} minute${minutes === 1 ? '' : 's'}`
 }
 
-/** HTTP status from an ApiError, a wrapper carrying one, or a status in the text. */
-function readStatus(err: unknown): number | null {
-  for (const candidate of [err, (err as { cause?: unknown } | null)?.cause]) {
-    if (candidate instanceof ApiError) return candidate.status
-    const s = (candidate as { status?: unknown } | null)?.status
-    if (typeof s === 'number' && s >= 100 && s < 600) return s
-  }
-  if (err instanceof Error) {
-    const m = err.message.match(/\b(4\d{2}|5\d{2})\b/)
-    if (m) return Number(m[1])
-  }
-  return null
-}
 
 export default function AccountProfileTab() {
   const { timeDisplay, setTimeDisplay, loaded: preferencesLoaded } = usePreferences()
   const { user, refresh, logout } = useAuth()
+  const [regeneratingAvatar, setRegeneratingAvatar] = useState(false)
+
+  // "Generate a new avatar" (PUL-21, option R1): applies at once. The new seed
+  // is shown only after Ciphera ID has stored it — no optimistic flip, so the
+  // screen never shows an avatar the server does not hold. refresh() re-reads
+  // /auth/user/me and revalidates every SWR key, so the account menu and the
+  // Members list follow.
+  const handleRegenerateAvatar = useCallback(async () => {
+    setRegeneratingAvatar(true)
+    try {
+      await regenerateAvatarSeed()
+      await refresh()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't generate a new avatar. Try again.")
+    } finally {
+      setRegeneratingAvatar(false)
+    }
+  }, [refresh])
   const [displayName, setDisplayName] = useState('')
   // Read-unlock: the name/email live only in the encrypted vault, opened by an
   // OPAQUE ceremony against a re-entered password. The decrypted PII (never the
@@ -226,10 +238,12 @@ export default function AccountProfileTab() {
   const baselineRef = useRef('')
   baselineRef.current = baseline
   const hasInitialized = useRef(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteText, setDeleteText] = useState('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
-  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const { defer } = useUndo()
+  // The deletion waiting behind the Undo bar: the row's button stays off.
+  const accountWaiting = usePendingKeys().has('account:delete')
   // What deletion would take with the account.
   //
   // 🔴 THREE STATES, AND THEY MUST NOT COLLAPSE. `null` = not read yet,
@@ -290,10 +304,10 @@ export default function AccountProfileTab() {
     hasInitialized.current = true
   }, [user])
 
-  // Read it when the panel opens, not on mount: this costs a round trip and
+  // Read it when the dialog opens, not on mount: this costs a round trip and
   // most visits to this tab are not on their way to deleting anything.
   useEffect(() => {
-    if (!showDeleteConfirm) return
+    if (!showDeleteDialog) return
     let live = true
     setBlockers(null)
     getDeletionPreview()
@@ -301,7 +315,7 @@ export default function AccountProfileTab() {
       // Not silent, and NOT an empty list: the panel says it could not check.
       .catch(() => { if (live) setBlockers('unavailable') })
     return () => { live = false }
-  }, [showDeleteConfirm])
+  }, [showDeleteDialog])
 
   // The address as this browser currently knows it: the vault's, once unlocked;
   // otherwise whatever the session carries (empty for a zero-knowledge account).
@@ -640,9 +654,17 @@ export default function AccountProfileTab() {
     }
   }, [displayName, refresh, user?.id])
 
-  const handleDelete = async () => {
-    if (deleteText !== 'DELETE' || !deletePassword) return
-    setDeleting(true)
+  /**
+   * The hold's pre-step: prove the password, same OPAQUE ceremony as before
+   * (PUL-28). A wrong password sets the dialog's own error and rejects, which
+   * keeps the dialog open rather than toasting past it. On success the
+   * deletion itself is deferred behind the app's Undo bar; this tab stays
+   * mounted and signs out only once the window runs out uncancelled
+   * (`onCommitted`), so a reload during the window cannot race the commit.
+   */
+  const confirmDelete = useCallback(async () => {
+    setDeleteError(null)
+    let reauthToken: string
     try {
       // * Deletion is authorized by a FRESH OPAQUE proof: the ceremony runs against
       // * id-backend's dedicated /auth/reauth endpoint with this password. A wrong
@@ -655,44 +677,50 @@ export default function AccountProfileTab() {
       // asked for was the sign-in email, an identifier the session already
       // knows and the ceremony never needed (ciphera-id#95). Same removal as
       // password change, for the same reason.
-      const reauthToken = await performSessionOpaqueReauth({ password: deletePassword, purpose: 'del' })
-      // 🔴 What the person was SHOWN, echoed back. Never a blanket "yes": the
-      // server refuses anything it is about to destroy that is not named here,
-      // so a workspace created after this panel was drawn survives and the
-      // refusal comes back naming it.
-      await deleteAccount(reauthToken, Array.isArray(blockers) ? blockers.map((b) => b.id) : [])
-      logout()
+      reauthToken = await performSessionOpaqueReauth({ password: deletePassword, purpose: 'del' })
     } catch (err) {
-      // * A 409 from deleteAccount carries a humanized, per-workspace message
-      // * (WS2 Slice 1: "You own N workspaces that must be resolved first…").
-      // * getAuthErrorMessage maps by status and would replace it with the
-      // * generic "Something went wrong" string, so surface err.message directly
-      // * when the ApiError already spells out what to do.
-      if (err instanceof ApiError && err.status === 409 && err.message) {
-        // * deleteAccount words the refusal for a team; somebody alone has no
-        // * team and no Team section to go to, so it is re-worded for them.
-        toast.error(isOwnsOrgsBody(err.data) ? ownedOrganizationsMessage(err.data.organizations, alone) : err.message)
-        // The list this panel showed is now known to be stale. That is what a
-        // 409 means once the ids are being sent. Re-read it so the next attempt
-        // agrees with the server instead of resending what it just refused.
-        getDeletionPreview().then(setBlockers).catch(() => setBlockers('unavailable'))
-      } else if (readStatus(err) === 401) {
-        // 🔑 The ceremony no longer asks for an email, so the message must not
-        // mention one. A 401 here is the OPAQUE finish refusing the password.
-        toast.error("That password didn't match. Try again.")
-      } else {
-        toast.error(getAuthErrorMessage(err as Error) || "Couldn't delete your account. Try again.")
-      }
-      setDeleting(false)
+      // 🔑 The ceremony no longer asks for an email, so the message must not
+      // mention one. A wrong password usually carries NO status at all (the
+      // client's OPAQUE step refuses it): reauthErrorMessage defaults to it.
+      setDeleteError(reauthErrorMessage(err))
+      throw err
     }
-  }
+    // 🔴 What the person was SHOWN, echoed back. Never a blanket "yes": the
+    // server refuses anything it is about to destroy that is not named here,
+    // so a workspace created after this dialog was drawn survives and the
+    // refusal comes back naming it.
+    const orgIds = Array.isArray(blockers) ? blockers.map((b) => b.id) : []
+    defer(whilePending('account:delete', {
+      message: 'Account deleted',
+      commit: ({ keepalive }) => deleteAccount(reauthToken, orgIds, { keepalive }),
+      onCommitted: () => logout(),
+      onError: (err) => {
+        // * A 409 from deleteAccount carries a humanized, per-workspace message
+        // * (WS2 Slice 1: "You own N workspaces that must be resolved first…").
+        // * getAuthErrorMessage maps by status and would replace it with the
+        // * generic "Something went wrong" string, so surface err.message directly
+        // * when the ApiError already spells out what to do.
+        if (err instanceof ApiError && err.status === 409 && err.message) {
+          // * deleteAccount words the refusal for a team; somebody alone has no
+          // * team and no Team section to go to, so it is re-worded for them.
+          toast.error(isOwnsOrgsBody(err.data) ? ownedOrganizationsMessage(err.data.organizations, alone) : err.message)
+          // The list this panel showed is now known to be stale. That is what a
+          // 409 means once the ids are being sent. Re-read it so the next attempt
+          // agrees with the server instead of resending what it just refused.
+          getDeletionPreview().then(setBlockers).catch(() => setBlockers('unavailable'))
+        } else {
+          toast.error(getAuthErrorMessage(err as Error) || "Couldn't delete your account. Try again.")
+        }
+      },
+    }))
+  }, [deletePassword, blockers, defer, logout, alone])
 
   const cancelDelete = () => {
-    setShowDeleteConfirm(false)
-    setDeleteText('')
+    setShowDeleteDialog(false)
     setDeletePassword('')
+    setDeleteError(null)
     // Forget what was read: reopening asks again, so the list can never be
-    // older than the panel showing it.
+    // older than the dialog showing it.
     setBlockers(null)
   }
 
@@ -1005,6 +1033,23 @@ export default function AccountProfileTab() {
       <SettingsPanel title="Profile" description="Your personal account details.">
         <PanelRows>
           <PanelRow
+            label="Avatar"
+            caption="Generated for your account. Shown in Pulse and when you sign in."
+          >
+            <div className="flex items-center gap-4">
+              {user && <Avatar seed={personAvatarSeed({ userId: user.id, avatarSeed: user.avatar_seed })} size={56} />}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRegenerateAvatar}
+                disabled={!user || regeneratingAvatar}
+                isLoading={regeneratingAvatar}
+              >
+                Generate a new avatar
+              </Button>
+            </div>
+          </PanelRow>
+          <PanelRow
             label="Display name"
             htmlFor="account-display-name"
             caption="Shown to your teammates across Pulse."
@@ -1268,104 +1313,89 @@ export default function AccountProfileTab() {
         </PanelRows>
       </SettingsPanel>
 
-      {/* Danger zone. Trigger row via the shared DangerZone API. */}
+      {/* Danger zone. Trigger row via the shared DangerZone API; the confirm
+          lives in the HoldDialog below (PUL-28 rulings, 14-10-2026). */}
       <DangerZone
         items={[
           {
             title: 'Delete account',
             description: 'Permanently delete your account and all associated data.',
             buttonLabel: 'Delete',
-            variant: 'solid',
-            onClick: () => setShowDeleteConfirm(prev => {
-              if (prev) { setDeleteText(''); setDeletePassword('') }
-              return !prev
-            }),
+            onClick: () => setShowDeleteDialog(true),
+            disabled: accountWaiting,
           },
         ]}
+      />
+
+      <HoldDialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => { if (!open) cancelDelete() }}
+        title="Delete your account?"
+        holdLabel="Hold to delete"
+        icon={<Trash weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        disabled={!deletePassword}
+        error={deleteError}
+        onConfirm={confirmDelete}
       >
-        {showDeleteConfirm && (
-          <SettingsPanel tone="danger" title="Confirm account deletion">
-            <div className="border-b border-border px-5 py-4">
-              <p className="text-sm text-destructive">This permanently deletes:</p>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                <li>Your account and all personal data</li>
-                <li>All sessions and trusted devices</li>
-                {!alone && <li>Your membership in every team</li>}
-                {/* The workspaces that go with it. Direction A (owner, 09-09-2026):
-                    the panel already enumerates what deletion destroys, so a
-                    workspace is one more line in that list rather than a second
-                    block. Read before anything is typed, no new device to learn. */}
-                {blockers === null && <li>{alone ? 'Checking what goes with it…' : 'Checking whether any team goes with it…'}</li>}
-                {blockers === 'unavailable' && (
-                  <li>We couldn&apos;t check {alone ? 'what goes' : 'which teams go'} with it. Deletion will say before it proceeds.</li>
-                )}
-                {Array.isArray(blockers) && blockers.map((b) => (
-                  <li key={b.id}>
-                    {alone ? (
-                      // Alone, the "team" is simply their sites and plan.
-                      b.contents
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-destructive">This permanently deletes:</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
+              <li>Your account and all personal data</li>
+              <li>All sessions and trusted devices</li>
+              {!alone && <li>Your membership in every team</li>}
+              {/* The workspaces that go with it. Direction A (owner, 09-09-2026):
+                  the dialog already enumerates what deletion destroys, so a
+                  workspace is one more line in that list rather than a second
+                  block. Read before anything is typed, no new device to learn. */}
+              {blockers === null && <li>{alone ? 'Checking what goes with it…' : 'Checking whether any team goes with it…'}</li>}
+              {blockers === 'unavailable' && (
+                <li>We couldn&apos;t check {alone ? 'what goes' : 'which teams go'} with it. Deletion will say before it proceeds.</li>
+              )}
+              {Array.isArray(blockers) && blockers.map((b) => (
+                <li key={b.id}>
+                  {alone ? (
+                    // Alone, the "team" is simply their sites and plan.
+                    b.contents
+                      ? b.contents.site_count > 0
+                        ? `Your ${b.contents.site_count === 1 ? 'site' : `${b.contents.site_count} sites`}: ${b.contents.domains.join(', ')}`
+                        : 'Your sites (you have none yet)'
+                      : 'Your sites and everything in them'
+                  ) : (
+                    <>
+                      Your team <span className="font-medium">{b.name}</span>
+                      {b.contents
                         ? b.contents.site_count > 0
-                          ? `Your ${b.contents.site_count === 1 ? 'site' : `${b.contents.site_count} sites`}: ${b.contents.domains.join(', ')}`
-                          : 'Your sites (you have none yet)'
-                        : 'Your sites and everything in them'
-                    ) : (
-                      <>
-                        Your team <span className="font-medium">{b.name}</span>
-                        {b.contents
-                          ? b.contents.site_count > 0
-                            ? `, ${b.contents.site_count} ${b.contents.site_count === 1 ? 'site' : 'sites'}: ${b.contents.domains.join(', ')}`
-                            : ', no sites'
-                          : ', and everything in it'}
-                      </>
-                    )}
-                    {b.contents?.plan_id
-                      ? alone
-                        ? `, and your ${b.contents.plan_id} subscription`
-                        : `, and the ${b.contents.plan_id} subscription on it`
-                      : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <PanelRows>
-              <PanelRow
-                label="Your password"
-                htmlFor="account-delete-password"
-                caption="Required to confirm it's you."
-              >
-                <Input
-                  id="account-delete-password"
-                  type="password"
-                  value={deletePassword}
-                  onChange={e => setDeletePassword(e.target.value)}
-                  placeholder="Enter your password"
-                />
-              </PanelRow>
-              <PanelRow label="Type DELETE to confirm" htmlFor="account-delete-confirm">
-                <Input
-                  id="account-delete-confirm"
-                  type="text"
-                  value={deleteText}
-                  onChange={e => setDeleteText(e.target.value)}
-                  placeholder="DELETE"
-                />
-              </PanelRow>
-            </PanelRows>
-            <div className="flex gap-2 border-t border-border px-5 py-4">
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleteText !== 'DELETE' || !deletePassword || deleting}
-              >
-                {deleting ? 'Deleting…' : 'Delete account'}
-              </Button>
-              <Button variant="ghost" onClick={cancelDelete}>
-                Cancel
-              </Button>
-            </div>
-          </SettingsPanel>
-        )}
-      </DangerZone>
+                          ? `, ${b.contents.site_count} ${b.contents.site_count === 1 ? 'site' : 'sites'}: ${b.contents.domains.join(', ')}`
+                          : ', no sites'
+                        : ', and everything in it'}
+                    </>
+                  )}
+                  {b.contents?.plan_id
+                    ? alone
+                      ? `, and your ${b.contents.plan_id} subscription`
+                      : `, and the ${b.contents.plan_id} subscription on it`
+                    : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <label htmlFor="account-delete-password" className="mb-1.5 block text-sm font-medium text-foreground">
+              Your password
+            </label>
+            <Input
+              id="account-delete-password"
+              type="password"
+              autoComplete="current-password"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              placeholder="Enter your password"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">Required to confirm it&apos;s you.</p>
+          </div>
+        </div>
+      </HoldDialog>
 
       <SettingsSaveBar
         isDirty={isDirty}

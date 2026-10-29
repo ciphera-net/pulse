@@ -1,7 +1,7 @@
 /**
  * WS4 — verify the deployed product tour on LIVE staging.
  * Real login, real driver.js, real data (the QA site): auto-start with a
- * cleared key, enabled Skip, full 7-step walk, no re-auto-start, ⌘K re-entry.
+ * cleared key, enabled Skip, full 6-step walk, no re-auto-start, ⌘K re-entry.
  */
 import { test, expect } from '@playwright/test'
 import { login } from './support/login'
@@ -68,13 +68,12 @@ test('the tour runs on staging', async ({ browser }) => {
   await expect(popover).toBeVisible({ timeout: 90_000 })
   await popover.locator('.driver-popover-next-btn').click()
   const EXPECTED: Array<[string, string]> = [
-    ['Your key metrics', '1 of 7'],
-    ['The chart', '2 of 7'],
-    ['Break it down', '3 of 7'],
-    ['Pick your window', '4 of 7'],
-    ['Right now', '5 of 7'],
-    ['Alerts land here', '6 of 7'],
-    ['More than the dashboard', '7 of 7'],
+    ['Your key metrics', '1 of 6'],
+    ['The chart', '2 of 6'],
+    ['Break it down', '3 of 6'],
+    ['Pick your window', '4 of 6'],
+    ['Right now', '5 of 6'],
+    ['More than the dashboard', '6 of 6'],
   ]
   for (let i = 0; i < EXPECTED.length; i++) {
     const [title, progress] = EXPECTED[i]
@@ -87,7 +86,7 @@ test('the tour runs on staging', async ({ browser }) => {
     if (i < EXPECTED.length - 1) await popover.locator('.driver-popover-next-btn').click()
   }
   await page.waitForTimeout(550)
-  await page.screenshot({ path: `${OUT}/st-7-close.jpg`, type: 'jpeg', quality: 85 })
+  await page.screenshot({ path: `${OUT}/st-6-close.jpg`, type: 'jpeg', quality: 85 })
   await expect(popover.locator('.driver-popover-next-btn')).toHaveText('Done')
   await popover.locator('.driver-popover-next-btn').click()
   await expect(popover).toHaveCount(0)

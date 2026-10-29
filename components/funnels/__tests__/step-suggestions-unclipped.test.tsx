@@ -38,17 +38,16 @@ vi.mock('@/components/ui/dialog', () => ({
 }))
 vi.mock('@/components/dashboard/MetricInfoTip', () => ({ TermInfoTip: () => null }))
 vi.mock('@/lib/api/stats', () => ({
-  getDashboardPages: vi.fn(async () => ({ pages: [] })),
-  getDashboardGoals: vi.fn(async () => ({
-    goal_counts: [
-      { event_name: 'pulse_click', display_name: null, count: 2374 },
-      { event_name: 'signup', display_name: 'Signup', count: 12 },
-    ],
-  })),
+  getTopPages: vi.fn(async () => []),
+  getGoalStats: vi.fn(async () => [
+    { event_name: 'pulse_click', display_name: null, count: 2374 },
+    { event_name: 'signup', display_name: 'Signup', count: 12 },
+  ]),
 }))
 vi.mock('@/lib/api/funnels', () => ({ previewFunnel: vi.fn(async () => null) }))
 
 import FunnelModal from '@/components/funnels/FunnelModal'
+import { getTopPages, getGoalStats } from '@/lib/api/stats'
 
 describe('funnel step suggestion list', () => {
   it('is not clipped by the step wrapper, which clips only while its height animates', { timeout: 20_000 }, async () => {
@@ -72,6 +71,9 @@ describe('funnel step suggestion list', () => {
     fireEvent.focus(input)
     const list = await screen.findByRole('listbox', { name: 'Step 2 event suggestions' })
     await waitFor(() => expect(screen.getByRole('option', { name: /pulse_click/ })).toBeTruthy())
+    // Suggestions come from the per-card routes (/pages, /goals/stats), 50 rows over 30 days.
+    expect(getTopPages).toHaveBeenCalledWith('site-1', expect.any(String), expect.any(String), 50)
+    expect(getGoalStats).toHaveBeenCalledWith('site-1', expect.any(String), expect.any(String), 50)
 
     // No ancestor between the list and the dialog content clips it.
     const content = screen.getByTestId('dialog-content')

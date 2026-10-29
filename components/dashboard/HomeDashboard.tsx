@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getLastSiteId, markSessionEntered, entryRedirectTarget } from '@/lib/last-site'
-import { listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
-import { useSites, useSitesOverview } from '@/lib/swr/sites'
+import { restoreSite, type Site } from '@/lib/api/sites'
+import { useSites, useSitesOverview, useDeletedSites, useRefreshSiteLists } from '@/lib/swr/sites'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import FleetDeck from '@/components/sites/FleetDeck'
 import FleetHeader from '@/components/sites/FleetHeader'
@@ -18,20 +18,26 @@ import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/compone
 
 export default function HomeDashboard() {
   const router = useRouter()
-  const { sites, isLoading: sitesLoading, mutate: mutateSitesList } = useSites()
+  const { sites, isLoading: sitesLoading } = useSites()
   // * The Fleet Deck's data arrives in ONE batched request (visitors today in
-  // * the site's timezone, 7-day series, install + uptime status) — the former
+  // * the site's timezone, 7-day series, install + uptime status). The former
   // * per-site Promise.allSettled stats fan-out is gone with it.
   const { overviewBySite, overviewError, mutate: mutateOverview } = useSitesOverview()
+  // * The "Scheduled for deletion" list below. An SWR key (lib/swr/sites.tsx),
+  // * not local state, so it is reachable from outside this component: a soft
+  // * delete confirmed on the site's own settings page commits here, through
+  // * useRefreshSiteLists, well after this page may have been navigated to
+  // * and mounted fresh (PUL-28).
+  const { deletedSites } = useDeletedSites()
+  const refreshSiteLists = useRefreshSiteLists()
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
-  const [deletedSites, setDeletedSites] = useState<Site[]>([])
   const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
   // * null = redirect decision pending (hold the skeleton, don't flash the list)
   const [entryRedirect, setEntryRedirect] = useState<string | null | false>(sitesLoading ? null : false)
 
   // * App entry lands on the last-visited site, once per browser session.
   // * The decision waits for the sites list so the remembered id is validated
-  // * against current access (deleted site / revoked role → show the list).
+  // * against current access (deleted site / revoked role shows the list).
   useEffect(() => {
     if (sitesLoading) return
     const target = entryRedirectTarget(getLastSiteId(), sites.map((s) => s.id), markSessionEntered())
@@ -40,7 +46,6 @@ export default function HomeDashboard() {
   }, [sitesLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    loadDeletedSites()
     loadSubscription()
   }, [])
 
@@ -55,15 +60,6 @@ export default function HomeDashboard() {
     }
   }, [])
 
-  const loadDeletedSites = async () => {
-    try {
-      const deleted = await listDeletedSites()
-      setDeletedSites(deleted)
-    } catch {
-      setDeletedSites([])
-    }
-  }
-
   const loadSubscription = async () => {
     try {
       const sub = await getSubscription()
@@ -73,12 +69,12 @@ export default function HomeDashboard() {
     }
   }
 
+  // Restore stays one click (ruling 4: small reversible actions need no hold).
   const handleRestore = async (id: string) => {
     try {
       await restoreSite(id)
       toast.success('Site restored successfully')
-      mutateSitesList()
-      loadDeletedSites()
+      refreshSiteLists()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to restore site')
     }
@@ -142,9 +138,7 @@ export default function HomeDashboard() {
       <DeleteSiteModal
         open={!!permanentDeleteSiteModal}
         onClose={() => setPermanentDeleteSiteModal(null)}
-        onDeleted={() => { mutateSitesList(); loadDeletedSites() }}
         siteName={permanentDeleteSiteModal?.name || ''}
-        siteDomain={permanentDeleteSiteModal?.domain || ''}
         siteId={permanentDeleteSiteModal?.id || ''}
         permanentOnly
       />
@@ -175,7 +169,9 @@ export default function HomeDashboard() {
                     </button>
                     <button
                       onClick={() => handlePermanentDelete(site.id)}
-                      className="rounded-none border border-red-900 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors ease-apple hover:bg-red-900/20"
+                      aria-haspopup="dialog"
+                      // The one danger colour (the destructive token), not raw reds.
+                      className="rounded-none border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive transition-colors ease-apple hover:border-destructive/60 hover:bg-destructive/10"
                     >
                       Delete Now
                     </button>

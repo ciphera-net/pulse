@@ -27,7 +27,6 @@ const NAVIGATION: ShortcutRow[] = [
   { keys: ['g', 'u'], label: 'Uptime' },
   { keys: ['g', 'p'], label: 'Performance' },
   { keys: ['g', 'i'], label: 'Integrations' },
-  { keys: ['g', 'n'], label: 'Notifications' },
 ]
 
 const ACTIONS: ShortcutRow[] = [

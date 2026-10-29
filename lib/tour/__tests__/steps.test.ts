@@ -1,12 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { TOUR_ANCHORS, DIMENSION_CARD_KEYS } from '../anchors'
-import { TOUR_STEPS, TOUR_STEP_COUNT, stepSelector, findStepElement } from '../steps'
+import { TOUR_STEPS, TOUR_STEP_COUNT, stepSelector, findStepElement, type TourStepDef } from '../steps'
 
 describe('TOUR_STEPS contract', () => {
   it('opens with an uncounted welcome and counts the rest', () => {
     expect(TOUR_STEPS[0].anchor).toBeNull()
-    expect(TOUR_STEPS.length).toBe(8)
-    expect(TOUR_STEP_COUNT).toBe(7)
+    expect(TOUR_STEPS.length).toBe(7)
+    expect(TOUR_STEP_COUNT).toBe(6)
   })
 
   it('anchors every counted step to a registered anchor', () => {
@@ -56,23 +56,26 @@ describe('findStepElement', () => {
     return el
   }
 
-  const bellStep = TOUR_STEPS.find((s) => s.anchor === TOUR_ANCHORS.notificationBell)!
+  // The onboarding chip is the anchor that really renders twice (desktop bar +
+  // mobile header). It is not a step of the script, so the step is built here;
+  // until 20-10-2026 these tests used the bell's step.
+  const chipStep: TourStepDef = { anchor: TOUR_ANCHORS.onboardingChip, title: 'Chip', body: 'Chip' }
 
   it('picks the visible mount, not the first DOM match', () => {
-    addAnchor('notification-bell', false) // the display:none twin comes first
-    const visible = addAnchor('notification-bell', true)
-    expect(findStepElement(bellStep)).toBe(visible)
+    addAnchor('onboarding-chip', false) // the display:none twin comes first
+    const visible = addAnchor('onboarding-chip', true)
+    expect(findStepElement(chipStep)).toBe(visible)
   })
 
   // A hidden node handed to driver reads as "found" and spotlights a 0×0
   // rect at the viewport corner (24-08 audit) — hidden is NOT a fallback.
   it('returns undefined when no mount is visible', () => {
-    addAnchor('notification-bell', false)
-    addAnchor('notification-bell', false)
-    expect(findStepElement(bellStep)).toBeUndefined()
+    addAnchor('onboarding-chip', false)
+    addAnchor('onboarding-chip', false)
+    expect(findStepElement(chipStep)).toBeUndefined()
   })
 
   it('returns undefined when the anchor is absent — driver waits, not crashes', () => {
-    expect(findStepElement(bellStep)).toBeUndefined()
+    expect(findStepElement(chipStep)).toBeUndefined()
   })
 })

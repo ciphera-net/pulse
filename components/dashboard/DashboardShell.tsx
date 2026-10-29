@@ -7,11 +7,12 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { formatUpdatedLabel } from '@/lib/utils/format'
 import { useFunnelDetail, useSite } from '@/lib/swr/dashboard'
+import { usePublicSiteIdentity } from '@/lib/swr/public-site-identity'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
-import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { navGroups, tabFor } from '@/components/settings/nav'
@@ -35,6 +36,11 @@ import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
 import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
+import { DemoLabel, TryPulseFreeButton } from '@/components/public/chrome'
+import { resolvePublicRoute } from '@/components/public/routes'
+import { navItemForPage } from './siteNav'
+import { postEmbedReady } from '@/lib/scope/embed'
+import { scopeHref, useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 type PageMeta = {
   title: string
@@ -108,7 +114,6 @@ function useHomePageMeta(): PageMeta {
       // "Settings" in the top bar while its siblings named themselves.
       monitoring: { label: 'Monitoring', icon: Heartbeat },
       'api-keys': { label: 'API Keys', icon: Terminal },
-      'security-alerts': { label: 'Security alerts', icon: EnvelopeSimple },
     }
     const tabSlug = parts[2] ?? ''
     const meta = TAB_META[tabSlug]
@@ -325,6 +330,19 @@ function UpdatedAgo({ lastUpdatedAt }: { lastUpdatedAt: number }) {
   return <>{formatUpdatedLabel(lastUpdatedAt)}</>
 }
 
+/** The green dot and "Updated Ns ago": the member's top bar and the public one say it the same way. */
+function UpdatedIndicator({ lastUpdatedAt }: { lastUpdatedAt: number }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0 mr-2">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+      </span>
+      <UpdatedAgo lastUpdatedAt={lastUpdatedAt} />
+    </div>
+  )
+}
+
 function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
   const { lastUpdatedAt } = useLiveIndicator()
@@ -423,23 +441,16 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
       </div>
 
       <div className="flex items-center gap-1">
-        {siteId && lastUpdatedAt != null && (
-          <div className="flex items-center gap-1.5 text-xs text-neutral-500 shrink-0 mr-2">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-            </span>
-            <UpdatedAgo lastUpdatedAt={lastUpdatedAt} />
-          </div>
-        )}
+        {siteId && lastUpdatedAt != null && <UpdatedIndicator lastUpdatedAt={lastUpdatedAt} />}
         <OnboardingChip />
-        <NotificationCenter anchor="bottom" variant="default" />
         <UserMenu
           auth={auth}
           // 🔴 ONLY WHEN WE KNOW. Passing this while the vault read is still in
           // flight would flash it before the real name arrives — 'unknown' is
           // not 'locked', which is the whole reason VaultState has three values.
           unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
+          // The person's generated avatar (PUL-21): their stored seed, else the user id.
+          avatar={auth.user ? <Avatar seed={personAvatarSeed({ userId: auth.user.id, avatarSeed: auth.user.avatar_seed })} size={28} /> : undefined}
           LinkComponent={Link}
           // The container props (switcher or "Invite people", team labels,
           // team settings) come from the team-state signal (PULSE-59).
@@ -455,6 +466,137 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
       </div>
     </div>
   )
+}
+
+// ─── Public top bar (/demo, /share/<id>) ───────────────────
+
+/**
+ * The breadcrumb's page, under a public scope: read from the path below the scope's base,
+ * named and drawn by the same navigation item the sidebar lists it with. null for an address
+ * that is no page (the not-shared state), which then has no crumb of its own.
+ */
+function usePublicPageMeta(scope: SiteScope): PageMeta | null {
+  const pathname = usePathname()
+  const below = pathname.startsWith(scope.basePath) ? pathname.slice(scope.basePath.length) : ''
+  const route = resolvePublicRoute(below.split('/').filter(Boolean))
+  // * The funnel's name, as the member crumb shows it: the same SWR key as the page's own read.
+  const funnelId = route?.page === 'funnels' ? (route.funnelId ?? '') : ''
+  const { data: funnel } = useFunnelDetail(scope.siteId, funnelId)
+  if (!route) return null
+  // * A page the scope does not share shows the not-shared state, so it has no crumb either (and no parent link
+  // * to a page that is not shared).
+  if (!scope.pages.includes(route.page)) return null
+
+  const item = navItemForPage(route.page)
+  if (funnelId) {
+    return {
+      title: funnel?.name ?? 'Funnel',
+      icon: item.icon,
+      parent: { title: item.label, icon: item.icon, href: scopeHref(scope, 'funnels') },
+    }
+  }
+  return { title: item.label, icon: item.icon }
+}
+
+/**
+ * The top bar of a public page (PUL-34): the member bar's grammar without the account.
+ * Collapse toggle, then Pulse › site › page, then on the right when the page last refreshed
+ * and, on the demo only, the sample-data label and the way into the product. No site
+ * switcher, "Your Sites", notifications, onboarding or user menu: none of them has anything
+ * to show an anonymous reader, and several would open member routes.
+ */
+function PublicTopBar({ scope }: { scope: SiteScope }) {
+  const { collapsed, toggle } = useSidebar()
+  const { lastUpdatedAt } = useLiveIndicator()
+  // * The site's name: the demo's site record, or on a share link the dashboard read's own (usePublicSiteIdentity).
+  const site = usePublicSiteIdentity(scope.siteId)
+  const meta = usePublicPageMeta(scope)
+  const PageIcon = meta?.icon
+
+  return (
+    <div className="hidden md:flex items-center justify-between shrink-0 px-3 pt-1.5 pb-1">
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={toggle}
+          className="w-9 h-9 flex items-center justify-center text-neutral-400 hover:text-white rounded-none hover:bg-white/[0.06] transition-colors ease-apple"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <SidebarSimple className="size-5" weight={collapsed ? 'regular' : 'fill'} />
+        </button>
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm font-medium">
+          <span className="inline-flex items-center gap-1 text-neutral-500">Pulse</span>
+          {site?.name && (
+            <>
+              <CaretRight className="w-3 h-3 text-neutral-600" />
+              <span className="inline-flex max-w-[180px] items-center gap-2 text-neutral-500">
+                {site.domain && (
+                  <SiteFavicon
+                    domain={site.domain}
+                    name={site.name}
+                    size={14}
+                    className="w-3.5 h-3.5 rounded-none object-contain shrink-0"
+                  />
+                )}
+                <span className="truncate">{site.name}</span>
+              </span>
+            </>
+          )}
+          {meta && PageIcon && (
+            <>
+              <CaretRight className="w-3 h-3 text-neutral-600" />
+              {meta.parent && (
+                <>
+                  <Link href={meta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                    <meta.parent.icon className="w-3.5 h-3.5" />
+                    {meta.parent.title}
+                  </Link>
+                  <CaretRight className="w-3 h-3 text-neutral-600" />
+                </>
+              )}
+              <span className="inline-flex items-center gap-1 text-neutral-400">
+                <PageIcon className="w-3.5 h-3.5" />
+                {meta.title}
+              </span>
+            </>
+          )}
+        </nav>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {lastUpdatedAt != null && <UpdatedIndicator lastUpdatedAt={lastUpdatedAt} />}
+        {scope.demo && (
+          <>
+            <DemoLabel />
+            <TryPulseFreeButton />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Tells the page that frames the demo (the marketing home page's hero) that this page has
+ * drawn real numbers, once: the dashboard marks the live indicator when its first read
+ * lands. Until the hero hears it, it keeps its capture on screen, so a frame that is slow,
+ * blocked or failing is never seen. Outside a frame it does nothing (lib/scope/embed.ts).
+ *
+ * Two steps after the data: the frame has painted before the message can reach the parent.
+ */
+function PublicEmbedReady() {
+  const drawn = useLiveIndicator().lastUpdatedAt != null
+  useEffect(() => {
+    if (!drawn) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(postEmbedReady, 0)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      if (timer !== undefined) clearTimeout(timer)
+    }
+  }, [drawn])
+  return null
 }
 
 export default function DashboardShell({
@@ -486,15 +628,28 @@ export default function DashboardShell({
   const onSitePage = pathname.startsWith('/sites/')
   const pageSiteId = onSitePage ? siteId : null
 
+  // * Under a public scope (/demo, /share/<id>, PUL-34) this is the same shell with the
+  // * account taken out. The palette, the shortcuts and their overlay are not mounted at
+  // * all: every destination they offer is a member route, and `g` + a letter reads the
+  // * site from the route's `id`, which on /share/<id> would build a /sites/<id> link.
+  const scope = useOptionalSiteScope()
+  const publicScope = scope?.mode === 'public' ? scope : null
+
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
-      <ShortcutHandler
-        onShowOverlay={() => setShortcutsOpen(true)}
-        onOpenPalette={() => setPaletteOpen(true)}
-      />
-      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} currentSiteId={pageSiteId ?? undefined} />
+      {publicScope ? (
+        <PublicEmbedReady />
+      ) : (
+        <>
+          <ShortcutHandler
+            onShowOverlay={() => setShortcutsOpen(true)}
+            onOpenPalette={() => setPaletteOpen(true)}
+          />
+          <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} currentSiteId={pageSiteId ?? undefined} />
+        </>
+      )}
       {/* h-[100dvh], not h-screen: on mobile Safari/Chrome `100vh` is the
           LARGEST viewport (toolbars retracted), so a h-screen app shell puts its
           bottom edge permanently underneath the browser chrome — the last row of
@@ -510,7 +665,7 @@ export default function DashboardShell({
         />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
-          <GlassTopBar siteId={pageSiteId} />
+          {publicScope ? <PublicTopBar scope={publicScope} /> : <GlassTopBar siteId={pageSiteId} />}
           {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth.
               The mr-3/mb-3 gutter is a DESKTOP inset: it balances the sidebar
               column on the left. Below md there is no sidebar, so the same

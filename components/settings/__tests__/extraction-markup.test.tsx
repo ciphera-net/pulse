@@ -46,6 +46,7 @@ vi.mock('@/lib/setup/context', () => ({
   useSetup: () => ({ pendingPlan }),
 }))
 
+vi.mock('@ciphera-net/facet-hold', async () => (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 import SiteIntegrationsTab from '@/components/settings/unified/tabs/SiteIntegrationsTab'
 import SetupRail from '@/components/setup/SetupRail'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'

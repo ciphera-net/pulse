@@ -28,7 +28,6 @@ import {
   User,
   Lock,
   DeviceMobile,
-  EnvelopeSimple,
   Compass,
 } from '@phosphor-icons/react'
 import { TOUR_MD_QUERY, TOUR_REQUEST_KEY, TOUR_START_EVENT } from '@/lib/tour/constants'
@@ -181,11 +180,6 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
                   </CommandItem>
                 )
               })}
-              <CommandItem value="page-notifications" onSelect={() => go('/notifications')}>
-                <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-                <span><HighlightMatch text="Notifications" query={search} /></span>
-                <CommandShortcut>g n</CommandShortcut>
-              </CommandItem>
             </CommandGroup>
             <CommandSeparator />
           </>
@@ -331,15 +325,11 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
           </CommandItem>
           <CommandItem value="settings-account-devices" onSelect={() => go('/settings/account/devices')}>
             <DeviceMobile size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Trusted Devices" query={search} /></span>
+            <span><HighlightMatch text="Devices" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-account-notifications" onSelect={() => go('/settings/account/notifications')}>
             <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="Notification Preferences" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-account-security-alerts" onSelect={() => go('/settings/account/security-alerts')}>
-            <EnvelopeSimple size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Security Alert Emails" query={search} /></span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

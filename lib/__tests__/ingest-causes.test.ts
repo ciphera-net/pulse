@@ -2,22 +2,18 @@ import { describe, it, expect } from 'vitest'
 import {
   INGEST_REJECTION_CAUSES,
   INGEST_CAUSE_LABEL,
-  INGEST_CAUSE_CLAUSE,
   isIngestRejectionCause,
   knownCauses,
 } from '@/lib/ingest-causes'
 
 /**
- * The point of this module is that ONE key set feeds two registers. These tests
- * pin that, because the failure it prevents is silent: a fourth cause added to
- * one map and not the other renders on the notification card and vanishes from
- * the Monitoring tab (or the reverse), and nothing type-checks that away once
- * the maps have drifted apart.
+ * The point of this module is that ONE key set feeds the Monitoring tab's
+ * labels. These tests pin that, because the failure it prevents is silent: a
+ * fourth cause the server publishes with no label would vanish from the tab.
  */
-describe('ingest causes — one key set, two registers', () => {
-  it('both registers cover exactly the published causes, and nothing else', () => {
+describe('ingest causes — one key set', () => {
+  it('the labels cover exactly the published causes, and nothing else', () => {
     expect(Object.keys(INGEST_CAUSE_LABEL).sort()).toEqual([...INGEST_REJECTION_CAUSES].sort())
-    expect(Object.keys(INGEST_CAUSE_CLAUSE).sort()).toEqual([...INGEST_REJECTION_CAUSES].sort())
   })
 
   it('the published order is the server\'s order — it must not be alphabetised', () => {
@@ -26,13 +22,11 @@ describe('ingest causes — one key set, two registers', () => {
     expect(INGEST_REJECTION_CAUSES).toEqual(['plan_ceiling', 'rate_limited', 'outdated_script'])
   })
 
-  it('the two registers are genuinely different registers', () => {
-    // A noun phrase for a list beside a chip; a clause for a sentence. If these
-    // ever collapse into one string, one of the two surfaces is reading wrong.
+  it('the labels are lower-case noun phrases', () => {
+    // The row reads "[● Some events rejected] plan ceiling, outdated script";
+    // a capital there would look like a proper noun.
     for (const c of INGEST_REJECTION_CAUSES) {
-      expect(INGEST_CAUSE_LABEL[c]).not.toBe(INGEST_CAUSE_CLAUSE[c])
       expect(INGEST_CAUSE_LABEL[c]).toBe(INGEST_CAUSE_LABEL[c].toLowerCase())
-      expect(INGEST_CAUSE_CLAUSE[c]).toBe(INGEST_CAUSE_CLAUSE[c].toLowerCase())
     }
   })
 

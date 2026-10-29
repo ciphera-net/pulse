@@ -1,4 +1,4 @@
-import type { PathTransition } from '@/lib/api/journeys'
+import type { JourneyFlow } from '@/lib/api/journeys'
 import { aggregateJourney } from './aggregate'
 import {
   buildLinks,
@@ -10,7 +10,9 @@ import {
 } from './chain'
 
 // ---------------------------------------------------------------------------
-// Pure Sankey layout for the journeys flow view. Ports SankeyJourney's
+// Pure Sankey layout for the journeys flow view, from the bounded flow the
+// server sends (GET /journeys/flow), re-sliced at the Paths value by
+// aggregate.ts and chain.ts. Ports SankeyJourney's
 // imperative buildData + d3 positioning into testable math: thin node strips
 // scaled to a shared link scale, columns justified edge-to-edge across the
 // given width, link endpoints stacked within each strip, and the ?lens=
@@ -56,7 +58,8 @@ export interface SankeyStepMeta {
   index: number
   /** Left edge of the step's column. */
   x: number
-  visitors: number
+  /** The column's exact session total (the server's), not the drawn links' sum. */
+  sessions: number
   dropOffPercent: number
 }
 
@@ -66,10 +69,14 @@ export interface SankeyLayoutResult {
   steps: SankeyStepMeta[]
   width: number
   height: number
+  /**
+   * Sessions on (other)→(other) hops at this Paths value, across the whole
+   * chart (not only the lens): counted, not drawn.
+   */
+  undrawnOtherHops: number
 }
 
 export interface SankeyLayoutOptions {
-  depth: number
   maxPagesPerStep: number
   width: number
   lens?: string | null
@@ -81,19 +88,20 @@ const EMPTY = (width: number): SankeyLayoutResult => ({
   steps: [],
   width,
   height: MIN_HEIGHT,
+  undrawnOtherHops: 0,
 })
 
 export function layoutSankey(
-  transitions: PathTransition[],
+  flow: JourneyFlow,
   opts: SankeyLayoutOptions,
 ): SankeyLayoutResult {
-  const { depth, maxPagesPerStep, width, lens } = opts
-  if (transitions.length === 0 || width <= 0) return EMPTY(width)
+  const { maxPagesPerStep, width, lens } = opts
+  if (width <= 0) return EMPTY(width)
 
-  const columns = aggregateJourney(transitions, { depth, maxPagesPerStep })
+  const columns = aggregateJourney(flow, { maxPagesPerStep })
   if (columns.length === 0) return EMPTY(width)
 
-  const allLinks = buildLinks(transitions, columns)
+  const { links: allLinks, undrawnOtherHops } = buildLinks(flow, columns)
 
   // * Node order: aggregated pages first (count-desc per step, (other) last),
   // * then any link endpoints aggregation didn't produce.
@@ -221,20 +229,18 @@ export function layoutSankey(
     })
   }
 
-  // * Per-step visitors (entry column counts departures, later columns count
-  // * arrivals) and drop-off vs the previous column.
-  const steps: SankeyStepMeta[] = stepIndices.map((step) => {
-    const visitors = nodes
-      .filter((n) => n.step === step)
-      .reduce((s, n) => s + (step === 0 ? sum(outBy.get(n.id)) : sum(inBy.get(n.id))), 0)
-    return { index: step, x: stepX.get(step) ?? 0, visitors, dropOffPercent: 0 }
-  })
-  for (let i = 1; i < steps.length; i++) {
-    const prev = steps[i - 1].visitors
-    if (prev > 0) {
-      steps[i].dropOffPercent = Math.round(((steps[i].visitors - prev) / prev) * 100)
-    }
-  }
+  // * Step headers: each column's exact session total and the drop-off between
+  // * those totals, as aggregate.ts computed them. Not the drawn links' sum,
+  // * which leaves out every session on an undrawn (other)→(other) hop; the
+  // * footer states those instead. The lens keeps the same headers: a column's
+  // * total does not change with what is highlighted in it.
+  const columnByIndex = new Map(columns.map((c) => [c.index, c]))
+  const steps: SankeyStepMeta[] = stepIndices.map((step) => ({
+    index: step,
+    x: stepX.get(step) ?? 0,
+    sessions: columnByIndex.get(step)?.sessions ?? 0,
+    dropOffPercent: columnByIndex.get(step)?.dropOffPercent ?? 0,
+  }))
 
-  return { nodes, links: laidOut, steps, width, height }
+  return { nodes, links: laidOut, steps, width, height, undrawnOtherHops }
 }

@@ -377,25 +377,6 @@ export function SitesListSkeleton({ rows = 4 }: { rows?: number }) {
   )
 }
 
-// ─── Notifications list skeleton ─────────────────────────────
-
-export function NotificationsListSkeleton() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 p-4 rounded-none border border-neutral-800">
-          <SkeletonCircle className="h-10 w-10 shrink-0" />
-          <div className="flex-1 space-y-2">
-            <SkeletonLine className="h-4 w-3/4" />
-            <SkeletonLine className="h-3 w-1/2" />
-          </div>
-          <SkeletonLine className="h-3 w-16 shrink-0" />
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ─── Settings form skeleton ──────────────────────────────────
 
 export function SettingsFormSkeleton() {

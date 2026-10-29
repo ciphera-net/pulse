@@ -12,7 +12,7 @@ import DashboardChrome from '@/components/dashboard/DashboardChrome'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
 import SessionTakeover from '@/components/auth/SessionTakeover'
-import { isAuthedAppRoute, isReportRoute, isStandaloneRoute } from '@/lib/auth/appRoutes'
+import { isAuthedAppRoute, isPublicSiteRoute, isReportRoute, isStandaloneRoute } from '@/lib/auth/appRoutes'
 import { ActiveSiteProvider } from '@/components/settings/active-site'
 import ThemeSync from '@/components/theme/ThemeSync'
 
@@ -29,13 +29,13 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // is the authenticated home (middleware redirects a signed-in `/` here).
   // /pricing, /integrations and /installation left this list at B7 (06-10-2026):
   // they render in the marketing app, and the Ingress never sends them here.
-  const isDashboardPage = pathname === '/sites' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
+  const isDashboardPage = pathname === '/sites' || pathname === '/sites/new' || pathname.startsWith('/settings')
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
   // Auth callback is a transient route that only renders <LoadingOverlay> while
   // exchanging the OAuth code. The app shell must not mount here — it would
-  // fire layout-level data hooks (NotificationCenter polling, sites via
-  // UnifiedSettingsModal, organizations) using the stale pre-login session,
+  // fire layout-level data hooks (sites via UnifiedSettingsModal,
+  // organizations) using the stale pre-login session,
   // all of which 403 and create the post-login flicker / slow-load.
   const isAuthCallback = pathname.startsWith('/auth/callback')
 
@@ -49,6 +49,16 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const isAppRoute = isAuthedAppRoute(pathname)
 
   if (isAuthCallback) {
+    return <>{children}</>
+  }
+
+  // * /demo and a share link (/share/<id>) with every page under them (PUL-34): the
+  // * public view of one site. Their own layouts mount the public shell (sidebar and
+  // * top bar included), so neither the marketing header and footer nor the member
+  // * shell wraps them, for a signed-in visitor as for an anonymous one. The branch is
+  // * decided by the path alone, never by the session: the edge caches /demo* for 300 s
+  // * under a key that ignores cookies, so the HTML must not depend on who is looking.
+  if (isPublicSiteRoute(pathname)) {
     return <>{children}</>
   }
 
@@ -71,7 +81,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return null
   }
 
-  // Authenticated dashboard pages (site pages, home, notifications, settings):
+  // Authenticated dashboard pages (site pages, home, settings):
   // ONE DashboardShell, mounted here for all of them.
   //
   // Site pages used to take their shell from the sites layout instead
@@ -107,7 +117,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Signed-in visitors on any remaining public route (/demo, the claim pages,
+  // Signed-in visitors on any remaining public route (the claim pages,
   // /login, …) get the same public chrome as anonymous visitors — the legacy
   // pre-Facet app Header that used to render here was removed 07-08-2026 (app
   // surfaces belong to the DashboardShell lists above). The marketing pages
@@ -152,7 +162,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     // One app-wide honour of `prefers-reduced-motion` — every framer-motion
-    // consumer (settings bottom-sheet, accordions, notification panel, …) drops
+    // consumer (settings bottom-sheet, accordions, the onboarding chip, …) drops
     // transform/opacity animation to an instant cut when the OS asks for it.
     <MotionConfig reducedMotion="user">
       <ErrorBoundary>

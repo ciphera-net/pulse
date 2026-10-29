@@ -11,7 +11,7 @@ import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { useOutboundLinks } from '@/lib/swr/dashboard'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { type DimensionFilter } from '@/lib/filters'
 import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
 
@@ -49,6 +49,8 @@ interface OutboundProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): every list this card fetches on its own uses it instead of the dates. */
+  liveMinutes?: number
   /**
    * The goal counts' imported-history provenance (M12-f). When imported days
    * are included, the card says its numbers are Pulse's own and where the
@@ -101,10 +103,10 @@ function DestinationIcon({ host, failed, onFail }: { host: string; failed: boole
   )
 }
 
-export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, goalsImported }: OutboundProps) {
+export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, liveMinutes, goalsImported }: OutboundProps) {
   const [activeTab, setActiveTab] = useState<Tab>('domains')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
-  const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period)
+  const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period, liveMinutes)
 
   const rows = useMemo<Record<Tab, Row[]>>(() => {
     const urls = data?.urls ?? []
@@ -238,7 +240,7 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
                           {share}
                         </span>
                       )}
-                      <span className="text-sm font-semibold text-neutral-400">{formatNumber(row.clicks)}</span>
+                      <CompactNumber value={row.clicks} className="text-sm font-semibold text-neutral-400" />
                     </div>
                   </>
                 )

@@ -74,7 +74,6 @@ vi.mock('@/lib/swr/sites', () => ({
   useSites: () => ({ sites: [{ id: 's1', name: 'Example Site', domain: 'example.com' }], isLoading: false, error: undefined, mutate: vi.fn() }),
 }))
 vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: () => null }))
-vi.mock('@/components/notifications/NotificationCenter', () => ({ default: () => null }))
 vi.mock('@/components/onboarding/OnboardingChip', () => ({ default: () => null }))
 vi.mock('@/components/keyboard/ShortcutHandler', () => ({ ShortcutHandler: () => null }))
 vi.mock('@/components/keyboard/ShortcutsOverlay', () => ({ ShortcutsOverlay: () => null }))

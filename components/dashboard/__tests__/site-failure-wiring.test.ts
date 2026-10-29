@@ -17,7 +17,7 @@ const read = (rel: string) =>
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 
 describe('the dashboard states a failed site before its skeleton', () => {
-  const src = read('app/sites/[id]/page.tsx')
+  const src = read('components/surfaces/DashboardSurface.tsx')
 
   it('reads the site request\'s error', () => {
     expect(src).toMatch(/const\s*\{\s*data:\s*siteRecord,\s*error:\s*siteError[^}]*\}\s*=\s*useSite\(siteId\)/)

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { usePagePreview } from '@/lib/swr/dashboard'
+import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 import type { GoalCountStat, ImportedProvenance, ScrollDepthDistribution } from '@/lib/api/stats'
 import ScrollDepthBars from './ScrollDepthBars'
 import GoalStats from './GoalStats'
@@ -21,10 +22,10 @@ interface ContentSignalsProps {
   goalCounts: GoalCountStat[]
   siteId: string
   dateRange: { start: string; end: string }
-  // The public share surface (02-09-2026): the numbers on this card already
-  // ride the floored dashboard payload, but the page-preview capture and the
-  // events drill-down hit member-strict endpoints — off means neither fetch
-  // ever fires, and the scroll tab renders its rails fallback.
+  // A customer's share link (02-09-2026): the numbers on this card already ride
+  // the dashboard payload, but its events drill-down hits endpoints a
+  // public-scoped read is not served — off means that fetch never fires. The demo
+  // site is served them, so it keeps this on.
   memberFeatures?: boolean
   /**
    * The Events card's imported-history provenance (M12-f), server-said. When
@@ -32,6 +33,8 @@ interface ContentSignalsProps {
    * Scroll tab puts its unit) says so, in M11's words (owner pick A, W-M12-5).
    */
   goalsImported?: ImportedProvenance | null
+  /** Realtime mode's rolling window in minutes (PULSE-192), for the Events tab's property breakdown. */
+  liveMinutes?: number
 }
 
 /** W-M12-5: the Events card's header word, the rail's own vocabulary (M11). */
@@ -39,16 +42,21 @@ export const EVENTS_IMPORTED_WORD = 'incl. imported days'
 
 type Tab = 'scroll' | 'events'
 
-export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported }: ContentSignalsProps) {
+export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported, liveMinutes }: ContentSignalsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('scroll')
 
   // The full-page capture behind the scroll tab's stacked sheets. null =
   // no capture (a state — the tab renders its rails fallback), and a fetch
   // error falls back the same way. Since 02-09-2026 the share surface gets
-  // the same backdrop through the public endpoint (is_public sites only) —
-  // memberFeatures now routes the fetch instead of suppressing it; only the
-  // events drill-down below stays member-gated.
-  const { data: pagePreview } = usePagePreview(siteId, memberFeatures)
+  // the same backdrop through the public endpoint (is_public sites only).
+  //
+  // Which endpoint is a question about the READER, not about which drill-downs
+  // exist: the demo site is served every drill-down (memberFeatures stays on) and
+  // still reads this capture through the public group, because it has no session.
+  // So a public scope, or the legacy off switch, takes the public endpoint.
+  const scope = useOptionalSiteScope()
+  const publicRead = !memberFeatures || scope?.mode === 'public'
+  const { data: pagePreview } = usePagePreview(siteId, !publicRead)
 
   const scrollSessions = scrollDepth?.total_sessions ?? 0
 
@@ -73,7 +81,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         {activeTab === 'scroll' && scrollSessions > 0 && (
           <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
-            {formatNumber(scrollSessions)} {scrollSessions === 1 ? 'session' : 'sessions'}
+            <CompactNumber value={scrollSessions} /> {scrollSessions === 1 ? 'session' : 'sessions'}
           </span>
         )}
         {activeTab === 'events' && goalsImported?.included === true && (
@@ -87,7 +95,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         {activeTab === 'scroll' ? (
           <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare siteId={siteId} />
         ) : (
-          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} />
+          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} liveMinutes={liveMinutes} />
         )}
       </div>
     </div>

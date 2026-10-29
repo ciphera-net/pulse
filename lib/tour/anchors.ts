@@ -18,9 +18,9 @@
  * ⚠️ Facts a tour implementation must respect (measured, 24-08-2026):
  *  - The dashboard deck is client-only behind a ≥300 ms skeleton with no ready
  *    signal, so steps must WAIT FOR the selector — never a fixed delay.
- *  - `notification-bell` and `onboarding-chip` each render TWICE (desktop bar +
- *    mobile header). Pick the visible one (check `offsetParent`), not the first
- *    DOM match, or a phone tour highlights a `display:none` node.
+ *  - `onboarding-chip` renders TWICE (desktop bar + mobile header). Pick the
+ *    visible one (check `offsetParent`), not the first DOM match, or a phone
+ *    tour highlights a `display:none` node.
  *  - `site-switcher` exists on md+ ONLY — the mobile header has no equivalent
  *    control. That step must be skipped below the breakpoint, not degraded.
  *  - `onboarding-chip` is absent once the checklist is dismissed or complete.
@@ -41,7 +41,6 @@ export const TOUR_ANCHORS = {
   dateRangePicker: 'date-range-picker',
   siteSwitcher: 'site-switcher',
   sidebarNav: 'sidebar-nav',
-  notificationBell: 'notification-bell',
   onboardingChip: 'onboarding-chip',
   // ── Instruments ──
   uptimePanel: 'uptime-panel',

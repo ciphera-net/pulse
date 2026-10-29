@@ -1,5 +1,6 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 import type { IngestRejectionCause } from '@/lib/ingest-causes'
+import { sitePath, type PublicSiteRef, type SiteRef } from '@/lib/scope/site-ref'
 
 export type GeoDataLevel = 'full' | 'country' | 'none'
 
@@ -54,7 +55,11 @@ export interface LearnedDynamicParent {
 
 export interface Site {
   id: string
-  user_id: string
+  /**
+   * Absent from a PUBLIC read of the record (see PublicSite): the public view names no owner. Nothing
+   * on the dashboard pages reads it; a member read always carries it.
+   */
+  user_id?: string
   domain: string
   /**
    * The domain rendered for a human: a site stored as "xn--mller-kva.de" reads
@@ -65,6 +70,13 @@ export interface Site {
   name: string
   timezone?: string
   is_public?: boolean
+  // The sample site (PUL-34): public to everyone, synthetic data. Only the public view and the share
+  // settings carry it; absent means false.
+  is_demo?: boolean
+  // The pages a share link serves, in the backend's spelling (dashboard, pages, journeys, funnels,
+  // performance, uptime, search, cdn). A string[] on purpose: a newer backend may list a page this
+  // build does not know, and that is not an error.
+  share_pages?: string[]
   has_password?: boolean
   excluded_paths?: string[]
   page_rules?: PageRule[]
@@ -90,11 +102,10 @@ export interface Site {
   // writes the same columns either way, and this controls whether anyone can
   // read them at visitor grain. Default false; flipping it is audit-logged.
   visitor_views_enabled?: boolean
-  // How long a returning reader keeps ONE visitor_id (migration 182):
-  // -1 session only · 0 calendar month (the default) · 1 / 7 / 30 days.
-  // Optional on the type because the PUBLIC share payload does not carry it —
-  // read it through lib/visitors/identityWindow's identityWindowOf, which
-  // keeps "missing" as UNKNOWN rather than quietly reading it as the default.
+  // RETIRED: Pulse recognises a visitor for one day at most, whatever the value, so the
+  // stored value has no effect. The field stays because old rows and the audit trail still
+  // carry it. Do not read it for display, and do not send it in an update (the Privacy tab
+  // no longer does; if sent, it must still be one of -1, 0, 1, 7, 30).
   identity_window_days?: number
   // Privacy-signal toggles (PULSE-164): honour the browser's Do Not Track /
   // Global Privacy Control headers. Both default true server-side; undefined
@@ -118,8 +129,45 @@ export interface Site {
   last_event_at?: string | null
   install_status?: InstallStatus
   created_at: string
-  updated_at: string
+  /** Absent from a public read, like user_id. */
+  updated_at?: string
   deleted_at?: string | null
+}
+
+/**
+ * The site record a PUBLIC read answers: GET /public/sites/:id (pulse-backend PublicSiteView, in
+ * internal/api/public_share.go). What a page needs to draw a site (its name, domain, timezone, which data
+ * it collects), and nothing that configures it: no owner, no excluded paths, page rules, password flag,
+ * retention or identity window, no install status, and no `updated_at`.
+ *
+ * Every field below is always present on the wire; `first_event_at` and `last_event_at` are null for a
+ * site that has not received an event. A PublicSite is assignable to Site (every field Site has and this
+ * lacks is optional there), which is how the hooks that read the record under either scope return one
+ * type: code that reads a field a public read does not carry sees `undefined`, never a made-up value.
+ * Only the member record carries `has_password`, `data_retention_months`, `identity_window_days` and the
+ * rest of the configuration, so a page that shows them must not render in public mode.
+ */
+export interface PublicSite {
+  id: string
+  domain: string
+  display_domain: string
+  name: string
+  timezone: string
+  is_public: boolean
+  is_demo: boolean
+  share_pages: string[]
+  collect_page_paths: boolean
+  collect_referrers: boolean
+  collect_device_info: boolean
+  collect_geo_data: GeoDataLevel
+  collect_screen_resolution: boolean
+  collect_audience_data: boolean
+  hide_unknown_locations: boolean
+  show_referrer_domains: boolean
+  uptime_enabled: boolean
+  first_event_at: string | null
+  last_event_at: string | null
+  created_at: string
 }
 
 export type InstallStatus = 'never_installed' | 'active' | 'stalled'
@@ -135,8 +183,8 @@ export interface InstallStatusResponse {
  *  these three words (pulse-backend internal/ingestdrops/causes.go).
  *
  *  🔴 DECLARED ONCE, IN `lib/ingest-causes.ts`, and re-exported here for the API
- *  surface's own readers. The notification card renders the same three causes in
- *  a different register; a second union here is how the two would drift. */
+ *  surface's own readers. The Monitoring tab renders the same three causes; a
+ *  second union here is how the two would drift. */
 export type { IngestRejectionCause }
 
 export interface IngestHealthResponse {
@@ -220,10 +268,10 @@ export interface UpdateSiteRequest {
   data_retention_months?: number
   // Visitor-grain read surface (display gate — see the Site interface above)
   visitor_views_enabled?: boolean
-  // The identity window — see the Site interface above. A POINTER on the
-  // backend, so a tab that omits it merges against the stored value; only the
-  // Privacy tab carries it, and it must never be sent as 0 "to be safe": 0 and
-  // 30 are different keys, and any change re-mints every identity on the site.
+  // RETIRED: Pulse recognises a visitor for one day at most, whatever the value, so the
+  // stored value has no effect. The field stays because old rows and the audit trail still
+  // carry it. Do not read it for display, and do not send it in an update (the Privacy tab
+  // no longer does; if sent, it must still be one of -1, 0, 1, 7, 30).
   identity_window_days?: number
   // Privacy-signal toggles — see the Site interface above. Omitted by any tab
   // that does not own them so it never resets the stored value.
@@ -267,8 +315,16 @@ export async function getSitesOverview(): Promise<SiteOverview[]> {
   return response?.sites || []
 }
 
-export async function getSite(id: string): Promise<Site> {
-  return apiRequest<Site>(`/sites/${id}`)
+/**
+ * The site record. A plain id is the member read (the full record); a public ref is GET /public/sites/:id,
+ * which the backend serves to the demo site only (a share link reads `site` out of its dashboard
+ * payload instead), and answers with the public subset.
+ */
+export async function getSite(site: string): Promise<Site>
+export async function getSite(site: PublicSiteRef): Promise<PublicSite>
+export async function getSite(site: SiteRef): Promise<Site | PublicSite>
+export async function getSite(site: SiteRef): Promise<Site | PublicSite> {
+  return apiRequest<Site | PublicSite>(sitePath(site))
 }
 
 /**
@@ -306,18 +362,20 @@ export async function updateSite(id: string, data: UpdateSiteRequest): Promise<S
   })
 }
 
-export async function deleteSite(id: string): Promise<{ message: string; purge_at: string }> {
+export async function deleteSite(id: string, send: SendOptions = {}): Promise<{ message: string; purge_at: string }> {
   return apiRequest<{ message: string; purge_at: string }>(`/sites/${id}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 
 export type ResetModule = 'analytics' | 'journeys' | 'funnels' | 'uptime' | 'pagespeed' | 'cdn' | 'search_console'
 
-export async function resetSiteData(id: string, modules: ResetModule[]): Promise<{ message: string; modules: string[] }> {
+export async function resetSiteData(id: string, modules: ResetModule[], send: SendOptions = {}): Promise<{ message: string; modules: string[] }> {
   return apiRequest<{ message: string; modules: string[] }>(`/sites/${id}/reset`, {
     method: 'POST',
     body: JSON.stringify({ modules }),
+    keepalive: send.keepalive,
   })
 }
 
@@ -347,9 +405,10 @@ export async function restoreSite(id: string): Promise<void> {
   })
 }
 
-export async function permanentDeleteSite(id: string): Promise<void> {
+export async function permanentDeleteSite(id: string, send: SendOptions = {}): Promise<void> {
   await apiRequest(`/sites/${id}/permanent`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 

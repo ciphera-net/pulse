@@ -58,12 +58,11 @@ vi.mock('../CreateInviteLinkModal', () => ({
 }))
 vi.mock('../InviteLinksSection', () => ({ default: () => <div data-testid="invite-links" /> }))
 
-// Renders only its confirm affordance — the dialog primitive itself belongs
-// to ConfirmDialog's own suite, not this tab's.
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, onConfirm }: any) =>
-    open ? <button onClick={onConfirm}>Confirm remove</button> : null,
-}))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred removal is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 vi.mock('@ciphera-net/facet', () => ({
   // `size` carries through as `data-size` (WorkspaceAuditTab precedent):
@@ -86,6 +85,7 @@ vi.mock('@ciphera-net/facet', () => ({
 
 import WorkspaceMembersTab from '../WorkspaceMembersTab'
 import { toast } from '@ciphera-net/facet'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 function sourceWithoutComments(path: string): string {
   const raw = readFileSync(path, 'utf8')
@@ -127,8 +127,10 @@ beforeEach(() => {
   updateOrganization.mockReset().mockResolvedValue({ id: 'org1', name: 'Renamed', slug: 'quiet-harbour' })
   getOrganizationMembers.mockReset().mockResolvedValue(members)
   getInviteLinks.mockReset().mockResolvedValue([])
-  removeOrganizationMember.mockClear()
+  removeOrganizationMember.mockReset().mockResolvedValue(undefined)
   vi.mocked(toast.success).mockClear()
+  vi.mocked(toast.error).mockClear()
+  resetDeferred()
   document.body.innerHTML = ''
 })
 
@@ -249,12 +251,59 @@ describe('WorkspaceMembersTab structure and copy (settings overhaul, 16-09-2026)
     expect(src).not.toMatch(/[—–]/)
   })
 
-  it('confirms a remove with subject-first, active-voice toast copy, not a passive "has been"', async () => {
+  it('removes a member through the hold: hidden at once, sent only when the Undo window runs out', async () => {
     renderTab()
     await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
     fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm remove' }))
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('pending@x.com removed'))
+    const dialog = await screen.findByRole('dialog', { name: 'Remove member?' })
+    expect(dialog.textContent).toContain('Remove pending@x.com from the team?')
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to remove' }))
+
+    // Gone from the roster now; nothing sent yet.
+    await waitFor(() => expect(screen.queryByTestId('member-row-u-adm')).toBeNull(), { timeout: 2000 })
+    expect(removeOrganizationMember).not.toHaveBeenCalled()
+    // The Undo bar's line: subject first, active voice.
+    expect(deferred[0]!.message).toBe('pending@x.com removed')
+
+    getOrganizationMembers.mockResolvedValueOnce(members.filter(m => m.user_id !== 'u-adm'))
+    await commitLast()
+    expect(removeOrganizationMember).toHaveBeenCalledWith('org1', 'u-adm', { keepalive: false })
+    await waitFor(() => expect(getOrganizationMembers).toHaveBeenCalledTimes(2))
+    expect(screen.queryByTestId('member-row-u-adm')).toBeNull()
+  })
+
+  it('Undo puts the member back and sends nothing', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByTestId('member-row-u-adm')).toBeNull(), { timeout: 2000 })
+
+    undoLast()
+    expect(await screen.findByTestId('member-row-u-adm')).toBeInTheDocument()
+    expect(removeOrganizationMember).not.toHaveBeenCalled()
+  })
+
+  it('a removal sent as the page closes passes keepalive through to the request', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to remove' }))
+    await commitLast({ keepalive: true })
+    expect(removeOrganizationMember).toHaveBeenCalledWith('org1', 'u-adm', { keepalive: true })
+  })
+
+  it('a failed removal brings the member back and says so', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
+    removeOrganizationMember.mockRejectedValueOnce(new Error('Server error'))
+    fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByTestId('member-row-u-adm')).toBeNull(), { timeout: 2000 })
+
+    await commitLast()
+    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(await screen.findByTestId('member-row-u-adm')).toBeInTheDocument()
   })
 })
 
@@ -275,7 +324,8 @@ describe('WorkspaceMembersTab row motion (round two, M5)', () => {
     }
     getOrganizationMembers.mockResolvedValueOnce([...members, newMember])
     fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm remove' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to remove' }))
+    await commitLast()
 
     const row = await screen.findByTestId('member-row-u-new')
     // A plain wrapper carries no inline style at all; a motion element commits
@@ -290,10 +340,10 @@ describe('WorkspaceMembersTab row motion (round two, M5)', () => {
     await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
     expect(screen.getByTestId('member-row-u-adm')).toBeInTheDocument()
 
-    getOrganizationMembers.mockResolvedValueOnce(members.filter(m => m.user_id !== 'u-adm'))
     fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirm remove' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to remove' }))
 
+    // The hold hides the row at once, and it leaves through AnimatePresence.
     await waitFor(() => expect(screen.queryByTestId('member-row-u-adm')).toBeNull(), { timeout: 2000 })
     expect(screen.getByTestId('member-row-u-you')).toBeInTheDocument()
   })

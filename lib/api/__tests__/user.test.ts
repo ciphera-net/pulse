@@ -22,7 +22,7 @@ vi.mock('../client', () => {
 })
 
 import apiRequest, { ApiError } from '../client'
-import { deleteAccount, ownedOrganizationsMessage } from '../user'
+import { deleteAccount, getDeletionPreview, ownedOrganizationsMessage } from '../user'
 
 const apiRequestSpy = vi.mocked(apiRequest)
 
@@ -85,6 +85,44 @@ describe('deleteAccount', () => {
     expect(err.status).toBe(409)
     expect(err.message).toContain('Acme')
     expect(err.message).toMatch(/transfer ownership/)
+  })
+})
+
+// PULSE-91 (Phase 4): the preview reads from Pulse now, not Ciphera ID — the
+// path carries no /auth prefix, so apiRequest routes it to pulse-api instead
+// of id-backend. deleteAccount above is unchanged: it still targets ID.
+describe('getDeletionPreview', () => {
+  beforeEach(() => apiRequestSpy.mockClear())
+
+  it('GETs /account/deletion-preview, no /auth prefix', async () => {
+    apiRequestSpy.mockResolvedValueOnce({ organizations: [] })
+
+    await getDeletionPreview()
+
+    expect(apiRequestSpy).toHaveBeenCalledTimes(1)
+    const [path] = apiRequestSpy.mock.calls[0]
+    expect(path).toBe('/account/deletion-preview')
+  })
+
+  it('returns the organizations the server names', async () => {
+    const org = {
+      id: 'o1',
+      name: 'Acme',
+      slug: 'acme',
+      member_count: 3,
+      other_admins: 1,
+      action_required: 'transfer_ownership' as const,
+      promotable_admins: ['u2'],
+    }
+    apiRequestSpy.mockResolvedValueOnce({ organizations: [org] })
+
+    expect(await getDeletionPreview()).toEqual([org])
+  })
+
+  it('falls back to [] when the server omits organizations', async () => {
+    apiRequestSpy.mockResolvedValueOnce({})
+
+    expect(await getDeletionPreview()).toEqual([])
   })
 })
 

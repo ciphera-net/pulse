@@ -8,11 +8,17 @@ import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import {
   Shield,
   SignIn,
+  SignOut,
   ShieldWarning,
   Password,
   ShieldCheck,
   ShieldSlash,
   TrashSimple,
+  Key,
+  Warning,
+  Fingerprint,
+  EnvelopeSimple,
+  UserPlus,
   type Icon,
 } from '@phosphor-icons/react'
 import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
@@ -35,6 +41,25 @@ const EVENT_LABELS: Record<string, string> = {
   '2fa_disabled': '2FA disabled',
   recovery_codes_regenerated: 'Recovery codes regenerated',
   account_deleted: 'Account deleted',
+  // Device identity (16-10-2026, OPS-17): the Devices tab's own actions,
+  // surfaced here as activity.
+  device_signed_out: 'Signed a browser out',
+  other_devices_signed_out: 'Signed out of every other browser',
+  sessions_revoked_by_operator: 'Sessions ended by Ciphera',
+  recovery_login: 'Signed in with the recovery phrase',
+  passkey_clone_warning: 'Passkey may have been copied',
+  // The rest of the server's allowlist (id-backend PersonVisibleAuditEvents):
+  // every event it sends has a label here, never a sentence-cased key.
+  user_created: 'Account created',
+  email_change_requested: 'Email change requested',
+  email_change: 'Email changed',
+  recovery_identity_enrolled: 'Recovery phrase set up',
+  recovery_reset: 'Password reset with the recovery phrase',
+  passkey_added: 'Passkey added',
+  passkey_removed: 'Passkey removed',
+  // A convicted reuse that proves somebody else held the sign-in (id-backend
+  // sign_in_used_twice, 16-10-2026); wording from the device-identity design §7.
+  sign_in_used_twice: 'A browser was signed out because its sign-in was used twice',
 }
 
 const EVENT_ICONS: Record<string, Icon> = {
@@ -47,6 +72,19 @@ const EVENT_ICONS: Record<string, Icon> = {
   '2fa_disabled': ShieldSlash,
   recovery_codes_regenerated: Password,
   account_deleted: TrashSimple,
+  device_signed_out: SignOut,
+  other_devices_signed_out: SignOut,
+  sessions_revoked_by_operator: ShieldWarning,
+  recovery_login: Key,
+  passkey_clone_warning: Warning,
+  user_created: UserPlus,
+  email_change_requested: EnvelopeSimple,
+  email_change: EnvelopeSimple,
+  recovery_identity_enrolled: Key,
+  recovery_reset: Key,
+  passkey_added: Fingerprint,
+  passkey_removed: Fingerprint,
+  sign_in_used_twice: ShieldWarning,
 }
 
 function getEventTone(eventType: string, outcome: string): ChipTone {
@@ -55,6 +93,12 @@ function getEventTone(eventType: string, outcome: string): ChipTone {
   if (eventType === '2fa_disabled') return 'warning'
   if (eventType === 'account_deleted') return 'danger'
   if (eventType === 'recovery_codes_regenerated') return 'warning'
+  if (eventType === 'sessions_revoked_by_operator') return 'warning'
+  if (eventType === 'recovery_login') return 'warning'
+  if (eventType === 'recovery_reset') return 'warning'
+  if (eventType === 'passkey_removed') return 'warning'
+  if (eventType === 'sign_in_used_twice') return 'danger'
+  if (eventType === 'passkey_clone_warning') return 'danger'
   return 'neutral'
 }
 
@@ -66,16 +110,31 @@ function sentenceCase(value: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
+/** Never the protocol name: a sign-in method reads as what it IS to the
+ *  person, never as what it is to the server (OPAQUE is "Password"). */
 function getMethodLabel(entry: AuditLogEntry): string | null {
   const method = entry.metadata?.method
   if (!method) return null
+  if (method === 'opaque') return 'Password'
   if (method === 'magic_link') return 'Magic link'
   if (method === 'passkey') return 'Passkey'
+  if (method === 'recovery_phrase') return 'Recovery phrase'
   return method as string
 }
 
+/**
+ * Events whose label is the whole story. id-backend records sign_in_used_twice
+ * with outcome "failure" and the reuse classifier's reason
+ * (successor_already_used, no_successor_recorded, ...): both are the
+ * operator's. From the person's side nothing failed, a browser was signed out
+ * to protect them, and the row says so in words. Without this the row showed a
+ * "Failed" chip and "Successor already used".
+ */
+const LABEL_IS_THE_STORY = new Set(['sign_in_used_twice'])
+
 function getFailureReason(entry: AuditLogEntry): string | null {
   if (entry.outcome !== 'failure') return null
+  if (LABEL_IS_THE_STORY.has(entry.event_type)) return null
   const reason = entry.metadata?.reason
   if (!reason) return null
   const labels: Record<string, string> = {
@@ -86,26 +145,6 @@ function getFailureReason(entry: AuditLogEntry): string | null {
     invalid_2fa: 'Invalid 2FA code',
   }
   return labels[reason as string] || sentenceCase(reason as string)
-}
-
-function parseBrowserName(ua: string): string {
-  if (!ua) return 'Unknown'
-  if (ua.includes('Firefox')) return 'Firefox'
-  if (ua.includes('Edg/')) return 'Edge'
-  if (ua.includes('Chrome')) return 'Chrome'
-  if (ua.includes('Safari')) return 'Safari'
-  if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera'
-  return 'Browser'
-}
-
-function parseOS(ua: string): string {
-  if (!ua) return ''
-  if (ua.includes('Mac OS X')) return 'macOS'
-  if (ua.includes('Windows')) return 'Windows'
-  if (ua.includes('Linux')) return 'Linux'
-  if (ua.includes('Android')) return 'Android'
-  if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS'
-  return ''
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -148,6 +187,10 @@ export default function SecurityActivityCard() {
     setError('')
     try {
       const data = await getUserActivity(PAGE_SIZE, currentOffset)
+      // The server decides what a person sees (the /auth/user/activity
+      // allowlist), so every entry it sends is rendered. A second filter here
+      // would be a silent second source of truth, and it would hide a new
+      // event type the server starts to send on purpose.
       const newEntries = data.entries ?? []
       setEntries(prev => append ? [...prev, ...newEntries] : newEntries)
       setTotalCount(data.total_count)
@@ -213,9 +256,6 @@ export default function SecurityActivityCard() {
                     const EventIcon = EVENT_ICONS[entry.event_type] || Shield
                     const method = getMethodLabel(entry)
                     const reason = getFailureReason(entry)
-                    const browser = entry.user_agent ? parseBrowserName(entry.user_agent) : null
-                    const os = entry.user_agent ? parseOS(entry.user_agent) : null
-                    const deviceStr = [browser, os].filter(Boolean).join(' on ')
                     const created = new Date(entry.created_at)
 
                     const prevKey = i > 0 ? dayKey(new Date(entries[i - 1].created_at), zone) : null
@@ -245,7 +285,7 @@ export default function SecurityActivityCard() {
                                   across two lines, doubling every row's height and
                                   reading as two separate events. */}
                               <span className="whitespace-nowrap font-medium text-foreground">{label}</span>
-                              {entry.outcome === 'failure' && (
+                              {entry.outcome === 'failure' && !LABEL_IS_THE_STORY.has(entry.event_type) && (
                                 <StatusChip tone="danger" dot className="shrink-0">Failed</StatusChip>
                               )}
                             </div>
@@ -259,8 +299,7 @@ export default function SecurityActivityCard() {
                                 <span className="font-medium">{sentenceCase(method)}</span>
                               )}
                               {reason && <span>{reason}</span>}
-                              {deviceStr && <span>{deviceStr}</span>}
-                              {entry.ip_address && <span className="font-mono">{entry.ip_address}</span>}
+                              {entry.user_agent && <span>{entry.user_agent}</span>}
                             </div>
                           </TD>
                           <TD

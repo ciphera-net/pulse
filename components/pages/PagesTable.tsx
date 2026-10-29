@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, CaretDown, CaretUp } from '@phosphor-icons/react'
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber, formatCompactNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { cn } from '@/lib/utils'
 import type { PageTableRow } from '@/lib/api/stats'
 
@@ -124,6 +125,14 @@ function Change({ delta }: { delta: number | null }) {
       {Math.round(delta)}%
     </span>
   )
+}
+
+// The four counts (PULSE-190: compact with the exact value on hover/focus) —
+// the rest of SortKey is rates/durations, already-formatted strings a compact
+// notation doesn't apply to.
+type CountKey = 'pageviews' | 'visitors' | 'entries' | 'exits'
+function isCountKey(key: SortKey): key is CountKey {
+  return key === 'pageviews' || key === 'visitors' || key === 'entries' || key === 'exits'
 }
 
 function cellValue(row: PageTableRow, key: SortKey): string {
@@ -253,8 +262,8 @@ export default function PagesTable({ rows, total, rangeLabel, showTitle = true }
           />
           <span className="hidden text-xs text-neutral-500 whitespace-nowrap sm:block">
             {query
-              ? `${formatNumber(shown.length)} of ${formatNumber(total ?? rows.length)}`
-              : `${formatNumber(total ?? rows.length)} pages`}
+              ? `${formatCompactNumber(shown.length)} of ${formatCompactNumber(total ?? rows.length)}`
+              : `${formatCompactNumber(total ?? rows.length)} pages`}
             {rangeLabel ? ` · ${rangeLabel}` : ''}
           </span>
         </div>
@@ -301,7 +310,7 @@ export default function PagesTable({ rows, total, rangeLabel, showTitle = true }
                         : 'text-neutral-500'
                     )}
                   >
-                    {cellValue(row, c.key)}
+                    {isCountKey(c.key) ? <CompactNumber value={row[c.key]} /> : cellValue(row, c.key)}
                   </span>
                 ))}
               </div>

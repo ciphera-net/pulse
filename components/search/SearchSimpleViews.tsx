@@ -2,7 +2,7 @@
 
 import { GlobeHemisphereWest, Monitor, Target } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { countryName } from '@/lib/utils/countryCodes'
 import { useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -16,7 +16,6 @@ import {
   deviceIcon,
   Pagination,
   ViewBody,
-  formatCompact,
   sortRows,
   SortHorizonNote,
   SORT_FETCH,
@@ -170,9 +169,9 @@ export function OpportunitiesView({ siteId, dateRange }: RangeProps) {
             <span className="relative min-w-0 flex-1 truncate text-sm text-white" title={row.query}>{row.query}</span>
             <div className="relative ml-3 flex shrink-0 items-center gap-3 text-sm tabular-nums">
               <span className={cn(OPP.position, 'flex justify-end')}><PositionBadge position={row.position} /></span>
-              <span className={cn('hidden sm:inline-block', OPP.impressions, 'text-right text-neutral-400')}>{formatNumber(row.impressions)}</span>
-              <span className={cn(OPP.clicks, 'text-right text-neutral-300')}>{formatNumber(row.clicks)}</span>
-              <span className={cn(OPP.potential, 'text-right font-medium text-brand-ink')}>&rarr; {formatCompact(row.potential_clicks)}</span>
+              <CompactNumber value={row.impressions} className={cn('hidden sm:inline-block', OPP.impressions, 'text-right text-neutral-400')} />
+              <CompactNumber value={row.clicks} className={cn(OPP.clicks, 'text-right text-neutral-300')} />
+              <span className={cn(OPP.potential, 'text-right font-medium text-brand-ink')}>&rarr; <CompactNumber value={row.potential_clicks} /></span>
             </div>
           </StaticRow>
         ))}

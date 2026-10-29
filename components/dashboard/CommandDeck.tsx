@@ -1,29 +1,31 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, ReferenceLine as VisxReferenceLine } from '@/components/ui/area-chart'
 import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { REALTIME_EMPTY_LINE } from '@/lib/dashboard/realtimeRange'
 import { Card } from '@ciphera-net/facet'
-import { formatNumber, formatDuration } from '@/lib/utils/format'
+import { formatCompactNumber, formatDuration } from '@/lib/utils/format'
 import Select from '@/components/ui/select'
 import { ChartLine } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { cn } from '@/lib/utils'
 import { formatDateShortUTC, formatTimeUTC, formatDateFullUTC, parseSiteWallClock } from '@/lib/utils/formatDate'
 import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { DailyStat, ImportedProvenance, Stats } from '@/lib/api/stats'
 import { importBoundaryDay, importBoundaryLabel, importBoundaryX, railIncludesImported } from '@/lib/dashboard/importBoundary'
-import { METRIC_TERMS, visitorsTerm } from '@/lib/dashboard/terms'
+import { METRIC_TERMS } from '@/lib/dashboard/terms'
 import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
+import { pairPreviousSeries } from '@/lib/dashboard/previousSeries'
 import type { MetricType } from '@/lib/dashboard/metrics'
-import type { IdentityWindowDays } from '@/lib/visitors/identityWindow'
 
 // ---------------------------------------------------------------------------
 // The command deck — Direction C's headline device (dashboard overhaul Phase 2,
@@ -65,13 +67,6 @@ interface CommandDeckProps {
   // False on the public share surface, where the backend clamps every read to
   // day buckets (F2) and an interval selector would be a dead control.
   intervalPicker?: boolean
-  // The site's identity window (Settings → Privacy → Visitor identity, since
-  // 11-09-2026). It changes what "Unique visitors" MEANS — on "Session only" a
-  // returning reader is never recognised — so the rail row's sentence and the
-  // toolbar InfoTip say so here, where the number is shown, not only where it
-  // is configured. Omitted on the share surface, whose payload lacks the
-  // column; the window-neutral registry sentence is used there.
-  identityWindowDays?: IdentityWindowDays
   /**
    * Imported-history provenance, as the responses said it (PULSE-118, dashboard
    * option 2): the current range's (the dashboard's `imported`) and the
@@ -79,6 +74,50 @@ interface CommandDeckProps {
    */
   imported?: ImportedProvenance | null
   prevImported?: ImportedProvenance | null
+  /**
+   * The previous period's series (PUL-19): the window before `dateRange`, same
+   * interval and same filters, drawn as a dashed grey line behind this one.
+   * Absent or empty: no comparison is drawn (All time, realtime, rolling
+   * windows, minute buckets, the share surface).
+   */
+  prevData?: DailyStat[] | null
+  prevRange?: { start: string; end: string } | null
+  /** The first day the dashboard has data for (data window `from`): earlier previous buckets stay empty. */
+  prevFloor?: string | null
+}
+
+// The previous period's ink: the established secondary-line token (grey in both
+// themes), so orange stays reserved for the period being read.
+const PREV_INK = 'var(--chart-line-secondary)'
+const PREV_DASH = '4 4'
+
+// Rates, durations and ratios are null in an hour with no visits (no
+// denominator). Every line that draws them plots that null AT ZERO (owner
+// decision 19-08-2026: "no disappearing charts"); the tooltip still reads the
+// null and shows '—'. Counts are never null there: an empty hour is a real 0.
+const plotsMissingAsZero = (key: string) =>
+  key === 'bounce_rate' || key === 'avg_duration' || key === 'pages_per_visit'
+
+/** A signed change, minus sign not hyphen: "−73%", "+4.2 pp", "New", or "—". */
+function formatChange(c: PctChangeResult): string {
+  if (!c) return '—'
+  if (c.type === 'new') return 'New'
+  const sign = c.value > 0 ? '+' : c.value < 0 ? '\u2212' : ''
+  return c.type === 'pp' ? `${sign}${Math.abs(c.value)} pp` : `${sign}${Math.abs(c.value)}%`
+}
+
+/** A signed whole-number difference: "+2", "−8", "0". */
+function formatDiff(d: number): string {
+  if (d === 0) return '0'
+  return `${d > 0 ? '+' : '\u2212'}${Math.abs(Math.round(d))}`
+}
+
+function LegendLine({ color, dash }: { color: string; dash?: string }) {
+  return (
+    <svg aria-hidden="true" width="16" height="8" viewBox="0 0 16 8" className="shrink-0">
+      <line x1="1" y1="4" x2="15" y2="4" stroke={color} strokeWidth={dash ? 1.5 : 2} strokeDasharray={dash} strokeLinecap={dash ? undefined : 'round'} />
+    </svg>
+  )
 }
 
 /**
@@ -111,16 +150,22 @@ const METRICS: {
   format: (v: number | null) => string
   isNegative?: boolean
   isRate?: boolean
+  // A raw count (not a ratio/percentage/duration) — PULSE-190 renders these
+  // compact with the exact value on hover/focus; the other three rows are
+  // already-formatted strings a compact notation can't apply to.
+  isCount?: boolean
 }[] = [
   {
-    key: 'visitors', label: 'Unique visitors', context: 'unique people',
+    key: 'visitors', label: 'Unique visitors', context: 'visitors, not visits',
     title: METRIC_TERMS.visitors.definition,
-    format: (v) => v == null ? '—' : formatNumber(Math.round(v)),
+    format: (v) => formatCompactNumber(v == null ? null : Math.round(v)),
+    isCount: true,
   },
   {
     key: 'pageviews', label: 'Total pageviews', context: 'across the site',
     title: METRIC_TERMS.pageviews.definition,
-    format: (v) => v == null ? '—' : formatNumber(Math.round(v)),
+    format: (v) => formatCompactNumber(v == null ? null : Math.round(v)),
+    isCount: true,
   },
   {
     key: 'pages_per_visit', label: 'Pages / visit', context: 'depth',
@@ -152,26 +197,67 @@ export default function CommandDeck({
   period,
   multiDayInterval,
   setMultiDayInterval,
-  identityWindowDays,
   imported,
   prevImported,
+  prevData,
+  prevRange,
+  prevFloor,
 }: CommandDeckProps) {
+  // On by default; the legend's "Previous period" entry hides it (PUL-19).
+  const [showPrev, setShowPrev] = useState(true)
+  const endsNow = Boolean(period && PERIOD_ENDS_NOW[period])
   // ─── Chart data (site wall clock, F10) ─────────────────────────────
-  const chartData = useMemo(() => data.map((item) => {
-    const wallClock = parseSiteWallClock(item.date) ?? new Date(item.date)
-    return {
-      dateObj: wallClock,
-      originalDate: item.date,
-      pageviews: item.pageviews,
-      visitors: item.visitors,
-      // Divide by VISITS, never visitors. `visits` is null on daily_stats rows
-      // frozen before migration 164 — the point plots as a gap rather than
-      // silently reporting pages per PERSON under a label that says per visit.
-      pages_per_visit: item.visits != null && item.visits > 0 ? item.pageviews / item.visits : null,
-      bounce_rate: item.bounce_rate,
-      avg_duration: item.avg_duration,
-    }
-  }), [data])
+  const chartData = useMemo(() => {
+    const prev = prevData && prevData.length > 0 && prevRange
+      ? pairPreviousSeries(data, prevData, dateRange.start, prevRange.start, prevFloor)
+      : null
+    return data.map((item, i) => {
+      const wallClock = parseSiteWallClock(item.date) ?? new Date(item.date)
+      const p = prev?.[i] ?? null
+      return {
+        // The previous period, by place in the window (lib/dashboard/previousSeries).
+        prevDateObj: p ? (parseSiteWallClock(p.date) ?? new Date(p.date)) : null,
+        prev_pageviews: p?.pageviews ?? null,
+        prev_visitors: p?.visitors ?? null,
+        prev_pages_per_visit: p?.pages_per_visit ?? null,
+        prev_bounce_rate: p?.bounce_rate ?? null,
+        prev_avg_duration: p?.avg_duration ?? null,
+        // Where the previous line BREAKS, as opposed to plotting an empty hour
+        // at zero: no partner bucket (a DST hour) or a day before the site's
+        // data; for visit duration also a day before engaged time began, and
+        // for pages per visit a day with visitors but no visit count.
+        prevWithheld: p == null || p.predatesData,
+        prevDurationWithheld: p == null || p.durationWithheld,
+        prevPagesWithheld: p == null || p.predatesData || p.visitsUnknown,
+        // The in-progress bucket: its tooltip says "(so far)".
+        isPartial: endsNow && i === data.length - 1,
+        dateObj: wallClock,
+        originalDate: item.date,
+        pageviews: item.pageviews,
+        visitors: item.visitors,
+        // Divide by VISITS, never visitors. `visits` is null on daily_stats rows
+        // frozen before migration 164 — the point plots as a gap rather than
+        // silently reporting pages per PERSON under a label that says per visit.
+        pages_per_visit: item.visits != null && item.visits > 0 ? item.pageviews / item.visits : null,
+        bounce_rate: item.bounce_rate,
+        avg_duration: item.avg_duration,
+      }
+    })
+  }, [data, prevData, prevRange, prevFloor, dateRange.start, endsNow])
+  const prevKey = `prev_${metric}`
+  const hasPrevSeries = chartData.some((d) => d.prevDateObj !== null)
+  const drawPrev = hasPrevSeries && showPrev
+  // The previous line has a point wherever there is something to compare.
+  // An hour with no visits counts: under missingAsZero it plots at zero,
+  // exactly as the current line does, so the dashed line no longer breaks
+  // at every hour the previous day happened to be empty.
+  const prevDefined = useCallback((d: Record<string, unknown>) => {
+    const withheld = metric === 'avg_duration' ? d.prevDurationWithheld
+      : metric === 'pages_per_visit' ? d.prevPagesWithheld
+      : d.prevWithheld
+    if (withheld === true) return false
+    return plotsMissingAsZero(metric) || typeof d[prevKey] === 'number'
+  }, [metric, prevKey])
 
   // ─── Rail rows ─────────────────────────────────────────────────────
   const rows = useMemo(() => {
@@ -188,12 +274,9 @@ export default function CommandDeck({
             ? guardedPointChange(value, previousValue, prevBase)
             : guardedPctChange(value, previousValue, prevBase))
         : null
-      // The visitors sentence follows the site's window; the other four are
-      // the same on every site.
-      const title = m.key === 'visitors' ? visitorsTerm(identityWindowDays).definition : m.title
-      return { ...m, title, value, change }
+      return { ...m, value, change }
     })
-  }, [stats, prevStats, identityWindowDays])
+  }, [stats, prevStats])
 
   // Imported history (M11-h), all server-said: the boundary line on the hero
   // chart, and the rail's word when this range or its comparison includes it.
@@ -241,7 +324,7 @@ export default function CommandDeck({
                 dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])}
                 // Mirror the big chart's missing-as-zero rule (its VisxArea
                 // flag below) — the mini must draw the shape the chart draws.
-                missingAsZero={m.key === 'bounce_rate' || m.key === 'avg_duration' || m.key === 'pages_per_visit'}
+                missingAsZero={plotsMissingAsZero(m.key)}
               />
               {metric === m.key && (
                 <motion.span
@@ -259,7 +342,13 @@ export default function CommandDeck({
                 </div>
                 {m.value == null
                   ? <span className="mt-0.5 block text-xl font-semibold text-neutral-600">—</span>
-                  : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
+                  : m.isCount
+                    ? (
+                        <CompactNumber value={m.value} className="mt-0.5 block text-xl font-semibold tabular-nums text-white">
+                          <AnimatedNumber value={m.value} format={m.format as (v: number) => string} />
+                        </CompactNumber>
+                      )
+                    : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
                 <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
                   {m.context}
                   {railImported && IMPORT_MERGED_METRICS.has(m.key) && ' · incl. imported days'}
@@ -274,15 +363,42 @@ export default function CommandDeck({
 
         {/* Hero chart — fills the deck; the rail stretches to match. */}
         <div className="flex min-w-0 flex-col">
-          <div className="flex items-center justify-between gap-3 px-4 pt-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3">
             {/* The toolbar names the selected metric, so ONE resident glyph
                 here reaches all six definitions — the rail rows stay clean
                 (metric info layer, 22-08-2026). */}
             <span data-tour="chart-toolbar" className="flex items-center gap-1 text-xs font-medium text-neutral-400">
               {metric === 'visitors' && interval === 'day' ? 'Daily unique visitors' : activeMetric?.label}
-              <MetricInfoTip metric={metric} example={buildExample(metric, stats)} identityWindowDays={identityWindowDays} />
+              <MetricInfoTip metric={metric} example={buildExample(metric, stats)} />
             </span>
-            <div className="flex items-center gap-2">
+            {/* The legend: one entry per series, so the two inks are never a
+                guess. On a phone it takes its own row under the toolbar. The
+                "Previous period" entry is also the switch that hides it. The
+                previous dates are not repeated here — the tooltip names the
+                previous day of every bucket. */}
+            {hasPrevSeries && (
+              <div className="order-last flex w-full items-center gap-4 md:order-none md:ml-auto md:w-auto">
+                <span className="flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-neutral-400">
+                  <LegendLine color="var(--chart-1)" />
+                  {activeMetric?.label}
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={showPrev}
+                  onClick={() => setShowPrev((v) => !v)}
+                  className={cn(
+                    'flex items-center gap-1.5 whitespace-nowrap text-xs font-medium transition-colors ease-apple',
+                    showPrev ? 'text-neutral-400 hover:text-neutral-200' : 'text-neutral-600 hover:text-neutral-400',
+                  )}
+                >
+                  <span className={cn('flex items-center', !showPrev && 'opacity-40')}>
+                    <LegendLine color={PREV_INK} dash="3 3" />
+                  </span>
+                  Previous period
+                </button>
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-2 md:ml-0">
               {/* 1h and 24h are fixed-granularity rolling windows, and a
                   single-day range is fixed HOURLY (owner ruling 02-09-2026:
                   minute granularity belongs to the 1h range alone) — a
@@ -323,7 +439,7 @@ export default function CommandDeck({
               </div>
             ) : !hasData ? (
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
-                <EmptyState
+                <CardEmptyState
                   icon={<ChartLine />}
                   title="No visitors yet"
                   description="Your traffic chart will come alive once visitors start arriving. Share your site to get the first data point."
@@ -332,7 +448,7 @@ export default function CommandDeck({
               </div>
             ) : !hasAnyNonZero ? (
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
-                <EmptyState
+                <CardEmptyState
                   icon={<ChartLine />}
                   title={`No ${activeMetric?.label.toLowerCase()} recorded`}
                   description="Try expanding the time range or checking back later."
@@ -350,6 +466,27 @@ export default function CommandDeck({
                 animationDuration={400}
               >
                 <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
+                {/* The previous period, drawn FIRST so it sits behind. A dashed
+                    line with no fill (owner pick A, 12-10-2026); the chart's
+                    y-domain spans both series, so a taller previous day is
+                    never cut off. An hour with no visits plots at zero like
+                    the current line (prevDefined); gaps only where a bucket
+                    has no partner or predates the site's data — never a
+                    drawn zero there. */}
+                {drawPrev && (
+                  <VisxArea
+                    dataKey={prevKey}
+                    curve={curveLinear}
+                    fill={PREV_INK}
+                    fillOpacity={0}
+                    stroke={PREV_INK}
+                    strokeWidth={1.5}
+                    strokeDasharray={PREV_DASH}
+                    fadeStrokeEdges={false}
+                    missingAsZero={plotsMissingAsZero(metric)}
+                    defined={prevDefined}
+                  />
+                )}
                 <VisxArea
                   dataKey={metric}
                   // curveLinear — the sharp-chart round (01-09-2026, artifact
@@ -372,7 +509,7 @@ export default function CommandDeck({
                   // 19-08-2026, superseding F11's gap rendering here); the
                   // tooltip still reads the null and shows '—', so an empty
                   // hour is never claimed as a measured zero.
-                  missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration' || metric === 'pages_per_visit'}
+                  missingAsZero={plotsMissingAsZero(metric)}
                 />
                 {/* The first day Pulse measured, when the range includes imported
                     days before it (dashboard option 2): the label reads what lies
@@ -418,7 +555,7 @@ export default function CommandDeck({
                       const end = new Date(dateObj.getTime() + 60 * 60_000)
                       return `${formatTimeUTC(dateObj)} – ${formatTimeUTC(end)}`
                     }
-                    return formatDateFullUTC(dateObj)
+                    return point.isPartial ? `${formatDateFullUTC(dateObj)} (so far)` : formatDateFullUTC(dateObj)
                   }}
                   rows={(point) => {
                     // An hour with no events measurably HAD zero visitors —
@@ -427,11 +564,40 @@ export default function CommandDeck({
                     // Rates keep the em dash: no visits, no denominator.
                     const raw = point[metric] as number | null
                     const v = (metric === 'visitors' || metric === 'pageviews') ? (raw ?? 0) : raw
-                    return [{
+                    const current = {
                       color: 'var(--chart-1)',
                       label: activeMetric?.label || metric,
                       value: activeMetric ? activeMetric.format(v) : String(v ?? '—'),
-                    }]
+                    }
+                    if (!drawPrev) return [current]
+                    // The previous bucket at the same place in its window,
+                    // named by its own date so "previous" is never a guess.
+                    const pd = point.prevDateObj instanceof Date ? point.prevDateObj : null
+                    const pv = (point[prevKey] as number | null | undefined) ?? null
+                    const isCount = metric === 'visitors' || metric === 'pageviews'
+                    // The rail's guard (base 10): below it a percentage is noise.
+                    const base = isCount ? (pv ?? 0) : ((point.prev_visitors as number | null) ?? 0)
+                    const change: PctChangeResult = v != null && pv != null
+                      ? (activeMetric?.isRate ? guardedPointChange(v, pv, base) : guardedPctChange(v, pv, base))
+                      : null
+                    const pLabel = !pd ? 'Previous period'
+                      : interval === 'hour'
+                        ? `${formatDateShortUTC(pd)} ${formatTimeUTC(pd)}`
+                        : formatDateFullUTC(pd)
+                    return [
+                      current,
+                      { color: PREV_INK, label: pLabel, value: pv == null ? '—' : (activeMetric ? activeMetric.format(pv) : String(pv)) },
+                      {
+                        color: 'transparent',
+                        label: 'Change',
+                        // A count's difference means something at any size; its
+                        // percentage only past the base (small sites read an
+                        // em dash most days otherwise — 26 of 30, measured).
+                        value: isCount && v != null && pv != null
+                          ? (change?.type === 'pct' ? `${formatDiff(v - pv)} (${formatChange(change)})` : formatDiff(v - pv))
+                          : formatChange(change),
+                      },
+                    ]
                   }}
                 />
               </VisxAreaChart>

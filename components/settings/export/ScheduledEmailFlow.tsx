@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react'
 import { Button, Checkbox, Input, Switcher, toast } from '@ciphera-net/facet'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { useAuth } from '@/lib/auth/context'
 import { useMembers, type OrganizationMember } from '@/lib/swr/members'
@@ -193,7 +194,13 @@ export function ScheduledEmailFlow({
               {roster.map((m) => (
                 <Checkbox
                   key={m.user_id}
-                  label={memberLabel(m, myId)}
+                  // Each recipient's avatar before the name (PUL-21 round 4).
+                  label={
+                    <span className="inline-flex items-center gap-2">
+                      <Avatar seed={personAvatarSeed({ userId: m.user_id, avatarSeed: m.avatar_seed })} size={20} />
+                      {memberLabel(m, myId)}
+                    </span>
+                  }
                   checked={recipients.has(m.user_id)}
                   onChange={() => toggleRecipient(m.user_id)}
                 />

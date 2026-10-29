@@ -5,8 +5,8 @@ import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import { Megaphone, Globe } from '@phosphor-icons/react'
+import { getOpenHostname, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
+import { Megaphone, Globe, ArrowSquareOut } from '@phosphor-icons/react'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -80,18 +80,21 @@ interface SourcesProps {
   totals?: { pageviews: number; visitors: number }
   // Active page filters, threaded into the full-list fetches (F14).
   filters?: string
-  // The anonymous share surface has no full-list endpoints; it paginates only
-  // what its own payload carries.
+  // False only on a customer's share link, whose public-scoped read is served no
+  // full-list endpoints: the card paginates what its own payload carries. The demo
+  // site is served them (it reads as a member does), so it keeps this on.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
-  // The public share surface's diet (02-09-2026): campaign rows arrive ON the
-  // dashboard payload — floored and capped by the backend's single public
-  // exit — instead of the member-only /campaigns endpoint. When provided,
-  // BOTH campaign fetches stay unarmed; the member-only full-list can never
-  // fire from a share view.
+  // A customer's share link's diet (02-09-2026): campaign rows arrive ON the
+  // dashboard payload — capped by the backend's public row limit — instead of
+  // the /campaigns endpoint it is not served. When provided,
+  // BOTH campaign fetches stay unarmed; the full-list can never fire from a
+  // share link.
   campaigns?: CampaignStat[]
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): every list this card fetches on its own uses it instead of the dates. */
+  liveMinutes?: number
   /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
   importedCards?: Record<string, ImportedProvenance>
 }
@@ -150,6 +153,7 @@ export default function Sources({
   onFilter,
   campaigns: payloadRows,
   live = false,
+  liveMinutes,
   importedCards,
 }: SourcesProps) {
   // A row that filters is a real control; one that cannot is inert text.
@@ -168,7 +172,7 @@ export default function Sources({
   const wantsReferrerFullList = memberFeatures && view === 'referrers' && mergedReferrers.length > LIMIT
   const { data: fullReferrers } = useFullDimensionList<TopReferrer>(
     wantsReferrerFullList ? 'referrers' : null,
-    siteId, dateRange?.start, dateRange?.end, 100, filters,
+    siteId, dateRange?.start, dateRange?.end, 100, filters, liveMinutes,
   )
   // Gate on the want: hook-state left over from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
@@ -185,7 +189,7 @@ export default function Sources({
   // ── Campaigns (armed only while the view is open; never from a share view) ──
   const campaignsArmed = view === 'campaigns' && payloadRows === undefined
   const { data: campaignRows, error: campaignError, isLoading: campaignsLoading, mutate: refetchCampaigns } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, campaignsArmed, period)
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, campaignsArmed, period, liveMinutes)
   const campaignData = payloadRows ?? campaignRows ?? []
   const sortedCampaigns = useMemo(() => [...campaignData].sort((a, b) => b.visitors - a.visitors), [campaignData])
   const groupedCampaigns = useMemo(() => groupByDimension(sortedCampaigns, utm), [sortedCampaigns, utm])
@@ -194,7 +198,7 @@ export default function Sources({
   // card genuinely has an eighth grouped row to page to.
   const wantsCampaignFullList = campaignsArmed && hasCampaignData && groupedCampaigns.length > LIMIT
   const { data: fullCampaignsRaw } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsCampaignFullList, period)
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsCampaignFullList, period, liveMinutes)
   const groupedAllCampaigns = useMemo(() => {
     const base = fullCampaignsRaw && fullCampaignsRaw.length > 0 ? fullCampaignsRaw : campaignData
     return groupByDimension([...base].sort((a, b) => b.visitors - a.visitors), utm)
@@ -204,7 +208,7 @@ export default function Sources({
   // ── Paging: one pager, keyed on the whole context ──
   const activeCount = view === 'referrers' ? allReferrers.length : view === 'channels' ? filteredChannels.length : allCampaigns.length
   const pageCount = Math.max(1, Math.ceil(activeCount / LIMIT))
-  const [page, setPage] = useCardPage(`${view}|${view === 'campaigns' ? utm : ''}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+  const [page, setPage] = useCardPage(`${view}|${view === 'campaigns' ? utm : ''}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
   const slice = <T,>(rows: T[]) => rows.slice((page - 1) * LIMIT, page * LIMIT)
   const displayedReferrers = slice(allReferrers)
   const displayedChannels = slice(filteredChannels)
@@ -293,21 +297,66 @@ export default function Sources({
             </div>
           ) : hasReferrerData ? (
             <CascadeGroup flipKey={`referrers-${page}`} className="space-y-2">
-              {displayedReferrers.map((ref, i) => (
-                <CascadeRow key={ref.referrer} index={i}>
-                  <Row
-                    {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }) } : {})}
-                    className={rowClass}
-                  >
-                    <RowBar width={rowBarWidth(ref, allReferrers)} index={i} />
-                    <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                      {renderFavicon(showReferrerDomains && ref.address ? ref.address : ref.referrer)}
-                      <span className="truncate" title={referrerRowLabel(ref)}>{referrerRowLabel(ref)}</span>
+              {displayedReferrers.map((ref, i) => {
+                const label = referrerRowLabel(ref)
+                const faviconKey = showReferrerDomains && ref.address ? ref.address : ref.referrer
+                const openHostname = getOpenHostname(faviconKey)
+                return (
+                  <CascadeRow key={ref.referrer} index={i}>
+                    {/* A click anywhere on the row FILTERS; a website row opens its
+                       site from one small icon after the name (PUL-20, owner pick A,
+                       12-10-2026). PULSE-197 had made the favicon + name the link,
+                       and that label is the row's flex-1 box: the link covered
+                       86–89% of every website row, so a click on the name left
+                       the dashboard instead of filtering it.
+                       The row cannot be a single <button> — an <a> cannot nest in
+                       one — so it is a <div> with a full-row overlay button for the
+                       filter, and the icon above it (relative z-10) opting back into
+                       pointer events for its own box only. Everything else is
+                       pointer-events-none so clicks reach the overlay — including
+                       RowBar, a SIBLING of the overlay, which would otherwise
+                       swallow clicks over the bar's width. */}
+                    <div className={rowClass}>
+                      {onFilter && (
+                        // The row's own ring moved here from `.interactive-row` on
+                        // the (no-longer-focusable) outer div — same device as the
+                        // full-card overlay link FleetCard already ships (ring-2,
+                        // ring-inset so it isn't clipped by the row's own
+                        // overflow-hidden).
+                        <button
+                          type="button"
+                          className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+                          aria-label={`Filter by referrer: ${label}`}
+                          onClick={() => onFilter({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] })}
+                        />
+                      )}
+                      <RowBar width={rowBarWidth(ref, allReferrers)} index={i} className="pointer-events-none" />
+                      <div className="relative flex-1 min-w-0 text-white flex items-center gap-3 pointer-events-none">
+                        {renderFavicon(faviconKey)}
+                        <span className="truncate" title={label}>{label}</span>
+                        {openHostname && (
+                          // Hidden at rest; the row's hover or the icon's own
+                          // keyboard focus reveals it — the device the % badge
+                          // uses. Touch has no hover, so it always shows there.
+                          // p-1 -m-1: a 22 px hit box around a 14 px glyph.
+                          // Orange on its own hover, like every outbound arrow
+                          // (PUL-22); ContentStats carries the same device.
+                          <a
+                            href={`https://${openHostname}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open ${label} in a new tab`}
+                            className="relative z-10 pointer-events-auto -m-1 shrink-0 rounded-sm p-1 text-neutral-500 opacity-0 transition ease-apple hover:text-brand-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-brand-orange group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                          >
+                            <ArrowSquareOut className="h-3.5 w-3.5" aria-hidden="true" />
+                          </a>
+                        )}
+                      </div>
+                      <MetricRowStat row={ref} totals={totals} className="pointer-events-none" />
                     </div>
-                    <MetricRowStat row={ref} totals={totals} />
-                  </Row>
-                </CascadeRow>
-              ))}
+                  </CascadeRow>
+                )
+              })}
               {Array.from({ length: emptySlotsFor(displayedReferrers.length) }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
@@ -317,6 +366,7 @@ export default function Sources({
               live={live}
               icon={<Globe />}
               title="Nobody's linked to you yet"
+              publicTitle="No referrers yet"
               description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
               action={{
                 label: 'Install tracking script',

@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useSWRConfig } from 'swr'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Button, toast } from '@ciphera-net/facet'
-import { Plus, Trash, User, Users, UsersThree } from '@phosphor-icons/react'
+import { Button } from '@ciphera-net/facet'
+import { HoldDialog } from '@ciphera-net/facet-hold'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
+import { Plus, Trash, UserMinus, Users, UsersThree } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
@@ -12,7 +14,8 @@ import { listRoles, type Role } from '@/lib/api/roles'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
 import NameTeamModal, { suggestTeamName } from './NameTeamModal'
 import InviteLinksSection from './InviteLinksSection'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -41,14 +44,12 @@ function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   return <StatusChip tone={isAdmin ? 'info' : 'neutral'}>{label}</StatusChip>
 }
 
-function MemberAvatar({ monogram }: { monogram?: string }) {
-  return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-accent text-muted-foreground">
-      {monogram
-        ? <span className="text-sm font-semibold">{monogram}</span>
-        : <User weight="regular" className="h-5 w-5" />}
-    </span>
-  )
+// Every member's generated avatar (PUL-21): their stored seed when they
+// generated one, else their USER ID — never the email: most members have none
+// on this zero-PII surface, and an avatar must not be a function of personal
+// data. Round, as on every surface.
+function MemberAvatar({ userId, avatarSeed }: { userId: string; avatarSeed?: string | null }) {
+  return <Avatar seed={personAvatarSeed({ userId, avatarSeed })} size={36} />
 }
 
 export default function WorkspaceMembersTab() {
@@ -63,7 +64,11 @@ export default function WorkspaceMembersTab() {
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [showNameModal, setShowNameModal] = useState(false)
-  const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<{ userId: string; name: string } | null>(null)
+  const removeLater = useDeferredRemoval()
+  // Members whose removal waits behind the Undo bar (PUL-28) are hidden now.
+  const pendingKeys = usePendingKeys()
+  const visibleMembers = members.filter((m) => !pendingKeys.has(`member:${m.user_id}`))
 
   const canManage = useIsAdminOrOwner()
   // Somebody alone sees this page as "Invite people" (option B1, PULSE-59):
@@ -146,16 +151,24 @@ export default function WorkspaceMembersTab() {
 
   useEffect(() => { loadMembers() }, [user?.org_id])
 
-  const handleRemove = (memberId: string, email: string) => {
+  const handleRemove = (memberId: string, name: string) => {
     if (!user?.org_id) return
-    setConfirmRemove({ userId: memberId, email })
+    setConfirmRemove({ userId: memberId, name })
   }
 
-  const doRemove = async () => {
-    if (!user?.org_id || !confirmRemove) return
-    await removeOrganizationMember(user.org_id, confirmRemove.userId)
-    toast.success(`${confirmRemove.email} removed`)
-    loadMembers()
+  // The member disappears at once; the request is sent when the Undo window
+  // runs out (PUL-28).
+  const doRemove = () => {
+    const orgId = user?.org_id
+    if (!orgId || !confirmRemove) return
+    const { userId, name } = confirmRemove
+    removeLater({
+      key: `member:${userId}`,
+      message: `${name} removed`,
+      send: ({ keepalive }) => removeOrganizationMember(orgId, userId, { keepalive }),
+      refresh: loadMembers,
+      failure: `Couldn't remove ${name}. Try again.`,
+    })
   }
 
   if (loading) return <SettingsLoadingState rows={4} />
@@ -199,9 +212,9 @@ export default function WorkspaceMembersTab() {
       /* Roster: one ruled panel (spec section 6). */
       <SettingsPanel
         title="Members"
-        description={`${members.length} member${members.length !== 1 ? 's' : ''} in your team`}
+        description={`${visibleMembers.length} member${visibleMembers.length !== 1 ? 's' : ''} in your team`}
       >
-        {members.length === 0 ? (
+        {visibleMembers.length === 0 ? (
           <EmptyRow
             icon={<Users weight="regular" />}
             title="No members yet"
@@ -215,7 +228,7 @@ export default function WorkspaceMembersTab() {
                 the rows already on the page from playing an entrance on first
                 load; only a later add/remove animates. */}
             <AnimatePresence initial={false}>
-              {members.map(member => {
+              {visibleMembers.map(member => {
                 const isYou = member.user_id === user?.id
                 /* Zero-PII backend: most members have no stored email or name.
                  * Show "You" for the signed-in member, the invite email when the
@@ -224,7 +237,6 @@ export default function WorkspaceMembersTab() {
                 const displayName = isYou
                   ? 'You'
                   : (member.user_email || `Member ${member.user_id.slice(0, 8)}`)
-                const monogram = (isYou ? user?.email : member.user_email)?.trim().charAt(0).toUpperCase() || undefined
                 const canRemove = canManage && member.role !== 'owner' && !isYou
                 const joined = member.joined_at ? formatDate(new Date(member.joined_at), zone) : null
 
@@ -248,7 +260,7 @@ export default function WorkspaceMembersTab() {
                     <PanelRow
                       label={
                         <span className="flex min-w-0 items-center gap-3">
-                          <MemberAvatar monogram={monogram} />
+                          <MemberAvatar userId={member.user_id} avatarSeed={member.avatar_seed} />
                           {/* The joined line stacks under the NAME. As the row's
                               caption it sat under the avatar, flush with the
                               panel edge (staging, 16-09-2026). */}
@@ -274,7 +286,8 @@ export default function WorkspaceMembersTab() {
                                 size="icon"
                                 aria-label={`Remove ${displayName}`}
                                 className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
+                                aria-haspopup="dialog"
+                                onClick={() => handleRemove(member.user_id, displayName)}
                               >
                                 <Trash weight="bold" className="h-3.5 w-3.5" />
                               </Button>
@@ -309,13 +322,13 @@ export default function WorkspaceMembersTab() {
         </>
       )}
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmRemove !== null}
         onOpenChange={(open) => { if (!open) setConfirmRemove(null) }}
-        title="Remove member"
-        description={confirmRemove ? `Remove ${confirmRemove.email} from the team? They will lose access to all of its sites and settings.` : ''}
-        confirmLabel="Remove"
-        variant="danger"
+        title="Remove member?"
+        description={confirmRemove ? `Remove ${confirmRemove.name} from the team? They will lose access to all of its sites and settings.` : ''}
+        holdLabel="Hold to remove"
+        icon={<UserMinus weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doRemove}
       />
     </div>

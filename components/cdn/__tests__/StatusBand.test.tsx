@@ -47,7 +47,10 @@ afterEach(cleanup)
 describe('StatusBand glyph (ruling 4a)', () => {
   it('the "of N responses" summary carries the cdn_status_band glyph', () => {
     render(<OriginCard {...props} />)
-    expect(screen.getByText(/of 250 responses/)).toBeTruthy()
+    // The count renders through CompactNumber (PULSE-190), so "of ", "250"
+    // and " responses" are now separate text nodes — match on the wrapping
+    // element's full text instead of a single node.
+    expect(screen.getAllByText((_, node) => /of 250 responses/.test(node?.textContent ?? '')).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /response status composition/i })).toBeTruthy()
   })
 

@@ -4,7 +4,10 @@ import withPWAInit from "@ducanh2912/next-pwa"
 
 const withPWA = withPWAInit({
   dest: "public",
-  register: true,
+  // * NOT next-pwa's own registration: components/ServiceWorkerRegister.tsx calls
+  // * window.workbox.register() in a top-level window only, so the /demo that
+  // * pulse.ciphera.net's home page frames never installs the dashboard's worker.
+  register: false,
   disable: process.env.NODE_ENV === "development",
   // * The tracker and its release manifests must NOT be in the SW precache.
   // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
@@ -74,47 +77,59 @@ const ASSET_PREFIX = process.env['NEXT_PUBLIC_ASSET_PREFIX'] ?? ''
 // * already present in connect-src — every directive needs it spelled out.
 const ASSET_CDN = 'https://ciphera-app-static.b-cdn.net'
 
-// * CSP directives — restrict resource loading to known origins
-const cspDirectives = [
-  "default-src 'self'",
-  // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR).
-  // 'wasm-unsafe-eval' lets the browser compile/instantiate the @ciphera-net/tessera OPAQUE
-  // WASM core (settings re-auth) — without it WebAssembly.instantiate is CSP-blocked and the
-  // re-auth ceremony fails at runtime. It permits WASM compilation only, not arbitrary eval.
-  // 🔴 ASSET_CDN is a DELIBERATE WIDENING of script-src. It is our own zone and serves
-  // nothing but build output, but it does mean a compromise of that bucket is script
-  // execution on the authenticated dashboard. That is precisely why it is a DEDICATED
-  // storage zone with its own write credential (Woodpecker org secret
-  // `app_static_storage_password`) rather than the shared cdn.ciphera.net assets bucket:
-  // the credential used for routine image uploads must not gain script execution here.
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://js.ciphera.net https://api.help.ciphera.net ${ASSET_CDN}${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
-  `style-src 'self' 'unsafe-inline' ${ASSET_CDN}`,
-  // * google/gstatic were only ever here for favicons — those now go through
-  // * the same-origin /api/favicon proxy, and CSP enforces that nothing
-  // * regresses to loading them from Google directly.
-  "img-src 'self' data: blob: https://ciphera.net https://captcha.ciphera.net https://*.cartocdn.com https://cdn.ciphera.net",
-  // next/font emits its woff2 files under /_next/static/media, so they move with the rest.
-  `font-src 'self' ${ASSET_CDN}`,
-  `connect-src 'self' https://*.ciphera.net wss://*.ciphera.net https://ciphera.net https://cdn.jsdelivr.net https://*.cartocdn.com ${ASSET_CDN}${process.env.NODE_ENV === 'development' ? ' http://localhost:* ws://localhost:*' : ''}`,
-  "worker-src 'self' blob:",
-  // 🔴 FRAMING NEEDS PERMISSION ON BOTH SIDES, AND MISSING EITHER IS SILENT.
-  // `frame-ancestors` on id.ciphera.net says who may frame IT; `frame-src` here
-  // says what THIS page may frame. Measured 10-09-2026: with the identity
-  // provider correctly relaxed and the allowlist correctly served, the
-  // vault-key hand-off still timed out — because this line did not name it, and
-  // a blocked frame simply never loads. The key-bridge design named only the
-  // first half; this is the second.
-  "frame-src https://api.help.ciphera.net https://id.ciphera.net",
-  // * Nothing may frame Pulse. X-Frame-Options: DENY (below) already says so to
-  // * every current browser; this is the CSP form the MCP consent page's
-  // * threat model names (T3, clickjacking the Allow button — PULSE-41), and the
-  // * one that wins where both are honoured. Site-wide on purpose: no route is
-  // * meant to be framed, and a per-path CSP would be a second header block.
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self' https://*.ciphera.net",
-].join('; ')
+// * CSP directives — restrict resource loading to known origins.
+// *
+// * ONE function builds every CSP this app sends, parameterised by the single directive that
+// * differs: who may frame the page. A second hand-written copy for /demo would drift from
+// * this one the first time a source is added to either, and the page that drifted would be
+// * the one inside the marketing page's frame.
+function buildCsp(frameAncestors: "'none'" | "'self'"): string {
+  return [
+    "default-src 'self'",
+    // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR).
+    // 'wasm-unsafe-eval' lets the browser compile/instantiate the @ciphera-net/tessera OPAQUE
+    // WASM core (settings re-auth) — without it WebAssembly.instantiate is CSP-blocked and the
+    // re-auth ceremony fails at runtime. It permits WASM compilation only, not arbitrary eval.
+    // 🔴 ASSET_CDN is a DELIBERATE WIDENING of script-src. It is our own zone and serves
+    // nothing but build output, but it does mean a compromise of that bucket is script
+    // execution on the authenticated dashboard. That is precisely why it is a DEDICATED
+    // storage zone with its own write credential (Woodpecker org secret
+    // `app_static_storage_password`) rather than the shared cdn.ciphera.net assets bucket:
+    // the credential used for routine image uploads must not gain script execution here.
+    `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://js.ciphera.net https://api.help.ciphera.net ${ASSET_CDN}${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+    `style-src 'self' 'unsafe-inline' ${ASSET_CDN}`,
+    // * google/gstatic were only ever here for favicons — those now go through
+    // * the same-origin /api/favicon proxy, and CSP enforces that nothing
+    // * regresses to loading them from Google directly.
+    "img-src 'self' data: blob: https://ciphera.net https://captcha.ciphera.net https://*.cartocdn.com https://cdn.ciphera.net",
+    // next/font emits its woff2 files under /_next/static/media, so they move with the rest.
+    `font-src 'self' ${ASSET_CDN}`,
+    `connect-src 'self' https://*.ciphera.net wss://*.ciphera.net https://ciphera.net https://cdn.jsdelivr.net https://*.cartocdn.com ${ASSET_CDN}${process.env.NODE_ENV === 'development' ? ' http://localhost:* ws://localhost:*' : ''}`,
+    "worker-src 'self' blob:",
+    // 🔴 FRAMING NEEDS PERMISSION ON BOTH SIDES, AND MISSING EITHER IS SILENT.
+    // `frame-ancestors` on id.ciphera.net says who may frame IT; `frame-src` here
+    // says what THIS page may frame. Measured 10-09-2026: with the identity
+    // provider correctly relaxed and the allowlist correctly served, the
+    // vault-key hand-off still timed out — because this line did not name it, and
+    // a blocked frame simply never loads. The key-bridge design named only the
+    // first half; this is the second.
+    "frame-src https://api.help.ciphera.net https://id.ciphera.net",
+    // * Nothing may frame Pulse, except Pulse itself on /demo. X-Frame-Options: DENY (below)
+    // * already says so to every current browser; this is the CSP form the MCP consent page's
+    // * threat model names (T3, clickjacking the Allow button — PULSE-41), and the one that
+    // * wins where both are honoured.
+    // * 'none' is the answer for every route but one: the marketing home page frames /demo
+    // * (PUL-34, D9), and /demo alone answers 'self' (the demo header rule below).
+    `frame-ancestors ${frameAncestors}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self' https://*.ciphera.net",
+  ].join('; ')
+}
+
+const CSP = buildCsp("'none'")
+// * The same policy for /demo: only the frame-ancestors directive differs.
+const DEMO_CSP = buildCsp("'self'")
 
 const BUILD_ID = Date.now().toString()
 writeFileSync('public/build-id.json', JSON.stringify({ buildId: BUILD_ID }))
@@ -223,7 +238,34 @@ const nextConfig: NextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=31536000; includeSubDomains',
           },
-          { key: 'Content-Security-Policy', value: cspDirectives },
+          { key: 'Content-Security-Policy', value: CSP },
+        ],
+      },
+      // * /demo is the only page that may be framed, and only by its own origin: the marketing
+      // * home page (pulse.ciphera.net's hero, PUL-34 D9) shows it inside the device. Both
+      // * headers, because each is what some browser honours.
+      // *
+      // * 🔴 ORDER IS THE MECHANISM. Next applies every matching rule in the order listed and a
+      // * later rule's header REPLACES an earlier rule's of the same key (resolve-routes.js:
+      // * `resHeaders[key] = value`, measured on next 16.1.6; set-cookie alone appends). So this
+      // * block must stay AFTER the catch-all above, must repeat each key spelled exactly as
+      // * above (keys are case-sensitive in that map, so a differently-cased twin would be a
+      // * second header, not a replacement), and must carry the WHOLE CSP, not the directive.
+      // * lib/__tests__/csp-frame-ancestors.test.ts evaluates these rules the way Next does.
+      // * `/demo` and `/demo/:path*` are listed separately so the bare path never depends on how
+      // * `:path*` treats an empty tail.
+      {
+        source: '/demo',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: DEMO_CSP },
+        ],
+      },
+      {
+        source: '/demo/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: DEMO_CSP },
         ],
       },
       {
@@ -242,6 +284,10 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // /docs was rewritten to a third-party documentation host that answered 404 for every path. The product's
+      // documentation is docs.ciphera.net/pulse; the old paths do not map onto it, so every one lands on its start.
+      { source: '/docs', destination: 'https://docs.ciphera.net/pulse', permanent: true },
+      { source: '/docs/:path*', destination: 'https://docs.ciphera.net/pulse', permanent: true },
       {
         source: '/dashboard',
         destination: '/',
@@ -265,23 +311,20 @@ const nextConfig: NextConfig = {
         destination: '/sites/:id/performance/:path*',
         permanent: true,
       },
+      // The in-app inbox went on 20-10-2026: Pulse notifications are email-only.
+      // `/notifications` is bookmarkable and older emails fell back to it, so it
+      // keeps resolving, to the page that controls those emails. Only the page
+      // route: the API's /notifications/preferences is a different host and path.
+      {
+        source: '/notifications',
+        destination: '/settings/account/notifications',
+        permanent: true,
+      },
       // NOTE: the former `/integrations/:slug` → docs.ciphera.net redirects were
       // removed. They shadowed the real per-integration guide pages
       // (app/integrations/[slug]) and pointed at a defunct host (docs moved to
       // help.ciphera.net). Each guide page now links out to help.ciphera.net
       // via the registry's docsSlug.
-    ]
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/docs',
-        destination: 'https://ciphera-e9ed055e.mintlify.dev/docs',
-      },
-      {
-        source: '/docs/:path*',
-        destination: 'https://ciphera-e9ed055e.mintlify.dev/docs/:path*',
-      },
     ]
   },
 }
