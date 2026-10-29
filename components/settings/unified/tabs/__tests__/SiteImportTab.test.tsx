@@ -232,9 +232,11 @@ describe('the picker (A1)', () => {
     expect(within(block('Plausible')).getByRole('button', { name: 'Upload' })).toBeEnabled()
     expect(within(block('Matomo')).getByRole('button', { name: 'Connect' })).toBeEnabled()
     // Full colour, always (owner, Q-M11): never the Integrations idle treatment.
+    // The file name is the slug in hex (lib/comparisonLogos.ts), so no blocker list can match a tool's name.
+    const files: Record<string, string> = { plausible: '_706c61757369626c65', matomo: '_6d61746f6d6f' }
     for (const id of ['plausible', 'matomo']) {
       const img = screen.getByTestId(`import-logo-${id}`)
-      expect(img).toHaveAttribute('src', `https://cdn.ciphera.net/website/blog/tools/${id}.png`)
+      expect(img).toHaveAttribute('src', `https://cdn.ciphera.net/website/blog/tools/${files[id]}.png`)
       expect(img.closest('span')!.className).not.toMatch(/grayscale|opacity-60/)
     }
     expect(screen.getByText('One import per site. An uploaded export is read in your browser and never sent to Pulse.')).toBeInTheDocument()
