@@ -707,7 +707,7 @@ steps:
       BUNNY_STORAGE_PASSWORD:
         from_secret: bunny_storage_scripts_password
     commands:
-      - apk add --no-cache aws-cli curl openssl >/dev/null
+      - apk add --no-cache aws-cli curl openssl jq >/dev/null
       - |
         echo -n '{' > public/script-sri.json
         first=true
@@ -800,10 +800,64 @@ steps:
             --quiet
           echo "v$ver/$file: published"
         done
+      # 🔴 THE PUBLIC VERSION MANIFEST (30-10-2026). js.ciphera.net/versions.json is what
+      # somebody pinning a version reads to discover one; the dashboard's snippet reads the
+      # committed public/script-versions.json instead, so a stale public manifest is invisible
+      # from inside the product and nothing fails.
+      #
+      # Until today nothing in CI wrote it. It was published only by scripts/publish-scripts.sh,
+      # run by hand, which last completed on 04-09-2026 for v1.2.0 — so the manifest still named
+      # 1.0.0-1.2.0 while the loop above had been publishing v1.7.0's artifacts since 27-10, and
+      # anybody pinning from it pinned 1.2.0 for good. 1.3.0-1.6.0 were never published at all.
+      # That script could not even repair it: its first act was to refuse to run once the
+      # artifacts existed, which since 25-10 they always do. One publish with two owners, and the
+      # half that was a human's memory stopped happening. The script is deleted in this change.
+      #
+      # It is MUTABLE and APPEND-ONLY, so it is MERGED, never replaced, and read back from the
+      # ORIGIN rather than the edge: the edge serves it with a 7200 s TTL (measured 30-10-2026 —
+      # the zone's TTL, not the 300 s Cache-Control the old script set on the backup copy), so
+      # merging into an edge read would drop a version published in the last two hours.
+      - |
+        ver=$(sed -n 's/.*"version": *"\([0-9][0-9.]*\)".*/\1/p' public/script-versions.json)
+        [ -n "$ver" ] || { echo "🔴 no version in public/script-versions.json"; exit 1; }
+        published=$(mktemp)
+        code=$(curl -sS -o "$published" -w '%{http_code}' --max-time 60 \
+          -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+          "https://storage.bunnycdn.com/ciphera-cdn-scripts/versions.json") || code=unreachable
+        case "$code" in
+          200) jq -e 'type == "array"' "$published" >/dev/null \
+                 || { echo "🔴 the published versions.json is not an array; refusing to overwrite it"; exit 1; } ;;
+          404) echo '[]' > "$published" ;;
+          *) echo "🔴 could not read versions.json from Bunny Storage (HTTP $code)"; exit 1 ;;
+        esac
+        if jq -e --arg v "$ver" 'any(.[]; .version == $v)' "$published" >/dev/null; then
+          echo "versions.json: already names $ver"
+        else
+          merged=$(mktemp)
+          jq --arg v "$ver" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --slurpfile m public/script-versions.json \
+            '. + [{version: $v, publishedAt: $at, files: $m[0].files}]' "$published" > "$merged"
+          jq -e --arg v "$ver" 'any(.[]; .version == $v)' "$merged" >/dev/null \
+            || { echo "🔴 the merge did not produce an entry for $ver"; exit 1; }
+          curl -fsS --max-time 120 -X PUT \
+            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$merged" \
+            "https://storage.bunnycdn.com/ciphera-cdn-scripts/versions.json" >/dev/null \
+            || { echo "🔴 PRIMARY (Bunny Storage) upload FAILED for versions.json"; exit 1; }
+          aws s3 cp "$merged" "s3://ciphera-scripts/versions.json" \
+            --endpoint-url https://s3.pub1.infomaniak.cloud \
+            --content-type application/json \
+            --cache-control "public, max-age=300" \
+            --quiet
+          echo "versions.json: added $ver ($(jq -r 'length' "$merged") versions published)"
+          rm -f "$merged"
+        fi
+        rm -f "$published"
       # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy for the full TTL
       - sleep 30
       - |
-        for path in script.js script.debug.js script.interactions.js script.interactions.debug.js script-sri.json; do
+        for path in script.js script.debug.js script.interactions.js script.interactions.debug.js script-sri.json versions.json; do
           curl -fsS -X POST \
             "https://api.bunny.net/purge?url=https://js.ciphera.net/$path&async=false" \
             -H "AccessKey: $BUNNY_API_KEY"
@@ -879,3 +933,64 @@ steps:
           $ok || { echo "🔴 $served: the edge still serves other bytes after ten checks; production runs the previous script"; exit 1; }
           echo "$served: every variant (identity, gzip, br, zstd) serves the uploaded bytes (sha384-$want)"
         done
+      # 🔴 AND PROVE THE PUBLIC MANIFEST, WHICH IS VERIFIED BY CONTENT, NOT BY HASH.
+      # versions.json is the only object this step writes that has no committed counterpart
+      # to compare bytes against, because it is merged from what is already published. So it
+      # is checked for what it must be true of: the edge names the version just published,
+      # and every URL it names still resolves to the hash it claims.
+      #
+      # The second half is the guard that matters more. A manifest entry whose artifact is
+      # missing is worse than a missing entry — the snippet it describes carries `integrity`,
+      # so a site that pins it loads nothing at all and measures nothing, silently. Reading
+      # the list back from the EDGE (not the file just uploaded) is deliberate: that is the
+      # copy anybody actually gets.
+      #
+      # ⚠️ The URL loop reads from a FILE, not a pipe: `jq | while read` runs the body in a
+      # subshell on every shell here, so a failure recorded inside it would be discarded and
+      # the step would pass having found a 404.
+      - |
+        ver=$(sed -n 's/.*"version": *"\([0-9][0-9.]*\)".*/\1/p' public/script-versions.json)
+        [ -n "$ver" ] || { echo "🔴 no version in public/script-versions.json"; exit 1; }
+        served=$(mktemp)
+        ok=false
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+          if [ "$attempt" != 1 ]; then
+            sleep 30
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X POST \
+              "https://api.bunny.net/purge?url=https://js.ciphera.net/versions.json&async=false" \
+              -H "AccessKey: $BUNNY_API_KEY") || code=unreachable
+            case "$code" in
+              2??) ;;
+              401|403) echo "🔴 versions.json: Bunny refused the purge (HTTP $code); check BUNNY_API_KEY"; exit 1 ;;
+              *) echo "versions.json: the purge failed (HTTP $code); checking anyway" ;;
+            esac
+          fi
+          if curl -fsS --max-time 30 -o "$served" "https://js.ciphera.net/versions.json" \
+            && jq -e --arg v "$ver" 'any(.[]; .version == $v)' "$served" >/dev/null 2>&1; then
+            ok=true; break
+          fi
+          echo "versions.json, check $attempt: the edge does not name $ver yet"
+        done
+        $ok || { echo "🔴 versions.json: the edge still does not name $ver; nobody reading it can find this version"; exit 1; }
+        echo "versions.json: the edge names $ver ($(jq -r 'length' "$served") versions)"
+        urls=$(mktemp)
+        jq -r '.[] | .version as $v | .files | to_entries[] | "\($v) \(.key) \(.value.path) \(.value.sha384)"' "$served" > "$urls"
+        fail=0
+        while read -r mver mname mpath mwant; do
+          got=$(mktemp)
+          mcode=$(curl -sS -o "$got" -w '%{http_code}' --max-time 30 "https://js.ciphera.net$mpath")
+          if [ "$mcode" != 200 ]; then
+            echo "🔴 versions.json names $mver $mname at $mpath, which answers HTTP $mcode"; fail=1
+          else
+            mgot="sha384-$(openssl dgst -sha384 -binary "$got" | openssl base64 -A)"
+            if [ "$mgot" != "$mwant" ]; then
+              echo "🔴 versions.json names $mver $mname as $mwant; the edge serves $mgot"; fail=1
+            else
+              echo "  $mver $mname: serves the hash the manifest claims"
+            fi
+          fi
+          rm -f "$got"
+        done < "$urls"
+        rm -f "$urls" "$served"
+        [ "$fail" -eq 0 ] || { echo "🔴 the published manifest describes an artifact the edge does not serve; a pinned snippet from it would load nothing"; exit 1; }
+        echo "versions.json: every version it names resolves to the hash it claims"
