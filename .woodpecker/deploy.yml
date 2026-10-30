@@ -707,7 +707,7 @@ steps:
       BUNNY_STORAGE_PASSWORD:
         from_secret: bunny_storage_scripts_password
     commands:
-      - apk add --no-cache aws-cli curl openssl jq >/dev/null
+      - apk add --no-cache aws-cli curl openssl >/dev/null
       - |
         echo -n '{' > public/script-sri.json
         first=true
@@ -800,64 +800,10 @@ steps:
             --quiet
           echo "v$ver/$file: published"
         done
-      # 🔴 THE PUBLIC VERSION MANIFEST (30-10-2026). js.ciphera.net/versions.json is what
-      # somebody pinning a version reads to discover one; the dashboard's snippet reads the
-      # committed public/script-versions.json instead, so a stale public manifest is invisible
-      # from inside the product and nothing fails.
-      #
-      # Until today nothing in CI wrote it. It was published only by scripts/publish-scripts.sh,
-      # run by hand, which last completed on 04-09-2026 for v1.2.0 — so the manifest still named
-      # 1.0.0-1.2.0 while the loop above had been publishing v1.7.0's artifacts since 27-10, and
-      # anybody pinning from it pinned 1.2.0 for good. 1.3.0-1.6.0 were never published at all.
-      # That script could not even repair it: its first act was to refuse to run once the
-      # artifacts existed, which since 25-10 they always do. One publish with two owners, and the
-      # half that was a human's memory stopped happening. The script is deleted in this change.
-      #
-      # It is MUTABLE and APPEND-ONLY, so it is MERGED, never replaced, and read back from the
-      # ORIGIN rather than the edge: the edge serves it with a 7200 s TTL (measured 30-10-2026 —
-      # the zone's TTL, not the 300 s Cache-Control the old script set on the backup copy), so
-      # merging into an edge read would drop a version published in the last two hours.
-      - |
-        ver=$(sed -n 's/.*"version": *"\([0-9][0-9.]*\)".*/\1/p' public/script-versions.json)
-        [ -n "$ver" ] || { echo "🔴 no version in public/script-versions.json"; exit 1; }
-        published=$(mktemp)
-        code=$(curl -sS -o "$published" -w '%{http_code}' --max-time 60 \
-          -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
-          "https://storage.bunnycdn.com/ciphera-cdn-scripts/versions.json") || code=unreachable
-        case "$code" in
-          200) jq -e 'type == "array"' "$published" >/dev/null \
-                 || { echo "🔴 the published versions.json is not an array; refusing to overwrite it"; exit 1; } ;;
-          404) echo '[]' > "$published" ;;
-          *) echo "🔴 could not read versions.json from Bunny Storage (HTTP $code)"; exit 1 ;;
-        esac
-        if jq -e --arg v "$ver" 'any(.[]; .version == $v)' "$published" >/dev/null; then
-          echo "versions.json: already names $ver"
-        else
-          merged=$(mktemp)
-          jq --arg v "$ver" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --slurpfile m public/script-versions.json \
-            '. + [{version: $v, publishedAt: $at, files: $m[0].files}]' "$published" > "$merged"
-          jq -e --arg v "$ver" 'any(.[]; .version == $v)' "$merged" >/dev/null \
-            || { echo "🔴 the merge did not produce an entry for $ver"; exit 1; }
-          curl -fsS --max-time 120 -X PUT \
-            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
-            -H "Content-Type: application/json" \
-            --data-binary "@$merged" \
-            "https://storage.bunnycdn.com/ciphera-cdn-scripts/versions.json" >/dev/null \
-            || { echo "🔴 PRIMARY (Bunny Storage) upload FAILED for versions.json"; exit 1; }
-          aws s3 cp "$merged" "s3://ciphera-scripts/versions.json" \
-            --endpoint-url https://s3.pub1.infomaniak.cloud \
-            --content-type application/json \
-            --cache-control "public, max-age=300" \
-            --quiet
-          echo "versions.json: added $ver ($(jq -r 'length' "$merged") versions published)"
-          rm -f "$merged"
-        fi
-        rm -f "$published"
       # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy for the full TTL
       - sleep 30
       - |
-        for path in script.js script.debug.js script.interactions.js script.interactions.debug.js script-sri.json versions.json; do
+        for path in script.js script.debug.js script.interactions.js script.interactions.debug.js script-sri.json; do
           curl -fsS -X POST \
             "https://api.bunny.net/purge?url=https://js.ciphera.net/$path&async=false" \
             -H "AccessKey: $BUNNY_API_KEY"
@@ -933,21 +879,142 @@ steps:
           $ok || { echo "🔴 $served: the edge still serves other bytes after ten checks; production runs the previous script"; exit 1; }
           echo "$served: every variant (identity, gzip, br, zstd) serves the uploaded bytes (sha384-$want)"
         done
-      # 🔴 AND PROVE THE PUBLIC MANIFEST, WHICH IS VERIFIED BY CONTENT, NOT BY HASH.
-      # versions.json is the only object this step writes that has no committed counterpart
-      # to compare bytes against, because it is merged from what is already published. So it
-      # is checked for what it must be true of: the edge names the version just published,
-      # and every URL it names still resolves to the hash it claims.
+
+  # ═══ THE PUBLIC VERSION MANIFEST — ITS OWN STEP, AT THE LAST LEVEL (30-10-2026) ═══
+  #
+  # js.ciphera.net/versions.json is what somebody pinning a tracker version reads to discover
+  # one. The dashboard's snippet reads the committed public/script-versions.json instead, so a
+  # stale public manifest is invisible from inside the product and nothing fails.
+  #
+  # Until 30-10-2026 nothing in CI wrote it: it came only from scripts/publish-scripts.sh, run by
+  # hand, which last completed on 04-09-2026 for v1.2.0 — so the manifest still named 1.0.0-1.2.0
+  # while cdn-scripts had been publishing v1.7.0's artifacts since 27-10. That script could not
+  # even repair it: its first act was to refuse to run once the artifacts existed. It is deleted.
+  #
+  # 🔴 WHY THIS IS A SEPARATE STEP, AND WHY depends_on MATTERS MORE THAN IT LOOKS.
+  # `cdn-scripts` declares no `depends_on`, so it is at LEVEL 0 alongside `digest` and
+  # `upload-static`. Woodpecker runs levels sequentially and SKIPS every later level when a
+  # level-0 step errors — so between 30-10 09:41Z and this change, a hiccup in the manifest work
+  # (a transient 404 from Bunny Storage, one slow edge fetch) would have skipped `deploy-k8s` AND
+  # `purge-cdn`: a cosmetic public JSON file deciding whether the production dashboard rolls out.
+  # Measured on 16/16 production runs — `deploy-k8s` starts 0-1 s after `cdn-scripts` ends but
+  # 20-30 s after its own declared dependencies — and reproduced with `woodpecker-cli exec`.
+  # This step sits at the LAST level instead, so it can fail without touching the rollout, and
+  # the rolling-script upload keeps the level-0 independence it has had since 25-07-2026.
+  cdn-manifest:
+    image: alpine:3.20
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
+    depends_on: [cdn-scripts, purge-cdn]
+    when:
+      - event: push
+        branch: main
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: cdn_scripts_backup_access_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: cdn_scripts_backup_secret_key
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      BUNNY_API_KEY:
+        from_secret: bunny_api_key
+      BUNNY_STORAGE_PASSWORD:
+        from_secret: bunny_storage_scripts_password
+    commands:
+      - apk add --no-cache aws-cli curl openssl jq >/dev/null
+      # ── Reconcile. MUTABLE and APPEND-ONLY, so it is MERGED, never replaced. ──
       #
-      # The second half is the guard that matters more. A manifest entry whose artifact is
-      # missing is worse than a missing entry — the snippet it describes carries `integrity`,
-      # so a site that pins it loads nothing at all and measures nothing, silently. Reading
-      # the list back from the EDGE (not the file just uploaded) is deliberate: that is the
-      # copy anybody actually gets.
+      # It is read back from the ORIGIN rather than the edge: the edge serves it with a 7200 s TTL
+      # (measured 30-10-2026 — the zone's TTL, not the 300 s Cache-Control the old script set on
+      # the backup copy nothing serves), so merging into an edge read would drop a version
+      # published in the previous two hours.
       #
-      # ⚠️ The URL loop reads from a FILE, not a pipe: `jq | while read` runs the body in a
-      # subshell on every shell here, so a failure recorded inside it would be discarded and
-      # the step would pass having found a 404.
+      # 🔴 A 404 IS A HARD FAILURE, AND SYNTHESISING AN EMPTY LIST HERE WAS A DATA-LOSS BUG.
+      # This read used to answer a 404 with `echo '[]'`, for a bootstrap case that ended the day
+      # the object was created in 2026. Reproduced 30-10-2026: ONE spurious 404 made the merge
+      # produce a single-entry list, PUT it over the real manifest, overwrite the object-storage
+      # backup with the same truncated list, and exit 0 GREEN — because every check downstream
+      # only verifies the entries that remain. The estate has measured ~6% spurious
+      # PathNotFound/blob-unknown on its own registry, so "a transient 404 cannot happen" was not
+      # an assumption worth making. The object exists; if it reads 404 after three tries,
+      # something is wrong and the only safe act is to write nothing. Seeding a genuinely new
+      # zone is a human doing it once, not a branch in a pipeline that runs on every push.
+      - |
+        ver=$(sed -n 's/.*"version": *"\([0-9][0-9.]*\)".*/\1/p' public/script-versions.json)
+        [ -n "$ver" ] || { echo "🔴 no version in public/script-versions.json"; exit 1; }
+        published=$(mktemp)
+        code=unreachable
+        for attempt in 1 2 3; do
+          [ "$attempt" = 1 ] || sleep 5
+          code=$(curl -sS -o "$published" -w '%{http_code}' --max-time 60 \
+            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            "https://storage.bunnycdn.com/ciphera-cdn-scripts/versions.json") || code=unreachable
+          [ "$code" = 200 ] && break
+          echo "versions.json: read attempt $attempt returned HTTP $code"
+        done
+        if [ "$code" != 200 ]; then
+          echo "🔴 could not read the published versions.json (HTTP $code after 3 tries)."
+          echo "   REFUSING TO WRITE. This object has existed since 04-09-2026, so a 404 here is a"
+          echo "   fault, not an empty manifest — treating it as empty would destroy every entry."
+          exit 1
+        fi
+        jq -e 'type == "array"' "$published" >/dev/null \
+          || { echo "🔴 the published versions.json is not an array; refusing to overwrite it"; exit 1; }
+        jq -e 'length > 0' "$published" >/dev/null \
+          || { echo "🔴 the published versions.json is an EMPTY array; refusing to overwrite it"; exit 1; }
+        if jq -e --arg v "$ver" 'any(.[]; .version == $v)' "$published" >/dev/null; then
+          echo "versions.json: already names $ver ($(jq -r 'length' "$published") versions published)"
+        else
+          merged=$(mktemp)
+          jq --arg v "$ver" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --slurpfile m public/script-versions.json \
+            '. + [{version: $v, publishedAt: $at, files: $m[0].files}]' "$published" > "$merged"
+          jq -e --arg v "$ver" 'any(.[]; .version == $v)' "$merged" >/dev/null \
+            || { echo "🔴 the merge did not produce an entry for $ver"; exit 1; }
+          # The merge is append-only by construction, so the result can never be shorter.
+          before=$(jq -r 'length' "$published"); after=$(jq -r 'length' "$merged")
+          [ "$after" -gt "$before" ] \
+            || { echo "🔴 the merge did not grow the manifest ($before -> $after); refusing to write"; exit 1; }
+          curl -fsS --max-time 120 -X PUT \
+            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$merged" \
+            "https://storage.bunnycdn.com/ciphera-cdn-scripts/versions.json" >/dev/null \
+            || { echo "🔴 PRIMARY (Bunny Storage) upload FAILED for versions.json"; exit 1; }
+          aws s3 cp "$merged" "s3://ciphera-scripts/versions.json" \
+            --endpoint-url https://s3.pub1.infomaniak.cloud \
+            --content-type application/json \
+            --cache-control "public, max-age=300" \
+            --quiet
+          echo "versions.json: added $ver ($before -> $after versions published)"
+          rm -f "$merged"
+        fi
+        rm -f "$published"
+      # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy
+      - sleep 30
+      - |
+        curl -fsS -X POST \
+          "https://api.bunny.net/purge?url=https://js.ciphera.net/versions.json&async=false" \
+          -H "AccessKey: $BUNNY_API_KEY"
+        echo "versions.json purged"
+      # ── Prove it, BY CONTENT: this is the one object with no committed counterpart to hash ──
+      #
+      # Two different questions, and they must not share a verdict:
+      #   * does the edge name THE VERSION THIS PUSH PUBLISHED, and does every file of that
+      #     version resolve to the hash it claims?  -> FATAL. This push is responsible for it.
+      #   * does every OTHER entry ever published still resolve?                -> REPORTED ONLY.
+      #
+      # 🔴 WHY THE SECOND IS NOT FATAL. versions.json is append-only and nothing in this pipeline
+      # can edit or remove an entry, so one bad historical entry would red EVERY future push to
+      # main forever, fixable only by hand on Bunny storage — and before this step was split out,
+      # each of those pushes would also have skipped deploy-k8s. A guard that wedges main is worse
+      # than the defect it reports. The report is still the signal: it names the broken entry on
+      # every run until a human repairs it, and `js.ciphera.net` is public, so it is checkable
+      # from anywhere.
       - |
         ver=$(sed -n 's/.*"version": *"\([0-9][0-9.]*\)".*/\1/p' public/script-versions.json)
         [ -n "$ver" ] || { echo "🔴 no version in public/script-versions.json"; exit 1; }
@@ -975,22 +1042,38 @@ steps:
         echo "versions.json: the edge names $ver ($(jq -r 'length' "$served") versions)"
         urls=$(mktemp)
         jq -r '.[] | .version as $v | .files | to_entries[] | "\($v) \(.key) \(.value.path) \(.value.sha384)"' "$served" > "$urls"
-        fail=0
+        fatal=0; stale=0
+        # ⚠️ Reads from a FILE, not a pipe: `jq | while read` runs the body in a subshell on every
+        # shell here, so a failure recorded inside it would be discarded and this would pass
+        # having found a 404.
         while read -r mver mname mpath mwant; do
           got=$(mktemp)
           mcode=$(curl -sS -o "$got" -w '%{http_code}' --max-time 30 "https://js.ciphera.net$mpath")
           if [ "$mcode" != 200 ]; then
-            echo "🔴 versions.json names $mver $mname at $mpath, which answers HTTP $mcode"; fail=1
+            msg="names $mver $mname at $mpath, which answers HTTP $mcode"
           else
             mgot="sha384-$(openssl dgst -sha384 -binary "$got" | openssl base64 -A)"
             if [ "$mgot" != "$mwant" ]; then
-              echo "🔴 versions.json names $mver $mname as $mwant; the edge serves $mgot"; fail=1
+              msg="names $mver $mname as $mwant; the edge serves $mgot"
             else
-              echo "  $mver $mname: serves the hash the manifest claims"
+              msg=""
             fi
           fi
           rm -f "$got"
+          if [ -z "$msg" ]; then
+            echo "  $mver $mname: serves the hash the manifest claims"
+          elif [ "$mver" = "$ver" ]; then
+            echo "🔴 versions.json $msg — THIS PUSH published $mver"; fatal=1
+          else
+            echo "⚠️  versions.json $msg — a previously published entry; repair it by hand on Bunny storage"; stale=$((stale + 1))
+          fi
         done < "$urls"
         rm -f "$urls" "$served"
-        [ "$fail" -eq 0 ] || { echo "🔴 the published manifest describes an artifact the edge does not serve; a pinned snippet from it would load nothing"; exit 1; }
-        echo "versions.json: every version it names resolves to the hash it claims"
+        [ "$fatal" -eq 0 ] || { echo "🔴 the entry this push is responsible for does not resolve; a pinned snippet from it would load nothing"; exit 1; }
+        if [ "$stale" -gt 0 ]; then
+          echo "⚠️  $stale previously published manifest entr(y/ies) do not resolve. NOT failing this push:"
+          echo "   the manifest is append-only and nothing here can edit an entry, so failing would"
+          echo "   wedge main. Repair on Bunny storage, then this line disappears."
+        else
+          echo "versions.json: every version it names resolves to the hash it claims"
+        fi
