@@ -15,17 +15,34 @@ const tabs = TEAM.flatMap((g) => g.tabs)
 const allRows = [...tabs, ...ALONE.flatMap((g) => g.tabs)]
 
 describe('settings nav registry', () => {
-  it('has three scopes for a team, nine / seven / four tabs, the middle one named Team', () => {
+  it('has three scopes for a team, nine / eight / four tabs, the middle one named Team', () => {
     // Workspace lost its Notifications tab on 21-09-2026 (ruling D7): there
     // was no workspace-level setting behind it. It gained Connected apps on
     // 24-09-2026 (PULSE-41), renamed MCP the same day (PULSE-54). The owner
     // named the container a team on 25-09-2026 (PULSE-59, W1). Site gained
     // Import on 27-09-2026 (PULSE-118), listed only where imports exist, and
     // Export on 28-09-2026 (PULSE-132). Account lost Security alerts on
-    // 16-10-2026 (OPS-17): folded into Notifications as a panel.
+    // 16-10-2026 (OPS-17): folded into Notifications as a panel. Team gained
+    // Beta on 02-11-2026 (PUL-40).
     expect(TEAM.map((g) => [g.section, g.label, g.tabs.length])).toEqual([
-      ['site', 'Site', 9], ['organization', 'Team', 7], ['account', 'Account', 4],
+      ['site', 'Site', 9], ['organization', 'Team', 8], ['account', 'Account', 4],
     ])
+  })
+
+  it('lists Beta right after MCP, for every member, in both groupings (PUL-40)', () => {
+    const team = TEAM.find((g) => g.section === 'organization')!
+    const hrefs = team.tabs.map((t) => t.href)
+    const tab = team.tabs.find((t) => t.href === '/settings/organization/beta')!
+    expect(tab).toMatchObject({ label: 'Beta', description: 'Try new features early.' })
+    expect(hrefs.indexOf('/settings/organization/beta')).toBe(hrefs.indexOf('/settings/organization/mcp') + 1)
+    // Every member sees the switch's state; the tab itself says who can change it.
+    expect(tab.requires).toBeUndefined()
+    expect(tab.when).toBeUndefined()
+    expect(tabIsVisible(tab, {}, {})).toBe(true)
+    // Somebody alone has betas too: the same tab, under Account, after MCP.
+    const account = ALONE.find((g) => g.section === 'account')!.tabs
+    expect(account).toContain(tab)
+    expect(account.indexOf(tab)).toBe(account.findIndex((t) => t.href === '/settings/organization/mcp') + 1)
   })
 
   // Keyed by href, not by position: Import stopped being the last site tab the
@@ -82,12 +99,12 @@ describe('settings nav registry', () => {
     expect(navGroups(null)).toEqual(TEAM)
   })
 
-  it('has two scopes for somebody alone: Site, and Account with billing, keys, MCP and Invite people (B1)', () => {
+  it('has two scopes for somebody alone: Site, and Account with billing, keys, MCP, Beta and Invite people (B1)', () => {
     expect(ALONE.map((g) => [g.section, g.label])).toEqual([['site', 'Site'], ['account', 'Account']])
     const account = ALONE.find((g) => g.section === 'account')!
     expect(account.tabs.map((t) => t.label)).toEqual([
       'Profile', 'Security', 'Devices', 'Notifications',
-      'Billing', 'API Keys', 'MCP', 'Invite people',
+      'Billing', 'API Keys', 'MCP', 'Beta', 'Invite people',
     ])
     const invite = account.tabs.find((t) => t.label === 'Invite people')!
     expect(invite.href).toBe('/settings/organization/members')

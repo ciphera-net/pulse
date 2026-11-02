@@ -18,7 +18,8 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * started or stopped (PULSE-134). `site_privacy_signals_changed` is one row per
  * save of the Do Not Track / GPC toggles on Settings → General (PULSE-164),
  * flat (no nested object) so the tab's raw-payload rendering stays a key/value
- * list rather than a dumped mono JSON blob.
+ * list rather than a dumped mono JSON blob. `org_beta_features_changed` is one
+ * row per switch of Settings → Beta (PUL-40), flat too: `from` and `to`.
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.
@@ -57,6 +58,7 @@ export const AUDIT_ACTIONS = [
   'member_removed',
   'member_role_changed',
   'onboarding_completed',
+  'org_beta_features_changed',
   'org_created',
   'org_deleted',
   'org_renamed',
@@ -132,6 +134,7 @@ export const ACTION_LABELS = {
   member_removed: 'Removed member',
   member_role_changed: 'Changed member role',
   onboarding_completed: 'Finished setup',
+  org_beta_features_changed: 'Changed beta features setting',
   org_created: 'Created team',
   org_deleted: 'Deleted team',
   org_renamed: 'Renamed team',

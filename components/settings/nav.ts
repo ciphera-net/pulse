@@ -19,6 +19,7 @@ import {
   Terminal,
   Heartbeat,
   DownloadSimple,
+  Flask,
 } from '@phosphor-icons/react'
 import { McpIcon } from '@/components/icons/McpIcon'
 import type { TeamState } from '@/lib/hooks/useTeamState'
@@ -113,6 +114,9 @@ const ORG_API_KEYS: NavTab = { label: 'API Keys', href: '/settings/organization/
 // * MCP (PULSE-54, owner 24-09-2026): set up an assistant, then see what is connected.
 // * It was "Connected apps" at /connected-apps until the owner renamed it; that slug redirects.
 const ORG_MCP: NavTab = { label: 'MCP', href: '/settings/organization/mcp', description: 'Connect Claude, ChatGPT and other assistants.', icon: McpIcon, requires: 'integrations.manage', badge: 'New' }
+// * Beta (PUL-40, options round 02-11-2026: a tab of its own after MCP). No `requires`: every
+// * member sees the switch's state, and only an owner or admin can change it (the tab says so).
+const ORG_BETA: NavTab = { label: 'Beta', href: '/settings/organization/beta', description: 'Try new features early.', icon: Flask }
 const ORG_AUDIT: NavTab = { label: 'Audit Log', href: '/settings/organization/audit', description: 'Team activity.', icon: ClockCounterClockwise, requires: 'audit.view' }
 
 /**
@@ -134,21 +138,21 @@ const ACCOUNT_TABS: NavTab[] = [
 
 /**
  * TEAM (and not-known-yet) grouping: Site, Team, Account. Team is today's
- * seven organization tabs; the owner named the container a team (W1).
+ * eight organization tabs; the owner named the container a team (W1).
  */
 const TEAM_GROUPS: NavGroup[] = [
   { label: 'Site', section: 'site', tabs: SITE_TABS },
   {
     label: 'Team',
     section: 'organization',
-    tabs: [ORG_GENERAL, ORG_MEMBERS, ORG_ROLES, ORG_BILLING, ORG_API_KEYS, ORG_MCP, ORG_AUDIT],
+    tabs: [ORG_GENERAL, ORG_MEMBERS, ORG_ROLES, ORG_BILLING, ORG_API_KEYS, ORG_MCP, ORG_BETA, ORG_AUDIT],
   },
   { label: 'Account', section: 'account', tabs: ACCOUNT_TABS },
 ]
 
 /**
  * ALONE grouping (option B1, owner 25-09-2026): Site and Account. Billing, API
- * keys and MCP are simply the person's own, so they sit under Account, and
+ * keys, MCP and Beta are simply the person's own, so they sit under Account, and
  * "Invite people" is the way to a team. The team's name, roles and audit log
  * are not listed; their routes still render, under Account (`sectionOf`).
  */
@@ -157,7 +161,7 @@ const ALONE_GROUPS: NavGroup[] = [
   {
     label: 'Account',
     section: 'account',
-    tabs: [...ACCOUNT_TABS, ORG_BILLING, ORG_API_KEYS, ORG_MCP, INVITE_PEOPLE],
+    tabs: [...ACCOUNT_TABS, ORG_BILLING, ORG_API_KEYS, ORG_MCP, ORG_BETA, INVITE_PEOPLE],
   },
 ]
 

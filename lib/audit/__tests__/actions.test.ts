@@ -26,12 +26,13 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
   })
 
   it('carries every action pulse-backend writes today and every history-only action production still stores', () => {
-    // Written today (53): the 41 from before PULSE-92 Phase 5, plus its six
+    // Written today (54): the 41 from before PULSE-92 Phase 5, plus its six
     // team-write actions (invite_link_created, invite_link_revoked,
     // member_left, onboarding_completed, org_created, org_renamed), plus
     // site_exported (PULSE-132, one row per export download), plus the four
     // report actions (PULSE-133/134), plus site_privacy_signals_changed
-    // (PULSE-164, one row per save of the DNT/GPC toggles).
+    // (PULSE-164, one row per save of the DNT/GPC toggles), plus
+    // org_beta_features_changed (PUL-40, one row per switch of Settings → Beta).
     const writtenToday = [
       'admin_plan_granted', 'admin_refund_failed', 'admin_refund_issued', 'admin_verdict_revoked',
       'billing_checkout_started', 'billing_payment_method_update_started', 'billing_refund_failed',
@@ -42,7 +43,7 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'invite_link_created', 'invite_link_revoked',
       'mcp_connection_created', 'mcp_connection_revoked',
       'member_added', 'member_left', 'member_removed', 'member_role_changed',
-      'onboarding_completed', 'org_created', 'org_deleted', 'org_renamed',
+      'onboarding_completed', 'org_beta_features_changed', 'org_created', 'org_deleted', 'org_renamed',
       'org.broadcast_sent', 'org.user_notified',
       'oss_application_claimed', 'oss_application_decided', 'oss_application_link_resent',
       'ownership_transferred',
@@ -53,7 +54,7 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'subscription_cancel_at_period_end', 'subscription_canceled_immediate', 'subscription_plan_changed',
       'subscription_resumed',
     ]
-    expect(writtenToday).toHaveLength(53)
+    expect(writtenToday).toHaveLength(54)
     // History only (9): no code writes these any more, but production still
     // holds rows carrying them.
     const historyOnly = [
