@@ -1,19 +1,21 @@
-# Continuous security scanning (OPS-7) + Aegis 🛡️ PR comment (OPS-8) + gate & inline annotations (OPS-9/10).
+# Continuous security scanning (OPS-7): gitleaks, trufflehog and Opengrep, all self-hosted.
 #
 # WHY A SEPARATE WORKFLOW FILE (not a step in test.yml / unit.yml): the k8s runner's per-pipeline
 # workspace PVC is ReadWriteOnce (Exoscale has no RWX filesystem), so steps of ONE workflow
 # serialize on that volume. A separate workflow gets its OWN workspace and runs IN PARALLEL with
 # build/unit/integration — same reason unit.yml was split out (PULSE-307). Own GitHub check.
 #
-# 🟡 ADVISORY ROLLOUT. gitleaks runs --exit-code 0 here (reports, does not block); the .gitleaks.toml
-# test-fixture allowlist still applies. trufflehog/Opengrep/Aegis are `failure: ignore`. Secret GATING
-# (gitleaks --exit-code 1 + AEGIS_GATING=true + requiring the `security` check in branch protection) is
-# flipped on PER REPO after triaging that repo's baseline — exactly how pulse-backend was done.
+# 🔒 ONLY gitleaks GATES. gitleaks (--exit-code 1, .gitleaks.toml allowlists test fixtures) is the
+# ONE step that can red the `security` check: a secret outside the allowlisted paths fails it.
+# trufflehog and Opengrep are `failure: ignore`, so a finding OR a transient github blip in them never
+# blocks a merge; their results are in this workflow's log. That is what makes `security` safe to
+# REQUIRE in branch protection: merge is blocked iff a real secret is present.
 #
-# Aegis (ciphera-aegis[bot]) posts a sticky summary comment AND, via reviewdog, inline review comments
-# on the exact changed lines. All versions PINNED. Secrets scanners make NO network calls (trufflehog
-# verification OFF); Opengrep + the Aegis steps egress to github.com only (rules/binary + the API).
-# Tracked in Infra/docs/plans/08-10-2026-ci-security-scanning.md and 08-10-2026-advanced-pr-experience.md.
+# Nothing posts to the PR. The Aegis summary comment and the reviewdog review steps were removed on
+# 02-11-2026: every new comment or review emailed the PR's author, and the summary's counts covered
+# the whole repository, not the diff (Infra/docs/audits/02-11-2026-pr-bot-email-noise.md). All
+# versions PINNED. Secrets scanners make NO network calls (trufflehog verification OFF); Opengrep
+# egresses to github.com only (binary + rules). Tracked in Infra/docs/plans/08-10-2026-ci-security-scanning.md.
 labels:
   runner: k8s
 
@@ -23,9 +25,9 @@ when:
   - event: pull_request
 
 steps:
-  # --- SECRETS, ADVISORY: regex/entropy, no network. Scans the WORKING TREE (`dir`), not git history.
-  # --config .gitleaks.toml (default rules + test-path allowlist) --exit-code 0 => reports but does
-  # NOT block (gating is flipped on per-repo after triage). --redact keeps raw secrets out of the log.
+  # --- SECRETS, GATING: regex/entropy, no network. Scans the WORKING TREE (`dir`), not git history.
+  # --config .gitleaks.toml (default rules + test-path allowlist) --exit-code 1 => a secret in
+  # non-test code fails this step and reds the check. --redact keeps raw secrets out of the log.
   gitleaks:
     image: ghcr.io/gitleaks/gitleaks:v8.30.1
     backend_options:
@@ -34,10 +36,12 @@ steps:
           requests: { memory: 256Mi, cpu: 100m }
           limits: { memory: 512Mi }
     commands:
-      - gitleaks dir . --config .gitleaks.toml --exit-code 0 --redact --verbose --report-format json --report-path gitleaks-report.json
+      - gitleaks dir . --config .gitleaks.toml --exit-code 1 --redact --verbose
 
   # --- SECRETS, ADVISORY: verified-credential detector run UNVERIFIED (--no-verification, no outbound
-  # calls). failure:ignore — a finding or a blip never blocks. JSON (one finding per line) feeds Aegis.
+  # calls). failure:ignore — a finding or a blip never blocks. Its own "finished scanning" log line
+  # carries the verified/unverified counts; the findings themselves (raw values) go to /dev/null, so
+  # no candidate secret ever reaches the log.
   trufflehog:
     image: trufflesecurity/trufflehog:3.99.0
     failure: ignore
@@ -47,11 +51,11 @@ steps:
           requests: { memory: 256Mi, cpu: 100m }
           limits: { memory: 1Gi }
     commands:
-      - trufflehog filesystem . --no-verification --no-update --json > trufflehog.json
+      - trufflehog filesystem . --no-verification --no-update --json > /dev/null
 
   # --- SAST, ADVISORY: Opengrep (LGPL OSS fork of semgrep). PINNED signed static binary on Alpine;
   # rules VENDORED at a pinned commit. failure:ignore — findings and download blips never block.
-  # SARIF feeds both Aegis (counts) and reviewdog (inline annotations).
+  # Findings and the "Ran N rules on M files: K findings" summary print to this log.
   opengrep:
     image: alpine:3.20
     failure: ignore
@@ -66,59 +70,4 @@ steps:
       - chmod +x /usr/local/bin/opengrep
       - git clone --filter=blob:none -q https://github.com/opengrep/opengrep-rules /tmp/rules
       - git -C /tmp/rules checkout -q f1d2b562b414783763fd02a6ed2736eaed622efa
-      - opengrep scan --config /tmp/rules/typescript --config /tmp/rules/javascript --config /tmp/rules/generic --sarif-output=opengrep.sarif . || echo "opengrep exited nonzero (advisory; not blocking)"
-
-  # --- INLINE ANNOTATIONS (OPS-10): reviewdog turns the Opengrep SARIF into review comments on the
-  # EXACT changed lines, as ciphera-aegis[bot]. PR-ONLY, advisory (fail-level=none + failure:ignore),
-  # filter-mode=added so it only comments on THIS PR's own changes. reviewdog pinned to v0.20.3.
-  # Woodpecker sets CI_REPO_OWNER/CI_REPO_NAME; reviewdog also needs CI_PULL_REQUEST + CI_COMMIT.
-  annotate:
-    image: alpine:3.20
-    failure: ignore
-    when:
-      - event: pull_request
-    backend_options:
-      kubernetes:
-        resources:
-          requests: { memory: 256Mi, cpu: 100m }
-          limits: { memory: 512Mi }
-    environment:
-      AEGIS_APP_ID:
-        from_secret: aegis_app_id
-      AEGIS_PRIVATE_KEY:
-        from_secret: aegis_private_key
-    commands:
-      - apk add --no-cache python3 curl openssl git >/dev/null
-      - curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/v0.20.3/install.sh | sh -s -- -b /usr/local/bin v0.20.3 >/dev/null 2>&1
-      - '[ -f opengrep.sarif ] || { echo "no opengrep.sarif — skipping annotations"; exit 0; }'
-      - REVIEWDOG_GITHUB_API_TOKEN=$(sh scripts/ci/aegis-token.sh); export REVIEWDOG_GITHUB_API_TOKEN
-      - export CI_PULL_REQUEST="$CI_COMMIT_PULL_REQUEST" CI_COMMIT="$CI_COMMIT_SHA"
-      - reviewdog -f=sarif -name=aegis-opengrep -reporter=github-pr-review -filter-mode=added -fail-level=none < opengrep.sarif
-
-  # --- Aegis 🛡️ sticky SUMMARY comment as ciphera-aegis[bot]. PR-ONLY, status:[success,failure] so it
-  # comments EVEN WHEN gitleaks gated (failed) the workflow — a blocked PR still gets the explanation.
-  # failure:ignore so Aegis's own failure never blocks. gitleaks-report.json is written before gitleaks
-  # exits 1, so counts are available regardless. Upserts ONE comment (PATCH in place, never spam).
-  aegis:
-    image: alpine:3.20
-    failure: ignore
-    when:
-      - event: pull_request
-        status: [success, failure]
-    backend_options:
-      kubernetes:
-        resources:
-          requests: { memory: 256Mi, cpu: 100m }
-          limits: { memory: 512Mi }
-    environment:
-      AEGIS_APP_ID:
-        from_secret: aegis_app_id
-      AEGIS_PRIVATE_KEY:
-        from_secret: aegis_private_key
-    commands:
-      - apk add --no-cache python3 curl openssl >/dev/null
-      - GL=$(python3 -c "import json,os;print(len(json.load(open('gitleaks-report.json')) or []) if os.path.exists('gitleaks-report.json') else 0)")
-      - TH=$(python3 -c "import os;print(sum(1 for l in open('trufflehog.json') if l.strip()) if os.path.exists('trufflehog.json') else 0)")
-      - OG=$(python3 -c "import json,os;print(len(json.load(open('opengrep.sarif'))['runs'][0]['results']) if os.path.exists('opengrep.sarif') else 0)")
-      - AEGIS_TOKEN=$(sh scripts/ci/aegis-token.sh)
-      - AEGIS_GL_SECRETS="$GL" AEGIS_TH_UNVERIFIED="$TH" AEGIS_OG_FINDINGS="$OG" GH_REPO="$CI_REPO" PR_NUMBER="$CI_COMMIT_PULL_REQUEST" AEGIS_TOKEN="$AEGIS_TOKEN" python3 scripts/ci/aegis.py
+      - opengrep scan --config /tmp/rules/typescript --config /tmp/rules/javascript --config /tmp/rules/generic . || echo "opengrep exited nonzero (advisory; not blocking)"
