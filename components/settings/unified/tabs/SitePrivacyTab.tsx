@@ -432,7 +432,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             <PanelRows>
               <PanelRow
                 label="Geographic data"
-                caption={'Controls location granularity. "Disabled" collects no geographic data at all.'}
+                caption={'Controls location granularity. "Disabled" stores no geographic data at all.'}
                 control={
                   <Select
                     value={collectGeoData}

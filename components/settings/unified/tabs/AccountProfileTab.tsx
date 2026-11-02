@@ -1319,7 +1319,7 @@ export default function AccountProfileTab() {
         items={[
           {
             title: 'Delete account',
-            description: 'Permanently delete your account and all associated data.',
+            description: 'Permanently delete your account and your data.',
             buttonLabel: 'Delete',
             onClick: () => setShowDeleteDialog(true),
             disabled: accountWaiting,
@@ -1341,7 +1341,7 @@ export default function AccountProfileTab() {
           <div>
             <p className="text-sm text-destructive">This permanently deletes:</p>
             <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-              <li>Your account and all personal data</li>
+              <li>Your account and your personal data</li>
               <li>All sessions and trusted devices</li>
               {!alone && <li>Your membership in every team</li>}
               {/* The workspaces that go with it. Direction A (owner, 09-09-2026):
