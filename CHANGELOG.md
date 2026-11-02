@@ -11,6 +11,13 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Added
 
+- **Beta features.** Settings has a new **Beta** tab with one switch, **Show beta
+  features**. When your team's owner or an admin turns it on, everyone in the team
+  gets the Pulse features that are still in beta. The first one is Google Analytics
+  import. Beta features can still change, and some may be removed. Every member can
+  see whether the switch is on, and each change is recorded in your audit log as
+  *Changed beta features setting*.
+
 - **Export has moved to Settings, and the file is made from the full data.**
   Settings → Site → Export replaces the download button on the dashboard chart.
   Choose a range (any of the usual views, All time, or your own days, always in
