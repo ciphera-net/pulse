@@ -297,7 +297,7 @@ describe('SettingsShell — alone (B1)', () => {
     expect(current[0]).toHaveAccessibleName('Account: Billing')
   })
 
-  it('lists the Account rows, then Billing, API Keys, MCP and Invite people; no team name, roles or audit log', () => {
+  it('lists the Account rows, then Billing, API Keys, MCP, Beta and Invite people; no team name, roles or audit log', () => {
     render(<SettingsShell><div>tab</div></SettingsShell>)
     const rail = screen.getByRole('navigation', { name: 'Settings sections' })
     const hrefs = within(rail).getAllByRole('link')
@@ -311,6 +311,7 @@ describe('SettingsShell — alone (B1)', () => {
       '/settings/organization/billing',
       '/settings/organization/api-keys',
       '/settings/organization/mcp',
+      '/settings/organization/beta',
       '/settings/organization/members',
     ])
     expect(within(rail).getByRole('link', { name: 'Account: Invite people' })).toBeInTheDocument()

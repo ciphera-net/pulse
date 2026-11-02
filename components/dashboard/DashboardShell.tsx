@@ -24,6 +24,7 @@ import {
   Heartbeat,
   Terminal,
   EnvelopeSimple,
+  Flask,
 } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -114,6 +115,8 @@ function useHomePageMeta(): PageMeta {
       // "Settings" in the top bar while its siblings named themselves.
       monitoring: { label: 'Monitoring', icon: Heartbeat },
       'api-keys': { label: 'API Keys', icon: Terminal },
+      // The Beta tab (PUL-40). Without an entry here a new settings tab reads as a bare "Settings".
+      beta: { label: 'Beta', icon: Flask },
     }
     const tabSlug = parts[2] ?? ''
     const meta = TAB_META[tabSlug]

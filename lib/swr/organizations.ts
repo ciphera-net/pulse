@@ -1,7 +1,27 @@
 'use client'
 import useSWR from 'swr'
-import { getUserOrganizations, type OrganizationMember } from '@/lib/api/organization'
+import { getOrganization, getUserOrganizations, type Organization, type OrganizationMember } from '@/lib/api/organization'
 import { useAuth } from '@/lib/auth/context'
+
+/**
+ * The active team as GET /organizations/:id answers it (Settings → Beta reads its
+ * `beta_features_enabled`). Keyed by the team id; an org switch's cache-wide clear
+ * (lib/swr/org-switch.ts) drops it with everything else.
+ *
+ * `organization` is null until the first answer arrives.
+ */
+export function useOrganization() {
+  const { user } = useAuth()
+  const orgId = user?.org_id ?? null
+
+  const { data, error, isLoading, mutate } = useSWR<Organization>(
+    orgId ? ['organization', orgId] : null,
+    () => getOrganization(orgId as string),
+    { revalidateOnFocus: false },
+  )
+
+  return { organization: data ?? null, error, isLoading, mutate }
+}
 
 /**
  * The organizations the signed-in person belongs to, fetched once and shared.

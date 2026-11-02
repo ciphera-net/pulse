@@ -18,6 +18,7 @@ const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/
 const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceAuditTab'))
 const WorkspaceApiKeysTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceApiKeysTab'))
 const WorkspaceMcpTab     = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMcpTab'))
+const WorkspaceBetaTab    = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceBetaTab'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   general:       WorkspaceGeneralTab,
@@ -27,6 +28,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   audit:         WorkspaceAuditTab,
   'api-keys':    WorkspaceApiKeysTab,
   mcp:           WorkspaceMcpTab,
+  beta:          WorkspaceBetaTab,
 }
 
 // * Old slugs that moved. "connected-apps" became "mcp" on 24-09-2026 (PULSE-54): the page was

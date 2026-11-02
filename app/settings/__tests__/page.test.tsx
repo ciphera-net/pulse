@@ -133,7 +133,7 @@ describe('Settings landing — round two (owner pick L2, 17-09-2026)', () => {
 describe('Settings landing — alone and team', () => {
   const site = { activeSite: { name: 'Acme', domain: 'acme.example', is_verified: true }, sites: [{}], isLoading: false }
 
-  it('alone: two panels, Site and Account; Account holds billing, keys, MCP and Invite people', () => {
+  it('alone: two panels, Site and Account; Account holds billing, keys, MCP, Beta and Invite people', () => {
     teamState = 'alone'
     grantedPerms = new Set(ALL_PERMS)
     mockActiveSite = site
@@ -152,6 +152,7 @@ describe('Settings landing — alone and team', () => {
       '/settings/organization/billing',
       '/settings/organization/api-keys',
       '/settings/organization/mcp',
+      '/settings/organization/beta',
       '/settings/organization/members',
     ])
     expect(screen.getByText('Invite people')).toBeInTheDocument()

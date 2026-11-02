@@ -1,9 +1,12 @@
 'use client'
 
-import useSWR from 'swr'
-import { getMe } from '@/lib/api/me'
+import useSWR, { type useSWRConfig } from 'swr'
+import { getMe, type MeResponse } from '@/lib/api/me'
 import { useAuth } from '@/lib/auth/context'
 import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
+
+/** The SWR key /me is cached under: useFeature reads it, setTeamFeatures writes it. */
+export const ME_KEY = '/api/v1/me'
 
 // Feature flags for the ACTIVE team (OPS-27): the betas a team or a person has been given, switched
 // on and off without a deploy. pulse-backend evaluates them and lists each team's on-flags in
@@ -21,7 +24,7 @@ import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 export function useFeature(flag: string): boolean | null {
   const { user } = useAuth()
   const isPublic = useOptionalSiteScope()?.mode === 'public'
-  const { data } = useSWR(user && !isPublic ? '/api/v1/me' : null, () => getMe(), {
+  const { data } = useSWR(user && !isPublic ? ME_KEY : null, () => getMe(), {
     revalidateOnFocus: false,
     dedupingInterval: 300_000,
   })
@@ -29,4 +32,18 @@ export function useFeature(flag: string): boolean | null {
   if (!data) return null
   const team = data.teams.find((t) => t.id === user.org_id)
   return Boolean(team?.features?.includes(flag))
+}
+
+/**
+ * Writes one team's betas into the cached /me, as the server just answered them (the beta-features
+ * switch, Settings → Beta), so every useFeature follows at once. Nothing is fetched: a /me read
+ * straight after the switch can reach a server whose list is up to 15 s old. Before /me has
+ * loaded there is nothing to update, and its first read brings the list.
+ */
+export function setTeamFeatures(mutate: ReturnType<typeof useSWRConfig>['mutate'], teamId: string, features: string[]) {
+  void mutate<MeResponse>(
+    ME_KEY,
+    (me) => me && { ...me, teams: me.teams.map((t) => (t.id === teamId ? { ...t, features } : t)) },
+    { revalidate: false },
+  )
 }

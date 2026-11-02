@@ -12,6 +12,8 @@ export interface Organization {
   plan_tier?: string
   updated_at?: string
   onboarding_completed_at: string | null
+  /** The team switched beta features on (Settings → Beta): every beta in lib/betas.ts reaches it. */
+  beta_features_enabled: boolean
 }
 
 export interface OrganizationMember {
@@ -134,6 +136,19 @@ export async function updateOrganization(organizationId: string, name: string, s
   return await authFetch<Organization>(`/organizations/${organizationId}`, {
     method: 'PUT',
     body: JSON.stringify({ name, slug }),
+  })
+}
+
+/**
+ * Switch the team's beta features on or off (owner or admin). The answer is the team as it now is,
+ * plus `features`: the betas on for this person in this team, as GET /me lists them, evaluated by
+ * the server that made the change. Put them in the /me cache (setTeamFeatures, lib/features.ts)
+ * rather than re-reading /me, which another server may answer from a list up to 15 s old.
+ */
+export async function setBetaFeatures(organizationId: string, enabled: boolean): Promise<Organization & { features: string[] }> {
+  return await authFetch<Organization & { features: string[] }>(`/organizations/${organizationId}/beta-features`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled }),
   })
 }
 
