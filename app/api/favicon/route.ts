@@ -59,9 +59,30 @@ const FALLBACK_UPSTREAM: string | null = process.env.FAVICON_FALLBACK_UPSTREAM_U
 // * Sizes actually used by the app (see FAVICON_SERVICE_URL consumers).
 const ALLOWED_SIZES = new Set(['16', '32', '64', '128'])
 
-// * Bare hostname only — no scheme, port, path, or IP-literal shapes beyond
-// * dotted labels. Anything else 400s and the <img> falls back to its icon.
+// * Bare hostname only — no scheme, port or path. Anything else 400s and the
+// * <img> falls back to its icon.
 const DOMAIN_RE = /^(?=.{4,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/
+
+// * 🔴 AND THE FINAL LABEL MUST CONTAIN A LETTER. This is not cosmetic:
+// * DOMAIN_RE alone accepts every IPv4 literal, because each of `10.0.0.1`'s
+// * labels is a perfectly valid DNS label. The comment above this pair used to
+// * claim it excluded "IP-literal shapes beyond dotted labels", which is
+// * self-contradictory — an IPv4 literal IS dotted labels — and the code
+// * matched the contradiction rather than the intent.
+// *
+// * 🔑 The test that was supposed to catch this passed for an unrelated reason.
+// * It probed one address, 127.0.0.1, and Next <= 16.1.6 rewrote that single
+// * value to `localhost` inside `nextUrl`; `localhost` then failed DOMAIN_RE for
+// * having no dot at all. So the only address the guard ever rejected was
+// * rejected by an upstream quirk, and every other literal was always accepted.
+// * Next 16.4.1 preserves the value, which is what surfaced it (measured
+// * 02-11-2026).
+// *
+// * A real TLD is never all digits, so requiring one letter in the last label
+// * excludes IPv4 while keeping punycode TLDs (`example.xn--p1ai`) and
+// * digit-leading labels (`3m.com`) working — a `[a-z]{2,63}` rule would have
+// * broken the first of those.
+const TLD_HAS_LETTER = /\.[a-z0-9-]*[a-z][a-z0-9-]*$/
 
 export async function GET(request: NextRequest) {
   // * Configuration is checked BEFORE the request is validated, and answers 503
@@ -82,7 +103,7 @@ export async function GET(request: NextRequest) {
   const domain = request.nextUrl.searchParams.get('domain')?.trim().toLowerCase() ?? ''
   const sz = request.nextUrl.searchParams.get('sz') ?? '32'
 
-  if (!DOMAIN_RE.test(domain) || !ALLOWED_SIZES.has(sz)) {
+  if (!DOMAIN_RE.test(domain) || !TLD_HAS_LETTER.test(domain) || !ALLOWED_SIZES.has(sz)) {
     return new NextResponse(null, { status: 400 })
   }
 

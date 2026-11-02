@@ -97,6 +97,60 @@ describe('GET /api/favicon', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  /**
+   * 🔴 This case replaces a single `127.0.0.1` probe that passed for an
+   * unrelated reason for as long as it existed. Next <= 16.1.6 rewrote that one
+   * value to `localhost` inside `nextUrl`, and `localhost` was refused for
+   * having no dot — so the assertion never exercised the domain pattern at all,
+   * and every other IPv4 literal was accepted. Next 16.4.1 preserves the value,
+   * which is what exposed it (measured 02-11-2026).
+   *
+   * 🔑 Hence the shape of this test. One address cannot stand in for a class:
+   * the loopback case is the ONLY one upstream ever normalised, so it is the one
+   * address whose rejection proves least. And the positive controls are
+   * load-bearing in the other direction — a validator that refuses everything
+   * would satisfy a rejection-only test while breaking every customer icon.
+   */
+  it('refuses an IP literal in place of a hostname, and still accepts real domains', async () => {
+    const GET = await loadRoute('http://sigil.apps.svc.cluster.local/icon')
+
+    // 🔴 A FRESH Response per call, not the shared one. `beforeEach` uses
+    // `mockResolvedValue(pngResponse())`, which hands back the SAME object every
+    // time, and a Response body can only be read once — the route calls
+    // `upstream.arrayBuffer()`, so the second success in a loop gets a consumed
+    // body, `resolveVia` returns null, and the route answers 404. Every other
+    // success case in this file calls GET exactly once, which is why no test had
+    // ever exposed it.
+    fetchSpy.mockImplementation(async () => pngResponse())
+
+    // Every one of these is a valid set of dotted DNS labels, which is why a
+    // dotted-label pattern alone lets them through. Private, loopback,
+    // link-local, carrier-grade NAT and unspecified are all represented.
+    for (const literal of [
+      '127.0.0.1',
+      '10.0.0.1',
+      '192.168.1.1',
+      '172.17.0.1',
+      '169.254.169.254',
+      '100.64.0.1',
+      '0.0.0.0',
+      '1.2.3.4',
+      '255.255.255.255',
+    ]) {
+      const res = await GET(req(`?domain=${literal}&sz=32`))
+      expect(res.status, `${literal} must be refused`).toBe(400)
+    }
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    // Positive controls: a punycode TLD and a digit-leading label must survive.
+    // `example.xn--p1ai` is the case a `[a-z]{2,63}` TLD rule would break.
+    for (const real of ['github.com', 'sub.example.co.uk', 'example.xn--p1ai', '3m.com']) {
+      const res = await GET(req(`?domain=${real}&sz=32`))
+      expect(res.status, `${real} must be accepted`).toBe(200)
+    }
+    expect(fetchSpy).toHaveBeenCalledTimes(4)
+  })
+
   it('404s (not 503) when a configured upstream fails — the two states stay distinguishable', async () => {
     // A 503 means "we are misconfigured"; a 404 means "no icon for that domain".
     // Collapsing them is what let the original gap hide.
