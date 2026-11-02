@@ -17,10 +17,15 @@
 labels:
   runner: k8s
 
+# A Dependabot PR cannot land here: every bump is re-authored under the canonical
+# identity, so its pipeline can never produce a merge — and one merge makes Dependabot
+# rebase every open PR, each firing CI on a 1-node/3-slot runner. Skip them.
+# Fails OPEN: an unset or unexpected CI_COMMIT_AUTHOR still runs the pipeline.
 when:
   - event: push
     branch: [main]
   - event: pull_request
+    evaluate: 'CI_COMMIT_AUTHOR != "dependabot[bot]"'
 
 steps:
   # --- SECRETS, ADVISORY: regex/entropy, no network. Scans the WORKING TREE (`dir`), not git history.
