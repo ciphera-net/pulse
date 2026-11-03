@@ -34,7 +34,7 @@ steps:
   # --config .gitleaks.toml (default rules + test-path allowlist) --exit-code 1 => a secret in
   # non-test code fails this step and reds the check. --redact keeps raw secrets out of the log.
   gitleaks:
-    image: ghcr.io/gitleaks/gitleaks:v8.30.1
+    image: registry.ops.ciphera.net/mirror/ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb
     backend_options:
       kubernetes:
         resources:
@@ -48,7 +48,7 @@ steps:
   # carries the verified/unverified counts; the findings themselves (raw values) go to /dev/null, so
   # no candidate secret ever reaches the log.
   trufflehog:
-    image: trufflesecurity/trufflehog:3.99.0
+    image: registry.ops.ciphera.net/mirror/docker.io/trufflesecurity/trufflehog:3.99.0@sha256:0bf70c478475531a9b40edc2026561ccce6eb94e191880ff0e6979601c399d65
     failure: ignore
     backend_options:
       kubernetes:

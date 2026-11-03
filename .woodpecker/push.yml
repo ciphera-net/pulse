@@ -72,7 +72,7 @@ steps:
     commands:
       - printf '@ciphera-net:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=%s\nlegacy-peer-deps=true\n' "$NPM_TOKEN" > .npmrc-ci
   next-build:
-    image: node:22-alpine
+    image: registry.ops.ciphera.net/mirror/docker.io/library/node:22-alpine-025b8e975a61@sha256:025b8e975a61d94e33abeafaad1255ef44e4898cf1a1b6446860009c72e6d284
     # 🔴 THE COMPILE LIVES HERE NOW, NOT IN THE DOCKERFILE (phase 4, 21-08-2026).
     # An image build runs inside the SHARED `buildkitd` daemon that every repo uses.
     # Measured 21-08: one Next.js compile takes it from ~850Mi idle to ~2.4-2.9Gi
@@ -250,7 +250,7 @@ steps:
           --progress plain
       - echo "pushed $REGISTRY/$IMAGE_REPO:$IMAGE_TAG and :latest"
   next-build-staging:
-    image: node:22-alpine
+    image: registry.ops.ciphera.net/mirror/docker.io/library/node:22-alpine-025b8e975a61@sha256:025b8e975a61d94e33abeafaad1255ef44e4898cf1a1b6446860009c72e6d284
     # 🔴 THE COMPILE LIVES HERE NOW, NOT IN THE DOCKERFILE (phase 4, 21-08-2026).
     # An image build runs inside the SHARED `buildkitd` daemon that every repo uses.
     # Measured 21-08: one Next.js compile takes it from ~850Mi idle to ~2.4-2.9Gi
