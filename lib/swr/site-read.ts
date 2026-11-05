@@ -25,7 +25,7 @@ import { isPublicSiteRef, siteRefKey, type SiteRef } from '@/lib/scope/site-ref'
  *  - `demo`: every other public route. Only the demo site is served these, at full fidelity; a share link
  *    answers 404 "This page is not shared" until the Sharing round (D10) rules on each page. That includes
  *    the site record itself (`/sites/:id`) and the data window.
- *  - `member`: no public route exists (install status, ingest health, traffic status, quarantine, the
+ *  - `member`: no public route exists (install status, ingest health, quarantine, the
  *    site team, billing, Visitors, every write). Never made from a public scope, whatever its fidelity.
  */
 export type SiteRouteClass = 'customer' | 'demo' | 'member'

@@ -54,7 +54,7 @@ import {
   type JourneyFlow,
   type EntryPoint,
 } from '@/lib/api/journeys'
-import { getSite, getSiteTeam, getInstallStatus, getIngestHealth, getTrafficStatus, type IngestHealthResponse, type TrafficStatusResponse } from '@/lib/api/sites'
+import { getSite, getSiteTeam, getInstallStatus, getIngestHealth, type IngestHealthResponse } from '@/lib/api/sites'
 import type { Site, InstallStatusResponse } from '@/lib/api/sites'
 import { listFunnels, getFunnel, getFunnelStats, getAllFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import {
@@ -91,7 +91,6 @@ const fetchers = {
   site: (site: SiteRef) => getSite(site),
   installStatus: (siteId: string) => getInstallStatus(siteId),
   ingestHealth: (siteId: string) => getIngestHealth(siteId),
-  trafficStatus: (siteId: string) => getTrafficStatus(siteId),
   dashboard: (site: SiteRef, start: string, end: string, interval?: string, filters?: string, period?: string, minutes?: number) => getDashboard(site, start, end, 10, interval, filters, period, minutes),
   stats: (site: SiteRef, start: string, end: string, filters?: string) => getStats(site, start, end, filters),
   dailyStats: (site: SiteRef, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
@@ -290,29 +289,6 @@ export function useIngestHealth(siteId: string | undefined) {
     siteId, 'member',
     (siteKey) => siteId ? ['ingest-health', siteKey] : null,
     () => fetchers.ingestHealth(siteId as string),
-    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 60 * 1000 }
-  )
-}
-
-/**
- * The traffic watcher's current judgement for one site — the TRAFFIC panel's
- * one row.
- *
- * ⚠️ No polling, for the same reason as useIngestHealth above and a stronger
- * one: the answer is about YESTERDAY, on the site's own clock, so it cannot
- * change while somebody reads a settings tab. It moves once a day at most, after
- * the site's local 06:00.
- *
- * Returns undefined while loading; the consumer MUST render that as unresolved
- * and never as "normal" — three states, and only the last is a measurement.
- *
- * Route class `member`.
- */
-export function useTrafficStatus(siteId: string | undefined) {
-  return useSiteSWR<TrafficStatusResponse>(
-    siteId, 'member',
-    (siteKey) => siteId ? ['traffic-status', siteKey] : null,
-    () => fetchers.trafficStatus(siteId as string),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 60 * 1000 }
   )
 }

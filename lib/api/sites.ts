@@ -197,42 +197,6 @@ export interface IngestHealthResponse {
   causes: IngestRejectionCause[]
 }
 
-/** The traffic watcher's current judgement for one site — the TRAFFIC panel's
- *  one row (design 14-09-2026-traffic-watcher-design.md §5, direction T1).
- *
- *  🔴 `unwatched` IS A FIRST-CLASS ANSWER, NOT A LOADING STATE. Most sites are
- *  unwatched most of the time — production measured eight of ten on the day this
- *  shipped — and every new site is for its first five weeks. It is the honest
- *  answer for a site whose history is too short, and the panel must render it as
- *  one: `reason` says why and `watching_from` says from when.
- *
- *  🔴 `observed` and `expected` are NULLABLE and the null is load-bearing. A
- *  site that cannot be judged has no expectation; a zero here would draw
- *  "0 visitors, about 0 expected" for a brand-new site as though it had been
- *  measured. A REAL zero still arrives as 0. */
-export interface TrafficStatusResponse {
-  state: 'watched' | 'unwatched'
-  /** Why it is unwatched. Absent when watched. */
-  reason?: 'new_site' | 'timezone_changed' | 'session_boundary' | 'gap'
-  /** The first day this site can be judged, YYYY-MM-DD. Absent when watched, and
-   *  also absent when the reason has no knowable end date. */
-  watching_from?: string
-  /** The CLOSED site-local day judged, YYYY-MM-DD. Absent when unwatched. */
-  day?: string
-  direction?: 'steady' | 'fell' | 'rose'
-  observed: number | null
-  expected: number | null
-  /** 🔴 The site's expectation is under the detector's floor, so it can NEVER
-   *  produce a direction — whatever its traffic does.
-   *
-   *  "Steady" and "cannot tell" are different answers, and the panel was showing
-   *  both as "Normal". Measured on production 16-09-2026: all four `Europe/*`
-   *  sites are under the floor on every weekday (best 17.0 visitors, worst 1.0),
-   *  so once the 26-08 session boundary clears on 30-09 they would have read
-   *  "Normal" forever — claiming a judgement that was never made. */
-  below_floor: boolean
-}
-
 export interface CreateSiteRequest {
   domain: string
   name: string
@@ -342,10 +306,6 @@ export async function getInstallStatus(id: string): Promise<InstallStatusRespons
 
 export async function getIngestHealth(id: string): Promise<IngestHealthResponse> {
   return apiRequest<IngestHealthResponse>(`/sites/${id}/ingest-health`)
-}
-
-export async function getTrafficStatus(id: string): Promise<TrafficStatusResponse> {
-  return apiRequest<TrafficStatusResponse>(`/sites/${id}/traffic-status`)
 }
 
 export async function createSite(data: CreateSiteRequest): Promise<Site> {

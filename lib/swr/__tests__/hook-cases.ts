@@ -36,7 +36,6 @@ export const HOOK_CASES: HookCase[] = [
   armed('useInstallStatus#poll', 'member', () => hooks.useInstallStatus(S, { poll: true })),
   idle('useInstallStatus#noSite', 'member', () => hooks.useInstallStatus(undefined)),
   armed('useIngestHealth', 'member', () => hooks.useIngestHealth(S)),
-  armed('useTrafficStatus', 'member', () => hooks.useTrafficStatus(S)),
   armed('useDashboard#period', 'customer', () => hooks.useDashboard(S, D1, D2, 'day', F, 'today')),
   armed('useDashboard#dates', 'customer', () => hooks.useDashboard(S, D1, D2, 'hour', undefined, undefined)),
   armed('useDashboard#live', 'customer', () => hooks.useDashboard(S, D1, D1, 'minute', undefined, undefined, 5)),
