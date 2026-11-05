@@ -209,6 +209,39 @@ describe('GET /api/favicon', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 
+  // ── fallback=email: the weekly summary email's favicons ──────────────────
+  // An email cannot fall back to a monogram on error, so a miss asked for with fallback=email redirects to the
+  // neutral glyph the email uses. Without the parameter, or with any other value, the 404 stays.
+
+  it('redirects a miss to the fixed email glyph when fallback=email', async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
+    const GET = await loadRoute(MC, INCLUSTER)
+    const res = await GET(req('?domain=nope.example&sz=32&fallback=email'))
+    expect(res.status).toBe(302)
+    expect(res.headers.get('Location')).toBe('https://cdn.ciphera.net/email/summary-source-32x32.png')
+    expect(res.headers.get('Cache-Control')).toBe('public, max-age=300')
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the 404 without fallback=email, and for any other value', async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
+    const GET = await loadRoute(MC, INCLUSTER)
+    for (const qs of ['?domain=nope.example&sz=32', '?domain=nope.example&sz=32&fallback=https://evil.example/x.png', '?domain=nope.example&sz=32&fallback=EMAIL']) {
+      const res = await GET(req(qs))
+      expect(res.status).toBe(404)
+      expect(res.headers.get('Location')).toBeNull()
+    }
+  })
+
+  it('serves a found icon unchanged with fallback=email, and still 400s bad input', async () => {
+    const GET = await loadRoute(MC)
+    const found = await GET(req('?domain=github.com&sz=32&fallback=email'))
+    expect(found.status).toBe(200)
+    expect(found.headers.get('Content-Type')).toBe('image/png')
+    const bad = await GET(req('?domain=10.0.0.1&sz=32&fallback=email'))
+    expect(bad.status).toBe(400)
+  })
+
   it('works with no fallback configured — the fallback is optional, the primary is not', async () => {
     fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
 
