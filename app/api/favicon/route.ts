@@ -84,6 +84,13 @@ const DOMAIN_RE = /^(?=.{4,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([
 // * broken the first of those.
 const TLD_HAS_LETTER = /\.[a-z0-9-]*[a-z][a-z0-9-]*$/
 
+// * `fallback=email`: the weekly summary email (Iris, summary_weekly) draws a favicon for each site and source, and
+// * an email cannot fall back to a monogram the way <SiteFavicon> does on error: a 404 there is a broken-image box.
+// * So, only when asked, a miss redirects to the neutral source glyph the email already uses. The target is FIXED
+// * here (never taken from the request), and without the parameter nothing changes: the dashboard keeps its 404
+// * and its monogram.
+const EMAIL_FALLBACK_GLYPH = 'https://cdn.ciphera.net/email/summary-source-32x32.png'
+
 export async function GET(request: NextRequest) {
   // * Configuration is checked BEFORE the request is validated, and answers 503
   // * rather than the 404 the not-found path uses. Both choices are deliberate:
@@ -102,6 +109,7 @@ export async function GET(request: NextRequest) {
 
   const domain = request.nextUrl.searchParams.get('domain')?.trim().toLowerCase() ?? ''
   const sz = request.nextUrl.searchParams.get('sz') ?? '32'
+  const emailFallback = request.nextUrl.searchParams.get('fallback') === 'email'
 
   if (!DOMAIN_RE.test(domain) || !TLD_HAS_LETTER.test(domain) || !ALLOWED_SIZES.has(sz)) {
     return new NextResponse(null, { status: 400 })
@@ -172,6 +180,14 @@ export async function GET(request: NextRequest) {
   // * Neither resolver produced an icon. Short-cache it: at 3600s a domain that
   // * gains a favicon tomorrow keeps showing a monogram for an hour, and at 0 a
   // * genuinely icon-less domain re-queries both resolvers on every render.
+  // * An email asked for the glyph instead of a 404 (EMAIL_FALLBACK_GLYPH): same short cache, so a domain that gains
+  // * a favicon shows it in the next email.
+  if (emailFallback) {
+    return new NextResponse(null, {
+      status: 302,
+      headers: { Location: EMAIL_FALLBACK_GLYPH, 'Cache-Control': 'public, max-age=300' },
+    })
+  }
   return new NextResponse(null, {
     status: 404,
     headers: { 'Cache-Control': 'public, max-age=300' },
