@@ -80,7 +80,7 @@ describe('WorkspaceBetaTab', () => {
     expect(screen.getByText('Beta features')).toBeInTheDocument()
     expect(screen.getByText("Try new features before they're released to everyone. We may still change or remove them.")).toBeInTheDocument()
     // Exact text: one full stop per sentence, and no member caption for an owner.
-    expect(screen.getByText('Now in beta: Google Analytics import.')).toBeInTheDocument()
+    expect(screen.getByText('Now in beta: Google Analytics import, Weekly summary email.')).toBeInTheDocument()
     expect(screen.queryByText(/Only the owner or an admin/)).toBeNull()
   })
 
@@ -149,7 +149,7 @@ describe('WorkspaceBetaTab', () => {
     const toggle = await theSwitch()
     expect(toggle).toHaveAttribute('aria-checked', 'true')
     expect(toggle).toBeDisabled()
-    expect(screen.getByText('Now in beta: Google Analytics import. Only the owner or an admin can change this.')).toBeInTheDocument()
+    expect(screen.getByText('Now in beta: Google Analytics import, Weekly summary email. Only the owner or an admin can change this.')).toBeInTheDocument()
   })
 
   it('says when the setting cannot be read, and reads it again on retry', async () => {

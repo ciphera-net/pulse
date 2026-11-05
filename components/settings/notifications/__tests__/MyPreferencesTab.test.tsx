@@ -24,6 +24,9 @@ const toastError = vi.fn()
 // The panel line names the container from the ONE team-state signal (PULSE-59).
 let mockTeamState: 'alone' | 'team' | null = 'team'
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+// The weekly summary's row follows its beta (useFeature('weekly-summary')): null until /me answers.
+let mockSummaryBeta: boolean | null = false
+vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'weekly-summary' ? mockSummaryBeta : false) }))
 
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
@@ -87,6 +90,7 @@ function doc(overrides: Partial<PreferencesDocument> = {}): PreferencesDocument 
 beforeEach(() => {
   vi.clearAllMocks()
   mockTeamState = 'team'
+  mockSummaryBeta = false
   getPrefsDocument.mockResolvedValue(doc())
   // The PUT answers with the stored truth re-read: the fixture applies the
   // write to a fresh document, the way Iris does.
@@ -305,3 +309,38 @@ describe('MyPreferencesTab (one switch per category)', () => {
     expect(await screen.findByText('Billing')).toBeInTheDocument()
   })
 })
+
+describe('MyPreferencesTab: the weekly summary row follows its beta', () => {
+  const withSummary = () =>
+    doc({
+      categories: [
+        ...doc().categories,
+        cat('summary', 'Weekly summary', 'low'),
+      ],
+    })
+
+  it('shows the row last, with its caption and a switch, while the beta is on for the team', async () => {
+    mockSummaryBeta = true
+    getPrefsDocument.mockResolvedValue(withSummary())
+    render(<MyPreferencesTab />)
+    await screen.findByText('Weekly summary')
+    expect(
+      screen.getByText('Every Monday: visitors, top pages and top sources from the week before, for each of your sites.'),
+    ).toBeInTheDocument()
+    expect(switchFor('Weekly summary')).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Getting started').compareDocumentPosition(screen.getByText('Weekly summary')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it.each([
+    ['off', false],
+    ['not known yet', null],
+  ])('hides the row while the beta is %s, even when the wire carries the category', async (_, beta) => {
+    mockSummaryBeta = beta as boolean | null
+    getPrefsDocument.mockResolvedValue(withSummary())
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(screen.queryByText('Weekly summary')).toBeNull()
+    expect(screen.getAllByRole('switch')).toHaveLength(5)
+  })
+})
+

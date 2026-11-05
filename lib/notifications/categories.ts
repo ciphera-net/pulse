@@ -1,5 +1,5 @@
 /** The registry's category ids (immutable there; only display names move). */
-export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle'
+export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle' | 'summary'
 
 /**
  * Category ORDER and fallback vocabulary, for Account → Notifications: the
@@ -15,7 +15,7 @@ export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'sy
  * 3-of-6 drift the ruling killed.
  *
  * This list also fixes the FAMILY ORDER the settings render: billing,
- * security, uptime, site, team, system, lifecycle.
+ * security, uptime, site, team, system, lifecycle, summary.
  */
 export interface NotificationCategory {
   id: Category
@@ -40,4 +40,8 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   // from it is invisible in settings and cannot be switched there, however
   // correctly the wire reports it.
   { id: 'lifecycle', label: 'Getting started', critical: false },
+  // summary joined with iris migration 045 (05-11-2026): the Monday weekly summary, in its own category and
+  // opt-out class so switching it off silences nothing else. Last, for the same reason as lifecycle. Its row
+  // shows only while the weekly-summary beta is on for the team (MyPreferencesTab).
+  { id: 'summary', label: 'Weekly summary', critical: false },
 ]

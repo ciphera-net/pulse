@@ -13,6 +13,7 @@ import {
 } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 import { useTeamState } from '@/lib/hooks/useTeamState'
+import { useFeature } from '@/lib/features'
 import AccountSecurityAlertsPanel from '@/components/settings/AccountSecurityAlertsPanel'
 
 /**
@@ -50,6 +51,7 @@ const CAPTIONS: Record<string, string> = {
   team: 'People joining your team and role changes.',
   system: 'Announcements and scheduled maintenance from Ciphera.',
   lifecycle: 'Nudges while your account is being set up.',
+  summary: 'Every Monday: visitors, top pages and top sources from the week before, for each of your sites.',
 }
 
 const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)
@@ -59,12 +61,18 @@ const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)
 // * have a team. Hidden on this page only: the server's category and the stored
 // * preference are untouched, and the row returns in team state. null (not
 // * known yet, or the lookup failed) shows it, like every other surface.
-function visibleTo(categoryId: string, alone: boolean): boolean {
+function visibleTo(categoryId: string, alone: boolean, summaryBeta: boolean): boolean {
+  if (categoryId === 'summary') return summaryBeta
   return !(alone && categoryId === 'team')
 }
 
+// * The weekly summary is a beta (lib/betas.ts): its row shows only once /me says the beta is on for the
+// * team, so nobody is offered a switch for an email their team does not get. null (not known yet) hides it.
+const WEEKLY_SUMMARY_BETA = 'weekly-summary'
+
 export default function MyPreferencesTab() {
   const alone = useTeamState() === 'alone'
+  const summaryBeta = useFeature(WEEKLY_SUMMARY_BETA) === true
   const [doc, setDoc] = useState<PreferencesDocument | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -118,10 +126,10 @@ export default function MyPreferencesTab() {
 
   const categories = useMemo(() => {
     const byId = new Map((doc?.categories ?? []).map((c) => [c.category_id, c]))
-    return ORDER.filter((id) => visibleTo(id, alone))
+    return ORDER.filter((id) => visibleTo(id, alone, summaryBeta))
       .map((id) => byId.get(id))
       .filter(Boolean) as CategoryPreferenceDoc[]
-  }, [doc, alone])
+  }, [doc, alone, summaryBeta])
 
   if (error && !doc) {
     return (

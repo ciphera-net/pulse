@@ -20,4 +20,6 @@ export const BETAS: readonly Beta[] = [
   // The server lists GA4 among a site's import sources only while this flag is on for the team
   // (lib/import/useImportSources.ts).
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
+  // The Monday email with each site's week (pulse-backend's weekly summary job). Its settings row reads useFeature.
+  { flag: 'weekly-summary', name: 'Weekly summary email', revalidates: [] },
 ]
