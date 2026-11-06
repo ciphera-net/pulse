@@ -80,13 +80,18 @@ vi.mock('@/lib/auth/vault-restore', () => ({
 
 // SaveBar is portal + shell-slot machinery — stub it to a marker so the smoke
 // render doesn't depend on the shell being mounted. Its own behavior is covered
-// elsewhere; here we only assert the tab wires dirty state into it.
+// elsewhere; here we only assert the tab wires dirty state into it, and keep the
+// latest onSave so a test can settle it the way the bar does.
+let lastOnSave: (() => Promise<void>) | undefined
 vi.mock('@/components/settings/SettingsSaveBar', () => ({
-  default: ({ isDirty, onSave }: { isDirty: boolean; onSave: () => void }) => (
-    <div data-testid="savebar" data-dirty={String(isDirty)}>
-      <button data-testid="savebar-save" onClick={onSave}>Save</button>
-    </div>
-  ),
+  default: ({ isDirty, onSave }: { isDirty: boolean; onSave: () => Promise<void> }) => {
+    lastOnSave = onSave
+    return (
+      <div data-testid="savebar" data-dirty={String(isDirty)}>
+        <button data-testid="savebar-save" onClick={onSave}>Save</button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@ciphera-net/facet', () => ({
@@ -167,6 +172,7 @@ import { ApiError } from '@/lib/api/client'
 import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 beforeEach(() => {
+  lastOnSave = undefined
   h.user = { id: 'u1', email: 'ada@ciphera.net', display_name: 'Ada' }
   h.teamState = null
   h.refresh.mockClear()
@@ -216,6 +222,19 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
     fireEvent.change(screen.getByDisplayValue('Ada'), { target: { value: 'Ada Lovelace' } })
     expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
+  })
+
+  it('a failed save rejects, so the save bar does not say "Saved"', async () => {
+    // The bar shows "Saved" whenever onSave resolves, so a failed request must toast, then reject.
+    render(<AccountProfileTab />)
+    fireEvent.change(screen.getByDisplayValue('Ada'), { target: { value: 'Ada Lovelace' } })
+    vi.mocked(toast.error).mockClear()
+    vault.saveName.mockRejectedValueOnce(new Error('boom'))
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(vault.saveName).toHaveBeenCalledWith('u1', 'Ada Lovelace')
+    expect(toast.error).toHaveBeenCalled()
   })
 
   /**

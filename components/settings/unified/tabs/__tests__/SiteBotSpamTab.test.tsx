@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import type { QuarantineStats } from '@/lib/api/quarantine'
 import * as swr from '@/lib/swr/dashboard'
 import { useCan } from '@/lib/auth/permissions'
+import { updateSite } from '@/lib/api/sites'
+import { toast } from '@ciphera-net/facet'
 
 /**
  * The bot and spam tab, after the 04-09-2026 cut and the 16-09-2026 chrome rebuild.
@@ -33,6 +35,17 @@ vi.mock('@/lib/swr/dashboard', () => ({
 
 vi.mock('@/lib/api/sites', () => ({ updateSite: vi.fn() }))
 
+// The real bar renders null outside the settings shell, so a null stand-in changes
+// nothing the other tests see; it keeps the latest onSave so a test can settle it
+// the way the bar does.
+let lastOnSave: (() => Promise<void>) | undefined
+vi.mock('@/components/settings/SettingsSaveBar', () => ({
+  default: ({ onSave }: { onSave: () => Promise<void> }) => {
+    lastOnSave = onSave
+    return null
+  },
+}))
+
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: unknown[]) => a.filter(Boolean).join(' '),
   // Facet Button; `asChild` hands the classes to its child (a Link), so the
@@ -52,6 +65,7 @@ import SiteBotSpamTab from '../SiteBotSpamTab'
 const mockUseCan = useCan as unknown as ReturnType<typeof vi.fn>
 const mockUseSite = swr.useSite as unknown as ReturnType<typeof vi.fn>
 const mockUseStats = swr.useQuarantineStats as unknown as ReturnType<typeof vi.fn>
+const mockUpdateSite = updateSite as unknown as ReturnType<typeof vi.fn>
 
 const stats = (over: Partial<QuarantineStats> = {}): QuarantineStats => ({
   total_quarantined: 42,
@@ -90,6 +104,7 @@ function primeHooks({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  lastOnSave = undefined
   mockUseCan.mockReturnValue(true)
 })
 
@@ -226,6 +241,18 @@ describe('SiteBotSpamTab', () => {
     mockUseStats.mockReturnValue({ data: undefined, error: undefined, isLoading: true, mutate: vi.fn() })
     render(<SiteBotSpamTab siteId="site-1" />)
     expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('a failed save rejects, so the save bar does not say "Saved"', async () => {
+    // The bar shows "Saved" whenever onSave resolves, so a failed request must toast, then reject.
+    primeHooks()
+    render(<SiteBotSpamTab siteId="site-1" />)
+    mockUpdateSite.mockRejectedValueOnce(new Error('boom'))
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(mockUpdateSite).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalled()
   })
 
   it('never uses an em dash, en dash or a literal ellipsis in its user-facing copy', () => {

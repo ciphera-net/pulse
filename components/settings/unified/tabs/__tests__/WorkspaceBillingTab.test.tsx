@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within, act } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { SWRConfig } from 'swr'
@@ -105,6 +105,20 @@ vi.mock('@ciphera-net/facet', () => ({
   cn: (...args: any[]) => args.filter((a) => typeof a === 'string').join(' '),
 }))
 
+// This file renders the REAL bar (the billing-form test below clicks its Save button),
+// so the wrapper draws it unchanged and only keeps the latest onSave, letting a test
+// settle it the way the bar does.
+let lastOnSave: (() => Promise<void>) | undefined
+vi.mock('@/components/settings/SettingsSaveBar', async (importOriginal) => {
+  const Real = (await importOriginal<typeof import('@/components/settings/SettingsSaveBar')>()).default
+  return {
+    default: (props: React.ComponentProps<typeof Real>) => {
+      lastOnSave = props.onSave
+      return <Real {...props} />
+    },
+  }
+})
+
 import { MastheadSlotProvider, SaveSlotProvider } from '@/components/settings/shell-slots'
 import WorkspaceBillingTab from '../WorkspaceBillingTab'
 import { toast } from '@ciphera-net/facet'
@@ -139,6 +153,7 @@ const base: SubscriptionDetails = {
 }
 
 beforeEach(() => {
+  lastOnSave = undefined
   mockCanManage = true
   mockTeamState = 'team'
   mockSubscription = { ...base }
@@ -741,6 +756,34 @@ describe('WorkspaceBillingTab shared-device structure', () => {
       expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({ business_name: 'Acme Corp' })),
     )
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Save billing details' })).toBeNull())
+  })
+
+  it('a failed save rejects, so the save bar does not say "Saved"', async () => {
+    // The bar shows "Saved" whenever onSave resolves, so a thrown request must toast, then reject.
+    mockSubscription = { ...base, billing_email: 'owner@example.com', business_name: 'Acme' }
+    renderTab()
+    await screen.findByLabelText('Business name')
+    vi.mocked(toast.error).mockClear()
+    vi.mocked(billingApi.updateBillingSettings).mockClear().mockRejectedValueOnce(new Error('boom'))
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(billingApi.updateBillingSettings).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalled()
+  })
+
+  it('an ok:false save rejects, so the save bar does not say "Saved"', async () => {
+    // A resolved { ok: false } is a failure too: it toasts its own copy, and must reject all the same.
+    mockSubscription = { ...base, billing_email: 'owner@example.com', business_name: 'Acme' }
+    renderTab()
+    await screen.findByLabelText('Business name')
+    vi.mocked(toast.error).mockClear()
+    vi.mocked(billingApi.updateBillingSettings).mockClear().mockResolvedValueOnce({ ok: false })
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(billingApi.updateBillingSettings).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalledWith("Couldn't save your billing details. Try again.")
   })
 
   it('an unnumbered invoice renders no dash placeholder, just an empty cell', async () => {

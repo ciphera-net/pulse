@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -66,14 +66,19 @@ vi.mock('@/components/sites/DeleteSiteModal', () => ({
 }))
 
 // SaveBar is portal + shell-slot machinery — stub it to a marker that also
-// exposes the Save/Discard intents so the partial-PUT payload can be asserted.
+// exposes the Save/Discard intents so the partial-PUT payload can be asserted,
+// and keep the latest onSave so a test can settle it the way the bar does.
+let lastOnSave: (() => Promise<void>) | undefined
 vi.mock('@/components/settings/SettingsSaveBar', () => ({
-  default: ({ isDirty, onSave, onDiscard }: any) => (
-    <div data-testid="savebar" data-dirty={String(isDirty)}>
-      <button onClick={onSave}>save</button>
-      <button onClick={onDiscard}>discard</button>
-    </div>
-  ),
+  default: ({ isDirty, onSave, onDiscard }: any) => {
+    lastOnSave = onSave
+    return (
+      <div data-testid="savebar" data-dirty={String(isDirty)}>
+        <button onClick={onSave}>save</button>
+        <button onClick={onDiscard}>discard</button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@ciphera-net/facet', () => ({
@@ -104,6 +109,7 @@ vi.mock('@ciphera-net/facet', () => ({
 }))
 
 import SiteGeneralTab from '../SiteGeneralTab'
+import { toast } from '@ciphera-net/facet'
 
 const mutate = vi.fn().mockResolvedValue(undefined)
 
@@ -118,6 +124,7 @@ function siteState(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   mockCanEdit = true
+  lastOnSave = undefined
   mockInstallStatus = undefined
   useSite.mockReset().mockReturnValue(siteState())
   updateSite.mockClear()
@@ -312,6 +319,19 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
         show_referrer_domains: false,
       }),
     )
+  })
+
+  it('a failed save rejects, so the save bar does not say "Saved"', async () => {
+    // The bar shows "Saved" whenever onSave resolves, so a failed request must toast, then reject.
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    vi.mocked(toast.error).mockClear()
+    updateSite.mockRejectedValueOnce(new Error('boom'))
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(updateSite).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalled()
   })
 
   it('hides the danger zone + save bar when the user cannot edit', async () => {

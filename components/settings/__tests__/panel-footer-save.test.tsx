@@ -127,6 +127,27 @@ describe('Panel-footer save (option C)', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
   })
 
+  it('never says "Saved" when the tab handler rejects, and keeps the draft to save again', async () => {
+    // The contract every tab relies on: a handler that rejects after showing its own error gets no
+    // "Saved". Seven tabs resolved instead until 06-11-2026, so a failed save read "Saved".
+    const onSave = vi.fn().mockRejectedValueOnce(new Error('save failed')).mockResolvedValueOnce(undefined)
+    render(
+      <SettingsShell>
+        <Harness onSave={onSave} />
+      </SettingsShell>,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'toggle-dirty' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    // Once the rejection settles the bar offers the save again, still unsaved, and never said "Saved".
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save changes' })).not.toBeDisabled())
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(screen.queryByText('Saved')).toBeNull()
+    // The same bar does say "Saved" when the handler resolves.
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText('Saved')).toBeInTheDocument()
+  })
+
   it('leaves no "Saved" timer behind when the tab unmounts inside the confirmation', async () => {
     // A timer that outlives the component sets state after unmount; in a test run it fired after the
     // jsdom environment was torn down ("window is not defined") and failed an unrelated file.

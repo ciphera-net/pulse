@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import * as orgApi from '@/lib/api/organization'
 import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
@@ -42,8 +42,19 @@ vi.mock('@/lib/api/me', () => ({
     (preferred && me.teams.some((t) => t.id === preferred)) ? preferred : me.default_team_id,
 }))
 
+// The real bar renders null outside the settings shell, so a null stand-in changes
+// nothing the other tests see; it keeps the latest onSave so a test can settle it
+// the way the bar does.
+let lastOnSave: (() => Promise<void>) | undefined
+vi.mock('@/components/settings/SettingsSaveBar', () => ({
+  default: ({ onSave }: { onSave: () => Promise<void> }) => {
+    lastOnSave = onSave
+    return null
+  },
+}))
+
 // Minimal Facet surface used by the tab + the shared components it renders
-// (DangerZone/SaveBar). SettingsLoadingState and SettingsErrorState are the
+// (DangerZone). SettingsLoadingState and SettingsErrorState are the
 // tab's own house devices and are exercised for real below, not stubbed, so
 // the tests pin their actual DOM shape (role="status" / role="alert") rather
 // than a mock's approximation of it.
@@ -90,6 +101,7 @@ const SOURCE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'
 const SOURCE = readFileSync(SOURCE_PATH, 'utf8')
 
 beforeEach(() => {
+  lastOnSave = undefined
   mockTeamState = 'team'
   mockIsOwner = true
   mockIsAdminOrOwner = true
@@ -279,6 +291,19 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByRole('button', { name: 'Transfer' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
     expect((screen.getByRole('button', { name: 'Leave' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('a failed save rejects, so the save bar does not say "Saved"', async () => {
+    // The bar shows "Saved" whenever onSave resolves, so a failed request must toast, then reject.
+    const { toast } = await import('@ciphera-net/facet')
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    vi.mocked(orgApi.updateOrganization).mockRejectedValueOnce(new Error('boom'))
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(orgApi.updateOrganization).toHaveBeenCalledWith('org_1', 'Acme Corp', 'acme-corp')
+    expect(toast.error).toHaveBeenCalled()
   })
 
   it('never uses an em dash, en dash or a literal ellipsis in its source, comments included', () => {
