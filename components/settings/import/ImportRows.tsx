@@ -1,5 +1,6 @@
 'use client'
 
+import { createContext, useContext } from 'react'
 import { Button } from '@ciphera-net/facet'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { PanelRow } from '@/components/settings/panels'
@@ -25,19 +26,27 @@ import { ImportErrorBanner } from './ImportErrorBanner'
  * customer already uses, and its logo is how they find it. Never Integrations'
  * `grayscale opacity-60` idle treatment.
  */
-export function SourceHeader({
-  source,
-  description,
-  note,
-  chip,
-  action,
-}: {
+export interface SourceHeaderProps {
   source: SourceId
   description?: React.ReactNode
   note?: React.ReactNode
   chip?: { tone: ChipTone; label: string } | null
   action?: React.ReactNode
-}) {
+}
+
+/**
+ * A page that draws its rows in another grammar (the settings kit's Data page) renders every flow's header through
+ * this, so the flows keep their behaviour and the header matches the page. Unset, the header is the row below.
+ */
+export const SourceHeaderRenderer = createContext<((props: SourceHeaderProps) => React.ReactNode) | null>(null)
+
+export function SourceHeader(props: SourceHeaderProps) {
+  const render = useContext(SourceHeaderRenderer)
+  if (render) return <>{render(props)}</>
+  return <DefaultSourceHeader {...props} />
+}
+
+function DefaultSourceHeader({ source, description, note, chip, action }: SourceHeaderProps) {
   const display = SOURCE_DISPLAY[source]
   const control =
     chip || action ? (
