@@ -64,7 +64,7 @@ vi.mock('@/lib/auth/permissions', () => ({ useCan: () => { calls.can += 1; retur
 vi.mock('@/components/onboarding/OnboardingChip', () => ({ default: () => <div data-testid="onboarding" /> }))
 vi.mock('@/components/account/UnnamedSession', () => ({ UnnamedSession: () => null }))
 vi.mock('@/components/theme/ThemeMenuSwitch', () => ({ default: () => null }))
-vi.mock('@/components/settings/nav', () => ({ navGroups: () => [], tabFor: () => null }))
+vi.mock('@/components/settings/nav', () => ({ pageFor: () => undefined }))
 vi.mock('@/components/support/HelpSupportButton', () => ({ HelpSupportButton: () => <div data-testid="help" /> }))
 vi.mock('@/components/keyboard/ShortcutHandler', () => ({ ShortcutHandler: () => <div data-testid="shortcuts" /> }))
 vi.mock('@/components/keyboard/ShortcutsOverlay', () => ({ ShortcutsOverlay: () => <div data-testid="shortcuts-overlay" /> }))

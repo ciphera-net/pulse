@@ -13,6 +13,7 @@
   "components/integrations/TierBadge.tsx": 3,
   "components/journeys/SankeyJourney.tsx": 1,
   "components/performance/ScoreGauge.tsx": 4,
+  "components/settings/kit/Kit.tsx": 1,
   "components/settings/unified/tabs/SiteIntegrationsTab.tsx": 32,
   "components/setup/Confetti.tsx": 6,
   "components/sites/FleetCard.tsx": 6,
