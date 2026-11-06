@@ -170,6 +170,42 @@ export function KitStats({ items }: { items: { label: string; value: React.React
   )
 }
 
+/**
+ * R11 (style C): a destructive dialog's title, its icon in coral before the words. Pass it as `HoldDialog`'s `title`:
+ * Facet (0.25.3) draws any title in the dialog's h3 and names the dialog by it, so this is phrasing content only.
+ */
+export function KitDialogTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span data-kit-icon="heading" className="flex shrink-0 text-destructive [&_svg]:h-[18px] [&_svg]:w-[18px]">{icon}</span>
+      {children}
+    </span>
+  )
+}
+
+/** R11: the kit's row inside a dialog: label and caption at the left, the control at the right, a hairline above. */
+export function KitDialogRow({ label, caption, control }: { label: React.ReactNode; caption?: React.ReactNode; control?: React.ReactNode }) {
+  return (
+    <div data-kit-row="" className="flex items-center justify-between gap-4 border-t border-border py-4">
+      <div className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">{label}</span>
+        {caption && <p className="mt-0.5 text-xs text-muted-foreground">{caption}</p>}
+      </div>
+      {control && <div className="shrink-0">{control}</div>}
+    </div>
+  )
+}
+
+/** R11: a dialog's warning as one line with its coral icon, never a tinted box. */
+export function KitWarningLine({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <p data-kit-warning="" className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span aria-hidden="true" className="flex h-4 w-4 shrink-0 text-destructive [&_svg]:h-4 [&_svg]:w-4">{icon}</span>
+      {children}
+    </p>
+  )
+}
+
 /** R24 and R32: a row's status, leading its caption as a dot and words. */
 export function KitStatus({ tone, children }: { tone: 'live' | 'off' | 'broken'; children: React.ReactNode }) {
   return (
