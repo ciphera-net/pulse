@@ -7,10 +7,11 @@ import { SWRConfig } from 'swr'
 //
 // GET …/data-imports/sources is mocked at the transport boundary (the one API
 // module the hook calls), so these run the REAL useImportSources hook through
-// SWR and the real rail, landing page and route: a 404 (imports off) hides every
-// entry and a direct visit renders the standard not-found state; a 200 with a
-// source this build can drive shows them; a 200 whose sources this build cannot
-// drive (a kind with no flow here) counts as none.
+// SWR and the real rail and route: a 404 (imports off) makes a direct visit
+// render the standard not-found state; a 200 with a source this build can drive
+// renders the tab; a 200 whose sources this build cannot drive (a kind with no
+// flow here) counts as none. Since the settings overhaul the rail has no Import
+// row: Import is part of the Data page.
 
 const h = vi.hoisted(() => ({
   pathname: '/settings/site/general',
@@ -77,7 +78,6 @@ vi.mock('@ciphera-net/facet', () => ({
 }))
 
 import SettingsShell from '@/components/settings/SettingsShell'
-import SettingsLandingPage from '@/app/settings/page'
 import SiteSettingsTabPage from '@/app/settings/site/[tab]/page'
 
 /** What Next's not-found boundary does with notFound()'s throw: render the not-found state. */
@@ -108,62 +108,27 @@ beforeEach(() => {
   h.notFound.mockClear()
 })
 
-describe('the Import entry in the settings rail', () => {
-  it('is absent while imports are off (404)', async () => {
-    h.sources = { status: 404 }
-    fresh(<SettingsShell><div>tab</div></SettingsShell>)
-    await waitFor(() => expect(screen.getByText('Integrations')).toBeInTheDocument())
-    // Give the 404 time to land, then check it never appeared.
-    await new Promise((r) => setTimeout(r, 20))
-    expect(screen.queryByText('Import')).toBeNull()
+// Settings overhaul (R1–R4): Import is part of the Data page, so the rail lists Data whatever the server answers, and
+// never a row of Import's own. Its route renders as before (below) until Data takes it in.
+describe('Import in the one list of pages', () => {
+  it('lists no Import row, with or without a source, and lists Data', async () => {
+    for (const answer of [PLAUSIBLE, { status: 404 }]) {
+      h.sources = answer
+      const { unmount } = fresh(<SettingsShell><div>tab</div></SettingsShell>)
+      expect(await screen.findByText('Data')).toBeInTheDocument()
+      await new Promise((r) => setTimeout(r, 20))
+      expect(screen.queryByText('Import')).toBeNull()
+      unmount()
+    }
   })
 
-  it('appears once the server lists a source this build can drive', async () => {
+  it('marks Data as the current page on the import route', async () => {
+    h.pathname = '/settings/site/import'
     h.sources = PLAUSIBLE
     fresh(<SettingsShell><div>tab</div></SettingsShell>)
-    expect(await screen.findByText('Import')).toBeInTheDocument()
-    expect(screen.getByText('Bring history from another tool.')).toBeInTheDocument()
-    expect(screen.getByText('Import').closest('a')).toHaveAttribute('href', '/settings/site/import')
-  })
-
-  // M5 (PULSE-140): GA4's flow is built, so a listed GA4 is a drivable source.
-  it('appears when the only listed source is GA4', async () => {
-    h.sources = GA4_ONLY
-    fresh(<SettingsShell><div>tab</div></SettingsShell>)
-    expect(await screen.findByText('Import')).toBeInTheDocument()
-  })
-
-  it('stays absent when the only listed source is one this build cannot drive yet', async () => {
-    h.sources = UNDRIVABLE_ONLY
-    fresh(<SettingsShell><div>tab</div></SettingsShell>)
-    await waitFor(() => expect(screen.getByText('Integrations')).toBeInTheDocument())
-    await new Promise((r) => setTimeout(r, 20))
-    expect(screen.queryByText('Import')).toBeNull()
-  })
-
-  it('stays absent while the answer is still loading, and when the request fails', async () => {
-    h.sources = { status: 500 }
-    fresh(<SettingsShell><div>tab</div></SettingsShell>)
-    expect(screen.queryByText('Import')).toBeNull()
-    await new Promise((r) => setTimeout(r, 20))
-    expect(screen.queryByText('Import')).toBeNull()
-  })
-})
-
-describe('the Import link on the settings landing page', () => {
-  it('is absent while imports are off (404)', async () => {
-    h.sources = { status: 404 }
-    fresh(<SettingsLandingPage />)
-    await waitFor(() => expect(screen.getByText('Integrations')).toBeInTheDocument())
-    await new Promise((r) => setTimeout(r, 20))
-    expect(screen.queryByText('Import')).toBeNull()
-  })
-
-  it('appears with the site links when a source is listed', async () => {
-    h.sources = PLAUSIBLE
-    fresh(<SettingsLandingPage />)
-    const link = await screen.findByText('Import')
-    expect(link.closest('a')).toHaveAttribute('href', '/settings/site/import')
+    const data = await screen.findByRole('link', { name: 'Data' })
+    expect(data).toHaveAttribute('aria-current', 'page')
+    expect(data).toHaveAttribute('href', '/settings/site/integrations')
   })
 })
 

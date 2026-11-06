@@ -15,16 +15,10 @@ import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
-import { navGroups, tabFor } from '@/components/settings/nav'
-import { useTeamState } from '@/lib/hooks/useTeamState'
+import { pageFor } from '@/components/settings/nav'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
-  GearSix, Target, Eye, ShieldCheck, Robot,
-  Buildings, UsersThree, Key, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
-  Heartbeat,
-  Terminal,
   EnvelopeSimple,
-  Flask,
 } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -89,49 +83,18 @@ const HOME_PAGE_META: Record<string, PageMeta> = {
 
 function useHomePageMeta(): PageMeta {
   const pathname = usePathname()
-  // The same team-state signal the settings rail reads (PULSE-59). The shell's
-  // user menu already reads it, so this adds no request.
-  const teamState = useTeamState()
 
   if (pathname.startsWith('/settings')) {
-    const parts = pathname.split('/').filter(Boolean)
-    const TAB_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-      general: { label: 'General', icon: GearSix },
-      goals: { label: 'Goals', icon: Target },
-      visibility: { label: 'Visibility', icon: Eye },
-      privacy: { label: 'Privacy', icon: ShieldCheck },
-      'bot-spam': { label: 'Bot & Spam', icon: Robot },
-      integrations: { label: 'Integrations', icon: PlugsIcon },
-      workspace: { label: 'General', icon: Buildings },
-      members: { label: 'Members', icon: UsersThree },
-      roles: { label: 'Roles & Permissions', icon: Key },
-      billing: { label: 'Billing', icon: CreditCard },
-      notifications: { label: 'Notifications', icon: Bell },
-      audit: { label: 'Audit Log', icon: ClockCounterClockwise },
-      profile: { label: 'Profile', icon: User },
-      security: { label: 'Security', icon: Lock },
-      devices: { label: 'Devices', icon: DeviceMobile },
-      // Three tabs the map never had (round two, P14): each read as a bare
-      // "Settings" in the top bar while its siblings named themselves.
-      monitoring: { label: 'Monitoring', icon: Heartbeat },
-      'api-keys': { label: 'API Keys', icon: Terminal },
-      // The Beta tab (PUL-40). Without an entry here a new settings tab reads as a bare "Settings".
-      beta: { label: 'Beta', icon: Flask },
-    }
-    const tabSlug = parts[2] ?? ''
-    const meta = TAB_META[tabSlug]
-    // No concrete tab (the `/settings` landing page, or a bare group path) — a
-    // single "Settings" crumb. Adding the "Settings" parent here would double it.
-    if (!meta) {
+    // The page's name and icon are the settings registry's (nav.ts), the same the rail and the page header read, so
+    // the three never disagree. A route the registry does not know (or `/settings` itself, which redirects) is one
+    // "Settings" crumb; adding the "Settings" parent there would double it.
+    const page = pageFor(pathname)
+    if (!page) {
       return { title: 'Settings', icon: SettingsIcon }
     }
-    // The label is the settings registry's, not this table's: the registry
-    // knows the team state (somebody alone reads "Invite people" where a team
-    // reads "Members"), and the rail and page header already use it. Tabs the
-    // registry does not list keep this table's label.
     return {
-      title: tabFor(pathname, navGroups(teamState))?.label ?? meta.label,
-      icon: meta.icon,
+      title: page.label,
+      icon: page.icon,
       parent: { title: 'Settings', icon: SettingsIcon, href: '/settings' },
     }
   }

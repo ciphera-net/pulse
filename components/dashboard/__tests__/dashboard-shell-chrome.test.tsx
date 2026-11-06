@@ -95,9 +95,10 @@ import DashboardShell from '../DashboardShell'
 
 async function renderAt(path: string, siteId: string | null) {
   pathname = path
-  render(<DashboardShell siteId={siteId}>{null}</DashboardShell>)
+  const rendered = render(<DashboardShell siteId={siteId}>{null}</DashboardShell>)
   // The rail is a next/dynamic import; give it a tick to land.
   await waitFor(() => expect(seen.sidebar).not.toBeUndefined())
+  return rendered
 }
 
 beforeEach(() => {
@@ -137,34 +138,27 @@ describe('the dashboard chrome on a site-settings tab', () => {
   })
 })
 
-// The breadcrumb names a settings tab the way the rail does (PULSE-59). For
-// somebody who works alone the members route is "Invite people" in the rail
-// and the page header, so the top bar must not call it "Members" (the approved
-// B1 mock reads "Settings › Invite people").
-describe('the settings breadcrumb follows the team state', () => {
-  it('calls the members route "Invite people" for somebody alone', async () => {
-    teamState = 'alone'
-    await renderAt('/settings/organization/members', null)
-    expect(screen.getByText('Invite people')).toBeInTheDocument()
-    expect(screen.queryByText('Members')).toBeNull()
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+// The breadcrumb names a settings page the way the rail and the page header do: one list of pages, the same for
+// somebody alone and for a team (settings overhaul R3). A route a page takes in reads as that page.
+describe('the settings breadcrumb names the page', () => {
+  it('calls the members route "Team", alone, in a team and while the state is not known', async () => {
+    for (const state of ['alone', 'team', null] as const) {
+      teamState = state
+      const { unmount } = await renderAt('/settings/organization/members', null)
+      expect(screen.getByText('Team')).toBeInTheDocument()
+      expect(screen.queryByText('Members')).toBeNull()
+      expect(screen.queryByText('Invite people')).toBeNull()
+      expect(screen.getByText('Settings')).toBeInTheDocument()
+      unmount()
+    }
   })
 
-  it('calls it "Members" in a team', async () => {
-    teamState = 'team'
-    await renderAt('/settings/organization/members', null)
-    expect(screen.getByText('Members')).toBeInTheDocument()
-    expect(screen.queryByText('Invite people')).toBeNull()
+  it('names a route a page takes in by that page', async () => {
+    await renderAt('/settings/organization/mcp', null)
+    expect(screen.getByText('Developers')).toBeInTheDocument()
   })
 
-  it('calls it "Members" while the state is not known, like every other surface', async () => {
-    teamState = null
-    await renderAt('/settings/organization/members', null)
-    expect(screen.getByText('Members')).toBeInTheDocument()
-  })
-
-  it('leaves the other tabs named as before', async () => {
-    teamState = 'alone'
+  it('leaves the other pages named as before', async () => {
     await renderAt('/settings/organization/billing', null)
     expect(screen.getByText('Billing')).toBeInTheDocument()
   })
