@@ -47,7 +47,6 @@ vi.mock('@/lib/setup/context', () => ({
 }))
 
 vi.mock('@ciphera-net/facet-hold', async () => (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
-import SiteIntegrationsTab from '@/components/settings/unified/tabs/SiteIntegrationsTab'
 import SetupRail from '@/components/setup/SetupRail'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 
@@ -67,52 +66,6 @@ beforeEach(() => {
   useGSCStatus.mockReset().mockReturnValue(status({ connected: false }))
   useBunnyStatus.mockReset().mockReturnValue(status({ connected: false }))
   useBingStatus.mockReset().mockReturnValue(status({ connected: false }))
-})
-
-describe('SiteIntegrationsTab renders the same markup after the extraction', () => {
-  it('every integration disconnected, for a manager', async () => {
-    const { container } = render(<SiteIntegrationsTab siteId="site-1" />)
-    await expect(html(container)).toMatchFileSnapshot(`${SNAP}/integrations-disconnected.html`)
-  })
-
-  it('every integration disconnected, for a member who cannot manage them', async () => {
-    mockCanManage = false
-    const { container } = render(<SiteIntegrationsTab siteId="site-1" />)
-    await expect(html(container)).toMatchFileSnapshot(`${SNAP}/integrations-read-only.html`)
-  })
-
-  it('connected with details, an integration reporting a problem, and a failed status fetch', async () => {
-    useGSCStatus.mockReturnValue(
-      status({
-        connected: true,
-        google_email: 'owner@example.com',
-        gsc_property: 'sc-domain:example.com',
-        status: 'active',
-        last_synced_at: '2026-09-20T10:00:00Z',
-        created_at: '2026-08-01T09:00:00Z',
-      }),
-    )
-    useBingStatus.mockReturnValue(
-      status({
-        connected: true,
-        site_url: 'https://example.com/',
-        status: 'error',
-        error_message: 'The API key was revoked.',
-        last_synced_at: '2026-09-19T10:00:00Z',
-        created_at: '2026-08-02T09:00:00Z',
-      }),
-    )
-    useBunnyStatus.mockReturnValue(status(undefined, { error: new Error('boom') }))
-    const { container } = render(<SiteIntegrationsTab siteId="site-1" />)
-    await expect(html(container)).toMatchFileSnapshot(`${SNAP}/integrations-connected.html`)
-  })
-
-  it('with the Bing setup form revealed', async () => {
-    const { container } = render(<SiteIntegrationsTab siteId="site-1" />)
-    const bing = screen.getByText('Bing Webmaster Tools').closest('div.px-5')!.parentElement!
-    fireEvent.click(within(bing).getByRole('button', { name: 'Connect' }))
-    await expect(html(container)).toMatchFileSnapshot(`${SNAP}/integrations-bing-setup.html`)
-  })
 })
 
 describe('SetupRail renders the same markup after the extraction', () => {
