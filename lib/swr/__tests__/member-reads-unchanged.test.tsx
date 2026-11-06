@@ -46,7 +46,7 @@ vi.mock('@/lib/api/stats', () => rec.make('stats', [
   'getEventPropertyValues',
 ]))
 vi.mock('@/lib/api/journeys', () => rec.make('journeys', ['getJourneyFlow', 'getJourneyEntryPoints']))
-vi.mock('@/lib/api/sites', () => rec.make('sites', ['getSite', 'getSiteTeam', 'getInstallStatus', 'getIngestHealth', 'getTrafficStatus']))
+vi.mock('@/lib/api/sites', () => rec.make('sites', ['getSite', 'getSiteTeam', 'getInstallStatus', 'getIngestHealth']))
 vi.mock('@/lib/api/funnels', () => rec.make('funnels', ['listFunnels', 'getFunnel', 'getFunnelStats', 'getAllFunnelStats', 'getFunnelTrends', 'getFunnelBreakdown']))
 vi.mock('@/lib/api/uptime', () => rec.make('uptime', ['getUptimeStatus', 'getUptimeIncidents', 'getUptimeResponseTimes', 'getMonitorChecks']))
 vi.mock('@/lib/api/performance', () => rec.make('performance', ['getPerformanceConfig', 'getPerformanceLatest', 'getPerformanceHistory', 'getPagePreview', 'getPublicPagePreview']))

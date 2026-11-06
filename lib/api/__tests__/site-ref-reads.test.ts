@@ -137,7 +137,6 @@ const MEMBER_ONLY_READS: Array<{ name: string; call: (id: string) => Promise<unk
   { name: 'sites.getSiteTeam', call: (id) => sites.getSiteTeam(id), rest: '/team' },
   { name: 'sites.getInstallStatus', call: (id) => sites.getInstallStatus(id), rest: '/install-status' },
   { name: 'sites.getIngestHealth', call: (id) => sites.getIngestHealth(id), rest: '/ingest-health' },
-  { name: 'sites.getTrafficStatus', call: (id) => sites.getTrafficStatus(id), rest: '/traffic-status' },
   { name: 'quarantine.getQuarantineStats', call: (id) => quarantine.getQuarantineStats(id), rest: '/quarantine/stats' },
   { name: 'visitors.getVisitors', call: (id) => visitors.getVisitors(id, { startDate: D1, endDate: D2 }), rest: `/visitors?${RANGE}` },
   { name: 'visitors.getVisitorProfile', call: (id) => visitors.getVisitorProfile(id, 'v1', { startDate: D1, endDate: D2 }), rest: `/visitors/v1?${RANGE}` },
@@ -221,8 +220,6 @@ describe('a read with no public route refuses a public ref at compile time', () 
     void sites.getInstallStatus(ref)
     // @ts-expect-error member-only: ingest health is not public
     void sites.getIngestHealth(ref)
-    // @ts-expect-error member-only: traffic status is not public
-    void sites.getTrafficStatus(ref)
     // @ts-expect-error member-only: quarantine is not public
     void quarantine.getQuarantineStats(ref)
     // @ts-expect-error member-only: Visitors is never public

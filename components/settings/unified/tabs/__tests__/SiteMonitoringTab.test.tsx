@@ -16,14 +16,12 @@ const useUptimeStatus = vi.fn()
 const useUptimeIncidents = vi.fn()
 const useInstallStatus = vi.fn()
 const useIngestHealth = vi.fn()
-const useTrafficStatus = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: (...a: unknown[]) => useSite(...a),
   useUptimeStatus: (...a: unknown[]) => useUptimeStatus(...a),
   useUptimeIncidents: (...a: unknown[]) => useUptimeIncidents(...a),
   useInstallStatus: (...a: unknown[]) => useInstallStatus(...a),
   useIngestHealth: (...a: unknown[]) => useIngestHealth(...a),
-  useTrafficStatus: (...a: unknown[]) => useTrafficStatus(...a),
 }))
 
 const updateSite = vi.fn().mockResolvedValue(undefined)
@@ -92,13 +90,7 @@ function monitor(over: Record<string, unknown> = {}) {
 function arm({
   siteOver = {}, mon = monitor(), uptimePct = 99.98, incidents = 0, install = { install_status: 'active', first_event_at: '2026-01-01T00:00:00Z', last_event_at: new Date(Date.now() - 4 * 60_000).toISOString() },
   ingest = { rejected_last_7d: false, causes: [] },
-  // 🔴 `null` means UNRESOLVED here, not `undefined`. A destructuring default
-  // fires precisely FOR `undefined`, so `arm({ traffic: undefined })` would
-  // silently substitute the fixture below — a test reading "unresolved" while
-  // asserting the opposite. Caught by the em-dash test failing on 16-09-2026.
-  traffic = { state: 'unwatched', reason: 'session_boundary', watching_from: '2026-09-30', observed: null, expected: null, below_floor: false } as unknown,
-  trafficError = undefined,
-}: { siteOver?: Record<string, unknown>; mon?: ReturnType<typeof monitor> | null; uptimePct?: number; incidents?: number; install?: unknown; ingest?: unknown; traffic?: unknown; trafficError?: unknown } = {}) {
+}: { siteOver?: Record<string, unknown>; mon?: ReturnType<typeof monitor> | null; uptimePct?: number; incidents?: number; install?: unknown; ingest?: unknown } = {}) {
   useSite.mockReturnValue({ data: site(siteOver), error: undefined, mutate })
   useUptimeStatus.mockReturnValue({
     data: { monitors: mon ? [{ monitor: mon, daily_stats: [], overall_uptime: uptimePct }] : [], overall_uptime: uptimePct, status: 'operational', total_monitors: mon ? 1 : 0, utc_days_before: null, start_date: '', end_date: '' },
@@ -107,7 +99,6 @@ function arm({
   useUptimeIncidents.mockReturnValue({ data: { incidents: Array.from({ length: incidents }, (_, i) => ({ id: String(i) })), start_date: '', end_date: '' }, error: undefined })
   useInstallStatus.mockReturnValue({ data: install, error: undefined })
   useIngestHealth.mockReturnValue({ data: ingest, error: undefined })
-  useTrafficStatus.mockReturnValue({ data: traffic === null ? undefined : traffic, error: trafficError })
 }
 
 beforeEach(() => {
@@ -232,20 +223,18 @@ describe('SiteMonitoringTab — Tracking', () => {
     expect(screen.getAllByText('Loading…').length).toBeGreaterThan(0)
   })
 
-  it('draws exactly ONE switch in the whole tab (Uptime monitoring), and none in Tracking or Traffic', () => {
+  it('draws exactly ONE switch in the whole tab (Uptime monitoring), and none in Tracking', () => {
     // Retired 16-09-2026 (vocabulary rebuild): "renders NO switch anywhere"
     // was true only because the boolean was still a Button pair. The brief
     // retires that pair for a real Toggle, so the tab now legitimately draws
     // one switch — the property this test protects is narrower and still
-    // real: Tracking and Traffic have no per-site setting behind them, so
-    // neither may grow a switch that controls nothing.
+    // real: Tracking has no per-site setting behind it, so it may not grow a
+    // switch that controls nothing.
     arm()
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getAllByRole('switch')).toHaveLength(1)
     const tracking = screen.getByText('Tracking').closest('section') as HTMLElement
-    const traffic = screen.getByText('Traffic').closest('section') as HTMLElement
     expect(within(tracking).queryAllByRole('switch')).toHaveLength(0)
-    expect(within(traffic).queryAllByRole('switch')).toHaveLength(0)
   })
 
   it('names the delivery route and links to Notifications without editing it', () => {
@@ -457,123 +446,11 @@ describe('SiteMonitoringTab — fetch states', () => {
   })
 })
 
-
-describe('SiteMonitoringTab — Traffic (Phase 4, direction T1)', () => {
-  it('is its OWN panel asking its own question, with ONE row', () => {
-    arm()
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Traffic')).toBeInTheDocument()
-    // The question is the point of direction T1: the owner chose it over the
-    // tighter T3 precisely BECAUSE "is traffic behaving normally" is not "is
-    // data arriving", and direction B groups by question.
-    expect(screen.getByText('Is traffic behaving normally?')).toBeInTheDocument()
-    expect(screen.getByText('Traffic level')).toBeInTheDocument()
-    // Still read-only. A switch here would control nothing: the rollout is
-    // estate-wide and there is no per-site setting. Scoped to the Traffic
-    // panel (16-09-2026): the tab as a whole now legitimately has one real
-    // switch, Availability's Uptime monitoring Toggle.
-    const traffic = screen.getByText('Traffic').closest('section') as HTMLElement
-    expect(within(traffic).queryAllByRole('switch')).toHaveLength(0)
-  })
-
-  it('🔴 unwatched reads as an ANSWER with a date, never as a loading state', () => {
-    arm({ traffic: { state: 'unwatched', reason: 'session_boundary', watching_from: '2026-09-30', observed: null, expected: null, below_floor: false } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Not watched yet')).toBeInTheDocument()
-    expect(screen.getByText('Watching from 30 September')).toBeInTheDocument()
-    // No fabricated figures. This is the state MOST sites show MOST of the time.
-    expect(screen.queryByText(/0 visitors/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/expected/)).not.toBeInTheDocument()
-  })
-
-  it('unwatched with no knowable end date still names a reason rather than shrugging', () => {
-    arm({ traffic: { state: 'unwatched', reason: 'gap', observed: null, expected: null, below_floor: false } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Not watched yet')).toBeInTheDocument()
-    expect(screen.getByText('No data for the last full day')).toBeInTheDocument()
-  })
-
-  it('steady reads as Normal with the day\'s figures', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: 82, expected: 109, below_floor: false } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Normal')).toBeInTheDocument()
-    expect(screen.getByText('82 visitors on 15 September, about 109 visitors expected')).toBeInTheDocument()
-  })
-
-  it('a fall is the WARNING tone and names the day it fell on', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-07', direction: 'fell', observed: 8, expected: 139, below_floor: false } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    const chip = screen.getByText('Traffic fell')
-    expect(chip).toBeInTheDocument()
-    expect(chip.className).toMatch(/amber/)
-    expect(screen.getByText('8 visitors on 7 September, about 139 visitors expected')).toBeInTheDocument()
-  })
-
-  it('🔴 a RISE is neutral, not the success tone — a spike is as often a bot wave', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'rose', observed: 287, expected: 117, below_floor: false } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    const chip = screen.getByText('Traffic rose')
-    expect(chip).toBeInTheDocument()
-    expect(chip.className).not.toMatch(/pos|green|success/)
-  })
-
-  it('🔴 an unresolved read says Loading…, never "Normal"', () => {
-    arm({ traffic: null })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.queryByText('Normal')).not.toBeInTheDocument()
-    expect(screen.queryByText('Not watched yet')).not.toBeInTheDocument()
-  })
-
-  it('a failed read says so, and does not report a state it has not measured', () => {
-    arm({ traffic: null, trafficError: new Error('boom') })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText(/Couldn.t load traffic/)).toBeInTheDocument()
-    expect(screen.queryByText('Normal')).not.toBeInTheDocument()
-  })
-
-  it('🔴 a judged day with null figures renders the chip alone, never a zero', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: null, expected: null, below_floor: false } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Normal')).toBeInTheDocument()
-    expect(screen.queryByText(/0 visitors/)).not.toBeInTheDocument()
-  })
-})
-
-describe('SiteMonitoringTab — Traffic below the floor', () => {
-  it('🔴 a site under the detector\'s floor reads "not enough traffic", NOT "Normal"', () => {
-    // The four Europe/* production sites are all here: their expectation never
-    // clears 20 visitors/day on any weekday. "Normal" would claim a judgement
-    // that was never made and can never be made.
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: 8, expected: 9, below_floor: true } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Not enough traffic to judge')).toBeInTheDocument()
-    expect(screen.queryByText('Normal')).not.toBeInTheDocument()
-    // The figures still show — the reader can see WHY it is too little.
-    expect(screen.getByText('8 visitors on 15 September, about 9 visitors expected')).toBeInTheDocument()
-  })
-
-  it('a site ABOVE the floor still reads Normal — the flag must not swallow real judgements', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: 82, expected: 109, below_floor: false } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Normal')).toBeInTheDocument()
-    expect(screen.queryByText('Not enough traffic to judge')).not.toBeInTheDocument()
-  })
-
-  it('the floor is checked BEFORE the direction — a below-floor verdict is always steady', () => {
-    // If the direction were read first, this would render "Traffic fell" for a
-    // site the detector has explicitly refused to judge.
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'fell', observed: 1, expected: 9, below_floor: true } })
-    render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Not enough traffic to judge')).toBeInTheDocument()
-    expect(screen.queryByText('Traffic fell')).not.toBeInTheDocument()
-  })
-})
-
 describe('SiteMonitoringTab — vocabulary rebuild structure (16-09-2026)', () => {
   it('every panel title is the shared SettingsPanel heading, sentence case, level 2', () => {
     arm()
     render(<SiteMonitoringTab siteId="s1" />)
-    for (const name of ['Availability', 'Tracking', 'Traffic']) {
+    for (const name of ['Availability', 'Tracking']) {
       expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument()
     }
   })
