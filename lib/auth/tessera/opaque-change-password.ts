@@ -9,6 +9,8 @@ export interface OpaquePasswordChangePayload {
   registration_upload_b64: string
   credential_id: string
   opaque_wrapped_key: string
+  /** The single-use `pwd` token `/auth/reauth/finish` minted when the old password was proven. */
+  reauth_token: string
 }
 
 interface VaultResponse {
@@ -19,12 +21,11 @@ interface VaultResponse {
 /**
  * The re-auth purpose this ceremony proves.
  *
- * Its token is spendable NOWHERE — `PUT /auth/user/password/opaque` is not
- * token-gated, and its step-up is the OPAQUE re-registration itself, which
- * cannot be produced without the old password. The purpose exists because
- * `/auth/reauth/finish` requires one; reusing 'del' or 'enr' would leave a live
- * token for a destructive ceremony in JS hands after every password change.
- * Mirrors ReauthPurposePasswordChange in id-backend's opaque_reauth.go.
+ * Its token is the password proof the change is made with: the payload carries
+ * it as `reauth_token`, and `PUT /auth/user/password/opaque` spends it, once,
+ * for this account. Its own purpose: reusing 'del' or 'enr' would let one
+ * password proof buy a destructive ceremony too. Mirrors
+ * ReauthPurposePasswordChange in id-backend's opaque_reauth.go.
  */
 const PASSWORD_REAUTH_PURPOSE = 'pwd'
 
@@ -126,7 +127,11 @@ export async function performOpaqueChangePassword(
 
   const { uploadB64, wraps } = transport.drainSignupBuffer()
   const credentialId = transport.serverCredentialId()
-  if (!uploadB64 || !credentialId || !wraps.opaque) {
+  // The re-auth leg's finish body carries the token (on /auth/reauth it is the
+  // ONLY thing it carries). Loud-fail without it, as every other ceremony does:
+  // a PUT with no proof is refused after the person has done everything.
+  const reauthToken = transport.lastFinish()?.reauth_token
+  if (!uploadB64 || !credentialId || !wraps.opaque || !reauthToken) {
     throw new Error('Password change did not complete. Please try again.')
   }
   return {
@@ -134,6 +139,7 @@ export async function performOpaqueChangePassword(
       registration_upload_b64: uploadB64,
       credential_id: credentialId,
       opaque_wrapped_key: wraps.opaque,
+      reauth_token: reauthToken,
     },
   }
 }
