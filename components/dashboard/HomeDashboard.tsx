@@ -139,6 +139,7 @@ export default function HomeDashboard() {
         open={!!permanentDeleteSiteModal}
         onClose={() => setPermanentDeleteSiteModal(null)}
         siteName={permanentDeleteSiteModal?.name || ''}
+        siteDomain={permanentDeleteSiteModal?.domain || ''}
         siteId={permanentDeleteSiteModal?.id || ''}
         permanentOnly
       />

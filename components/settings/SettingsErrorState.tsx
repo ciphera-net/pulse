@@ -81,7 +81,8 @@ export function SettingsErrorState({
         <WarningCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">{title}</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">{message}</p>
+          {/* An empty message draws no line: a title and "Try again" can say it all. */}
+          {message && <p className="mt-0.5 text-sm text-muted-foreground">{message}</p>}
           {onRetry && (
             <div className="mt-3">
               <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>

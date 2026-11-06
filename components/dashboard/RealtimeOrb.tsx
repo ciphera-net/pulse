@@ -29,15 +29,24 @@ export function describeLiveCount(count: number): string {
   return `${formatNumber(count)} ${count === 1 ? 'person' : 'people'} on the site ${window}`
 }
 
-function Dot({ here }: { here: boolean }) {
+/**
+ * The live dot: brand orange while `live`, grey otherwise, and its ping halo only while somebody is `here`. The orb
+ * draws it live exactly when somebody is here; General's "Receiving data" (settings overhaul R7) draws it live while
+ * data arrives, with the halo only for a visit in the last 5 minutes.
+ */
+export function LiveDot({ live, here = false }: { live: boolean; here?: boolean }) {
   return (
-    <span className="relative flex h-2 w-2">
+    <span data-live-dot="" className="relative flex h-2 w-2">
       {/* The halo only animates when somebody is actually here. A pulsing orb over a
           zero would be the interface insisting on life it cannot see. */}
-      {here && <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-brand-orange opacity-75" />}
-      <span className={cn('relative inline-flex h-2 w-2 rounded-full', here ? 'bg-brand-orange' : 'bg-neutral-400')} />
+      {live && here && <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-brand-orange opacity-75" />}
+      <span className={cn('relative inline-flex h-2 w-2 rounded-full', live ? 'bg-brand-orange' : 'bg-neutral-400')} />
     </span>
   )
+}
+
+function Dot({ here }: { here: boolean }) {
+  return <LiveDot live={here} here={here} />
 }
 
 export default function RealtimeOrb({
