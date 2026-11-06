@@ -12,7 +12,7 @@ import { MODAL_SCROLL_CLASS, MODAL_CENTER_CLASS, MODAL_PANEL_CLASS } from '@/com
 import { passkeyEnrolErrorMessage } from './errors'
 
 /**
- * Adding a passkey: today's two-step dialog (`components/settings/PasskeyEnrolModal.tsx`) with the copy deck's words
+ * Adding a passkey: the old settings' two-step dialog (PasskeyEnrolModal, removed with them) with the copy deck's words
  * (§12.4, §12.9). The ceremony is unchanged and lives in `lib/auth/tessera/passkey-enrol.ts`.
  *
  * 🔑 THE BIOMETRIC COMES FIRST (R1, 03-09-2026). Whether an authenticator can produce a PRF secret cannot be known

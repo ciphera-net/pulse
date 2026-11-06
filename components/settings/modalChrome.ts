@@ -1,8 +1,10 @@
 /**
  * The overlay chrome shared by every settings dialog.
  *
- * One definition, every settings dialog (PasskeyEnrolModal,
- * RecoveryEnrolModal — and ReauthModal until it was deleted on 10-09-2026),
+ * One definition, every settings dialog (Account's PasskeyEnrolDialog and
+ * RecoveryEnrolDialog; before them PasskeyEnrolModal and RecoveryEnrolModal,
+ * removed with the old settings, and ReauthModal until it was deleted on
+ * 10-09-2026),
  * because they drifted once already and the way they drifted was invisible
  * until a user hit it.
  *

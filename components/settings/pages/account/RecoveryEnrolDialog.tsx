@@ -7,7 +7,7 @@ import { MODAL_SCROLL_CLASS, MODAL_CENTER_CLASS, MODAL_PANEL_CLASS } from '@/com
 import { recoveryEnrolErrorMessage } from './errors'
 
 /**
- * Setting up a recovery phrase, and showing it once: today's dialog (`components/settings/RecoveryEnrolModal.tsx`) in
+ * Setting up a recovery phrase, and showing it once: the old settings' dialog (RecoveryEnrolModal, removed with them) in
  * the copy deck's words (§12.5). The ceremony is unchanged (`lib/auth/tessera/recovery-enrol.ts`).
  *
  * 🔴 The dialog never closes itself after the phrase is made: the phrase panel owns the exit, because closing on the
