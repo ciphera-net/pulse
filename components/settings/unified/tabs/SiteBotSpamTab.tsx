@@ -89,6 +89,8 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
         getAuthErrorMessage(err as Error) ||
           "Couldn't save your bot filtering settings. Try again in a moment."
       )
+      // Reject, so the save bar keeps the draft and does not say "Saved" (SettingsSaveBar's contract).
+      throw err
     }
   }, [siteId, filterBots, mutate, site])
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, act } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -27,10 +27,21 @@ vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
 }))
 
+// The real bar renders null outside the settings shell, so a null stand-in changes
+// nothing the other tests see; it keeps the latest onSave so a test can settle it
+// the way the bar does.
+let lastOnSave: (() => Promise<void>) | undefined
+vi.mock('@/components/settings/SettingsSaveBar', () => ({
+  default: ({ onSave }: { onSave: () => Promise<void> }) => {
+    lastOnSave = onSave
+    return null
+  },
+}))
+
 // Lightweight facet stand-ins (audit-test precedent): real DOM so the panel
 // composition, the ruled table, the Selects, and the query-param chips are
-// queryable, while the Pulse-local panels / StatusChip / SaveBar / ErrorState
-// render for real to verify the grammar.
+// queryable, while the Pulse-local panels / StatusChip / ErrorState render for
+// real to verify the grammar.
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: unknown[]) => a.filter(Boolean).join(' '),
   Spinner: (props: any) => <div data-testid="spinner" {...props} />,
@@ -64,6 +75,8 @@ vi.mock('@ciphera-net/facet', () => ({
 }))
 
 import SitePrivacyTab from '../SitePrivacyTab'
+import { updateSite } from '@/lib/api/sites'
+import { toast } from '@ciphera-net/facet'
 
 const makeSite = (over: Record<string, unknown> = {}) => ({
   id: 's1',
@@ -95,6 +108,7 @@ const SOURCE_PATH = path.join(
 )
 
 beforeEach(() => {
+  lastOnSave = undefined
   useSiteMock.mockReturnValue({ data: makeSite(), error: undefined, mutate: vi.fn() })
   useSubscriptionMock.mockReturnValue({ data: { plan_id: 'solo' }, error: undefined, mutate: vi.fn() })
   usePerformanceConfigMock.mockReturnValue({ data: { enabled: false, frequency: 'weekly' }, error: undefined, mutate: vi.fn() })
@@ -224,6 +238,18 @@ describe('SitePrivacyTab', () => {
       expect(heading.className).toMatch(/\bfont-semibold\b/)
       expect(heading.className).not.toMatch(/uppercase|micro-label/)
     }
+  })
+
+  it('a failed save rejects, so the save bar does not say "Saved"', async () => {
+    // The bar shows "Saved" whenever onSave resolves, so a failed request must toast, then reject.
+    render(<SitePrivacyTab siteId="s1" />)
+    vi.mocked(toast.error).mockClear()
+    vi.mocked(updateSite).mockRejectedValueOnce(new Error('boom'))
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(updateSite).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalled()
   })
 
   it('never uses an em dash, en dash or a literal ellipsis in its user-facing copy', () => {

@@ -307,6 +307,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       toast.success('Privacy settings updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your changes. Try again in a moment.")
+      // Reject, so the save bar keeps the draft and does not say "Saved" (SettingsSaveBar's contract).
+      throw err
     } finally {
       setSaving(false)
     }

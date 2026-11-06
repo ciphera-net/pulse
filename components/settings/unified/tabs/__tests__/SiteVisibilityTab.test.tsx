@@ -27,11 +27,14 @@ vi.mock('@/lib/env', () => ({
 
 // SaveBar is portal + shell-slot machinery. Stub it to a marker so the smoke
 // render doesn't depend on the shell being mounted. Its own behavior is covered
-// elsewhere; here we only assert the tab wires dirty state + the edit gate.
+// elsewhere; here we only assert the tab wires dirty state + the edit gate, and
+// keep the latest onSave so a test can settle it the way the bar does.
+let lastOnSave: (() => Promise<void>) | undefined
 vi.mock('@/components/settings/SettingsSaveBar', () => ({
-  default: ({ isDirty }: { isDirty: boolean }) => (
-    <div data-testid="savebar" data-dirty={String(isDirty)} />
-  ),
+  default: ({ isDirty, onSave }: { isDirty: boolean; onSave: () => Promise<void> }) => {
+    lastOnSave = onSave
+    return <div data-testid="savebar" data-dirty={String(isDirty)} />
+  },
 }))
 
 vi.mock('@ciphera-net/facet', () => ({
@@ -84,6 +87,7 @@ const SOURCE_PATH = path.join(
 
 beforeEach(() => {
   mockCanEdit = true
+  lastOnSave = undefined
   useSite.mockReset().mockReturnValue(siteState())
   updateSite.mockClear()
   mutate.mockClear()
@@ -151,6 +155,18 @@ describe('SiteVisibilityTab (Facet structured panels)', () => {
     render(<SiteVisibilityTab siteId="s1" />)
     expect(screen.queryByTestId('savebar')).toBeNull()
     expect(screen.getByRole('switch')).toBeDisabled()
+  })
+
+  it('a failed save rejects, so the save bar does not say "Saved"', async () => {
+    // The bar shows "Saved" whenever onSave resolves. Password protection is off here, so the
+    // password check passes and the request is reached; its failure must toast, then reject.
+    render(<SiteVisibilityTab siteId="s1" />)
+    updateSite.mockRejectedValueOnce(new Error('boom'))
+    await act(async () => {
+      await expect(lastOnSave!()).rejects.toBeTruthy()
+    })
+    expect(updateSite).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalled()
   })
 
   it('surfaces a distinct error state (not an infinite spinner) when the site fetch fails', () => {

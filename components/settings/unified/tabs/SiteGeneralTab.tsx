@@ -126,6 +126,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       toast.success('Site updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your changes. Try again in a moment.")
+      // Reject, so the save bar keeps the draft and does not say "Saved" (SettingsSaveBar's contract).
+      throw err
     } finally {
       setSaving(false)
     }

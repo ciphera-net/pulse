@@ -651,6 +651,8 @@ export default function AccountProfileTab() {
         ? err.message
         : getAuthErrorMessage(err as Error) || "Couldn't update your profile. Try again."
       toast.error(msg)
+      // Reject, so the save bar keeps the draft and does not say "Saved" (SettingsSaveBar's contract).
+      throw err
     }
   }, [displayName, refresh, user?.id])
 
