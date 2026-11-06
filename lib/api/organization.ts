@@ -170,6 +170,18 @@ export async function removeOrganizationMember(organizationId: string, userId: s
   })
 }
 
+/**
+ * Change a member's role (the owner only; Admin or Member, never the owner's own row). `roleId` is the team's role
+ * id for that slug, from GET /roles. The answer is the member as one item of GET /organizations/:id/members has it;
+ * the server writes "Changed member role" to the activity log.
+ */
+export async function changeMemberRole(organizationId: string, userId: string, roleId: string): Promise<OrganizationMember> {
+  return await authFetch<OrganizationMember>(`/organizations/${organizationId}/members/${userId}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role_id: roleId }),
+  })
+}
+
 // Leave a team. The owner is refused server-side (409) — the caller must
 // transfer ownership first; the UI keeps the row disabled for the owner
 // rather than round-tripping to find that out.
