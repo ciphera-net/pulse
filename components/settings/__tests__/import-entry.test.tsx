@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { Component, type ReactNode } from 'react'
 import { SWRConfig } from 'swr'
 
 // ─── The Import tab exists only where imports exist (M11-b, PULSE-118) ─────
@@ -20,6 +19,7 @@ const h = vi.hoisted(() => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
   }),
+  replace: vi.fn(),
 }))
 
 vi.mock('@/lib/api/dataImports', () => ({
@@ -32,7 +32,7 @@ vi.mock('@/lib/api/dataImports', () => ({
 vi.mock('next/link', () => ({ default: ({ children, href, ...rest }: any) => <a href={href} {...rest}>{children}</a> }))
 vi.mock('next/navigation', () => ({
   usePathname: () => h.pathname,
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: h.replace }),
   useParams: () => ({ tab: h.tab }),
   useSearchParams: () => new URLSearchParams(),
   notFound: () => h.notFound(),
@@ -80,18 +80,6 @@ vi.mock('@ciphera-net/facet', () => ({
 import SettingsShell from '@/components/settings/SettingsShell'
 import SiteSettingsTabPage from '@/app/settings/site/[tab]/page'
 
-/** What Next's not-found boundary does with notFound()'s throw: render the not-found state. */
-class NotFoundBoundary extends Component<{ children: ReactNode }, { notFound: boolean }> {
-  state = { notFound: false }
-  static getDerivedStateFromError(e: Error) {
-    if (e.message === 'NEXT_NOT_FOUND') return { notFound: true }
-    throw e
-  }
-  render() {
-    return this.state.notFound ? <div data-testid="not-found">Page not found</div> : this.props.children
-  }
-}
-
 function fresh(ui: React.ReactElement) {
   return render(<SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{ui}</SWRConfig>)
 }
@@ -133,32 +121,14 @@ describe('Import in the one list of pages', () => {
 })
 
 describe('a direct visit to /settings/site/import', () => {
-  it('renders the standard not-found state while imports are off (404)', async () => {
-    h.sources = { status: 404 }
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    fresh(
-      <NotFoundBoundary>
-        <SiteSettingsTabPage />
-      </NotFoundBoundary>,
-    )
-    expect(await screen.findByTestId('not-found')).toBeInTheDocument()
-    expect(h.notFound).toHaveBeenCalled()
-    expect(screen.queryByTestId('tab-content')).toBeNull()
-    spy.mockRestore()
-  })
-
-  it('renders the tab for every member, with no Access restricted gate, when a source is listed', async () => {
+  // Import is part of Data since the settings overhaul: the old address lands on Data with its query (a Google
+  // Analytics callback code rides on it), and Data decides whether imports exist (useImportSources).
+  it('lands on Data, never rendering a page of its own', async () => {
     h.sources = PLAUSIBLE
+    h.replace.mockClear()
     fresh(<SiteSettingsTabPage />)
-    expect(await screen.findByTestId('tab-content')).toBeInTheDocument()
-    expect(screen.queryByText('Access restricted')).toBeNull()
-    expect(h.notFound).not.toHaveBeenCalled()
-  })
-
-  it('says a failed check as a failure with a retry, never as not found', async () => {
-    h.sources = { status: 500 }
-    fresh(<SiteSettingsTabPage />)
-    expect(await screen.findByText(/couldn't check whether this site can import history/i, {}, { timeout: 15_000 })).toBeInTheDocument()
+    await waitFor(() => expect(h.replace).toHaveBeenCalledWith('/settings/site/integrations'))
+    expect(screen.queryByTestId('tab-content')).toBeNull()
     expect(h.notFound).not.toHaveBeenCalled()
   })
 })

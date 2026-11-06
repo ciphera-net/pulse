@@ -28,11 +28,18 @@ describe('Account settings tab routing (notifications moved here)', () => {
     expect(h.replace).not.toHaveBeenCalled()
   })
 
-  it('renders known account tabs', () => {
-    h.tab = 'devices'
+  it('renders Account at /account/profile', () => {
+    h.tab = 'profile'
     render(<AccountSettingsTabPage />)
     expect(screen.getByTestId('tab-content')).toBeInTheDocument()
     expect(h.replace).not.toHaveBeenCalled()
+  })
+
+  it.each(['security', 'devices'])('sends the old %s address to Account, which holds it (settings overhaul)', (tab) => {
+    h.tab = tab
+    render(<AccountSettingsTabPage />)
+    expect(h.replace).toHaveBeenCalledWith('/settings/account/profile')
+    expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
   })
 
   it('redirects unknown tabs to the section default', () => {

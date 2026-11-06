@@ -148,7 +148,7 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
 
     await commitLast()
-    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(toast.error).toHaveBeenCalledWith("Couldn't delete Acme. Try again.")
     expect(screen.getByTestId('pending')).toHaveTextContent('visible')
   })
 

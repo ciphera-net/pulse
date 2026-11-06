@@ -101,16 +101,16 @@ describe('HomeDashboard, Scheduled for deletion (PUL-28)', () => {
     render(withFreshCache(<HomeDashboard />))
     await screen.findByText('Old Co')
     fireEvent.click(screen.getByRole('button', { name: 'Delete Now' }))
-    expect(screen.getByRole('dialog', { name: 'Delete Old Co forever?' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Delete Old Co now?' })).toBeInTheDocument()
     // permanentOnly: no secondary toggle to the soft variant.
-    expect(screen.queryByRole('button', { name: 'Delete permanently now instead' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete now, without the 7 days' })).toBeNull()
   })
 
   it('confirming Delete Now hides the row at once and sends nothing until the window runs out', async () => {
     render(withFreshCache(<HomeDashboard />))
     await screen.findByText('Old Co')
     fireEvent.click(screen.getByRole('button', { name: 'Delete Now' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete forever' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete now' }))
 
     await waitFor(() => expect(screen.queryByText('Old Co')).toBeNull())
     expect(permanentDeleteSite).not.toHaveBeenCalled()
@@ -123,7 +123,7 @@ describe('HomeDashboard, Scheduled for deletion (PUL-28)', () => {
     render(withFreshCache(<HomeDashboard />))
     await screen.findByText('Old Co')
     fireEvent.click(screen.getByRole('button', { name: 'Delete Now' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete forever' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete now' }))
     await commitLast({ keepalive: true })
     expect(permanentDeleteSite).toHaveBeenCalledWith('s2', { keepalive: true })
   })
@@ -132,7 +132,7 @@ describe('HomeDashboard, Scheduled for deletion (PUL-28)', () => {
     render(withFreshCache(<HomeDashboard />))
     await screen.findByText('Old Co')
     fireEvent.click(screen.getByRole('button', { name: 'Delete Now' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete forever' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete now' }))
     await waitFor(() => expect(screen.queryByText('Old Co')).toBeNull())
 
     undoLast()
@@ -145,11 +145,11 @@ describe('HomeDashboard, Scheduled for deletion (PUL-28)', () => {
     render(withFreshCache(<HomeDashboard />))
     await screen.findByText('Old Co')
     fireEvent.click(screen.getByRole('button', { name: 'Delete Now' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete forever' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete now' }))
     await waitFor(() => expect(screen.queryByText('Old Co')).toBeNull())
 
     await commitLast()
-    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(toast.error).toHaveBeenCalledWith("Couldn't delete Old Co. Try again.")
     expect(await screen.findByText('Old Co')).toBeInTheDocument()
   })
 

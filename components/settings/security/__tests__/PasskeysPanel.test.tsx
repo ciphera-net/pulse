@@ -134,7 +134,7 @@ describe('PasskeysPanel', () => {
     await waitFor(() => expect(screen.queryByText('MacBook')).toBeNull())
 
     await commitLast()
-    expect(toastMock.error).toHaveBeenCalledWith('boom')
+    expect(toastMock.error).toHaveBeenCalledWith("Couldn't remove the passkey. Try again.")
     expect(await screen.findByText('MacBook')).toBeInTheDocument()
     expect(toastMock.success).not.toHaveBeenCalled()
   })

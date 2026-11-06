@@ -244,9 +244,9 @@ function GoalsForSite({ siteId }: { siteId: string }) {
       <KitRow label="No goals yet" caption="Send an event from your site, like a sign-up or a purchase, then add it here." />
       <div className="-mt-1 pb-4">
         <Button variant="outline" size="sm" asChild className="gap-1.5">
-          <a href={docsUrl('custom-events')} target="_blank" rel="noopener noreferrer">
+          <a href={docsUrl('custom-events')} target="_blank" rel="noopener noreferrer" className="group">
             How to send an event
-            <ArrowSquareOut className="h-3.5 w-3.5" aria-hidden="true" />
+            <ArrowSquareOut className="h-3.5 w-3.5 transition-colors group-hover:text-brand-ink" aria-hidden="true" />
           </a>
         </Button>
       </div>
