@@ -26,7 +26,7 @@ import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import {
   Copy,
   CheckCircle,
-  EyeSlash,
+  ArrowSquareOut,
   Trash,
   ArrowUp,
   ArrowDown,
@@ -86,7 +86,7 @@ const SECTIONS = [
   { id: 'section-data-retention', label: 'Data retention' },
   { id: 'section-path-grouping', label: 'Path grouping' },
   { id: 'section-query-params', label: 'Query parameters' },
-  { id: 'section-exclude-self', label: 'Exclude self' },
+  { id: 'section-exclude-self', label: 'Your own visits' },
   { id: 'section-pagespeed', label: 'Performance' },
   { id: 'section-privacy-policy', label: 'Privacy policy' },
 ] as const
@@ -712,33 +712,40 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Exclude self: neutral action, no orange icon tile (spec §2.3). */}
+        {/* Your own visits (R27–R30): two links, each doing only what it says (tracker 1.8.0), as rows
+            whose Open buttons end on the page's control edge. Neutral actions, no orange icon tile
+            (spec §2.3). The site then says what each did (script.note.js). */}
         <section id="section-exclude-self" className="scroll-mt-24">
-          <SettingsPanel title="Exclude my visits" description="Stop tracking your own visits from this browser.">
-            <div className="space-y-3 px-5 py-4">
-              <p className="text-sm text-muted-foreground">
-                Open your site with a special parameter to set a flag in this browser’s storage that tells the Pulse script to skip tracking. Visit the link again to re-enable tracking.
-              </p>
-              {/* h-auto + py-2, not the outline rung's fixed height: the label
-                  embeds the site domain, so on a phone it wraps to two lines
-                  and a fixed height let the text escape its own border. */}
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="h-auto min-h-9 items-center gap-1.5 whitespace-normal px-3 py-2 text-left text-sm"
-              >
-                <a
-                  href={`https://${site.domain}?pulse-ignore`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <EyeSlash weight="bold" className="h-4 w-4" />
-                  Toggle exclusion on {site.domain}
-                </a>
-              </Button>
-              <p className="text-xs text-muted-foreground">You need to do this once per browser. The flag stays until you clear this browser’s site data or visit the link again to toggle it off.</p>
-            </div>
+          <SettingsPanel title="Your own visits" description="Stop counting your own visits from this browser.">
+            <PanelRows>
+              <PanelRow
+                label="Stop counting me"
+                caption={`Opens ${site.domain} and stops counting your visits from this browser.`}
+                control={
+                  <Button variant="outline" size="sm" asChild className="gap-1.5">
+                    <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer" aria-label={`Stop counting me on ${site.domain}`} className="group">
+                      <ArrowSquareOut weight="bold" className="h-4 w-4 transition-colors group-hover:text-brand-ink" />
+                      Open
+                    </a>
+                  </Button>
+                }
+              />
+              <PanelRow
+                label="Count me again"
+                caption={`Opens ${site.domain} and counts your visits from this browser again.`}
+                control={
+                  <Button variant="outline" size="sm" asChild className="gap-1.5">
+                    <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer" aria-label={`Count me again on ${site.domain}`} className="group">
+                      <ArrowSquareOut weight="bold" className="h-4 w-4 transition-colors group-hover:text-brand-ink" />
+                      Open
+                    </a>
+                  </Button>
+                }
+              />
+            </PanelRows>
+            <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+              Do this once in each browser you use, and your site says what each link did. It lasts until you clear this browser&rsquo;s data for {site.domain}. Safari clears it by itself after 7 days without a visit.
+            </p>
           </SettingsPanel>
         </section>
 
