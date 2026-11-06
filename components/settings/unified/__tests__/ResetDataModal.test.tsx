@@ -57,7 +57,7 @@ function selectModule(label: string) {
 describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
   it('lists every reset module and stays disabled until one is picked', () => {
     renderModal()
-    expect(screen.getByText('Analytics')).toBeInTheDocument()
+    expect(screen.getByText('Visits and events')).toBeInTheDocument()
     expect(screen.getByText('Search Console')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Hold to reset' })).toBeDisabled()
     // No typed confirmation left anywhere.
@@ -66,19 +66,19 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
 
   it('opens with a question title and the hold icon, enabled once a module is picked', () => {
     renderModal()
-    expect(screen.getByRole('dialog', { name: 'Reset data?' })).toBeInTheDocument()
-    selectModule('Analytics')
+    expect(screen.getByRole('dialog', { name: 'Reset data for acme.com?' })).toBeInTheDocument()
+    selectModule('Visits and events')
     expect(screen.getByRole('button', { name: 'Hold to reset' })).not.toBeDisabled()
   })
 
   it('hides nothing (a reset has no row to hide) and sends nothing until the window runs out', async () => {
     renderModal()
-    selectModule('Analytics')
+    selectModule('Visits and events')
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
 
     expect(resetSiteData).not.toHaveBeenCalled()
     expect(deferred).toHaveLength(1)
-    expect(deferred[0]!.message).toBe('Analytics reset')
+    expect(deferred[0]!.message).toBe('Visits and events reset')
 
     await commitLast()
     expect(resetSiteData).toHaveBeenCalledWith('s1', ['analytics'], { keepalive: false })
@@ -86,28 +86,28 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
 
   it('commitLast({ keepalive: true }) passes keepalive through', async () => {
     renderModal()
-    selectModule('Analytics')
+    selectModule('Visits and events')
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
     await commitLast({ keepalive: true })
     expect(resetSiteData).toHaveBeenCalledWith('s1', ['analytics'], { keepalive: true })
   })
 
-  it('names two picked modules by label, three or more by count, and all of them as "All data reset"', () => {
+  it('names one picked kind by its label, more by count, and all of them as "All data reset"', () => {
     // Confirming clears the picker (handleClose resets `selected`), so each
     // scenario below re-picks its own modules from a clean slate.
     renderModal()
-    selectModule('Analytics')
+    selectModule('Visits and events')
     selectModule('Journeys')
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
-    expect(deferred[0]!.message).toBe('Analytics and Journeys reset')
+    expect(deferred[0]!.message).toBe('2 kinds of data reset')
 
-    selectModule('Analytics')
+    selectModule('Visits and events')
     selectModule('Journeys')
     selectModule('Funnels')
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
-    expect(deferred[1]!.message).toBe('3 modules reset')
+    expect(deferred[1]!.message).toBe('3 kinds of data reset')
 
-    for (const label of ['Analytics', 'Journeys', 'Funnels', 'Uptime', 'Performance', 'CDN', 'Search Console']) {
+    for (const label of ['Visits and events', 'Journeys', 'Funnels and goals', 'Uptime history', 'Performance history', 'Bunny CDN', 'Search Console']) {
       selectModule(label)
     }
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
@@ -116,7 +116,7 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
 
   it('refreshes (onReset) only after the commit succeeds, with no success toast', async () => {
     renderModal()
-    selectModule('Analytics')
+    selectModule('Visits and events')
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
     expect(onReset).not.toHaveBeenCalled()
 
@@ -126,7 +126,7 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
 
   it('Undo sends nothing', async () => {
     renderModal()
-    selectModule('Analytics')
+    selectModule('Visits and events')
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
 
     undoLast()
@@ -137,11 +137,11 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
   it('a rejected reset reports the failure', async () => {
     resetSiteData.mockRejectedValueOnce(new Error('Server error'))
     renderModal()
-    selectModule('Analytics')
+    selectModule('Visits and events')
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
 
     await commitLast()
-    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(toast.error).toHaveBeenCalledWith("Couldn't reset data. Try again.")
     expect(onReset).not.toHaveBeenCalled()
   })
 
@@ -156,11 +156,11 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
 
   it('escalates the all-modules label as every module is picked', () => {
     renderModal()
-    for (const label of ['Analytics', 'Journeys', 'Funnels', 'Uptime', 'Performance', 'CDN', 'Search Console']) {
+    for (const label of ['Visits and events', 'Journeys', 'Funnels and goals', 'Uptime history', 'Performance history', 'Bunny CDN', 'Search Console']) {
       selectModule(label)
     }
-    expect(screen.getByRole('checkbox', { name: /All modules/ }).getAttribute('aria-checked')).toBe('true')
-    expect(screen.getByText('7/7')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /Everything/ }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByText('7 of 7 picked')).toBeInTheDocument()
   })
 
   it('has no em dash, en dash, or three-dot ellipsis anywhere in its copy', () => {

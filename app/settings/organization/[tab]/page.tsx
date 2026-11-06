@@ -7,57 +7,46 @@ import { useCan, type Permission } from '@/lib/auth/permissions'
 import { ShieldWarning } from '@phosphor-icons/react'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 
-const WorkspaceGeneralTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceGeneralTab'))
-const WorkspaceMembersTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMembersTab'))
-const WorkspaceRolesTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceRolesTab'))
-const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceBillingTab'))
-// * Notification preferences are per person and live under Account
-// * (/settings/account/notifications). The workspace tab that pointed there
-// * was retired 21-09-2026 (ruling D7) — there was no workspace-level setting
-// * behind it.
-const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceAuditTab'))
-const WorkspaceApiKeysTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceApiKeysTab'))
-const WorkspaceMcpTab     = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMcpTab'))
-const WorkspaceBetaTab    = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceBetaTab'))
+// The team's three pages of the settings overhaul (PUL-42), each on today's route. Emails already sent link to billing
+// and api-keys, so those routes never change.
+const TeamPage = dynamic(() => import('@/components/settings/pages/team/TeamPage'))
+const BillingPage = dynamic(() => import('@/components/settings/pages/billing/BillingPage'))
+const DevelopersPage = dynamic(() => import('@/components/settings/pages/developers/DevelopersPage'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
-  general:       WorkspaceGeneralTab,
-  members:       WorkspaceMembersTab,
-  roles:         WorkspaceRolesTab,
-  billing:       WorkspaceBillingTab,
-  audit:         WorkspaceAuditTab,
-  'api-keys':    WorkspaceApiKeysTab,
-  mcp:           WorkspaceMcpTab,
-  beta:          WorkspaceBetaTab,
+  members: TeamPage,
+  billing: BillingPage,
+  'api-keys': DevelopersPage,
 }
 
-// * Old slugs that moved. "connected-apps" became "mcp" on 24-09-2026 (PULSE-54): the page was
-// * renamed MCP by the owner, and a bookmark to the old address still lands on it.
-const TAB_ALIASES: Record<string, string> = {
-  'connected-apps': 'mcp',
+/**
+ * Routes a page took in, and old slugs: each lands on its page. Team holds the team's name, roles (R1: fixed, no page
+ * of their own), beta features and the activity log; Developers holds the AI assistants ("connected-apps" became
+ * "mcp" on 24-09-2026).
+ */
+const TAB_REDIRECTS: Record<string, string> = {
+  general: 'members',
+  roles: 'members',
+  beta: 'members',
+  audit: 'members',
+  mcp: 'api-keys',
+  'connected-apps': 'api-keys',
 }
 
+// Billing gates at the route; Team and Developers say who they are for in their own words.
 const TAB_PERMISSIONS: Record<string, Permission> = {
-  roles:         'roles.manage',
-  billing:       'billing.view',
-  audit:         'audit.view',
-  // * Issuing a credential for an external system is the same class of action as
-  // * connecting one, so it reuses the integrations permission.
-  'api-keys':    'integrations.manage',
-  // * Connecting an assistant is the same class of action as issuing a key
-  // * (MCP design D4), and the server gates both routes on it.
-  mcp:           'integrations.manage',
+  billing: 'billing.view',
 }
 
 function AccessDenied() {
-  // * Somebody alone owns their account, so there is nobody to ask (PULSE-59).
+  // Somebody alone owns their account, so there is nobody to ask (PULSE-59).
   const alone = useTeamState() === 'alone'
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <ShieldWarning className="w-12 h-12 text-neutral-600 mb-4" />
-      <h3 className="text-base font-semibold text-neutral-300 mb-1">Access restricted</h3>
-      <p className="text-sm text-neutral-500 max-w-sm">
-        You don&apos;t have permission to view this page.{alone ? '' : ' Contact your team owner to request access.'}
+      <ShieldWarning className="mb-4 h-12 w-12 text-neutral-600" />
+      <h3 className="mb-1 text-base font-semibold text-neutral-300">Owners and admins only</h3>
+      <p className="max-w-sm text-sm text-neutral-500">
+        {alone ? 'This page is not available on your account.' : 'Ask the owner of your team to open it for you.'}
       </p>
     </div>
   )
@@ -70,24 +59,15 @@ export default function OrganizationSettingsTabPage() {
 
   const requiredPerm = TAB_PERMISSIONS[tab]
   const hasAccess = useCan(requiredPerm as Permission)
-
   const TabComponent = TAB_COMPONENTS[tab]
 
-  // * Unknown tabs redirect to the section default instead of dead-ending
-  // * on a raw fallback string.
   useEffect(() => {
-    const alias = TAB_ALIASES[tab]
-    if (alias) router.replace(`/settings/organization/${alias}`)
-    else if (!TabComponent) router.replace('/settings/organization/general')
+    const target = TAB_REDIRECTS[tab]
+    if (target) router.replace(`/settings/organization/${target}${window.location.search}`)
+    else if (!TabComponent) router.replace('/settings/organization/members')
   }, [TabComponent, router, tab])
 
-  if (!TabComponent) {
-    return null
-  }
-
-  if (requiredPerm && !hasAccess) {
-    return <AccessDenied />
-  }
-
+  if (!TabComponent) return null
+  if (requiredPerm && !hasAccess) return <AccessDenied />
   return <TabComponent />
 }

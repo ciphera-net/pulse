@@ -323,6 +323,27 @@ function PerformancePage({ scope }: { scope: SiteScope }) {
     }
   }
 
+  // The check frequency lives here since the settings overhaul (R3; round 12, R47: a picker in the toolbar). It saves
+  // at once, as every control on this page does. The check already booked keeps its time: the server moves
+  // next_check_at only when checks are switched on, so the new frequency counts from that check.
+  const [savingFrequency, setSavingFrequency] = useState(false)
+  const handleFrequency = async (next: string) => {
+    if (next === config?.frequency || savingFrequency) return
+    const previous = frequency
+    setFrequency(next)
+    setSavingFrequency(true)
+    try {
+      await updatePerformanceConfig(siteId, { enabled: true, frequency: next })
+      await mutateConfig()
+      toast.success(`Checks now run ${next}`)
+    } catch {
+      setFrequency(previous)
+      toast.error("Couldn't change how often checks run. Try again.")
+    } finally {
+      setSavingFrequency(false)
+    }
+  }
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -601,6 +622,18 @@ function PerformancePage({ scope }: { scope: SiteScope }) {
 
           {canEdit && (
             <>
+              <Select
+                variant="input"
+                className="min-w-[150px]"
+                value={frequency}
+                onChange={(value) => void handleFrequency(value)}
+                disabled={savingFrequency}
+                options={[
+                  { value: 'daily', label: 'Daily checks' },
+                  { value: 'weekly', label: 'Weekly checks' },
+                  { value: 'monthly', label: 'Monthly checks' },
+                ]}
+              />
               <Button size="toolbar" onClick={handleRunCheck} isLoading={running}>
                 {running ? 'Running…' : 'Run Check'}
               </Button>

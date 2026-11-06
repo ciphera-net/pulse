@@ -11,12 +11,9 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import { ArrowUpRight, CaretDown, MagnifyingGlass } from '@phosphor-icons/react'
+import { ArrowUpRight, CaretDown } from '@phosphor-icons/react'
 import {
   getIntegration,
-  renderSnippet,
-  getPickerIntegrations,
-  categoryLabels,
   integrationDocsUrl,
   type Integration,
 } from '@/lib/integrations'
@@ -24,8 +21,6 @@ import {
   toast,
   getAuthErrorMessage,
   Toggle,
-  Input,
-  RailGrid,
   CheckIcon,
   CopyIcon,
   cn,
@@ -35,32 +30,26 @@ import { CopyBlock } from '@/components/ui/CopyBlock'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { supportTierLabels } from '@/lib/integrations'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
+import { PlatformPicker } from '@/components/sites/PlatformPicker'
 import { useInstallStatus } from '@/lib/swr/dashboard'
 import { setSiteFramework } from '@/lib/api/sites'
 import { docsUrl } from '@/lib/docs'
-import scriptVersions from '@/public/script-versions.json'
+import {
+  CSP_DIRECTIVES,
+  SCRIPT_VERSION,
+  trackingScript,
+  type FeatureKey,
+  type InteractionKey,
+} from '@/lib/tracking-script'
 
-// * Immutable versioned manifest — SRI is pinned ONLY against these URLs, never
-// * the rolling js.ciphera.net/script.js (whose bytes change on every deploy,
-// * which would silently break a pinned integrity hash).
-const VERSION_MANIFEST = scriptVersions as {
-  version: string
-  baseUrl: string
-  files: Record<string, { path: string; sha384: string; sha512: string }>
-}
-
-const ROLLING_BASE = 'https://js.ciphera.net'
-
-// * Feature opt-outs the script ACTUALLY reads. (The old `data-no-404` toggle
-// * was phantom — the script has no client 404 logic; 404s are detected
-// * server-side from the page title and can't be disabled from the snippet.)
+// * Feature opt-outs the script ACTUALLY reads (their attributes live with the builder, lib/tracking-script.ts). (The
+// * old `data-no-404` toggle was phantom — the script has no client 404 logic; 404s are detected server-side from the
+// * page title and can't be disabled from the snippet.)
 const FEATURES = [
-  { key: 'scroll', label: 'Scroll depth', description: 'Track 25 / 50 / 75 / 100%', attr: 'data-no-scroll' },
-  { key: 'outbound', label: 'Outbound links', description: 'Track external link clicks', attr: 'data-no-outbound' },
-  { key: 'downloads', label: 'File downloads', description: 'Track PDF, ZIP, and more', attr: 'data-no-downloads' },
-] as const
-
-type FeatureKey = (typeof FEATURES)[number]['key']
+  { key: 'scroll', label: 'Scroll depth', description: 'Track 25 / 50 / 75 / 100%' },
+  { key: 'outbound', label: 'Outbound links', description: 'Track external link clicks' },
+  { key: 'downloads', label: 'File downloads', description: 'Track PDF, ZIP, and more' },
+] as const satisfies readonly { key: FeatureKey; label: string; description: string }[]
 
 /**
  * The interaction companion's three kinds — one per `data-no-*` the script
@@ -71,12 +60,10 @@ type FeatureKey = (typeof FEATURES)[number]['key']
  * clicks, and a single shared caption could only say the weaker thing.
  */
 const INTERACTION_KINDS = [
-  { key: 'clicks', label: 'Clicks', description: 'Button and link labels, capped and redacted in the browser', attr: 'data-no-clicks' },
-  { key: 'copy', label: 'Copies', description: 'How much was copied and from what — never the text', attr: 'data-no-copy' },
-  { key: 'forms', label: 'Form submits', description: 'Field count and the form’s name — never a value or a field name', attr: 'data-no-forms' },
-] as const
-
-type InteractionKey = (typeof INTERACTION_KINDS)[number]['key']
+  { key: 'clicks', label: 'Clicks', description: 'Button and link labels, capped and redacted in the browser' },
+  { key: 'copy', label: 'Copies', description: 'How much was copied and from what — never the text' },
+  { key: 'forms', label: 'Form submits', description: 'Field count and the form’s name — never a value or a field name' },
+] as const satisfies readonly { key: InteractionKey; label: string; description: string }[]
 
 /**
  * Once the companion tag is added, all three kinds are on.
@@ -110,13 +97,11 @@ const PRIVACY_SIGNALS = [
     key: 'respect_dnt',
     label: 'Respect Do Not Track',
     description: 'Browsers that send Do Not Track are not counted. Turn off to count them; your tag gets data-ignore-dnt.',
-    attr: 'data-ignore-dnt',
   },
   {
     key: 'respect_gpc',
     label: 'Respect Global Privacy Control',
     description: 'Browsers that send Global Privacy Control are not counted. GPC is a legal opt-out signal in California and other US states. Turn off to count them; your tag gets data-ignore-gpc.',
-    attr: 'data-ignore-gpc',
   },
 ] as const
 
@@ -167,8 +152,6 @@ interface ScriptSetupBlockProps {
   embedded?: boolean
 }
 
-const CSP_DIRECTIVES = 'script-src https://js.ciphera.net; connect-src https://pulse-api.ciphera.net'
-
 export default function ScriptSetupBlock({
   site,
   siteId,
@@ -206,8 +189,6 @@ export default function ScriptSetupBlock({
   const [framework, setFramework] = useState(site.detected_framework ?? '')
   const [cspCopied, setCspCopied] = useState(false)
   const [customizeOpen, setCustomizeOpen] = useState(false)
-  const [showAllPlatforms, setShowAllPlatforms] = useState(false)
-  const [platformSearch, setPlatformSearch] = useState('')
   const [snippetOpen, setSnippetOpen] = useState(false)
   const [changingPlatform, setChangingPlatform] = useState(false)
 
@@ -221,149 +202,23 @@ export default function ScriptSetupBlock({
   const isInstalled = Boolean(siteId) && installStatus === 'active'
   const showSetupFlow = !isInstalled || changingPlatform
 
-  // The registry's own curated picker selection, ranked — NOT every entry.
-  // `showInPicker: false` marks platforms that cannot take a script tag at all
-  // (link-in-bio hosts and the like); offering them here would be a dead end.
-  const pickerIntegrations = useMemo(() => getPickerIntegrations(), [])
-  // The ranked head is what the grid opens on. The registry ranks exactly the
-  // twelve most common stacks, so this is its judgement, not a magic number.
-  const RANKED_COUNT = 12
   const selected: Integration | undefined = framework ? getIntegration(framework) : undefined
 
-  const platformResults = useMemo(() => {
-    const q = platformSearch.trim().toLowerCase()
-    if (q) {
-      // Searching always looks across the whole curated set, whether or not
-      // the grid is currently expanded.
-      return pickerIntegrations.filter(
-        (fw) =>
-          fw.name.toLowerCase().includes(q) ||
-          fw.id.toLowerCase().includes(q) ||
-          categoryLabels[fw.category].toLowerCase().includes(q),
-      )
-    }
-    return showAllPlatforms ? pickerIntegrations : pickerIntegrations.slice(0, RANKED_COUNT)
-  }, [pickerIntegrations, platformSearch, showAllPlatforms])
-
-  // A selection made via search must stay visible after the query is cleared,
-  // otherwise the tile the user just clicked vanishes from under them.
-  const selectedOutsideRanked = Boolean(
-    selected && pickerIntegrations.slice(0, RANKED_COUNT).every((fw) => fw.id !== selected.id),
-  )
-  const visiblePlatforms = useMemo(() => {
-    if (platformSearch.trim() || showAllPlatforms || !selectedOutsideRanked || !selected) return platformResults
-    return [selected, ...platformResults]
-  }, [platformResults, platformSearch, showAllPlatforms, selectedOutsideRanked, selected])
-
-  // * Defense-in-depth: the snippet is COPIED and pasted into the customer's
-  // * <head>, so a domain value carrying a double-quote could break out of the
-  // * data-domain attribute and inject an attacker-controlled src — defeating
-  // * the SRI pinning this panel exists to provide. Restrict to the DNS
-  // * hostname charset before interpolation. (The backend also validates the
-  // * hostname on create; this guarantees a safe snippet regardless.)
-  const safeDomain = site.domain.replace(/[^a-zA-Z0-9.-]/g, '')
-
-  // * Build the tracking tag. Pulse ships exactly one script — the add-on
-  // * variants were retired, so there is no longer a "minimal tag" form.
-  // * SRI ⇒ the immutable versioned URL + integrity + crossorigin, never the
-  // * rolling URL.
-  /**
-   * The `data-no-*` flags the current toggles imply — ONE list, used by the raw
-   * tag and by every framework snippet.
-   *
-   * 🔴 It exists because the two paths disagreed. `buildTag` applied the flags;
-   * the framework path substituted only DOMAIN and dropped them, so on the six
-   * platforms carrying snippet code the panel's toggles never reached the
-   * snippet it showed you. Deriving both from one list is what stops that
-   * recurring.
-   */
-  const coreFlags = useMemo(
-    () => FEATURES.filter((f) => !features[f.key]).map((f) => f.attr),
-    [features],
-  )
-
-  /**
-   * The privacy-signal opt-outs — `data-ignore-dnt` / `data-ignore-gpc` for
-   * whichever of the two is switched off. Its own memo over `privacySignals`,
-   * never folded into `coreFlags`'s filter above.
-   */
-  const privacyFlags = useMemo(
-    () => PRIVACY_SIGNALS.filter((p) => !privacySignals[p.key]).map((p) => p.attr),
-    [privacySignals],
-  )
-
-  /**
-   * What actually lands in the CORE tag's flag slot: `coreFlags` and
-   * `privacyFlags` combined ONLY here, for the one slot `buildTag` and every
-   * framework snippet share ("ONE list, used by the raw tag and by every
-   * framework snippet" — see the comment above). The two source lists and
-   * their state stay separate so neither toggle group's polarity bleeds into
-   * the other; this is just where their attributes are collected for output.
-   */
-  const tagFlags = useMemo(() => [...coreFlags, ...privacyFlags], [coreFlags, privacyFlags])
-
-  /**
-   * The companion's own opt-outs, or `null` when the companion is off.
-   *
-   * 🔑 `null` and `[]` mean different things and must not be conflated: `[]` is
-   * "companion on, every kind on"; `null` is "no companion tag at all".
-   */
-  const interactionFlags = useMemo(
+  // * The script text comes from the ONE builder (lib/tracking-script.ts), shared with the General settings page, so
+  // * the two surfaces print the same tag for the same choices. It also cuts the domain to the hostname character set
+  // * before writing it: the text is pasted into the customer's <head>.
+  const scriptSnippet = useMemo(
     () =>
-      interactions
-        ? INTERACTION_KINDS.filter((k) => !kinds[k.key]).map((k) => k.attr)
-        : null,
-    [interactions, kinds],
+      trackingScript(site.domain, selected, {
+        features,
+        interactions,
+        kinds,
+        sri: showSRI,
+        respectDnt: privacySignals.respect_dnt,
+        respectGpc: privacySignals.respect_gpc,
+      }),
+    [site.domain, selected, features, interactions, kinds, showSRI, privacySignals],
   )
-
-  const buildTag = useCallback(
-    (file: string): string => {
-      const attrs: string[] = ['defer', `data-domain="${safeDomain}"`, ...tagFlags]
-      const meta = VERSION_MANIFEST.files[file]
-      if (showSRI && meta) {
-        attrs.push(`src="${VERSION_MANIFEST.baseUrl}${meta.path}"`)
-        attrs.push(`integrity="${meta.sha384}"`)
-        attrs.push('crossorigin="anonymous"')
-      } else {
-        attrs.push(`src="${ROLLING_BASE}/${file}"`)
-      }
-      return `<script ${attrs.join(' ')}></script>`
-    },
-    [safeDomain, tagFlags, showSRI],
-  )
-
-  /**
-   * The companion tag. No `data-domain` and no `data-api`: it reads nothing of
-   * its own and calls the core through `window.pulse`, which is also why the two
-   * tags work in either order.
-   */
-  const buildInteractionTag = useCallback((): string => {
-    const file = 'script.interactions.js'
-    const attrs: string[] = ['defer', ...(interactionFlags ?? [])]
-    const meta = VERSION_MANIFEST.files[file]
-    if (showSRI && meta) {
-      attrs.push(`src="${VERSION_MANIFEST.baseUrl}${meta.path}"`)
-      attrs.push(`integrity="${meta.sha384}"`)
-      attrs.push('crossorigin="anonymous"')
-    } else {
-      attrs.push(`src="${ROLLING_BASE}/${file}"`)
-    }
-    return `<script ${attrs.join(' ')}></script>`
-  }, [interactionFlags, showSRI])
-
-  const scriptSnippet = useMemo(() => {
-    // Idiomatic framework wiring (e.g. next/script) — only when NOT using SRI,
-    // since SRI requires the literal tag form with an integrity attribute.
-    if (selected?.snippet?.code && !showSRI) {
-      // renderSnippet, never a bare .replace(): it writes the flags in this
-      // snippet's own syntax (nuxt's is an object literal) at the indentation
-      // its PULSE_FLAGS placeholder sits on.
-      return renderSnippet(selected.snippet, safeDomain, tagFlags, interactionFlags)
-    }
-    // The universal path: two lines when the companion is on, one when it is not.
-    const core = buildTag('script.js')
-    return interactionFlags === null ? core : `${core}\n${buildInteractionTag()}`
-  }, [selected, showSRI, safeDomain, buildTag, tagFlags, interactionFlags, buildInteractionTag])
 
   const copyCsp = useCallback(() => {
     navigator.clipboard.writeText(CSP_DIRECTIVES)
@@ -498,105 +353,23 @@ export default function ScriptSetupBlock({
 
       {showFrameworkPicker && showSetupFlow && (
         <div className="mb-4">
-          {/* The grid IS the picker. It used to sit behind a "Browse all
-              platforms" disclosure with an empty Select in front of it, so the
-              panel opened on an unfilled form control and the artwork — the one
-              part of this surface with any character — was never seen. */}
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h4 className="text-sm font-semibold text-foreground">Where are you installing Pulse?</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Pick your platform for the exact snippet and where it goes.
-              </p>
-            </div>
-            <div className="relative w-full sm:w-56">
-              <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={platformSearch}
-                onChange={(e) => setPlatformSearch(e.target.value)}
-                placeholder={`Search ${pickerIntegrations.length} platforms…`}
-                className="pl-9"
-                aria-label="Search platforms"
-              />
-            </div>
-          </div>
-
-          {visiblePlatforms.length === 0 ? (
-            <p className="px-1 py-6 text-sm text-muted-foreground">
-              No platforms match &ldquo;{platformSearch}&rdquo;. The universal snippet below works
-              anywhere you can add a <code className="font-mono">&lt;script&gt;</code> tag.
-            </p>
-          ) : (
-            <RailGrid minTileWidth={104}>
-              {visiblePlatforms.map((fw) => {
-                const isSelected = framework === fw.id
-                const isDetected = site.detected_framework === fw.id
-                return (
-                  <button
-                    key={fw.id}
-                    type="button"
-                    onClick={() => selectFramework(isSelected ? '' : fw.id)}
-                    aria-pressed={isSelected}
-                    disabled={disabled}
-                    className={cn(
-                      'group relative flex flex-col items-center justify-center gap-2 bg-card px-2 py-4 text-center transition-colors ease-apple cursor-pointer disabled:cursor-default',
-                      // The tiles are separated by RailGrid's hairline bleed, so a
-                      // background shift alone is too quiet to read as "chosen" —
-                      // an inset brand ring is the only unambiguous marker here.
-                      isSelected
-                        ? 'bg-accent ring-1 ring-inset ring-primary'
-                        : 'hover:bg-muted',
-                    )}
-                  >
-                    {/* Full-strength artwork, always. The registry gives every
-                        black-on-black mark `fill-white`, so nothing needs
-                        dimming to stay legible — and `grayscale opacity-60` is
-                        this app's "not connected" treatment (see LogoTile),
-                        which is the wrong thing to say about a platform you
-                        simply have not picked yet. */}
-                    <span className="flex items-center justify-center [&_svg]:h-7 [&_svg]:w-7">
-                      {fw.icon}
-                    </span>
-                    <span
-                      className={cn(
-                        'text-[11px] font-medium leading-tight',
-                        isSelected ? 'text-foreground' : 'text-muted-foreground',
-                      )}
-                    >
-                      {fw.name}
-                    </span>
-                    {isDetected && !isSelected && (
-                      <span className="absolute right-1 top-1 text-[8px] uppercase tracking-[0.08em] text-muted-foreground">
-                        Detected
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </RailGrid>
-          )}
-
-          <div className="mt-2 flex flex-wrap items-center gap-4">
-            {!platformSearch.trim() && pickerIntegrations.length > RANKED_COUNT && (
-              <button
-                type="button"
-                onClick={() => setShowAllPlatforms((v) => !v)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
-              >
-                <CaretDown className={cn('w-3.5 h-3.5 transition-transform ease-apple', showAllPlatforms && 'rotate-180')} />
-                {showAllPlatforms ? 'Show fewer platforms' : `Show all ${pickerIntegrations.length} platforms`}
-              </button>
-            )}
-            {changingPlatform && (
-              <button
-                type="button"
-                onClick={() => setChangingPlatform(false)}
-                className="text-xs font-medium text-primary hover:text-primary/80 transition-colors ease-apple"
-              >
-                Done
-              </button>
-            )}
-          </div>
+          <PlatformPicker
+            value={framework}
+            onPick={selectFramework}
+            detected={site.detected_framework}
+            disabled={disabled}
+            footer={
+              changingPlatform && (
+                <button
+                  type="button"
+                  onClick={() => setChangingPlatform(false)}
+                  className="text-xs font-medium text-primary hover:text-primary/80 transition-colors ease-apple"
+                >
+                  Done
+                </button>
+              )
+            }
+          />
         </div>
       )}
 
@@ -725,7 +498,7 @@ export default function ScriptSetupBlock({
             {/* SRI — emits the immutable versioned URL (never the rolling one) */}
             <PanelRow
               label="Subresource Integrity (SRI)"
-              caption={`Pins the script to version ${VERSION_MANIFEST.version} with an integrity hash · you update the tag to adopt new versions`}
+              caption={`Pins the script to version ${SCRIPT_VERSION} with an integrity hash · you update the tag to adopt new versions`}
               control={<Toggle checked={showSRI} onChange={toggleSRI} disabled={disabled} />}
             />
 

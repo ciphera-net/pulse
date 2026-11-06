@@ -27,10 +27,10 @@ beforeEach(() => {
 })
 
 describe('the site-settings tab redirect (?tab=)', () => {
-  it('routes ?tab=import to the M11 Import tab', () => {
+  it('routes ?tab=import to Data, which holds the import since the settings overhaul', () => {
     h.params = new URLSearchParams({ tab: 'import' })
     render(<SiteSettingsRedirect />)
-    expect(h.replace).toHaveBeenCalledWith('/settings/site/import')
+    expect(h.replace).toHaveBeenCalledWith('/settings/site/integrations')
   })
 
   it('an unknown tab still falls back to General', () => {
@@ -51,10 +51,10 @@ describe('the site-settings tab redirect (?tab=)', () => {
     visibility: 'visibility',
     data: 'privacy',
     privacy: 'privacy',
-    bot: 'bot-spam',
+    bot: 'general',
     goals: 'goals',
     integrations: 'integrations',
-    import: 'import',
+    import: 'integrations',
   }))('?tab=%s resolves to /settings/site/%s', (query, dest) => {
     h.params = new URLSearchParams({ tab: query })
     render(<SiteSettingsRedirect />)
@@ -77,15 +77,15 @@ describe('the site-settings tab redirect (?tab=)', () => {
   // M5 (PULSE-140), design §3.12m5a constraint 1: GA4's callback lands the popup
   // on `/sites/{id}/settings?tab=import&ga4=<code>`, and the code must reach the
   // Import tab, which says it. Dropping it leaves the customer with no word at all.
-  it('forwards a ?ga4= callback code to the Import tab', () => {
+  it('forwards a ?ga4= callback code to Data', () => {
     h.params = new URLSearchParams({ tab: 'import', ga4: 'denied' })
     render(<SiteSettingsRedirect />)
-    expect(h.replace).toHaveBeenCalledWith('/settings/site/import?ga4=denied')
+    expect(h.replace).toHaveBeenCalledWith('/settings/site/integrations?ga4=denied')
   })
 
   it('forwards ?ga4= even without ?tab=, and encodes it', () => {
     h.params = new URLSearchParams({ ga4: 'a&b=c' })
     render(<SiteSettingsRedirect />)
-    expect(h.replace).toHaveBeenCalledWith('/settings/site/import?ga4=a%26b%3Dc')
+    expect(h.replace).toHaveBeenCalledWith('/settings/site/integrations?ga4=a%26b%3Dc')
   })
 })

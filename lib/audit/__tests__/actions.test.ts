@@ -128,8 +128,8 @@ describe('actionLabelFor', () => {
   // PULSE-164: one row per save of the Do Not Track / GPC toggles. Neutral —
   // turning a privacy signal on or off is neither a removal nor a creation.
   it('site_privacy_signals_changed: labelled and neutral', () => {
-    expect(actionLabelFor('site_privacy_signals_changed', false)).toBe('Changed Do Not Track or GPC setting')
-    expect(actionLabelFor('site_privacy_signals_changed', true)).toBe('Changed Do Not Track or GPC setting')
+    expect(actionLabelFor('site_privacy_signals_changed', false)).toBe('Changed Do Not Track or Global Privacy Control')
+    expect(actionLabelFor('site_privacy_signals_changed', true)).toBe('Changed Do Not Track or Global Privacy Control')
     expect(actionTone('site_privacy_signals_changed')).toBe('neutral')
   })
 

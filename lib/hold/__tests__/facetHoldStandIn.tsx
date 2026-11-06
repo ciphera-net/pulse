@@ -16,7 +16,7 @@
  *
  * Call `resetDeferred()` in `beforeEach`.
  */
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode, useId } from 'react'
 import type { DeferredAction } from '@ciphera-net/facet-hold'
 
 export const deferred: DeferredAction[] = []
@@ -62,7 +62,8 @@ export function undoLast(): void {
 interface StandInDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  title: string
+  /** A string or a node (an icon and words), as facet-hold 0.1.1 takes. */
+  title: ReactNode
   description?: ReactNode
   children?: ReactNode
   holdLabel: string
@@ -73,6 +74,7 @@ interface StandInDialogProps {
 
 function HoldDialog({ open, onOpenChange, title, description, children, holdLabel, disabled, error, onConfirm }: StandInDialogProps) {
   const [busy, setBusy] = useState(false)
+  const titleId = useId()
   if (!open) return null
   const confirm = () => {
     const r = onConfirm()
@@ -84,8 +86,9 @@ function HoldDialog({ open, onOpenChange, title, description, children, holdLabe
     }
   }
   return (
-    <div role="dialog" aria-label={title}>
-      <h3>{title}</h3>
+    // Named by its heading, as Facet's Modal (0.25.3) names it, so a node title reads by its words.
+    <div role="dialog" aria-labelledby={titleId}>
+      <h3 id={titleId}>{title}</h3>
       {description && <div>{description}</div>}
       {children}
       {error && <p role="alert">{error}</p>}

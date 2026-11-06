@@ -8,5 +8,4 @@
 export { SettingsPanel, type SettingsPanelProps } from './SettingsPanel'
 export { PanelRow, PanelRows, type PanelRowProps } from './PanelRow'
 export { EmptyRow, type EmptyRowProps } from './EmptyRow'
-export { SettingsTH } from './SettingsTH'
 export { PanelSequenceProvider, usePanelIndex } from './PanelSequence'

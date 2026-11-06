@@ -87,21 +87,29 @@ describe('modal chrome', () => {
    * change that removed a dialog rather than broke one. Reading the directory
    * means a NEW dialog is covered the day it lands — which is the failure the
    * list was actually there to catch — and a deleted one simply leaves.
+   *
+   * The settings overhaul moved the dialogs into the pages' folders and named
+   * them `*Dialog.tsx`, which left the flat `*Modal.tsx` scan with nothing to
+   * read: the check below caught it. So the walk is recursive and takes both
+   * names. A dialog that renders Facet's Modal or facet-hold's HoldDialog gets
+   * its overlay from the library; every other one draws its own, with these.
    */
   describe('every settings dialog uses them', () => {
-    const MODALS = readdirSync(join(__dirname, '..')).filter((f) => /Modal\.tsx$/.test(f))
+    const DIALOGS = (readdirSync(join(__dirname, '..'), { recursive: true }) as string[])
+      .filter((f) => /(Modal|Dialog)\.tsx$/.test(f) && !f.includes('__tests__'))
     const read = (f: string) => readFileSync(join(__dirname, '..', f), 'utf8')
+    const OWN_OVERLAY = DIALOGS.filter((f) => !/<(Modal|HoldDialog)\b/.test(read(f)))
 
     it('has dialogs to check', () => {
       // 🔴 The list is discovered, so an EMPTY one would make every loop below
       // pass vacuously — a rename or a moved directory would silently retire
       // the guard rather than fail it.
-      expect(MODALS.length).toBeGreaterThanOrEqual(2)
-      for (const f of MODALS) expect(read(f).length).toBeGreaterThan(100)
+      expect(OWN_OVERLAY.length).toBeGreaterThanOrEqual(2)
+      for (const f of OWN_OVERLAY) expect(read(f).length).toBeGreaterThan(100)
     })
 
     it('references the shared chrome rather than inlining it', () => {
-      for (const f of MODALS) {
+      for (const f of OWN_OVERLAY) {
         const src = read(f)
         expect(src, `${f} does not import the shared modal chrome`).toContain('modalChrome')
         expect(src, `${f} does not use MODAL_SCROLL_CLASS`).toContain('MODAL_SCROLL_CLASS')
@@ -110,7 +118,7 @@ describe('modal chrome', () => {
     })
 
     it('never hand-rolls a centring scroll container again', () => {
-      for (const f of MODALS) {
+      for (const f of DIALOGS) {
         const src = read(f)
         // The exact shape that shipped broken.
         expect(src, `${f} inlines a centring scroll container`).not.toMatch(

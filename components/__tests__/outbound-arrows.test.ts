@@ -42,7 +42,7 @@ describe('outbound-link arrows turn orange on hover (PUL-22)', () => {
   it('finds the arrows it is meant to guard (a positive control)', () => {
     const withArrows = files.filter((f) => outboundAnchors(fs.readFileSync(path.join(ROOT, f), 'utf8')).some((a) => ARROW.test(a)))
     // Referrers, Content, the footer, the growth report, the install snippet CTA.
-    for (const f of ['components/dashboard/Sources.tsx', 'components/dashboard/ContentStats.tsx', 'components/Footer.tsx', 'components/settings/export/GrowthReportFlow.tsx', 'components/sites/ScriptSetupBlock.tsx']) {
+    for (const f of ['components/dashboard/Sources.tsx', 'components/dashboard/ContentStats.tsx', 'components/Footer.tsx', 'components/settings/pages/sharing/GrowthReportForm.tsx', 'components/sites/ScriptSetupBlock.tsx']) {
       expect(withArrows).toContain(f)
     }
   })

@@ -1,19 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import {
   INGEST_REJECTION_CAUSES,
-  INGEST_CAUSE_LABEL,
+  INGEST_CAUSE_PHRASE,
   isIngestRejectionCause,
   knownCauses,
 } from '@/lib/ingest-causes'
 
 /**
- * The point of this module is that ONE key set feeds the Monitoring tab's
- * labels. These tests pin that, because the failure it prevents is silent: a
- * fourth cause the server publishes with no label would vanish from the tab.
+ * The point of this module is that ONE key set feeds General's turned-away
+ * line. These tests pin that, because the failure it prevents is silent: a
+ * fourth cause the server publishes with no phrase would vanish from the page.
  */
 describe('ingest causes — one key set', () => {
-  it('the labels cover exactly the published causes, and nothing else', () => {
-    expect(Object.keys(INGEST_CAUSE_LABEL).sort()).toEqual([...INGEST_REJECTION_CAUSES].sort())
+  it('the phrases cover exactly the published causes, and nothing else', () => {
+    expect(Object.keys(INGEST_CAUSE_PHRASE).sort()).toEqual([...INGEST_REJECTION_CAUSES].sort())
   })
 
   it('the published order is the server\'s order — it must not be alphabetised', () => {
@@ -22,11 +22,11 @@ describe('ingest causes — one key set', () => {
     expect(INGEST_REJECTION_CAUSES).toEqual(['plan_ceiling', 'rate_limited', 'outdated_script'])
   })
 
-  it('the labels are lower-case noun phrases', () => {
-    // The row reads "[● Some events rejected] plan ceiling, outdated script";
-    // a capital there would look like a proper noun.
+  it('the phrases are lower-case', () => {
+    // They follow a colon mid-sentence ("…in the last 7 days: sent too fast."), where
+    // a capital would read as a new sentence.
     for (const c of INGEST_REJECTION_CAUSES) {
-      expect(INGEST_CAUSE_LABEL[c]).toBe(INGEST_CAUSE_LABEL[c].toLowerCase())
+      expect(INGEST_CAUSE_PHRASE[c]).toBe(INGEST_CAUSE_PHRASE[c].toLowerCase())
     }
   })
 
@@ -50,7 +50,7 @@ describe('ingest causes — one key set', () => {
   })
 
   it('does not accept an inherited Object property as a cause', () => {
-    // `'toString' in INGEST_CAUSE_LABEL` is true on a plain object literal, so
+    // `'toString' in INGEST_CAUSE_PHRASE` is true on a plain object literal, so
     // a naive `in` check would publish "toString" as a cause.
     expect(isIngestRejectionCause('toString')).toBe(false)
     expect(isIngestRejectionCause('constructor')).toBe(false)

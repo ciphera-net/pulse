@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { toast } from '@ciphera-net/facet'
 import { useUndo } from '@ciphera-net/facet-hold'
 import { whilePending } from './pending'
 
@@ -38,8 +38,11 @@ export function useDeferredRemoval() {
           // Awaited by whilePending before the item is shown again: the
           // refetch must land first, or the deleted item flashes back.
           onCommitted: () => r.refresh?.(),
-          onError: (err: unknown) => {
-            toast.error(getAuthErrorMessage(err) || r.failure)
+          // The caller's own words, always: Facet's getAuthErrorMessage returns a sentence of its own for every
+          // error, so `getAuthErrorMessage(err) || r.failure` never showed `failure` (a refusal read "Invalid
+          // credentials"; settings overhaul, carried findings).
+          onError: () => {
+            toast.error(r.failure)
           },
         }),
       )

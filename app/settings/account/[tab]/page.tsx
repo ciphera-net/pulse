@@ -4,25 +4,23 @@ import { useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
-const AccountProfileTab  = dynamic(() => import('@/components/settings/unified/tabs/AccountProfileTab'))
-const AccountSecurityTab = dynamic(() => import('@/components/settings/unified/tabs/AccountSecurityTab'))
-const AccountDevicesTab  = dynamic(() => import('@/components/settings/unified/tabs/AccountDevicesTab'))
-// * Personal notification preferences live under Account (IA move, spec §5.2).
-// * Since 21-09-2026 the page is one email switch per category; the digest,
-// * quiet hours, mute and retention controls it used to carry are retired.
-const MyPreferencesTab   = dynamic(() => import('@/components/settings/notifications/MyPreferencesTab'))
+// Your two pages of the settings overhaul (PUL-42): Account (profile, sign-in and security, recovery, devices, security
+// activity) and Notifications (every email switch, R41), each on today's route.
+const AccountPage = dynamic(() => import('@/components/settings/pages/account/AccountPage'))
+const NotificationsPage = dynamic(() => import('@/components/settings/pages/notifications/NotificationsPage'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
-  profile:       AccountProfileTab,
-  security:      AccountSecurityTab,
-  devices:       AccountDevicesTab,
-  notifications: MyPreferencesTab,
+  profile: AccountPage,
+  notifications: NotificationsPage,
 }
 
-// * Old slugs that moved. "security-alerts" folded into Notifications
-// * (16-10-2026, OPS-17): Ciphera ID's own account alerts are now a panel on
-// * that tab, so a bookmark to the old address still lands on the alerts.
-const TAB_ALIASES: Record<string, string> = {
+/**
+ * Routes a page took in, and old slugs: each lands on its page. "security-alerts" folded into Notifications on
+ * 16-10-2026 (OPS-17); security and devices are sections of Account.
+ */
+const TAB_REDIRECTS: Record<string, string> = {
+  security: 'profile',
+  devices: 'profile',
   'security-alerts': 'notifications',
 }
 
@@ -30,18 +28,14 @@ export default function AccountSettingsTabPage() {
   const params = useParams()
   const router = useRouter()
   const tab = params.tab as string
-
   const TabComponent = TAB_COMPONENTS[tab]
 
-  // * Unknown tabs never dead-end on a raw fallback string — redirect to the
-  // * section default.
   useEffect(() => {
-    const alias = TAB_ALIASES[tab]
-    if (alias) router.replace(`/settings/account/${alias}`)
+    const target = TAB_REDIRECTS[tab]
+    if (target) router.replace(`/settings/account/${target}${window.location.search}`)
     else if (!TabComponent) router.replace('/settings/account/profile')
   }, [TabComponent, router, tab])
 
   if (!TabComponent) return null
-
   return <TabComponent />
 }

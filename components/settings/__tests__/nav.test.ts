@@ -1,207 +1,98 @@
-// nav.ts is the ONE registry behind the rail, the mobile sheet and the landing
-// page. These pin what a second table would let drift: every tab has a
-// description short enough for the rail's second line, the copy carries none
-// of the machine tells the overhaul removed, and the landing page reads the
-// registry rather than keeping its own list (which is how it lost API Keys).
+// nav.ts is the ONE registry behind the rail, the mobile sheet and the breadcrumb: one list of ten pages (settings
+// overhaul R1–R4 and R41). These pin what would otherwise drift: the order and the words of the list, the routes that
+// emails, docs and bookmarks already point at, which route each page takes in, who sees which page, and where
+// `/settings` lands.
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { navGroups, SETTINGS_TAB_ICONS, sectionOf, tabFor, tabIsVisible } from '@/components/settings/nav'
+import { SETTINGS_PAGES, landingPage, pageFor, pagesVisibleTo } from '@/components/settings/nav'
 
-const TEAM = navGroups('team')
-const ALONE = navGroups('alone')
-const tabs = TEAM.flatMap((g) => g.tabs)
-// Every row either grouping can show (the alone grouping adds "Invite people").
-const allRows = [...tabs, ...ALONE.flatMap((g) => g.tabs)]
+const ALL = { 'sites.edit': true, 'goals.manage': true, 'billing.view': true, 'integrations.manage': true }
+// The member role's two permissions are analytics.export and billing.view (R1).
+const MEMBER = { 'sites.edit': false, 'goals.manage': false, 'billing.view': true, 'integrations.manage': false }
 
-describe('settings nav registry', () => {
-  it('has three scopes for a team, nine / eight / four tabs, the middle one named Team', () => {
-    // Workspace lost its Notifications tab on 21-09-2026 (ruling D7): there
-    // was no workspace-level setting behind it. It gained Connected apps on
-    // 24-09-2026 (PULSE-41), renamed MCP the same day (PULSE-54). The owner
-    // named the container a team on 25-09-2026 (PULSE-59, W1). Site gained
-    // Import on 27-09-2026 (PULSE-118), listed only where imports exist, and
-    // Export on 28-09-2026 (PULSE-132). Account lost Security alerts on
-    // 16-10-2026 (OPS-17): folded into Notifications as a panel. Team gained
-    // Beta on 02-11-2026 (PUL-40).
-    expect(TEAM.map((g) => [g.section, g.label, g.tabs.length])).toEqual([
-      ['site', 'Site', 9], ['organization', 'Team', 8], ['account', 'Account', 4],
+describe('settings registry: one list of ten pages', () => {
+  it('lists the ten pages in the decided order, the same for everyone', () => {
+    expect(SETTINGS_PAGES.map((p) => p.label)).toEqual([
+      'General', 'Goals', 'Sharing', 'Privacy', 'Data', 'Team', 'Billing', 'Developers', 'Account', 'Notifications',
+    ])
+    expect(new Set(SETTINGS_PAGES.map((p) => p.key)).size).toBe(10)
+  })
+
+  it('keeps each page on today\'s route, so links already sent and published keep working', () => {
+    expect(Object.fromEntries(SETTINGS_PAGES.map((p) => [p.key, p.href]))).toEqual({
+      general: '/settings/site/general',
+      goals: '/settings/site/goals',
+      sharing: '/settings/site/visibility',
+      privacy: '/settings/site/privacy',
+      data: '/settings/site/integrations',
+      team: '/settings/organization/members',
+      billing: '/settings/organization/billing',
+      developers: '/settings/organization/api-keys',
+      account: '/settings/account/profile',
+      notifications: '/settings/account/notifications',
+    })
+  })
+
+  it('marks the five site pages, and only those', () => {
+    expect(SETTINGS_PAGES.filter((p) => p.site).map((p) => p.key)).toEqual(['general', 'goals', 'sharing', 'privacy', 'data'])
+    for (const p of SETTINGS_PAGES) expect(p.href.startsWith('/settings/site/'), p.key).toBe(p.site)
+  })
+
+  it('gives every one of today\'s merged routes to exactly one page, never a page\'s own route', () => {
+    const absorbed = SETTINGS_PAGES.flatMap((p) => p.absorbs)
+    expect(new Set(absorbed).size).toBe(absorbed.length)
+    const hrefs = new Set(SETTINGS_PAGES.map((p) => p.href))
+    for (const route of absorbed) expect(hrefs.has(route), route).toBe(false)
+    expect(absorbed.sort()).toEqual([
+      '/settings/account/devices', '/settings/account/security',
+      '/settings/organization/audit', '/settings/organization/beta', '/settings/organization/general',
+      '/settings/organization/mcp', '/settings/organization/roles',
+      '/settings/site/bot-spam', '/settings/site/export', '/settings/site/import', '/settings/site/monitoring',
     ])
   })
 
-  it('lists Beta right after MCP, for every member, in both groupings (PUL-40)', () => {
-    const team = TEAM.find((g) => g.section === 'organization')!
-    const hrefs = team.tabs.map((t) => t.href)
-    const tab = team.tabs.find((t) => t.href === '/settings/organization/beta')!
-    expect(tab).toMatchObject({ label: 'Beta', description: 'Try new features early.' })
-    expect(hrefs.indexOf('/settings/organization/beta')).toBe(hrefs.indexOf('/settings/organization/mcp') + 1)
-    // Every member sees the switch's state; the tab itself says who can change it.
-    expect(tab.requires).toBeUndefined()
-    expect(tab.when).toBeUndefined()
-    expect(tabIsVisible(tab, {}, {})).toBe(true)
-    // Somebody alone has betas too: the same tab, under Account, after MCP.
-    const account = ALONE.find((g) => g.section === 'account')!.tabs
-    expect(account).toContain(tab)
-    expect(account.indexOf(tab)).toBe(account.findIndex((t) => t.href === '/settings/organization/mcp') + 1)
+  it('names a route by its page, its own or one it takes in', () => {
+    expect(pageFor('/settings/site/monitoring')?.key).toBe('general')
+    expect(pageFor('/settings/site/export')?.key).toBe('data')
+    expect(pageFor('/settings/organization/mcp')?.key).toBe('developers')
+    expect(pageFor('/settings/organization/audit')?.key).toBe('team')
+    expect(pageFor('/settings/account/devices')?.key).toBe('account')
+    expect(pageFor('/settings/account/notifications')?.key).toBe('notifications')
+    expect(pageFor('/settings')).toBeUndefined()
+    expect(pageFor('/settings/account/nope')).toBeUndefined()
+    expect(pageFor('/sites/abc')).toBeUndefined()
   })
 
-  // Keyed by href, not by position: Import stopped being the last site tab the
-  // day Export was listed after it, and a positional check breaks on every tab
-  // added after it.
-  it('lists Import with no permission, behind the import condition (M11-a, M11-b)', () => {
-    const site = TEAM.find((g) => g.section === 'site')!
-    const tab = site.tabs.find((t) => t.href === '/settings/site/import')!
-    expect(tab).toMatchObject({
-      label: 'Import',
-      href: '/settings/site/import',
-      description: 'Bring history from another tool.',
-      when: 'import_available',
-    })
-    // Every member reads an import's status (§3.9): the tab carries no permission.
-    expect(tab.requires).toBeUndefined()
-    // The alone grouping shares the same Site tabs.
-    expect(ALONE.find((g) => g.section === 'site')!.tabs).toContain(tab)
+  it('shows an owner or admin all ten, and a member the six a member can use', () => {
+    expect(pagesVisibleTo(ALL)).toHaveLength(10)
+    // Sharing and Data stay for members: they read the reports and an import's status (R23).
+    expect(pagesVisibleTo(MEMBER).map((p) => p.key)).toEqual(['sharing', 'data', 'team', 'billing', 'account', 'notifications'])
   })
 
-  it('lists Export right after Import, gated on the permission the download needs (PULSE-132)', () => {
-    const site = TEAM.find((g) => g.section === 'site')!
-    const hrefs = site.tabs.map((t) => t.href)
-    const tab = site.tabs.find((t) => t.href === '/settings/site/export')!
-    expect(tab).toMatchObject({
-      label: 'Export',
-      description: 'Download data and share reports.',
-      requires: 'analytics.export',
-    })
-    expect(hrefs.indexOf('/settings/site/export')).toBe(hrefs.indexOf('/settings/site/import') + 1)
-    // Always listed where the permission is held: Export has no runtime condition.
-    expect(tab.when).toBeUndefined()
-    expect(tabIsVisible(tab, { 'analytics.export': true }, {})).toBe(true)
-    expect(tabIsVisible(tab, { 'analytics.export': false }, {})).toBe(false)
-    // The alone grouping shares the same Site tabs.
-    expect(ALONE.find((g) => g.section === 'site')!.tabs).toContain(tab)
+  it('keeps a page listed when its permission is unknown: a failed lookup never hides a page', () => {
+    expect(pagesVisibleTo({}).map((p) => p.key)).toEqual(SETTINGS_PAGES.map((p) => p.key))
   })
 
-  it('shows a conditional tab only once its condition is known to hold', () => {
-    const tab = TEAM.find((g) => g.section === 'site')!.tabs.find((t) => t.label === 'Import')!
-    expect(tabIsVisible(tab, {}, {})).toBe(false)
-    expect(tabIsVisible(tab, {}, { import_available: false })).toBe(false)
-    expect(tabIsVisible(tab, {}, { import_available: true })).toBe(true)
-    // A member without integrations.manage still sees it: no `requires`.
-    expect(tabIsVisible(tab, { 'integrations.manage': false }, { import_available: true })).toBe(true)
-    // Permission-gated tabs behave exactly as they did.
-    const integrations = TEAM.find((g) => g.section === 'site')!.tabs.find((t) => t.label === 'Integrations')!
-    expect(tabIsVisible(integrations, { 'integrations.manage': false }, {})).toBe(false)
-    expect(tabIsVisible(integrations, { 'integrations.manage': true }, {})).toBe(true)
-    expect(tabIsVisible(integrations, {}, {})).toBe(true)
+  it('lands /settings on the first page, or the first that is not a site\'s when there are no sites', () => {
+    expect(landingPage(pagesVisibleTo(ALL), true)?.key).toBe('general')
+    expect(landingPage(pagesVisibleTo(ALL), false)?.key).toBe('team')
+    expect(landingPage(pagesVisibleTo(MEMBER), true)?.key).toBe('sharing')
+    expect(landingPage(pagesVisibleTo(MEMBER), false)?.key).toBe('team')
+    expect(landingPage([], true)).toBeUndefined()
   })
 
-  it('is the team grouping while the state is unknown: a failure never hides team settings', () => {
-    expect(navGroups(null)).toEqual(TEAM)
-  })
-
-  it('has two scopes for somebody alone: Site, and Account with billing, keys, MCP, Beta and Invite people (B1)', () => {
-    expect(ALONE.map((g) => [g.section, g.label])).toEqual([['site', 'Site'], ['account', 'Account']])
-    const account = ALONE.find((g) => g.section === 'account')!
-    expect(account.tabs.map((t) => t.label)).toEqual([
-      'Profile', 'Security', 'Devices', 'Notifications',
-      'Billing', 'API Keys', 'MCP', 'Beta', 'Invite people',
-    ])
-    const invite = account.tabs.find((t) => t.label === 'Invite people')!
-    expect(invite.href).toBe('/settings/organization/members')
-    expect(invite.description).toBe('Share your sites with others.')
-    // The team's name, roles and audit log are not listed when alone.
-    const hrefs = account.tabs.map((t) => t.href)
-    for (const hidden of ['/settings/organization/general', '/settings/organization/roles', '/settings/organization/audit']) {
-      expect(hrefs).not.toContain(hidden)
-    }
-    // And nothing in it says team, workspace or organization except the way in.
-    for (const tab of ALONE.flatMap((g) => g.tabs)) {
-      expect(`${tab.label} ${tab.description}`, tab.href).not.toMatch(/team|workspace|organi[sz]ation/i)
-    }
-  })
-
-  it('never changes an href between the two groupings', () => {
-    const teamHrefs = new Set(tabs.map((t) => t.href))
-    for (const tab of ALONE.flatMap((g) => g.tabs)) expect(teamHrefs.has(tab.href), tab.href).toBe(true)
-    // /settings/organization/mcp is a published URL.
-    expect(ALONE.flatMap((g) => g.tabs).some((t) => t.href === '/settings/organization/mcp')).toBe(true)
-  })
-
-  it('words the Team rows for a team', () => {
-    const team = TEAM.find((g) => g.section === 'organization')!
-    const byLabel = Object.fromEntries(team.tabs.map((t) => [t.label, t.description]))
-    expect(byLabel['General']).toBe('Team name and slug.')
-    expect(byLabel['Members']).toBe('Invite and manage your team.')
-    expect(byLabel['Audit Log']).toBe('Team activity.')
-    for (const tab of team.tabs) expect(tab.description, tab.href).not.toMatch(/workspace|organi[sz]ation/i)
-  })
-
-  it('words Devices and Notifications for the one-list, folded-in world (16-10-2026, OPS-17)', () => {
-    const byLabel = Object.fromEntries(tabs.map((t) => [t.label, t.description]))
-    expect(byLabel['Devices']).toBe("Where you're signed in.")
-    expect(byLabel['Notifications']).toBe('Which emails you get.')
-    expect(tabs.some((t) => t.label === 'Security alerts')).toBe(false)
-    expect(tabs.some((t) => t.href === '/settings/account/security-alerts')).toBe(false)
-  })
-
-  it('names the MCP page MCP, marks it New, and gates it like API keys', () => {
-    const mcp = tabs.find((t) => t.href === '/settings/organization/mcp')
-    expect(mcp?.label).toBe('MCP')
-    expect(mcp?.badge).toBe('New')
-    expect(mcp?.requires).toBe('integrations.manage')
-    expect(tabs.some((t) => t.href.endsWith('/connected-apps'))).toBe(false)
-  })
-
-  it('gives every tab a one-line description that fits the rail', () => {
-    for (const tab of allRows) {
-      expect(tab.description, tab.href).toMatch(/\.$/)
-      // Two lines of text-xs at 224px minus the icon column: ~48 characters.
-      expect(tab.description.length, tab.href).toBeLessThanOrEqual(48)
-      expect(tab.description.length, tab.href).toBeGreaterThan(8)
+  it('gives every page a one-line description that fits the rail', () => {
+    for (const p of SETTINGS_PAGES) {
+      expect(p.description, p.key).toMatch(/\.$/)
+      // Two lines of text-xs at 224 px minus the icon column hold ~48 characters; Privacy's runs to a third line in
+      // the approved drawing, and nothing longer.
+      expect(p.description.length, p.key).toBeLessThanOrEqual(72)
+      expect(p.description.length, p.key).toBeGreaterThan(8)
     }
   })
 
   it('carries no em or en dashes and no ellipsis-as-dots anywhere in its copy', () => {
-    for (const tab of allRows) {
-      expect(`${tab.label} ${tab.description}`).not.toMatch(/[—–]|\.\.\./)
+    for (const p of SETTINGS_PAGES) {
+      expect(`${p.label} ${p.description}`).not.toMatch(/[—–]|\.\.\./)
     }
-  })
-
-  it('keys icons by href, one per tab', () => {
-    expect(Object.keys(SETTINGS_TAB_ICONS).sort()).toEqual(tabs.map((t) => t.href).sort())
-  })
-
-  it('maps a pathname to its scope', () => {
-    expect(sectionOf('/settings/site/goals')).toBe('site')
-    expect(sectionOf('/settings/organization/billing')).toBe('organization')
-    expect(sectionOf('/settings/organization/billing', 'team')).toBe('organization')
-    expect(sectionOf('/settings/organization/billing', null)).toBe('organization')
-    expect(sectionOf('/settings/account/security-alerts')).toBe('account')
-    expect(sectionOf('/settings')).toBeNull()
-    expect(sectionOf('/sites/abc')).toBeNull()
-  })
-
-  it('puts every organization route under Account for somebody alone, listed or not', () => {
-    for (const tab of ['billing', 'members', 'api-keys', 'mcp', 'general', 'roles', 'audit']) {
-      expect(sectionOf(`/settings/organization/${tab}`, 'alone'), tab).toBe('account')
-    }
-    expect(sectionOf('/settings/site/goals', 'alone')).toBe('site')
-  })
-
-  it('names a route by the grouping first, then by any tab', () => {
-    expect(tabFor('/settings/organization/members', ALONE)?.label).toBe('Invite people')
-    expect(tabFor('/settings/organization/members', TEAM)?.label).toBe('Members')
-    // Unlisted when alone, still named.
-    expect(tabFor('/settings/organization/roles', ALONE)?.label).toBe('Roles & Permissions')
-    expect(tabFor('/settings/organization/nope', ALONE)).toBeUndefined()
-  })
-
-  it('is the landing page\'s only source of rows', () => {
-    const source = readFileSync(join(process.cwd(), 'app/settings/page.tsx'), 'utf8')
-    expect(source).toContain("from '@/components/settings/nav'")
-    expect(source).toContain('navGroups(teamState)')
-    // The three hand-kept tables the page used to carry.
-    expect(source).not.toMatch(/SITE_ROWS|ORG_ROWS|ACCOUNT_ROWS/)
-    expect(source).not.toMatch(/description: '/)
   })
 })

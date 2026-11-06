@@ -6,9 +6,9 @@ vi.mock('next/dynamic', () => ({
 }))
 
 const h = vi.hoisted(() => ({
-  tab: 'general',
+  tab: 'members',
   replace: vi.fn(),
-  canManageRoles: true,
+  can: true,
   teamState: 'team' as 'alone' | 'team' | null,
 }))
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => h.teamState }))
@@ -16,98 +16,78 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ tab: h.tab }),
   useRouter: () => ({ replace: h.replace }),
 }))
-
-// Only roles.manage varies in these tests; everything else the page checks
-// (it only checks the required perm for the active tab) resolves off this
-// same flag, which is fine because each test drives a single tab.
-vi.mock('@/lib/auth/permissions', () => ({
-  useCan: () => h.canManageRoles,
-}))
+// Only Billing gates at the route (billing.view); each test drives a single tab.
+vi.mock('@/lib/auth/permissions', () => ({ useCan: () => h.can }))
 
 import OrganizationSettingsTabPage from '../page'
 
 beforeEach(() => {
   h.teamState = 'team'
-  h.tab = 'general'
-  h.canManageRoles = true
+  h.tab = 'members'
+  h.can = true
   h.replace.mockClear()
 })
 
-describe('Organization settings tab routing', () => {
-  it('renders a gated tab (roles) when its permission is satisfied', () => {
-    h.tab = 'roles'
-    h.canManageRoles = true
+describe('Team settings routing (settings overhaul: Team, Billing, Developers)', () => {
+  it.each(['members', 'billing', 'api-keys'])('renders the %s page', (tab) => {
+    h.tab = tab
     render(<OrganizationSettingsTabPage />)
-    expect(screen.getByTestId('tab-content')).toBeInTheDocument()
-    expect(screen.queryByText('Access restricted')).not.toBeInTheDocument()
-  })
-
-  it('gates roles behind roles.manage', () => {
-    h.tab = 'roles'
-    h.canManageRoles = false
-    render(<OrganizationSettingsTabPage />)
-    expect(screen.getByText('Access restricted')).toBeInTheDocument()
-    expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
-  })
-
-  it('has no workspace notifications tab any more (ruling D7, 21-09-2026)', () => {
-    h.tab = 'notifications'
-    render(<OrganizationSettingsTabPage />)
-    // An unknown tab redirects to the section default rather than rendering.
-    expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
-    expect(h.replace).toHaveBeenCalled()
-  })
-
-  it('renders ungated org tabs (general)', () => {
-    h.tab = 'general'
-    render(<OrganizationSettingsTabPage />)
-    expect(screen.getByTestId('tab-content')).toBeInTheDocument()
-  })
-
-  it('redirects unknown tabs to the section default', () => {
-    h.tab = 'made-up'
-    render(<OrganizationSettingsTabPage />)
-    expect(h.replace).toHaveBeenCalledWith('/settings/organization/general')
-  })
-
-  it('sends the old Connected apps address to the MCP page, not to the default (PULSE-54)', () => {
-    h.tab = 'connected-apps'
-    render(<OrganizationSettingsTabPage />)
-    expect(h.replace).toHaveBeenCalledTimes(1)
-    expect(h.replace).toHaveBeenCalledWith('/settings/organization/mcp')
-    expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
-  })
-
-  it('renders the MCP page, gated like API keys (PULSE-54)', () => {
-    h.tab = 'mcp'
-    h.canManageRoles = true
-    const { unmount } = render(<OrganizationSettingsTabPage />)
     expect(screen.getByTestId('tab-content')).toBeInTheDocument()
     expect(h.replace).not.toHaveBeenCalled()
-    unmount()
+  })
 
-    h.canManageRoles = false
+  it('gates Billing behind billing.view', () => {
+    h.tab = 'billing'
+    h.can = false
     render(<OrganizationSettingsTabPage />)
-    expect(screen.getByText('Access restricted')).toBeInTheDocument()
+    expect(screen.getByText('Owners and admins only')).toBeInTheDocument()
     expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
+  })
+
+  it('leaves Team and Developers to say who they are for themselves', () => {
+    h.can = false
+    for (const tab of ['members', 'api-keys']) {
+      h.tab = tab
+      const { unmount } = render(<OrganizationSettingsTabPage />)
+      expect(screen.getByTestId('tab-content')).toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it.each([
+    ['general', 'members'],
+    ['roles', 'members'],
+    ['beta', 'members'],
+    ['audit', 'members'],
+    ['mcp', 'api-keys'],
+    ['connected-apps', 'api-keys'],
+  ])('sends the old %s address to %s', (from, to) => {
+    h.tab = from
+    render(<OrganizationSettingsTabPage />)
+    expect(h.replace).toHaveBeenCalledWith(`/settings/organization/${to}`)
+    expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
+  })
+
+  it('sends an unknown tab to Team', () => {
+    h.tab = 'notifications'
+    render(<OrganizationSettingsTabPage />)
+    expect(h.replace).toHaveBeenCalledWith('/settings/organization/members')
   })
 })
 
-describe('Access restricted copy (PULSE-59)', () => {
+describe('Owners and admins only (PULSE-59)', () => {
   it('points a team member at the team owner', () => {
-    h.tab = 'roles'
-    h.canManageRoles = false
+    h.tab = 'billing'
+    h.can = false
     render(<OrganizationSettingsTabPage />)
-    expect(screen.getByText(/Contact your team owner to request access\./)).toBeInTheDocument()
-    expect(screen.queryByText(/workspace/i)).toBeNull()
+    expect(screen.getByText('Ask the owner of your team to open it for you.')).toBeInTheDocument()
   })
 
   it('names nobody to ask when the person works alone', () => {
+    h.tab = 'billing'
+    h.can = false
     h.teamState = 'alone'
-    h.tab = 'roles'
-    h.canManageRoles = false
     render(<OrganizationSettingsTabPage />)
-    expect(screen.getByText("You don't have permission to view this page.")).toBeInTheDocument()
-    expect(screen.queryByText(/team|workspace|owner/i)).toBeNull()
+    expect(screen.queryByText(/Ask the owner/)).not.toBeInTheDocument()
   })
 })

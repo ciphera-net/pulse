@@ -55,7 +55,7 @@ function renderModal(over: Partial<React.ComponentProps<typeof DeleteSiteModal>>
   return render(
     <>
       <PendingProbe pendingKey={pendingKey} />
-      <DeleteSiteModal open onClose={onClose} siteName="Acme" siteId="s1" {...over} />
+      <DeleteSiteModal open onClose={onClose} siteName="Acme" siteDomain="acme.example" siteId="s1" {...over} />
     </>,
   )
 }
@@ -64,9 +64,10 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
   it('opens on the soft variant: a question title, the grace-period copy and the two consequence rows', () => {
     renderModal()
     const dialog = screen.getByRole('dialog', { name: 'Delete Acme?' })
-    expect(dialog.textContent).toContain('scheduled for deletion with a 7-day grace period')
-    expect(screen.getByText('All events and analytics data')).toBeInTheDocument()
-    expect(screen.getByText('Alert channels and goals')).toBeInTheDocument()
+    expect(dialog.textContent).toContain('Pulse stops counting visits on acme.example')
+    expect(screen.getByText('What goes')).toBeInTheDocument()
+    expect(screen.getByText('Its stats, its goals and everything else set up for it.')).toBeInTheDocument()
+    expect(screen.getByText(/You can restore it from the home page for 7 days/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Hold to delete' })).toBeInTheDocument()
     // No typed confirmation left anywhere.
     expect(screen.queryByRole('textbox')).toBeNull()
@@ -74,11 +75,11 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
 
   it('switches to the permanent variant and back without closing the dialog', () => {
     renderModal()
-    fireEvent.click(screen.getByRole('button', { name: 'Delete permanently now instead' }))
-    expect(screen.getByRole('dialog', { name: 'Delete Acme forever?' })).toBeInTheDocument()
-    expect(screen.getByText('All analytics data is permanently lost')).toBeInTheDocument()
-    expect(screen.getByText('Deleted at once, with no 7-day grace period')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Hold to delete forever' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete now, without the 7 days' }))
+    expect(screen.getByRole('dialog', { name: 'Delete Acme now?' })).toBeInTheDocument()
+    expect(screen.getByText('Everything, at once.')).toBeInTheDocument()
+    expect(screen.getByText("acme.example and all its data are deleted right away. This can't be undone.")).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hold to delete now' })).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
@@ -88,8 +89,8 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
 
   it('permanentOnly shows only the permanent variant, with no secondary toggle', () => {
     renderModal({ permanentOnly: true })
-    expect(screen.getByRole('dialog', { name: 'Delete Acme forever?' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Delete permanently now instead' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Delete Acme now?' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete now, without the 7 days' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
   })
 
@@ -115,8 +116,8 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
 
   it('confirming the permanent variant sends permanentDeleteSite, not deleteSite', async () => {
     renderModal()
-    fireEvent.click(screen.getByRole('button', { name: 'Delete permanently now instead' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete forever' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete now, without the 7 days' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete now' }))
     await commitLast()
     expect(permanentDeleteSite).toHaveBeenCalledWith('s1', { keepalive: false })
     expect(deleteSite).not.toHaveBeenCalled()
@@ -124,7 +125,7 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
 
   it('a permanent delete opened from the deleted list (permanentOnly) hides the deleted-site key, not the site key', async () => {
     renderModal({ permanentOnly: true }, 'deleted-site:s1')
-    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete forever' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete now' }))
     expect(screen.getByTestId('pending')).toHaveTextContent('hidden')
     await commitLast()
     expect(permanentDeleteSite).toHaveBeenCalledWith('s1', { keepalive: false })
@@ -147,7 +148,7 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
 
     await commitLast()
-    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(toast.error).toHaveBeenCalledWith("Couldn't delete Acme. Try again.")
     expect(screen.getByTestId('pending')).toHaveTextContent('visible')
   })
 

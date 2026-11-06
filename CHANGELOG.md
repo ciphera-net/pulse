@@ -249,6 +249,28 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Changed
 
+- **Settings is one list of ten pages.** General, Goals, Sharing, Privacy, Data, Team,
+  Billing, Developers, Account and Notifications replace the Site, Team and Account
+  groups and their 21 tabs. The five site pages name their site at the top, every page
+  is laid out the same way, and the words say what each setting does. Every old
+  settings address still works and opens the page that holds it now.
+  - **General** shows whether the tracking script is sending data, any events Pulse
+    turned away, what the script counts, and how many bot and spam events Pulse kept
+    out of your stats. Bot filtering is always on.
+  - **Sharing** holds the public dashboard, growth reports and scheduled emails.
+    **Data** holds Search Console, Bing, Bunny CDN, imports and exports, and a
+    connected service can be connected again without losing what Pulse fetched.
+  - **Privacy** shows how long your data is kept: the most your plan allows.
+  - **Team**: the owner can change a person's role. Roles are owner, admin and
+    member, each explained where it is chosen.
+  - **Developers**: an API key no longer has a role, and a revoked key leaves the list.
+  - **Notifications** holds every email switch, Pulse's and Ciphera ID's sign-in
+    emails, on one page.
+  - **How often performance checks run** is now set on the Performance page.
+  - **Gone:** the seven data collection switches (no site had changed one; Pulse
+    keeps collecting everything and filtering bots), the team slug field, the public
+    dashboard password, *Hide unknown locations* and the Roles page.
+
 - **A visitor is recognised for one day, at most.** From each site’s own midnight at the start of 27-10-2026, Pulse derives one id per visitor per day from the IP address and browser, with a random key made for that site and that day. Five minutes after the site’s day ends, Ciphera deletes the key and keeps no copy of it, so Pulse cannot recompute that day’s ids. Requests from the same IP address and browser are one visitor and one session within a day, and a reader first seen at 23:50 is recognised for ten minutes. No visitor id is written any more.
 
   **Visitors over a range add up each day’s unique visitors**, so a returning reader counts once for each day. This is the one rule for every day since a site joined Pulse. `visitor_id` is NULL on every row written before a site’s switch to one-day identity: the monthly ids of 26-08-2026..26-10-2026 were nulled on 27-10-2026, day-state and the day archive were rebuilt, and multi-day visitor figures for that period are restated upward. Imported history keeps the visitor figures its source reported. The public read API’s and MCP’s `visitors` field keeps its name and type, so there is no wire change.

@@ -37,7 +37,11 @@ export const listApiKeys = () =>
 
 export const createApiKey = (data: {
   name: string
-  role_id: string
+  /**
+   * Left out by the Developers page: a key carries no role (settings overhaul R3), and the server gives every key the
+   * same read scope. Optional rather than gone only while the old API Keys tab, which still sends one, exists.
+   */
+  role_id?: string
   expires_in_days: ApiKeyExpiry
   scope_all_sites: boolean
   site_ids: string[]
