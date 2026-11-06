@@ -1,7 +1,8 @@
 import { API_URL } from '@/lib/api/client'
 
 /**
- * The assistants Settings → MCP shows set-up steps for (PULSE-54, option A, owner 24-09-2026).
+ * The assistants Settings → Developers shows set-up steps for (PULSE-54, option A, owner 24-09-2026; the MCP page
+ * became the Developers page's AI assistants in the settings overhaul, copy deck §11.3).
  *
  * The wording follows the MCP docs page (docs.ciphera.net/pulse/mcp) so the two never disagree.
  * Claude (web), Claude Code, Cursor and VS Code were driven end to end against Pulse in M4.
@@ -132,7 +133,7 @@ export const MCP_CLIENTS: McpClient[] = [
     mark: null,
     steps: (url) => [
       { title: 'Use the server URL', text: 'Any MCP client that supports remote servers over HTTP with sign-in can connect. It sends you to Pulse to approve.', copy: { label: 'Server URL', code: url } },
-      { title: 'Or use an API key', text: 'For scripts, and clients without sign-in, send a key from API Keys as a Bearer header.', copy: { label: 'Header', code: 'Authorization: Bearer pulse_sk_live_…' } },
+      { title: 'Or use an API key', text: 'For scripts and clients without sign-in, send an API key from this page in the Authorization header.', copy: { label: 'Header', code: 'Authorization: Bearer pulse_sk_live_…' } },
     ],
   },
 ]

@@ -141,9 +141,9 @@ describe('/connect', () => {
     expect(h.getConnectRequest).toHaveBeenCalledWith(REQ)
   })
 
-  it('sends the person to Settings → MCP to disconnect, the page the owner renamed (PULSE-54)', async () => {
+  it('sends the person to the Developers page to disconnect, and says a connection ends after 30 idle days (copy deck §11.3)', async () => {
     render(<ConnectPage />)
-    expect(await screen.findByText('Until you disconnect it in Settings → MCP.')).toBeTruthy()
+    expect(await screen.findByText('Until you disconnect it on the Developers page, or after 30 days without activity.')).toBeTruthy()
     expect(screen.queryByText(/Connected apps/)).toBeNull()
   })
 
