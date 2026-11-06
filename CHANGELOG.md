@@ -417,6 +417,11 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Removed
 
+- **Traffic alerts.** Pulse no longer emails your team when a site's traffic
+  falls or rises sharply compared with recent weeks, and site settings no longer
+  show the traffic check. Alerts for uptime, for a tracking script that stops
+  sending, and for events Pulse turns away work as before.
+
 - **Small numbers are no longer hidden anywhere.** Every row and every metric
   now shows at any size, filtered or not. A shared dashboard shows the same top
   rows your team sees for the same range, a page or a city with one visitor
