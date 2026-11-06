@@ -1,8 +1,9 @@
 /**
  * Pulse Analytics - Privacy-First Tracking Script
  * Lightweight, no cookies, and nothing kept in the visitor's browser: the one exception is a
- * site owner's own opt-out flag, written only when they visit their site with ?pulse-ignore,
- * and read from localStorage on every load so their own visits are not counted.
+ * site owner's own opt-out flag, written only when they open their site with ?pulse-ignore=on
+ * (cleared by ?pulse-ignore=off), and read from localStorage on every load so their own visits
+ * are not counted.
  * Visits are recognised server-side, from the IP address and the browser string; the browser
  * holds no identifier.
  *
@@ -77,12 +78,36 @@
     return v !== 'false' && v !== '0' && v !== 'no' && v !== 'off';
   }
 
-  var sendsDnt = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || navigator.msDoNotTrack === '1';
-  if (sendsDnt && !optedOut('ignore-dnt')) {
-    return;
+  // * Self-traffic exclusion (v1.8.0): the site owner's two links on Privacy.
+  // * ?pulse-ignore=on, or a bare ?pulse-ignore (the link before 1.8.0), stops counting this
+  // * browser on this site; ?pulse-ignore=off counts it again. Each link does only that, so a
+  // * reload, a bookmark or a restored tab can't undo it. Until 1.8.0 every open FLIPPED the
+  // * flag, so every second open undid the first, and nothing said which way it went.
+  // * Any other value does nothing. Audit: Pulse/docs/audits/06-11-2026-exclude-own-visits.md
+  var IGNORE_KEY = 'pulse_ignore';
+  var ignoreArg = null;
+  try {
+    ignoreArg = new URLSearchParams(location.search).get('pulse-ignore');
+  } catch (e) {}
+  var askedIgnore = ignoreArg === '' || ignoreArg === 'on' || ignoreArg === 'off';
+
+  // * What happened is said on the page by script.note.js, loaded from beside this script only
+  // * when a link was opened, so visitors never download it. It carries this tag's nonce for a
+  // * CSP that requires one. If it can't load (a site serving this script from its own address
+  // * without that file), the flag is still set; only the note is missing.
+  function showNote(outcome) {
+    var s = document.createElement('script');
+    s.src = ((script && script.src) || 'https://js.ciphera.net/script.js').replace(/[^/]*$/, 'script.note.js');
+    s.setAttribute('data-note', outcome);
+    if (script && script.nonce) s.nonce = script.nonce;
+    (document.head || document.documentElement).appendChild(s);
   }
 
-  if (navigator.globalPrivacyControl === true && !optedOut('ignore-gpc')) {
+  var sendsDnt = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || navigator.msDoNotTrack === '1';
+  if ((sendsDnt && !optedOut('ignore-dnt')) || (navigator.globalPrivacyControl === true && !optedOut('ignore-gpc'))) {
+    // * Not counted either way, and storage stays untouched (as before 1.8.0); the owner who
+    // * opened a link is told why, rather than seeing nothing happen.
+    if (askedIgnore) showNote('signal');
     return;
   }
 
@@ -91,17 +116,23 @@
     return;
   }
 
-  // * Self-traffic exclusion: site owners can exclude themselves via ?pulse-ignore
-  // * Visit any page with ?pulse-ignore to toggle the exclusion flag on/off
-  var IGNORE_KEY = 'pulse_ignore';
-  try {
-    if (location.search.indexOf('pulse-ignore') !== -1) {
-      if (localStorage.getItem(IGNORE_KEY)) {
+  if (askedIgnore) {
+    var outcome = 'off';
+    try {
+      if (ignoreArg === 'off') {
         localStorage.removeItem(IGNORE_KEY);
       } else {
         localStorage.setItem(IGNORE_KEY, 'true');
+        outcome = 'on';
       }
+    } catch (e) {
+      // * Storage refused (a privacy setting, a full quota): said, not swallowed. Off needs no
+      // * warning: a browser that stores nothing can't hold the flag either.
+      if (ignoreArg !== 'off') outcome = 'refused';
     }
+    showNote(outcome);
+  }
+  try {
     if (localStorage.getItem(IGNORE_KEY)) {
       return;
     }

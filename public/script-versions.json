@@ -4,8 +4,8 @@
   "files": {
     "script.js": {
       "path": "/v1.7.0/script.js",
-      "sha384": "sha384-uJcdBEEw54yaG8C2j9X02zsuUlO/0zUGdX79UgZErMsrJXAe4Yw2hoQYNK1szzGH",
-      "sha512": "sha512-85Pvg/vQcoxq4B/UKgP8ENOSXxOE2U/3gDMVWiz/zLyXFliRx1hXRZzC7PXekfDiGj/9Q22SD4VMX9H/uBlnPA=="
+      "sha384": "sha384-tVZ1ya5TaB9eCe7YExpVW2TTgpdUEY6EC8xRnll6o2atI1o+a5N0VE0TXndKwWP8",
+      "sha512": "sha512-lGi7Ig/VoF9z3tXWbaoNl+7AOCLkeQ+ruIXGwjXavNH9bUO86o6HMlbQJoG4CKkCxk7d4GT9suBIylRougPOUg=="
     },
     "script.interactions.js": {
       "path": "/v1.7.0/script.interactions.js",
