@@ -26,7 +26,9 @@ import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import {
   Copy,
   CheckCircle,
+  Eye,
   EyeSlash,
+  ArrowSquareOut,
   Trash,
   ArrowUp,
   ArrowDown,
@@ -86,7 +88,7 @@ const SECTIONS = [
   { id: 'section-data-retention', label: 'Data retention' },
   { id: 'section-path-grouping', label: 'Path grouping' },
   { id: 'section-query-params', label: 'Query parameters' },
-  { id: 'section-exclude-self', label: 'Exclude self' },
+  { id: 'section-exclude-self', label: 'Your own visits' },
   { id: 'section-pagespeed', label: 'Performance' },
   { id: 'section-privacy-policy', label: 'Privacy policy' },
 ] as const
@@ -141,6 +143,11 @@ function PrivacySectionNav({
 
 export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const canEdit = useCan('sites.edit')
+  // OWNVISITS-MOCK: which of the two layouts the options round draws; removed with the pick.
+  const [ownVisitsLayout, setOwnVisitsLayout] = useState<'p1' | 'p2'>('p1')
+  useEffect(() => {
+    try { if (window.localStorage.getItem('pulse-mock-ownvisits') === 'p2') setOwnVisitsLayout('p2') } catch {}
+  }, [])
   const { data: site, error: siteError, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const { data: psiConfig, error: psiConfigError, mutate: mutatePSIConfig } = usePerformanceConfig(siteId)
@@ -712,33 +719,65 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Exclude self: neutral action, no orange icon tile (spec §2.3). */}
+        {/* Your own visits: two links, each doing only what it says (tracker 1.8.0). Neutral
+            actions, no orange icon tile (spec §2.3). The site says what each did. */}
         <section id="section-exclude-self" className="scroll-mt-24">
-          <SettingsPanel title="Exclude my visits" description="Stop tracking your own visits from this browser.">
-            <div className="space-y-3 px-5 py-4">
-              <p className="text-sm text-muted-foreground">
-                Open your site with a special parameter to set a flag in this browser’s storage that tells the Pulse script to skip tracking. Visit the link again to re-enable tracking.
-              </p>
-              {/* h-auto + py-2, not the outline rung's fixed height: the label
-                  embeds the site domain, so on a phone it wraps to two lines
-                  and a fixed height let the text escape its own border. */}
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="h-auto min-h-9 items-center gap-1.5 whitespace-normal px-3 py-2 text-left text-sm"
-              >
-                <a
-                  href={`https://${site.domain}?pulse-ignore`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <EyeSlash weight="bold" className="h-4 w-4" />
-                  Toggle exclusion on {site.domain}
-                </a>
-              </Button>
-              <p className="text-xs text-muted-foreground">You need to do this once per browser. The flag stays until you clear this browser’s site data or visit the link again to toggle it off.</p>
-            </div>
+          <SettingsPanel title="Your own visits" description="Stop counting your own visits from this browser.">
+            {/* OWNVISITS-MOCK: two layouts for the options round; the pick stays, the switch goes. */}
+            {ownVisitsLayout === 'p2' ? (
+              <>
+                <PanelRows>
+                  <PanelRow
+                    label="Stop counting me"
+                    caption={`Opens ${site.domain} in a new tab. From then on, your visits from this browser don’t count.`}
+                    control={
+                      <Button variant="outline" size="sm" asChild className="gap-1.5">
+                        <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer" aria-label={`Stop counting me on ${site.domain}`}>
+                          <ArrowSquareOut weight="bold" className="h-4 w-4" />
+                          Open
+                        </a>
+                      </Button>
+                    }
+                  />
+                  <PanelRow
+                    label="Count me again"
+                    caption={`Opens ${site.domain} in a new tab. From then on, your visits from this browser count again.`}
+                    control={
+                      <Button variant="outline" size="sm" asChild className="gap-1.5">
+                        <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer" aria-label={`Count me again on ${site.domain}`}>
+                          <ArrowSquareOut weight="bold" className="h-4 w-4" />
+                          Open
+                        </a>
+                      </Button>
+                    }
+                  />
+                </PanelRows>
+                <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+                  Do this once in each browser you use, and your site says what each link did. It lasts until you clear this browser&rsquo;s data for {site.domain}. Safari clears it by itself after 7 days without a visit.
+                </p>
+              </>
+            ) : (
+              <div className="space-y-3 px-5 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Each link opens {site.domain} in a new tab, and your site says what it did. Do this once in each browser you use.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" asChild className="gap-1.5">
+                    <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer">
+                      <EyeSlash weight="bold" className="h-4 w-4" />
+                      Stop counting me
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild className="gap-1.5">
+                    <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer">
+                      <Eye weight="bold" className="h-4 w-4" />
+                      Count me again
+                    </a>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">It lasts until you clear this browser&rsquo;s data for {site.domain}. Safari clears it by itself after 7 days without a visit.</p>
+              </div>
+            )}
           </SettingsPanel>
         </section>
 
