@@ -8,14 +8,13 @@ const TAB_MAP: Record<string, string> = {
   visibility:    'visibility',
   data:          'privacy',
   privacy:       'privacy',
-  bot:           'bot-spam',
+  bot:           'general',
   goals:         'goals',
   integrations:  'integrations',
   // PULSE-121, design §3.10c M13-h: the M13 import notifications' link_url is
-  // `/sites/:id/settings?tab=import` (pulse-backend's ImportTabURL). Without
-  // this entry the `??` fallback below sent every one of those links to
-  // General instead of the M11 Import tab.
-  import:        'import',
+  // `/sites/:id/settings?tab=import` (pulse-backend's ImportTabURL). Import is
+  // part of Data since the settings overhaul.
+  import:        'integrations',
 }
 
 export default function SiteSettingsRedirect() {
@@ -33,10 +32,10 @@ export default function SiteSettingsRedirect() {
     }
     // M5 (PULSE-140), design §3.12m5a constraint 1: GA4's callback lands the
     // Google popup here with `?tab=import&ga4=<code>`. The Import tab says the
-    // code, so it must survive the redirect, as `gsc` does for Integrations.
+    // code, so it must survive the redirect, as `gsc` does. Data reads both.
     const ga4 = searchParams.get('ga4')
     if (ga4) {
-      router.replace(`/settings/site/import?ga4=${encodeURIComponent(ga4)}`)
+      router.replace(`/settings/site/integrations?ga4=${encodeURIComponent(ga4)}`)
       return
     }
     const tabParam = searchParams.get('tab')
