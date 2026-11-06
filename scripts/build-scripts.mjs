@@ -58,13 +58,19 @@ const DIST_ROOT = join(ROOT, 'dist', 'scripts')
 // in the round-7 log; the publish gap is its own change.)
 // * 1.7.0 (25-10-2026, PUL-37): nothing kept in the browser; the anchor and the refresh
 // * record live in memory, and a reloaded document's first pageview says so (`reload`).
-const SCRIPT_VERSION = '1.7.0'
+// * 1.8.0 (06-11-2026, R27/R28): the site owner's two links (?pulse-ignore=on / =off) each do only
+// * what they say, and script.note.js says on the page what they did.
+const SCRIPT_VERSION = '1.8.0'
 const BASE_URL = 'https://js.ciphera.net'
 
 // * script.interactions.js is the OPTIONAL companion: clicks, copies and form
 // * submits. It is a separate artifact on purpose — see its header. Its budget is
 // * its own, so growth there can never push the core over the published 3 KB.
-const SCRIPTS = ['script.js', 'script.interactions.js']
+// * script.note.js (1.8.0) is the line a site owner's own-visits link leaves on their site. The core
+// * loads it from beside itself ONLY when the page was opened with ?pulse-ignore=on or =off, so no
+// * visitor downloads it, and it is versioned with the core because a pinned core loads it from
+// * its own v<version>/ path.
+const SCRIPTS = ['script.js', 'script.interactions.js', 'script.note.js']
 
 // * Gzip size budget per file (bytes). The core script is the one customers pay
 // * for on every page load; keep it lean. Fail the build if it regresses.
@@ -81,6 +87,8 @@ const GZIP_BUDGET = {
   // * budget makes growth in the core a decision. Not a published claim — but a
   // * site that opts in still pays for it on every page load.
   'script.interactions.js': 1536, // ~1.5 KB gzipped (986B at three capture types)
+  // * Loaded only by a site owner opening their own link; the ceiling keeps it a line of text.
+  'script.note.js': 1024, // ~1 KB gzipped (842B at 1.8.0)
 }
 
 function sri(algo, bytes) {

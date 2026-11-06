@@ -26,8 +26,6 @@ import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import {
   Copy,
   CheckCircle,
-  Eye,
-  EyeSlash,
   ArrowSquareOut,
   Trash,
   ArrowUp,
@@ -143,11 +141,6 @@ function PrivacySectionNav({
 
 export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const canEdit = useCan('sites.edit')
-  // OWNVISITS-MOCK: which of the two layouts the options round draws; removed with the pick.
-  const [ownVisitsLayout, setOwnVisitsLayout] = useState<'p1' | 'p2'>('p1')
-  useEffect(() => {
-    try { if (window.localStorage.getItem('pulse-mock-ownvisits') === 'p2') setOwnVisitsLayout('p2') } catch {}
-  }, [])
   const { data: site, error: siteError, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
   const { data: psiConfig, error: psiConfigError, mutate: mutatePSIConfig } = usePerformanceConfig(siteId)
@@ -719,65 +712,40 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Your own visits: two links, each doing only what it says (tracker 1.8.0). Neutral
-            actions, no orange icon tile (spec §2.3). The site says what each did. */}
+        {/* Your own visits (R27–R30): two links, each doing only what it says (tracker 1.8.0), as rows
+            whose Open buttons end on the page's control edge. Neutral actions, no orange icon tile
+            (spec §2.3). The site then says what each did (script.note.js). */}
         <section id="section-exclude-self" className="scroll-mt-24">
           <SettingsPanel title="Your own visits" description="Stop counting your own visits from this browser.">
-            {/* OWNVISITS-MOCK: two layouts for the options round; the pick stays, the switch goes. */}
-            {ownVisitsLayout === 'p2' ? (
-              <>
-                <PanelRows>
-                  <PanelRow
-                    label="Stop counting me"
-                    caption={`Opens ${site.domain} and stops counting your visits from this browser.`}
-                    control={
-                      <Button variant="outline" size="sm" asChild className="gap-1.5">
-                        <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer" aria-label={`Stop counting me on ${site.domain}`}>
-                          <ArrowSquareOut weight="bold" className="h-4 w-4" />
-                          Open
-                        </a>
-                      </Button>
-                    }
-                  />
-                  <PanelRow
-                    label="Count me again"
-                    caption={`Opens ${site.domain} and counts your visits from this browser again.`}
-                    control={
-                      <Button variant="outline" size="sm" asChild className="gap-1.5">
-                        <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer" aria-label={`Count me again on ${site.domain}`}>
-                          <ArrowSquareOut weight="bold" className="h-4 w-4" />
-                          Open
-                        </a>
-                      </Button>
-                    }
-                  />
-                </PanelRows>
-                <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-                  Do this once in each browser you use, and your site says what each link did. It lasts until you clear this browser&rsquo;s data for {site.domain}. Safari clears it by itself after 7 days without a visit.
-                </p>
-              </>
-            ) : (
-              <div className="space-y-3 px-5 py-4">
-                <p className="text-sm text-muted-foreground">
-                  Each link opens {site.domain} in a new tab, and your site says what it did. Do this once in each browser you use.
-                </p>
-                <div className="flex flex-wrap gap-2">
+            <PanelRows>
+              <PanelRow
+                label="Stop counting me"
+                caption={`Opens ${site.domain} and stops counting your visits from this browser.`}
+                control={
                   <Button variant="outline" size="sm" asChild className="gap-1.5">
-                    <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer">
-                      <EyeSlash weight="bold" className="h-4 w-4" />
-                      Stop counting me
+                    <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer" aria-label={`Stop counting me on ${site.domain}`}>
+                      <ArrowSquareOut weight="bold" className="h-4 w-4" />
+                      Open
                     </a>
                   </Button>
+                }
+              />
+              <PanelRow
+                label="Count me again"
+                caption={`Opens ${site.domain} and counts your visits from this browser again.`}
+                control={
                   <Button variant="outline" size="sm" asChild className="gap-1.5">
-                    <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer">
-                      <Eye weight="bold" className="h-4 w-4" />
-                      Count me again
+                    <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer" aria-label={`Count me again on ${site.domain}`}>
+                      <ArrowSquareOut weight="bold" className="h-4 w-4" />
+                      Open
                     </a>
                   </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">It lasts until you clear this browser&rsquo;s data for {site.domain}. Safari clears it by itself after 7 days without a visit.</p>
-              </div>
-            )}
+                }
+              />
+            </PanelRows>
+            <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+              Do this once in each browser you use, and your site says what each link did. It lasts until you clear this browser&rsquo;s data for {site.domain}. Safari clears it by itself after 7 days without a visit.
+            </p>
           </SettingsPanel>
         </section>
 

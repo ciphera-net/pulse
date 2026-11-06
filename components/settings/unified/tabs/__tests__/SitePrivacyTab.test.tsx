@@ -252,6 +252,24 @@ describe('SitePrivacyTab', () => {
     expect(toast.error).toHaveBeenCalled()
   })
 
+  // Your own visits (06-11-2026, tracker 1.8.0): two links that each do only what they say. The one
+  // link before it (?pulse-ignore, flipped on every open) undid itself on a reload or a bookmark.
+  it('Your own visits: Stop counting me opens =on and Count me again =off, each in a new tab, named in full', () => {
+    render(<SitePrivacyTab siteId="s1" />)
+    expect(screen.getByRole('heading', { level: 2, name: 'Your own visits' })).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Privacy sections' })).getByRole('button', { name: 'Your own visits' })).toBeInTheDocument()
+    const stop = screen.getByRole('link', { name: 'Stop counting me on demo.test' })
+    const again = screen.getByRole('link', { name: 'Count me again on demo.test' })
+    expect(stop).toHaveAttribute('href', 'https://demo.test/?pulse-ignore=on')
+    expect(again).toHaveAttribute('href', 'https://demo.test/?pulse-ignore=off')
+    for (const a of [stop, again]) {
+      expect(a).toHaveAttribute('target', '_blank')
+      expect(a).toHaveAttribute('rel', 'noopener noreferrer')
+    }
+    expect(document.querySelector('a[href$="?pulse-ignore"]')).toBeNull()
+    expect(screen.queryByText(/Toggle exclusion/)).not.toBeInTheDocument()
+  })
+
   it('never uses an em dash, en dash or a literal ellipsis in its user-facing copy', () => {
     // Scoped to string literals, not the whole stripped source: comments are
     // stripped first so a design note doesn't trip the same copy rule its own

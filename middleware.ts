@@ -43,6 +43,10 @@ const PUBLIC_ROUTES = new Set([
   // * core serves 200 — an asymmetry that reads as a broken deploy.
   '/script.interactions.js',
   '/script.interactions.debug.js',
+  // * The note a site owner's own-visits link leaves on their site (tracker 1.8.0). A core loaded from
+  // * this mirror loads its note from here too, and next-pwa precaches it like every public/ file.
+  '/script.note.js',
+  '/script.note.debug.js',
   '/script-sri.json', // * Subresource Integrity manifest (sha384 of the tracking script); consumed by ciphera-website build to pin <script integrity="">.
   // * Static file in public/, so next-pwa precaches it. A 307 to /login here fails
   // * the WHOLE service worker install (workbox aborts on one bad precache

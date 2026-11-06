@@ -185,6 +185,13 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Fixed
 
+- **Excluding your own visits stays put.** Settings → Privacy → **Your own visits** now has two
+  links, **Stop counting me** and **Count me again**, and each does only what it says. Until now
+  the one link switched counting each time it opened, so reloading the page it opened, opening it
+  from a bookmark, or a tab the browser restored after a restart turned counting back on. Your site
+  now shows a short note saying what happened, including when the browser refused to save the
+  choice or already asks sites not to track it. A campaign tag that merely contained the words
+  `pulse-ignore` no longer switches it either. Tracking script 1.8.0.
 - When the dashboard failed to load, the error replaced the whole page, including the
   date picker and the realtime toggle, so the only way to try another range was to
   edit the address. The toolbar now stays above the error, and Retry is unchanged.

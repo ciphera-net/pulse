@@ -21,7 +21,7 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 // * describes them in words (round 6). Same file name, different contents, and it
 // * carries no selectors and no coordinates. Supersession recorded in
 // * docs/plans/14-08-2026-behavioral-tracking-removal.md.
-const SCRIPTS = ['script.js', 'script.interactions.js'];
+const SCRIPTS = ['script.js', 'script.interactions.js', 'script.note.js'];
 
 const out = {};
 for (const name of SCRIPTS) {
