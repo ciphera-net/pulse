@@ -723,8 +723,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                 caption={`Opens ${site.domain} and stops counting your visits from this browser.`}
                 control={
                   <Button variant="outline" size="sm" asChild className="gap-1.5">
-                    <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer" aria-label={`Stop counting me on ${site.domain}`}>
-                      <ArrowSquareOut weight="bold" className="h-4 w-4" />
+                    <a href={`https://${site.domain}/?pulse-ignore=on`} target="_blank" rel="noopener noreferrer" aria-label={`Stop counting me on ${site.domain}`} className="group">
+                      <ArrowSquareOut weight="bold" className="h-4 w-4 transition-colors group-hover:text-brand-ink" />
                       Open
                     </a>
                   </Button>
@@ -735,8 +735,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                 caption={`Opens ${site.domain} and counts your visits from this browser again.`}
                 control={
                   <Button variant="outline" size="sm" asChild className="gap-1.5">
-                    <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer" aria-label={`Count me again on ${site.domain}`}>
-                      <ArrowSquareOut weight="bold" className="h-4 w-4" />
+                    <a href={`https://${site.domain}/?pulse-ignore=off`} target="_blank" rel="noopener noreferrer" aria-label={`Count me again on ${site.domain}`} className="group">
+                      <ArrowSquareOut weight="bold" className="h-4 w-4 transition-colors group-hover:text-brand-ink" />
                       Open
                     </a>
                   </Button>
