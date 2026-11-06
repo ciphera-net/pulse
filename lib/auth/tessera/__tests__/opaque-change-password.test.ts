@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const changePasswordMock = vi.hoisted(() => vi.fn())
 const drainMock = vi.hoisted(() => vi.fn())
 const credIdMock = vi.hoisted(() => vi.fn())
+const lastFinishMock = vi.hoisted(() => vi.fn())
 // Typed to ACCEPT its options object so `mock.calls[0][0]` exists at the type
 // level — inspecting what the transport was configured with IS the test.
 const transportMock = vi.hoisted(() =>
@@ -10,6 +11,7 @@ const transportMock = vi.hoisted(() =>
     __t: true,
     drainSignupBuffer: drainMock,
     serverCredentialId: credIdMock,
+    lastFinish: lastFinishMock,
   })),
 )
 const authFetchMock = vi.hoisted(() => vi.fn())
@@ -31,6 +33,7 @@ describe('performOpaqueChangePassword', () => {
     transportMock.mockClear()
     drainMock.mockReset().mockReturnValue({ uploadB64: 'UPLOAD', wraps: { opaque: 'NEWWRAP' } })
     credIdMock.mockReset().mockReturnValue('CRED')
+    lastFinishMock.mockReset().mockReturnValue({ reauth_token: 'TOKEN' })
     authFetchMock.mockReset().mockResolvedValue({ opaque_wrapped_key: 'OLDWRAP' })
   })
 
@@ -51,8 +54,8 @@ describe('performOpaqueChangePassword', () => {
 
   /**
    * The purpose is the security property, not a label: the server stores
-   * "<purpose>:<userID>". A token minted here must not buy a destructive
-   * ceremony, which is why 'pwd' exists and is spendable nowhere.
+   * "<purpose>:<userID>". A token minted here buys this change and nothing
+   * else, which is why 'pwd' exists rather than reusing 'del' or 'enr'.
    */
   it('names the pwd purpose, and no other', async () => {
     await performOpaqueChangePassword({ oldPassword: 'old', newPassword: 'new' })
@@ -96,7 +99,27 @@ describe('performOpaqueChangePassword', () => {
       registration_upload_b64: 'UPLOAD',
       credential_id: 'CRED',
       opaque_wrapped_key: 'NEWWRAP',
+      reauth_token: 'TOKEN',
     })
+  })
+
+  /**
+   * The token is the proof the PUT spends. Without it the change is refused
+   * server-side after the person has typed both passwords, so a ceremony that
+   * produced none fails here, loudly, and never hands back a payload.
+   *
+   * MUTATION CHECK: drop the token from the completeness check and this goes red.
+   */
+  it('throws rather than returning a payload without the re-auth token', async () => {
+    lastFinishMock.mockReturnValue({})
+    await expect(
+      performOpaqueChangePassword({ oldPassword: 'old', newPassword: 'new' }),
+    ).rejects.toThrow(/did not complete/i)
+
+    lastFinishMock.mockReturnValue(null)
+    await expect(
+      performOpaqueChangePassword({ oldPassword: 'old', newPassword: 'new' }),
+    ).rejects.toThrow(/did not complete/i)
   })
 
   /**
