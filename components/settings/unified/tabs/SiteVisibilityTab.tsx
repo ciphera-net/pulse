@@ -95,6 +95,8 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       toast.success('Visibility updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your visibility settings. Try again.")
+      // Reject, so the save bar keeps the draft and does not say "Saved" (SettingsSaveBar's contract).
+      throw err
     } finally {
       setSaving(false)
     }

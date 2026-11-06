@@ -225,6 +225,7 @@ export default function WorkspaceBillingTab() {
   const handleDiscardBilling = () => setBillingForm(billingBaseline)
 
   const handleSaveBilling = async () => {
+    let saved = false
     try {
       const result = await updateBillingSettings({
         billing_email: billingForm.billing_email,
@@ -237,6 +238,7 @@ export default function WorkspaceBillingTab() {
         setBillingBaseline(billingForm)
         await mutate()
         toast.success('Billing details updated')
+        saved = true
       } else {
         // ok:false is a failure and must say so — the old silence left the
         // form open with the user believing the save landed.
@@ -245,6 +247,9 @@ export default function WorkspaceBillingTab() {
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your billing details. Try again.")
     }
+    // Both failures above (ok:false and a thrown request) already toasted. Reject, so the save bar keeps the
+    // draft and does not say "Saved" (SettingsSaveBar's contract).
+    if (!saved) throw new Error('billing-settings-not-saved')
   }
 
   const openPaymentModal = () => {
