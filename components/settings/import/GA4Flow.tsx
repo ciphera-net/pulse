@@ -78,7 +78,7 @@ export function rangeCaption(plan: Pick<GA4PlanPreview, 'native_start' | 'histor
 }
 
 /** Failures a new Google sign-in fixes: the row offers "Connect again" (state 7). */
-const RECONNECTABLE: ReadonlySet<string> = new Set(['reconnect_required', 'connector_erased'])
+export const RECONNECTABLE: ReadonlySet<string> = new Set(['reconnect_required', 'connector_erased'])
 
 interface GA4FlowProps {
   siteId: string
