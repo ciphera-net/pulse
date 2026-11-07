@@ -30,7 +30,7 @@ export function teamNameFits(name: string): boolean {
   return length >= 2 && length <= 50
 }
 
-/** A role slug as people read it. A slug outside the three (an old `analyst` or `viewer`) is printed as it is. */
+/** A role slug as people read it. A team's roles are the three above; any other slug is printed as it is. */
 export function roleWord(role: string): string {
   return isTeamRole(role) ? ROLE_WORD[role] : role
 }

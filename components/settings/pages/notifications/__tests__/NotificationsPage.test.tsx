@@ -17,7 +17,7 @@ const h = vi.hoisted(() => ({
   updatePrefs: vi.fn(),
   updateUserPreferences: vi.fn(),
   listSites: vi.fn(),
-  listSchedules: vi.fn(),
+  getScheduleSummary: vi.fn(),
   refresh: vi.fn(),
   toastError: vi.fn(),
   user: null as null | {
@@ -38,8 +38,9 @@ vi.mock('@/lib/api/notifications-preferences', () => ({
   updatePrefs: (w: unknown) => h.updatePrefs(w),
 }))
 vi.mock('@/lib/api/user', () => ({ updateUserPreferences: (p: unknown) => h.updateUserPreferences(p) }))
+// listSites stays mocked to prove the page no longer reads the sites to count schedules.
 vi.mock('@/lib/api/sites', () => ({ listSites: () => h.listSites() }))
-vi.mock('@/lib/api/reports', () => ({ listSchedules: (siteId: string) => h.listSchedules(siteId) }))
+vi.mock('@/lib/api/reports', () => ({ getScheduleSummary: () => h.getScheduleSummary() }))
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: h.user, refresh: h.refresh }) }))
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => h.teamState }))
 // The weekly summary's row follows its beta (useFeature('weekly-summary')): null until /me answers.
@@ -96,12 +97,6 @@ function doc(categories?: CategoryPreferenceDoc[]): PreferencesDocument {
   }
 }
 
-const SITES = [
-  { id: 'site-a', domain: 'a.example.com', name: 'A' },
-  { id: 'site-b', domain: 'b.example.com', name: 'B' },
-]
-const schedule = (id: string) => ({ id, name: `Report ${id}`, every: 'month', created_at: '2026-11-01T00:00:00Z' })
-
 beforeEach(() => {
   vi.clearAllMocks()
   h.user = { id: 'u1', email: '', totp_enabled: false, org_id: 'org-1', role: 'owner' }
@@ -120,8 +115,8 @@ beforeEach(() => {
   })
   h.updateUserPreferences.mockResolvedValue(undefined)
   h.refresh.mockResolvedValue(undefined)
-  h.listSites.mockResolvedValue(SITES)
-  h.listSchedules.mockImplementation(async (siteId: string) => (siteId === 'site-a' ? [schedule('s1')] : [schedule('s2'), schedule('s3')]))
+  h.listSites.mockResolvedValue([])
+  h.getScheduleSummary.mockResolvedValue({ running: 3 })
 })
 
 const renderPage = () =>
@@ -410,7 +405,7 @@ describe('NotificationsPage: Sign-in emails (Ciphera ID)', () => {
 // --- Reports and invoices ----------------------------------------------------
 
 describe('NotificationsPage: Reports and invoices', () => {
-  it("counts every site's scheduled emails, the state leading the line in orange, and opens Sharing", async () => {
+  it("counts every site's scheduled emails in one request, the state leading the line in orange, and opens Sharing", async () => {
     renderPage()
     await ready()
     const row = rowOf('Scheduled emails')
@@ -419,12 +414,14 @@ describe('NotificationsPage: Reports and invoices', () => {
     expect(within(row).getByText(/Growth reports emailed on the 1st, set up for each site in Sharing\.$/).textContent).toBe(
       '3 running · Growth reports emailed on the 1st, set up for each site in Sharing.',
     )
-    expect(h.listSchedules.mock.calls.map(([id]) => id).sort()).toEqual(['site-a', 'site-b'])
+    // The server adds up every site the person can open: one read, and no list of sites.
+    expect(h.getScheduleSummary).toHaveBeenCalledTimes(1)
+    expect(h.listSites).not.toHaveBeenCalled()
     expect(within(row).getByRole('link', { name: 'Open Sharing' })).toHaveAttribute('href', '/settings/site/visibility')
   })
 
   it('says None yet in grey when no site has one', async () => {
-    h.listSchedules.mockResolvedValue([])
+    h.getScheduleSummary.mockResolvedValue({ running: 0 })
     renderPage()
     await ready()
     const row = rowOf('Scheduled emails')
@@ -432,25 +429,23 @@ describe('NotificationsPage: Reports and invoices', () => {
     expect(row.querySelector('[data-kit-status]')?.getAttribute('data-kit-status')).toBe('off')
   })
 
-  it('says None yet when the team has no site, reading no schedules', async () => {
-    h.listSites.mockResolvedValue([])
-    renderPage()
-    await ready()
-    await waitFor(() => expect(within(rowOf('Scheduled emails')).getByText('None yet')).toBeInTheDocument())
-    expect(h.listSchedules).not.toHaveBeenCalled()
-  })
-
-  it('says in coral that it could not count them when a read fails, never None yet', async () => {
-    h.listSchedules.mockImplementation(async (siteId: string) => {
-      if (siteId === 'site-b') throw new Error('boom')
-      return []
-    })
+  it('says in coral that it could not count them when the read fails, never None yet', async () => {
+    h.getScheduleSummary.mockRejectedValue(new Error('boom'))
     renderPage()
     await ready()
     const row = rowOf('Scheduled emails')
     await waitFor(() => expect(within(row).getByText("Couldn't count them")).toBeInTheDocument())
     expect(row.querySelector('[data-kit-status]')?.getAttribute('data-kit-status')).toBe('broken')
     expect(within(row).queryByText('None yet')).toBeNull()
+  })
+
+  it('says it could not count them when the answer is not a count, never a number', async () => {
+    h.getScheduleSummary.mockResolvedValue({})
+    renderPage()
+    await ready()
+    const row = rowOf('Scheduled emails')
+    await waitFor(() => expect(within(row).getByText("Couldn't count them")).toBeInTheDocument())
+    expect(within(row).queryByText(/running|None yet/)).toBeNull()
   })
 
   it('reads no schedule and claims no count for somebody who may not read the list (analytics.export)', async () => {
@@ -460,8 +455,7 @@ describe('NotificationsPage: Reports and invoices', () => {
     const row = rowOf('Scheduled emails')
     expect(within(row).getByText('Growth reports emailed on the 1st, set up for each site in Sharing.')).toBeInTheDocument()
     expect(row.querySelector('[data-kit-status]')).toBeNull()
-    expect(h.listSites).not.toHaveBeenCalled()
-    expect(h.listSchedules).not.toHaveBeenCalled()
+    expect(h.getScheduleSummary).not.toHaveBeenCalled()
     expect(within(row).getByRole('link', { name: 'Open Sharing' })).toBeInTheDocument()
   })
 

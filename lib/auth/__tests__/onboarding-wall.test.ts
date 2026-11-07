@@ -18,7 +18,7 @@ describe('isSubjectToOnboardingWall', () => {
     expect(isSubjectToOnboardingWall('owner')).toBe(true)
   })
 
-  it.each(['admin', 'member', 'analyst', 'viewer'])(
+  it.each(['admin', 'member'])(
     'releases %s — ciphera-id refuses their completion write, so the wall can never be satisfied',
     (role) => {
       expect(isSubjectToOnboardingWall(role)).toBe(false)
