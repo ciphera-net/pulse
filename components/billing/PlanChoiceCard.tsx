@@ -75,6 +75,10 @@ const PlanChoiceCard = forwardRef<HTMLButtonElement, PlanChoiceCardProps>(
               {isYearly && (
                 <p className="text-xs text-neutral-500">{formatEuro(price.yearlyTotal)} billed yearly</p>
               )}
+              {/* D19: the price includes VAT, and the price without it sits under it, for the year when billed yearly. */}
+              <p className="text-xs text-neutral-500">
+                {formatEuro(isYearly ? price.yearlyBusiness : price.monthlyBusiness)} without VAT
+              </p>
             </div>
           ) : priceLoading ? (
             <Spinner size="sm" />

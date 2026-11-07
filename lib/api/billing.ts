@@ -58,6 +58,11 @@ export interface SubscriptionDetails {
    *  ingestion. Optional because a backend older than 15-08-2026 does not send it;
    *  treat its absence as "unknown", never as 0 (0 would read as "already over"). */
   pageview_hard_ceiling?: number
+  /** The same three numbers under the names that say what they count since 07-11-2026: every event, not only
+   *  pageviews. Read these first and fall back to pageview_* (a backend from before sends only those). */
+  event_limit?: number
+  event_usage?: number
+  event_hard_ceiling?: number
   /** Business name from billing (optional). */
   business_name?: string
   /** Tax ID collected on the billing customer (VAT, EIN, etc.). */
@@ -278,8 +283,31 @@ export async function calculateVAT(params: CalculateVATParams, signal?: AbortSig
   })
 }
 
-export async function getPrices(): Promise<Record<string, Record<number, number>>> {
-  return apiRequest('/api/billing/prices')
+/** One plan, limit and interval in the catalog, in EUR cents. `price` includes Belgian VAT (what EU consumers and
+ *  Belgian businesses pay); `business_price` is without VAT (EU businesses outside Belgium with a VAT number, and
+ *  buyers outside the EU). */
+export interface CatalogPrice {
+  price: number
+  business_price: number
+}
+
+export interface CatalogTier {
+  limit: number
+  month: CatalogPrice
+  year: CatalogPrice
+}
+
+/** GET /api/billing/catalog: every priced plan's tiers in ascending order of limit. The server owns every price,
+ *  the yearly one included; nothing here multiplies. */
+export interface PriceCatalog {
+  currency: string
+  vat_rate: number
+  yearly_months: number
+  plans: Record<string, CatalogTier[]>
+}
+
+export async function getCatalog(): Promise<PriceCatalog> {
+  return apiRequest<PriceCatalog>('/api/billing/catalog')
 }
 
 export async function updateBillingSettings(params: {

@@ -1,12 +1,29 @@
 import { describe, it, expect } from 'vitest'
+import type { PriceCatalog } from '@/lib/api/billing'
 import {
   formatPlanName,
-  FREE_PAGEVIEW_LIMIT,
+  FREE_EVENT_LIMIT,
   PLAN_CATALOG,
+  getPeriodPriceCents,
+  getPlanPricing,
   getSitesLimitForPlan,
   getMaxRetentionMonthsForPlan,
   getRetentionOptionsForPlan,
 } from '@/lib/plans'
+
+// Two tiers of the catalog as GET /api/billing/catalog sends them (list A+, 07-11-2026): prices with VAT, the business
+// price without, and the yearly prices as the server's own figures.
+const CATALOG: PriceCatalog = {
+  currency: 'EUR',
+  vat_rate: 21,
+  yearly_months: 10,
+  plans: {
+    business: [
+      { limit: 10000, month: { price: 900, business_price: 744 }, year: { price: 9000, business_price: 7438 } },
+      { limit: 10000000, month: { price: 24900, business_price: 20579 }, year: { price: 249000, business_price: 205785 } },
+    ],
+  },
+}
 
 describe('formatPlanName', () => {
   it('maps free/empty ids to Personal', () => {
@@ -28,10 +45,39 @@ describe('formatPlanName', () => {
   })
 })
 
-describe('FREE_PAGEVIEW_LIMIT', () => {
-  it('is the free-tier monthly allowance and formats with separators', () => {
-    expect(FREE_PAGEVIEW_LIMIT).toBe(5000)
-    expect(FREE_PAGEVIEW_LIMIT.toLocaleString('en-US')).toBe('5,000')
+describe('FREE_EVENT_LIMIT', () => {
+  it('is the free-tier monthly allowance (10,000 events since 07-11-2026) and formats with separators', () => {
+    expect(FREE_EVENT_LIMIT).toBe(10000)
+    expect(FREE_EVENT_LIMIT.toLocaleString('en-US')).toBe('10,000')
+  })
+})
+
+describe('getPlanPricing (the catalog, 07-11-2026)', () => {
+  it('reads every price from the catalog, the yearly ones included', () => {
+    expect(getPlanPricing(CATALOG, 'business', 10000)).toEqual({
+      monthly: 9,
+      monthlyBusiness: 7.44,
+      yearlyTotal: 90,
+      // The server's figure: €90 a year is €74.38 without VAT, never 10 × €7.44 = €74.40.
+      yearlyBusiness: 74.38,
+      effectiveMonthly: 7.5,
+    })
+    expect(getPlanPricing(CATALOG, 'business', 10000000)).toMatchObject({ monthly: 249, yearlyTotal: 2490, yearlyBusiness: 2057.85 })
+  })
+
+  it('is null for a tier, a plan or a catalog it does not have', () => {
+    expect(getPlanPricing(CATALOG, 'business', 12345)).toBeNull()
+    expect(getPlanPricing(CATALOG, 'team', 10000)).toBeNull()
+    expect(getPlanPricing(undefined, 'business', 10000)).toBeNull()
+  })
+})
+
+describe('getPeriodPriceCents', () => {
+  it('is one billing period with VAT, the year as the server prices it', () => {
+    expect(getPeriodPriceCents(CATALOG, 'business', 10000, 'month')).toBe(900)
+    expect(getPeriodPriceCents(CATALOG, 'business', 10000, 'year')).toBe(9000)
+    expect(getPeriodPriceCents(CATALOG, 'business', 50000, 'month')).toBeNull()
+    expect(getPeriodPriceCents(undefined, 'business', 10000, 'year')).toBeNull()
   })
 })
 

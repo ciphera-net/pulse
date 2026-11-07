@@ -1,7 +1,7 @@
 // The Billing page's rules as pure functions (copy deck §10, R26, R36): one state per plan, its words, the dates,
 // and when a waiting plan change applies.
 import { describe, it, expect } from 'vitest'
-import type { Invoice, SubscriptionDetails } from '@/lib/api/billing'
+import type { Invoice, PriceCatalog, SubscriptionDetails } from '@/lib/api/billing'
 import { ApiError } from '@/lib/api/client'
 import {
   FREE_FACTS,
@@ -28,8 +28,18 @@ const paid: SubscriptionDetails = {
   next_charge_on: '2026-12-03',
 }
 
-// pulse-backend prices: monthly cents per plan and pageview tier.
-const PRICES = { business: { 10000: 2300, 100000: 4900, 250000: 9900 } }
+// GET /api/billing/catalog, three tiers of list A+ (07-11-2026): cents with VAT, a year the server's own figure.
+const tier = (limit: number, month: number, monthBusiness: number, yearBusiness: number) => ({
+  limit,
+  month: { price: month, business_price: monthBusiness },
+  year: { price: month * 10, business_price: yearBusiness },
+})
+const CATALOG: PriceCatalog = {
+  currency: 'EUR',
+  vat_rate: 21,
+  yearly_months: 10,
+  plans: { business: [tier(10000, 900, 744, 7438), tier(100000, 1900, 1570, 15702), tier(250000, 2900, 2397, 23967)] },
+}
 
 describe('dates', () => {
   it('reads a calendar date as written, with the year only when it is not this one', () => {
@@ -82,7 +92,7 @@ describe('planLine: the deck\'s words for each state', () => {
       `The plan ends on 3 Dec. Then the team moves to the free Personal plan: ${FREE_FACTS}.`,
     )
     expect(planLine(paid, 'cancelled', owner)).toEqual({ tone: 'off', word: 'Cancelled', line: `The team is on the free Personal plan: ${FREE_FACTS}.` })
-    expect(planLine(paid, 'free', owner).line).toBe('5,000 pageviews a month, 1 site, and data kept for 6 months.')
+    expect(planLine(paid, 'free', owner).line).toBe('10,000 events a month, 1 site, and data kept for 6 months.')
     expect(planLine({ ...paid, plan_id: 'pioneer' }, 'granted', owner).line).toBe('Ciphera gave this team the Pioneer plan, so nothing is billed.')
   })
 
@@ -116,22 +126,28 @@ describe('planLine: the deck\'s words for each state', () => {
 describe('a waiting plan change', () => {
   it('a cheaper tier waits for the renewal; a dearer one applies once its payment goes through', () => {
     const down = { ...paid, pending_plan_id: 'business', pending_limit: 10000, pending_interval: 'month' }
-    expect(pendingChangeTiming(down, PRICES)).toBe('renewal')
-    expect(pendingChangeLine(down, 'renewal', NOW)).toBe('Moving to Business (10,000 pageviews a month) on 3 Dec.')
+    expect(pendingChangeTiming(down, CATALOG)).toBe('renewal')
+    expect(pendingChangeLine(down, 'renewal', NOW)).toBe('Moving to Business (10,000 events a month) on 3 Dec.')
     const up = { ...paid, pending_plan_id: 'business', pending_limit: 250000, pending_interval: 'month' }
-    expect(pendingChangeTiming(up, PRICES)).toBe('payment')
-    expect(pendingChangeLine(up, 'payment', NOW)).toBe('Moving to Business (250,000 pageviews a month) once the payment goes through.')
+    expect(pendingChangeTiming(up, CATALOG)).toBe('payment')
+    expect(pendingChangeLine(up, 'payment', NOW)).toBe('Moving to Business (250,000 events a month) once the payment goes through.')
   })
 
-  it('by price, not by pageviews: yearly 100,000 to monthly 250,000 costs less, so it waits', () => {
+  it('by price, not by events: yearly 100,000 to monthly 250,000 costs less, so it waits', () => {
     const sub = { ...paid, billing_interval: 'year', pending_plan_id: 'business', pending_limit: 250000, pending_interval: 'month' }
-    expect(pendingChangeTiming(sub, PRICES)).toBe('renewal')
+    expect(pendingChangeTiming(sub, CATALOG)).toBe('renewal')
+  })
+
+  it('the current tier is read from event_limit first (a backend from 07-11-2026 sends both names)', () => {
+    // event_limit says 10,000 (€9), so 100,000 (€19) costs more; read from pageview_limit it would cost the same.
+    const sub = { ...paid, pageview_limit: 100000, event_limit: 10000, pending_plan_id: 'business', pending_limit: 100000, pending_interval: 'month' }
+    expect(pendingChangeTiming(sub, CATALOG)).toBe('payment')
   })
 
   it('no prices, no claim about when', () => {
     const sub = { ...paid, pending_plan_id: 'business', pending_limit: 10000, pending_interval: 'month' }
     expect(pendingChangeTiming(sub, undefined)).toBeNull()
-    expect(pendingChangeLine(sub, null, NOW)).toBe('Moving to Business (10,000 pageviews a month).')
+    expect(pendingChangeLine(sub, null, NOW)).toBe('Moving to Business (10,000 events a month).')
   })
 
   it('R26: says what is deleted only when the new plan keeps data for less', () => {

@@ -9,14 +9,15 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
+// GET /api/billing/catalog's 10k tier (list A+, 07-11-2026): cents with VAT, the year the server's own figure.
 vi.mock('swr', () => ({
-  default: () => ({ data: { team: { 10000: 1000 } } }),
+  default: () => ({ data: { currency: 'EUR', vat_rate: 21, yearly_months: 10, plans: { business: [{ limit: 10000, month: { price: 900, business_price: 744 }, year: { price: 9000, business_price: 7438 } }] } } }),
 }))
 
 const calculateVAT = vi.fn()
 vi.mock('@/lib/api/billing', () => ({
   calculateVAT: (...args: unknown[]) => calculateVAT(...args),
-  getPrices: vi.fn(),
+  getCatalog: vi.fn(),
 }))
 
 vi.mock('@/lib/countries', () => ({
@@ -139,5 +140,36 @@ describe('PlanSummary VAT race', () => {
       />,
     )
     expect(screen.getByRole('heading', { name: 'Pro' })).toBeTruthy()
+  })
+})
+
+describe('PlanSummary before a country is chosen', () => {
+  function renderBusiness(interval: 'month' | 'year') {
+    return render(
+      <PlanSummary
+        plan="business" interval={interval} onIntervalChange={noop} limit={10000} country="" vatId=""
+        verifiedVatId="" onVerifiedVatIdChange={noop}
+        onCountryChange={noop} onVatIdChange={noop}
+        businessName="" onBusinessNameChange={noop}
+        billingEmail="" onBillingEmailChange={noop}
+        address="" onAddressChange={noop}
+        city="" onCityChange={noop}
+        postalCode="" onPostalCodeChange={noop}
+      />,
+    )
+  }
+
+  it('shows the price without VAT for a month, from the catalog', () => {
+    renderBusiness('month')
+    expect(screen.getByText('Subtotal (10k events)').nextElementSibling!.textContent).toBe('€7.44')
+    expect(screen.getByText('excl. VAT').closest('div')!.textContent).toBe('Total /mo excl. VAT€7.44')
+    expect(calculateVAT).not.toHaveBeenCalled()
+  })
+
+  it('shows the year without VAT as the server prices it, never 10 × the month', () => {
+    renderBusiness('year')
+    // €74.38, not 10 × €7.44 = €74.40.
+    expect(screen.getByText('Subtotal (10k events)').nextElementSibling!.textContent).toBe('€74.38')
+    expect(screen.getByText('€6.20/mo · 2 months free')).toBeTruthy()
   })
 })

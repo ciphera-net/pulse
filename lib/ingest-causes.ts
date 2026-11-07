@@ -9,7 +9,7 @@
  * the endpoint and the notification producer cannot disagree. This file is the
  * same discipline on this side of the wire. The surface that renders them here
  * is Settings → General, the tracking script's "Some events turned away" line
- * (the causes as phrases: "more than twice your plan's pageviews, sent too fast"). The
+ * (the causes as phrases: "more than twice your plan's events, sent too fast"). The
  * `site_events_rejected` email words them in Iris; the in-app card that also
  * rendered them, in a clause register of its own, went with the in-app inbox
  * on 20-10-2026.
@@ -35,12 +35,12 @@ export const INGEST_REJECTION_CAUSES: readonly IngestRejectionCause[] = [
 
 /**
  * What happened to the events, in the reader's words (settings copy deck §3.3): General's line reads "Some events
- * were turned away in the last 7 days: more than twice your plan's pageviews, sent too fast." Lower-case, because the
+ * were turned away in the last 7 days: more than twice your plan's events, sent too fast." Lower-case, because the
  * phrases follow a colon mid-sentence. (Until the settings overhaul the Monitoring tab printed noun labels, "plan
  * ceiling, rate limited, outdated script"; that tab is now part of General.)
  */
 export const INGEST_CAUSE_PHRASE: Record<IngestRejectionCause, string> = {
-  plan_ceiling: "more than twice your plan's pageviews",
+  plan_ceiling: "more than twice your plan's events",
   rate_limited: 'sent too fast',
   outdated_script: 'sent by an old version of the script',
 }
