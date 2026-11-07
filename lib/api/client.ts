@@ -441,9 +441,12 @@ async function apiRequest<T>(
     await waitForTeamGate()
   }
 
-  // * Skip deduplication for non-GET requests (mutations should always execute)
+  // * Skip deduplication for non-GET requests (mutations should always execute),
+  // * and for a GET that asked for `cache: 'no-store'`: its caller needs the server's
+  // * answer now (a re-read after a 409), never one held for 2s or shared with a
+  // * request that left before the change it is looking for.
   const method = options.method || 'GET'
-  const shouldDedupe = method === 'GET'
+  const shouldDedupe = method === 'GET' && options.cache !== 'no-store'
 
   if (shouldDedupe) {
     // * Clean up expired entries periodically
@@ -614,7 +617,7 @@ async function apiRequest<T>(
   // * pre-mutation body for up to CACHE_TTL_MS (the cancel/resume subscription
   // * flows hit exactly this window). The cache is a 2s dedupe aid, not state —
   // * dropping it wholesale on the rare mutation is free.
-  if (!shouldDedupe) {
+  if (method !== 'GET') {
     requestPromise
       .then((data) => {
         responseCache.clear()

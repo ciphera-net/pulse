@@ -40,8 +40,9 @@ const report = (message: string, cause: unknown) => logger.error(message, cause)
  * Which means **"it did not throw" is not evidence anything was stored**: read
  * it back before telling somebody anything about this device.
  */
-export function saveVaultKey(userId: string, key: VaultKey): Promise<void> {
-  return sharedSave<VaultKey>(userId, key, undefined, report)
+export async function saveVaultKey(userId: string, key: VaultKey): Promise<void> {
+  await sharedSave<VaultKey>(userId, key, undefined, report)
+  announceCustody('saved')
 }
 
 /** The key for THIS account, if one is stored and still young enough. */
@@ -50,6 +51,36 @@ export function loadVaultKey(userId: string): Promise<VaultKey | null> {
 }
 
 /** Forget EVERY stored key — sign-out, and the Lock button. */
-export function forgetVaultKeys(): Promise<void> {
-  return sharedForget<VaultKey>(undefined, report)
+export async function forgetVaultKeys(): Promise<void> {
+  await sharedForget<VaultKey>(undefined, report)
+  announceCustody('forgotten')
+}
+
+/**
+ * This tab's stored vault key changed: saved by an unlock, or forgotten by sign-out or Lock.
+ *
+ * 🔴 THE LOCK BUTTON CHANGES NOTHING ELSE THE APP CAN SEE. It forgets the stored key but leaves the
+ * auth context's user and `vaultState` as they were, so anything holding material the vault key
+ * opened (team names keep a private key and teammates' names in memory) cannot tell from the context
+ * that the person just locked. It listens here instead. Same tab only; nothing crosses tabs.
+ */
+export type VaultCustodyChange = 'saved' | 'forgotten'
+
+const custodyListeners = new Set<(change: VaultCustodyChange) => void>()
+
+export function onVaultKeyCustodyChange(listener: (change: VaultCustodyChange) => void): () => void {
+  custodyListeners.add(listener)
+  return () => {
+    custodyListeners.delete(listener)
+  }
+}
+
+function announceCustody(change: VaultCustodyChange): void {
+  for (const listener of [...custodyListeners]) {
+    try {
+      listener(change)
+    } catch (e) {
+      report('vault: a custody listener threw', e)
+    }
+  }
 }

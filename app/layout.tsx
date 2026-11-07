@@ -1,6 +1,7 @@
 import { Toaster } from '@ciphera-net/facet'
 import { UndoProvider } from '@ciphera-net/facet-hold'
 import { AuthProvider } from '@/lib/auth/context'
+import { TeamNamesProvider } from '@/lib/team-names/provider'
 import SWRProvider from '@/components/SWRProvider'
 import InteractionScript from '@/components/InteractionScript'
 import PulseOwnTracker from '@/components/PulseOwnTracker'
@@ -130,7 +131,11 @@ export default function RootLayout({
                 so a delete that navigates (a site) keeps its Undo; inside the
                 auth provider, whose session the deferred request needs. */}
             <UndoProvider>
-              <LayoutContent>{children}</LayoutContent>
+              {/* Encrypted team names (beta `team-names`): draws nothing, runs only with
+                  the beta on, and needs the session above it. */}
+              <TeamNamesProvider>
+                <LayoutContent>{children}</LayoutContent>
+              </TeamNamesProvider>
             </UndoProvider>
             <Toaster />
           </AuthProvider>

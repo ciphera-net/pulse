@@ -149,3 +149,73 @@ describe('the import worker is never served stale', () => {
     expect(chunk.flatMap((r) => r.headers).some((h) => h.key === 'Cache-Control')).toBe(false)
   })
 })
+
+// End-to-end encrypted team names (design §6.5, review L3): the two GETs (the person's sealed key
+// and a team's directory) live on the API's origin, which is not the app's, so the default
+// `cross-origin` rule would keep them NetworkFirst in Cache Storage for an hour.
+describe('the team-names routes never reach Cache Storage', () => {
+  const APP = 'https://pulse.ciphera.net'
+  const KEY = 'https://pulse-api.ciphera.net/api/v1/me/team-key'
+  const DIRECTORY = 'https://pulse-api.ciphera.net/api/v1/organizations/7e7e7e7e-0000-4000-8000-000000000001/team-names'
+
+  /** Workbox's router, faithfully: first match wins, and a RegExp matches a cross-origin URL only
+   * when the match starts at index 0 of the full URL (workbox-routing's RegExpRoute). */
+  function workboxRouteFor(rules: RuntimeRule[], href: string): RuntimeRule | null {
+    const url = new URL(href)
+    const sameOrigin = url.origin === APP
+    for (const r of rules) {
+      const p = r.urlPattern
+      if (p instanceof RegExp) {
+        const m = p.exec(href)
+        if (m && (sameOrigin || m.index === 0)) return r
+      } else if (typeof p === 'function') {
+        if (p({ url, request: new Request(href), sameOrigin })) return r
+      }
+    }
+    return null
+  }
+
+  async function rules() {
+    const { pwa } = await load()
+    const workbox = pwa.workboxOptions as { runtimeCaching?: RuntimeRule[] } | undefined
+    return effectiveRuntimeCaching(workbox?.runtimeCaching, pwa.extendDefaultRuntimeCaching === true)
+  }
+
+  it('answers both GETs NetworkOnly, on the API origin', async () => {
+    const all = await rules()
+    for (const href of [KEY, DIRECTORY]) {
+      expect(workboxRouteFor(all, href)).toMatchObject({ handler: 'NetworkOnly', options: { cacheName: 'team-names' } })
+    }
+  })
+
+  it('leaves every other API route to the defaults', async () => {
+    const all = await rules()
+    for (const href of [
+      'https://pulse-api.ciphera.net/api/v1/me',
+      'https://pulse-api.ciphera.net/api/v1/organizations/7e7e7e7e-0000-4000-8000-000000000001/members',
+      'https://pulse-api.ciphera.net/api/v1/me/team-key/extra',
+    ]) {
+      expect(workboxRouteFor(all, href)?.options?.cacheName).toBe('cross-origin')
+    }
+  })
+
+  it('control: with the defaults alone both would be cached for an hour', () => {
+    for (const href of [KEY, DIRECTORY]) {
+      expect(workboxRouteFor(defaultRuntimeCaching, href)).toMatchObject({ handler: 'NetworkFirst', options: { cacheName: 'cross-origin' } })
+    }
+  })
+
+  it('control: a path RegExp would silently match nothing on the API origin', () => {
+    const regExpRule: RuntimeRule = { urlPattern: /\/api\/v1\/me\/team-key$/, handler: 'NetworkOnly', options: { cacheName: 'x' } }
+    expect(workboxRouteFor([regExpRule], KEY)).toBeNull()
+  })
+
+  it('refers to nothing outside itself, so it survives being serialised into the worker', async () => {
+    const { pwa } = await load()
+    const custom = ((pwa.workboxOptions as { runtimeCaching: RuntimeRule[] }).runtimeCaching).find((r) => r.options?.cacheName === 'team-names')
+    if (!custom || typeof custom.urlPattern !== 'function') throw new Error('no team-names rule')
+    const rebuilt = new Function(`return (${String(custom.urlPattern)})`)() as (ctx: { url: URL }) => boolean
+    expect(rebuilt({ url: new URL(DIRECTORY) })).toBe(true)
+    expect(rebuilt({ url: new URL('https://pulse-api.ciphera.net/api/v1/me') })).toBe(false)
+  })
+})

@@ -1,0 +1,218 @@
+// @vitest-environment node
+//
+// HPKE (RFC 9180) against the RFC's own vectors: A.3.1 and A.3.3 (DHKEM(P-256, HKDF-SHA256),
+// HKDF-SHA256, AES-128-GCM, base and auth) check the production KEM and key schedule, and A.6.1 and
+// A.6.3 (DHKEM(P-521, HKDF-SHA512), HKDF-SHA512, AES-256-GCM) check AEAD id 0x0002 with Nk 32, the
+// two things the production suite changes (review L2). The private scalars come from the vectors.
+//
+// vectors/rfc9180-subset.json holds the CFRG test-vectors.json entries (commit 5f503c5) for those
+// sections; before it was written, every value the RFC text prints for them was compared with it,
+// and the base-mode entries with Go 1.25's own copy. The pinned SHA-256 makes a drift fail here and
+// on the server, which carries the same file.
+
+import { createHash } from 'node:crypto'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import {
+  HpkeError,
+  SUITE_P256_SHA256_AES128GCM,
+  SUITE_P256_SHA256_AES256GCM,
+  SUITE_P521_SHA512_AES256GCM,
+  importPrivateKey,
+  importPublicKey,
+  open,
+  seal,
+  sealWithEphemeralKeyForTesting,
+  type HpkeSuite,
+} from '../hpke'
+
+const RFC_FILE = fileURLToPath(new URL('./vectors/rfc9180-subset.json', import.meta.url))
+const RFC_SHA256 = 'a4363ed2d3c79025c4f77beb28e8a9aef930cbcde58acf1f89e980601058df03'
+
+interface RfcVector {
+  mode: number
+  kem_id: number
+  kdf_id: number
+  aead_id: number
+  info: string
+  skRm: string
+  skEm: string
+  skSm?: string
+  pkRm: string
+  pkEm: string
+  pkSm?: string
+  enc: string
+  shared_secret: string
+  key: string
+  base_nonce: string
+  encryptions: { aad: string; ct: string; nonce: string; pt: string }[]
+}
+
+const rfc = JSON.parse(readFileSync(RFC_FILE, 'utf8')) as { vectors: { section: string; vector: RfcVector }[] }
+
+const hex = (s: string) => Uint8Array.from(Buffer.from(s, 'hex'))
+const toHex = (b: Uint8Array) => Buffer.from(b).toString('hex')
+
+function suiteFor(v: RfcVector): HpkeSuite {
+  for (const s of [SUITE_P256_SHA256_AES128GCM, SUITE_P521_SHA512_AES256GCM]) {
+    if (s.kemId === v.kem_id && s.kdfId === v.kdf_id && s.aeadId === v.aead_id) return s
+  }
+  throw new Error(`no suite for ${v.kem_id}/${v.kdf_id}/${v.aead_id}`)
+}
+
+describe('the RFC 9180 vector file', () => {
+  it('is the pinned file, with the four sections', () => {
+    expect(createHash('sha256').update(readFileSync(RFC_FILE)).digest('hex')).toBe(RFC_SHA256)
+    expect(rfc.vectors.map((v) => v.section)).toEqual(['A.3.1', 'A.3.3', 'A.6.1', 'A.6.3'])
+  })
+})
+
+describe.each(rfc.vectors)('RFC 9180 $section', ({ vector: v }) => {
+  const suite = suiteFor(v)
+  const auth = v.mode === 2
+  const enc0 = v.encryptions[0]
+
+  async function parties() {
+    const ephemeral = { privateKey: await importPrivateKey(suite, hex(v.skEm), hex(v.pkEm)), publicKey: hex(v.pkEm) }
+    const recipient = { privateKey: await importPrivateKey(suite, hex(v.skRm), hex(v.pkRm)), publicKey: hex(v.pkRm) }
+    const sender = auth && v.skSm && v.pkSm
+      ? { privateKey: await importPrivateKey(suite, hex(v.skSm), hex(v.pkSm)), publicKey: hex(v.pkSm) }
+      : undefined
+    return { ephemeral, recipient, sender }
+  }
+
+  it('reproduces enc, shared_secret, key, base_nonce and the first ciphertext', async () => {
+    const { ephemeral, sender } = await parties()
+    const trace = await sealWithEphemeralKeyForTesting(
+      { suite, recipientPublicKey: hex(v.pkRm), sender, info: hex(v.info), aad: hex(enc0.aad), plaintext: hex(enc0.pt) },
+      ephemeral,
+    )
+    expect(toHex(trace.sealed.enc)).toBe(v.enc)
+    expect(toHex(trace.sharedSecret)).toBe(v.shared_secret)
+    expect(toHex(trace.key)).toBe(v.key)
+    expect(trace.key.length).toBe(suite.nk)
+    expect(toHex(trace.baseNonce)).toBe(v.base_nonce)
+    expect(toHex(trace.baseNonce)).toBe(enc0.nonce)
+    expect(toHex(trace.sealed.ciphertext)).toBe(enc0.ct)
+  })
+
+  it('opens the first ciphertext', async () => {
+    const { recipient } = await parties()
+    const pt = await open({
+      suite,
+      enc: hex(v.enc),
+      recipient,
+      senderPublicKey: auth ? hex(v.pkSm ?? '') : undefined,
+      info: hex(v.info),
+      aad: hex(enc0.aad),
+      ciphertext: hex(enc0.ct),
+    })
+    expect(toHex(pt)).toBe(enc0.pt)
+  })
+
+  it('refuses the same ciphertext under another aad, another info, or one flipped byte', async () => {
+    const { recipient } = await parties()
+    const base = {
+      suite,
+      enc: hex(v.enc),
+      recipient,
+      senderPublicKey: auth ? hex(v.pkSm ?? '') : undefined,
+      info: hex(v.info),
+      aad: hex(enc0.aad),
+      ciphertext: hex(enc0.ct),
+    }
+    const flipped = hex(enc0.ct)
+    flipped[0] ^= 0x01
+    const otherInfo = hex(v.info)
+    otherInfo[0] ^= 0x01
+    for (const attempt of [{ ...base, aad: hex('00') }, { ...base, info: otherInfo }, { ...base, ciphertext: flipped }]) {
+      await expect(open(attempt)).rejects.toMatchObject({ code: 'hpke/open_failed' })
+    }
+  })
+
+  if (auth) {
+    it('refuses to open as base mode what was sealed in auth mode', async () => {
+      const { recipient } = await parties()
+      await expect(
+        open({ suite, enc: hex(v.enc), recipient, info: hex(v.info), aad: hex(enc0.aad), ciphertext: hex(enc0.ct) }),
+      ).rejects.toMatchObject({ code: 'hpke/open_failed' })
+    })
+  }
+})
+
+describe('seal with a fresh ephemeral key', () => {
+  const suite = SUITE_P256_SHA256_AES256GCM
+
+  async function pair() {
+    const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits'])
+    return { privateKey: kp.privateKey, publicKey: new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey)) }
+  }
+
+  it('round-trips in auth mode and never repeats an enc', async () => {
+    const r = await pair()
+    const s = await pair()
+    const params = { suite, recipientPublicKey: r.publicKey, sender: s, info: new Uint8Array([1, 2, 3]), aad: new Uint8Array([1]), plaintext: new Uint8Array(512).fill(7) }
+    const a = await seal(params)
+    const b = await seal(params)
+    expect(toHex(a.enc)).not.toBe(toHex(b.enc))
+    expect(a.ciphertext.length).toBe(512 + 16)
+    const pt = await open({ suite, enc: a.enc, recipient: r, senderPublicKey: s.publicKey, info: params.info, aad: params.aad, ciphertext: a.ciphertext })
+    expect(pt).toEqual(params.plaintext)
+    // A different sender key in the opener's hands: the auth binding refuses it.
+    const other = await pair()
+    await expect(
+      open({ suite, enc: a.enc, recipient: r, senderPublicKey: other.publicKey, info: params.info, aad: params.aad, ciphertext: a.ciphertext }),
+    ).rejects.toBeInstanceOf(HpkeError)
+  })
+})
+
+describe('public key validation', () => {
+  const suite = SUITE_P256_SHA256_AES256GCM
+
+  it('takes the uncompressed encoding of a point on the curve and nothing else', async () => {
+    const v = rfc.vectors[0].vector
+    await expect(importPublicKey(suite, hex(v.pkRm))).resolves.toBeDefined()
+    const compressed = hex(v.pkRm).slice(0, 33)
+    compressed[0] = 0x02
+    const infinity = new Uint8Array([0x00])
+    const wrongPrefix = hex(v.pkRm)
+    wrongPrefix[0] = 0x05
+    const offCurve = hex(v.pkRm)
+    offCurve[64] ^= 0x01 // y no longer matches x
+    for (const bad of [compressed, infinity, wrongPrefix, offCurve, new Uint8Array(65)]) {
+      await expect(importPublicKey(suite, bad)).rejects.toMatchObject({ code: 'hpke/invalid_public_key' })
+    }
+  })
+
+  it('names the code and nothing else in an error message', async () => {
+    const err = await importPublicKey(suite, new Uint8Array(65)).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(HpkeError)
+    expect((err as HpkeError).message).toBe('hpke/invalid_public_key')
+  })
+})
+
+describe('the ephemeral-key seam', () => {
+  it('is imported by tests only', () => {
+    const root = fileURLToPath(new URL('../../../', import.meta.url))
+    const offenders: string[] = []
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        if (entry === 'node_modules' || entry === '.next' || entry.startsWith('.')) continue
+        const full = join(dir, entry)
+        if (statSync(full).isDirectory()) {
+          if (entry === '__tests__') continue
+          walk(full)
+        } else if (/\.(ts|tsx)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry)) {
+          const rel = relative(root, full)
+          // The two definitions; team-names.ts's own seam calls hpke's.
+          if (rel === join('lib', 'crypto', 'hpke.ts') || rel === join('lib', 'crypto', 'team-names.ts')) continue
+          if (readFileSync(full, 'utf8').includes('WithEphemeralKeyForTesting')) offenders.push(rel)
+        }
+      }
+    }
+    for (const top of ['app', 'components', 'lib', 'hooks']) walk(join(root, top))
+    expect(offenders).toEqual([])
+  })
+})
