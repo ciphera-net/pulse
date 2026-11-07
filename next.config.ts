@@ -9,7 +9,7 @@ const withPWA = withPWAInit({
   // * pulse.ciphera.net's home page frames never installs the dashboard's worker.
   register: false,
   disable: process.env.NODE_ENV === "development",
-  // * The tracker and its release manifests must NOT be in the SW precache.
+  // * The tracker must NOT be in the SW precache.
   // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
   // * script.js is exactly the kind of URL content blockers kill — one blocked
   // * fetch turned into a dead service worker for that visitor (observed
@@ -26,7 +26,7 @@ const withPWA = withPWAInit({
   // * workers/**: the analytics-import worker (scripts/build-worker.mjs). It is
   // * fetched by path when an import starts, and a precached copy would outlive
   // * the deploy that replaced it.
-  publicExcludes: ["!script.js", "!script-sri.json", "!script-versions.json", "!workers/**"],
+  publicExcludes: ["!script.js", "!workers/**"],
   // * 🔴 ...AND out of the RUNTIME cache. next-pwa's default runtime caching
   // * answers every `*.js` request StaleWhileRevalidate ("static-js-assets", 24 h),
   // * and a dedicated worker's script fetch goes through the page's service

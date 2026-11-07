@@ -29,8 +29,8 @@
 
 # ⚠️ .npmrc-ci is deliberately NOT excluded — the builder stage COPYs it.
 # ⚠️ public/ is deliberately NOT excluded — it ships in the image AND deploy.yml's
-#    cdn-scripts step computes SRI hashes over it (which is also why THIS repo's
-#    deploy.yml does NOT get skip_clone).
+#    cdn-scripts step uploads the tracker files from it and checks the edge serves
+#    the same bytes (which is also why THIS repo's deploy.yml does NOT get skip_clone).
 
 # ⚠️ ADDED 21-08-2026 with migration phase 4. `next build` now runs in a Woodpecker
 # step, so the workspace holds its output when the image is assembled.

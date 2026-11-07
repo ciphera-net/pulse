@@ -8,7 +8,7 @@ import { updateSite } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { usePendingKeys } from '@/lib/hold/pending'
 import { timezoneGroupsFor } from '@/lib/utils/timezones'
-import { choicesFrom, featuresPayload, SCRIPT_VERSION, type ScriptChoices } from '@/lib/tracking-script'
+import { choicesFrom, featuresPayload, type ScriptChoices } from '@/lib/tracking-script'
 import { KitPage, KitRow, KitRows, KitSection, KitStats } from '@/components/settings/kit/Kit'
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
@@ -104,7 +104,7 @@ export default function GeneralPage({ siteId }: { siteId: string }) {
     }
     try {
       // Only the fields this page owns: never a whole-object write that would clobber server-owned columns. The
-      // script's keys are MERGED over the stored object, so keys this page does not draw survive (storage, ttl).
+      // script's keys are MERGED over the stored object, so keys this page does not draw survive (storage, ttl, sri).
       await updateSite(siteId, {
         name: draft.name.trim(),
         timezone: draft.timezone,
@@ -218,11 +218,6 @@ export default function GeneralPage({ siteId }: { siteId: string }) {
               />
             </>
           )}
-          <KitRow
-            label={`Lock the script to version ${SCRIPT_VERSION}`}
-            caption="Browsers run only this exact copy (Subresource Integrity). New versions reach your site only when you replace the script."
-            control={toggle(c.sri, () => setChoices((x) => ({ ...x, sri: !x.sri })), `Lock the script to version ${SCRIPT_VERSION}`)}
-          />
           <KitRow
             label="Respect Do Not Track"
             caption="Visitors whose browser asks not to be tracked are left out of your stats."

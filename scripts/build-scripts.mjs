@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Build the immutable, versioned tracking-script artifacts.
+ * Build the tracking scripts that js.ciphera.net and Next's own /script.js serve.
  *
  * 🔴 05-09-2026 — THIS NOW BUILDS THE ROLLING ARTIFACT TOO, AND THAT IS THE POINT.
  * Until today the deploy uploaded the UNMINIFIED source to js.ciphera.net/script.js
  * (22,233 B raw / 7,668 B gzipped) while the budget below measured only the minified
- * versioned sibling (2,698 B gzipped) that a customer reaches ONLY by toggling SRI on.
+ * versioned sibling (2,698 B gzipped) that a customer reached ONLY by toggling SRI on.
  * So a size budget existed, passed on every build, and never once looked at the bytes
  * customers download — which is how ~35 published "5 KB"/"1.6 KB"/"under 2KB" marketing
  * claims drifted apart with nothing to catch them.
@@ -17,24 +17,19 @@
  *
  * It:
  *   1. minifies the three source scripts,
- *   2. enforces a gzip size budget (fail the build if the core script grows),
- *   3. computes SHA-384 + SHA-512 over the EXACT shipped (minified) bytes, and
- *   4. writes:
- *        - dist/scripts/<version>/*.js         (the immutable artifacts to publish)
- *        - public/script-versions.json         (frontend manifest: the snippet UI
- *                                               reads this to emit a versioned SRI tag)
- *        - dist/scripts/versions.json          (append-only publish manifest)
+ *   2. enforces a gzip size budget (fail the build if the core script grows), and
+ *   3. writes public/<file> (minified) and public/<file>.debug.js (the readable source).
  *
- * The versioned URLs are `https://js.ciphera.net/v<version>/<file>` and are
- * published as immutable objects (Cache-Control: immutable, 1y) — bytes for a
- * version are NEVER overwritten. New bytes ⇒ a new version. SRI is pinned only
- * against these, never against the rolling URL (which auto-updates).
+ * 07-11-2026: the versioned copies (dist/scripts/v<version>/), their SHA-384/SHA-512 hashes
+ * and both manifests (public/script-versions.json, dist/scripts/versions.json) went with the
+ * option to lock a site's script to one version (Subresource Integrity). The copies already
+ * published at js.ciphera.net/v<version>/ stay on the CDN for tags pasted before then, and
+ * nothing writes there any more.
  */
 
 import { build } from 'esbuild'
-import { createHash } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -43,33 +38,17 @@ const ROOT = join(__dirname, '..')
 const PUBLIC_DIR = join(ROOT, 'public')
 // * The readable, reviewable, diff-able tracker source. `public/script.js` is its
 // * BUILD OUTPUT and is committed so the deploy step (bare alpine, no node) can
-// * upload it verbatim — the same "generated file must agree at commit time"
-// * contract that already governs public/script-sri.json in .woodpecker/test.yml.
+// * upload it verbatim; .woodpecker/test.yml rebuilds it and fails when the commit
+// * disagrees with a fresh build.
 const SRC_DIR = join(ROOT, 'tracker')
-const DIST_ROOT = join(ROOT, 'dist', 'scripts')
-
-// * Bump this to publish a new immutable version. Bytes for an existing version
-// * must never change — CI enforces immutability on publish.
-// 🔴 1.3.1 (11-09-2026): script.interactions.js changed bytes — a card link's
-// label was every descendant's text welded together with no separator. New bytes
-// ⇒ a new version, per the contract above, and the version is what an SRI pin
-// means. (Measured before bumping: /v1.3.0/* has never actually been published —
-// js.ciphera.net 404s it — so nothing was pinned against the old bytes. Recorded
-// in the round-7 log; the publish gap is its own change.)
-// * 1.7.0 (25-10-2026, PUL-37): nothing kept in the browser; the anchor and the refresh
-// * record live in memory, and a reloaded document's first pageview says so (`reload`).
-// * 1.8.0 (06-11-2026, R27/R28): the site owner's two links (?pulse-ignore=on / =off) each do only
-// * what they say, and script.note.js says on the page what they did.
-const SCRIPT_VERSION = '1.8.0'
-const BASE_URL = 'https://js.ciphera.net'
 
 // * script.interactions.js is the OPTIONAL companion: clicks, copies and form
 // * submits. It is a separate artifact on purpose — see its header. Its budget is
 // * its own, so growth there can never push the core over the published 3 KB.
 // * script.note.js (1.8.0) is the line a site owner's own-visits link leaves on their site. The core
 // * loads it from beside itself ONLY when the page was opened with ?pulse-ignore=on or =off, so no
-// * visitor downloads it, and it is versioned with the core because a pinned core loads it from
-// * its own v<version>/ path.
+// * visitor downloads it. (A tag pinned to v1.8.0 before 07-11-2026 loads it from that v1.8.0/
+// * path, which is why the published copy there stays.)
 const SCRIPTS = ['script.js', 'script.interactions.js', 'script.note.js']
 
 // * Gzip size budget per file (bytes). The core script is the one customers pay
@@ -91,10 +70,6 @@ const GZIP_BUDGET = {
   'script.note.js': 1024, // ~1 KB gzipped (842B at 1.8.0)
 }
 
-function sri(algo, bytes) {
-  return `${algo}-${createHash(algo).update(bytes).digest('base64')}`
-}
-
 async function minify(file) {
   const src = readFileSync(join(SRC_DIR, file), 'utf8')
   const result = await build({
@@ -109,11 +84,6 @@ async function minify(file) {
 }
 
 async function main() {
-  const versionDir = join(DIST_ROOT, `v${SCRIPT_VERSION}`)
-  mkdirSync(versionDir, { recursive: true })
-
-  const files = {}
-  const manifestFiles = {}
   let failed = false
 
   for (const file of SCRIPTS) {
@@ -128,8 +98,6 @@ async function main() {
     const ok = gz.length <= budget
     if (!ok) failed = true
 
-    writeFileSync(join(versionDir, file), min)
-
     // 🔴 THE ROLLING ARTIFACT. Written only when the budget PASSES — an over-budget
     // build must not leave a bigger script on disk for the deploy to pick up, which
     // would ship the regression the check exists to stop while the pipeline is red.
@@ -143,57 +111,18 @@ async function main() {
       writeFileSync(join(PUBLIC_DIR, file.replace(/\.js$/, '.debug.js')), readFileSync(join(SRC_DIR, file)))
     }
 
-    const sha384 = sri('sha384', min)
-    const sha512 = sri('sha512', min)
-    files[file] = {
-      path: `/v${SCRIPT_VERSION}/${file}`,
-      url: `${BASE_URL}/v${SCRIPT_VERSION}/${file}`,
-      sha384,
-      sha512,
-    }
-    manifestFiles[file] = { path: `/v${SCRIPT_VERSION}/${file}`, sha384, sha512 }
-
     console.log(
       `[build-scripts] ${file}: min ${min.length}B, gzip ${gz.length}B ` +
         `(budget ${budget === Infinity ? '∞' : budget}B) ${ok ? 'OK' : 'OVER BUDGET'}`,
     )
   }
 
-  // Frontend manifest — the snippet UI reads this to build the versioned SRI tag.
-  const frontendManifest = {
-    version: SCRIPT_VERSION,
-    baseUrl: BASE_URL,
-    files: manifestFiles,
-  }
-  writeFileSync(
-    join(PUBLIC_DIR, 'script-versions.json'),
-    JSON.stringify(frontendManifest, null, 2) + '\n',
-  )
-
-  // Append-only publish manifest. Preserve prior entries if present.
-  const versionsPath = join(DIST_ROOT, 'versions.json')
-  let versions = []
-  if (existsSync(versionsPath)) {
-    try {
-      versions = JSON.parse(readFileSync(versionsPath, 'utf8'))
-    } catch {
-      versions = []
-    }
-  }
-  if (!versions.find((v) => v.version === SCRIPT_VERSION)) {
-    versions.push({ version: SCRIPT_VERSION, files, notes: '' })
-  }
-  writeFileSync(versionsPath, JSON.stringify(versions, null, 2) + '\n')
-
   if (failed) {
     console.error('[build-scripts] FAILED: a script exceeds its gzip size budget.')
     process.exitCode = 1
     return
   }
-  console.log(
-    `[build-scripts] wrote public/script.js (rolling, minified), public/script.debug.js, ` +
-      `dist/scripts/v${SCRIPT_VERSION}/ and public/script-versions.json`,
-  )
+  console.log('[build-scripts] wrote the rolling scripts (minified) and their .debug.js copies to public/')
 }
 
 main().catch((err) => {

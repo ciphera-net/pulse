@@ -446,6 +446,15 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Removed
 
+- **The option to lock the tracking script to one version is gone.** Settings →
+  General and the install panel no longer offer it (it was called Subresource
+  Integrity). Every site gets the current script from
+  `https://js.ciphera.net/script.js`, so fixes reach your site without you
+  changing anything. A locked script already on your site stays as it was; to
+  get updates, copy the script again and replace it. If your site has a strict
+  Content Security Policy, allow `https://js.ciphera.net` by its address in
+  `script-src`.
+
 - **Traffic alerts.** Pulse no longer emails your team when a site's traffic
   falls or rises sharply compared with recent weeks, and site settings no longer
   show the traffic check. Alerts for uptime, for a tracking script that stops

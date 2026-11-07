@@ -29,7 +29,7 @@ describe('middleware', () => {
       // * PUBLIC_ROUTES entry this 307s to /login, so the readable copy published
       // * to make the minified tracker debuggable could not be fetched from this
       // * origin at all. Same failure class as the next-pwa precache note in
-      // * middleware.ts directly below the /script-sri.json entry.
+      // * middleware.ts above the /script.note.js entry.
       '/script.debug.js',
       // * Both claim pages must render UNAUTHENTICATED (the login round-trip
       // * loses deep links, so a bounced claim link drops its token). The

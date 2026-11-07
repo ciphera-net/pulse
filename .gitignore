@@ -79,5 +79,6 @@ tests/support/*
 !tests/support/console-errors.ts
 !tests/support/base.ts
 
-# Versioned tracking-script build artifacts (published to CDN, not committed)
+# Versioned tracking-script build output. Nothing writes it since 07-11-2026 (the version lock
+# went); the line stays so a copy left in an older checkout is never committed.
 dist/scripts/

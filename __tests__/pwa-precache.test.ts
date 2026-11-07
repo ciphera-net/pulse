@@ -77,7 +77,7 @@ async function fakePublic(): Promise<string> {
   const fs = await vi.importActual<typeof import('fs')>('fs')
   const dir = fs.mkdtempSync(join(tmpdir(), 'pwa-public-'))
   fs.mkdirSync(join(dir, 'workers'))
-  for (const f of ['script.js', 'script-sri.json', 'script-versions.json', 'workers/import.js', 'favicon.ico', 'manifest.json']) {
+  for (const f of ['script.js', 'workers/import.js', 'favicon.ico', 'manifest.json']) {
     fs.writeFileSync(join(dir, f), 'x')
   }
   return dir
@@ -108,8 +108,6 @@ describe('the service worker precache', () => {
     const { pwa } = await load()
     const selected = precached(await fakePublic(), pwa.publicExcludes as string[])
     expect(selected).not.toContain('script.js')
-    expect(selected).not.toContain('script-sri.json')
-    expect(selected).not.toContain('script-versions.json')
     expect(selected).not.toContain('workers/import.js')
     // Control: ordinary public files are still precached.
     expect(selected).toEqual(expect.arrayContaining(['favicon.ico', 'manifest.json']))

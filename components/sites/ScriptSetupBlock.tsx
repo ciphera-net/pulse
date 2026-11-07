@@ -36,7 +36,6 @@ import { setSiteFramework } from '@/lib/api/sites'
 import { docsUrl } from '@/lib/docs'
 import {
   CSP_DIRECTIVES,
-  SCRIPT_VERSION,
   trackingScript,
   type FeatureKey,
   type InteractionKey,
@@ -170,9 +169,6 @@ export default function ScriptSetupBlock({
     outbound: sf.outbound != null ? Boolean(sf.outbound) : DEFAULT_FEATURES.outbound,
     downloads: sf.downloads != null ? Boolean(sf.downloads) : DEFAULT_FEATURES.downloads,
   })
-  // * SRI is now PERSISTED (sf.sri) so Pulse can enumerate SRI users before any
-  // * rolling-script change.
-  const [showSRI, setShowSRI] = useState(sf.sri != null ? Boolean(sf.sri) : false)
   // The companion: off unless a site has opted in, and its three kinds.
   const [interactions, setInteractions] = useState(Boolean(sf.interactions))
   const [kinds, setKinds] = useState<Record<InteractionKey, boolean>>({
@@ -213,11 +209,10 @@ export default function ScriptSetupBlock({
         features,
         interactions,
         kinds,
-        sri: showSRI,
         respectDnt: privacySignals.respect_dnt,
         respectGpc: privacySignals.respect_gpc,
       }),
-    [site.domain, selected, features, interactions, kinds, showSRI, privacySignals],
+    [site.domain, selected, features, interactions, kinds, privacySignals],
   )
 
   const copyCsp = useCallback(() => {
@@ -247,7 +242,7 @@ export default function ScriptSetupBlock({
   const toggleFeature = (key: FeatureKey) => {
     setFeatures((prev) => {
       const next = { ...prev, [key]: !prev[key] }
-      onFeaturesChange?.({ ...next, sri: showSRI, interactions, ...kinds })
+      onFeaturesChange?.({ ...next, interactions, ...kinds })
       return next
     })
   }
@@ -255,7 +250,7 @@ export default function ScriptSetupBlock({
   const toggleInteractions = () => {
     setInteractions((prev) => {
       const next = !prev
-      onFeaturesChange?.({ ...features, sri: showSRI, interactions: next, ...kinds })
+      onFeaturesChange?.({ ...features, interactions: next, ...kinds })
       return next
     })
   }
@@ -263,7 +258,7 @@ export default function ScriptSetupBlock({
   const toggleKind = (key: InteractionKey) => {
     setKinds((prev) => {
       const next = { ...prev, [key]: !prev[key] }
-      onFeaturesChange?.({ ...features, sri: showSRI, interactions, ...next })
+      onFeaturesChange?.({ ...features, interactions, ...next })
       return next
     })
   }
@@ -272,14 +267,6 @@ export default function ScriptSetupBlock({
     setPrivacySignals((prev) => {
       const next = { ...prev, [key]: !prev[key] }
       onPrivacySignalsChange?.(next)
-      return next
-    })
-  }
-
-  const toggleSRI = () => {
-    setShowSRI((prev) => {
-      const next = !prev
-      onFeaturesChange?.({ ...features, sri: next, interactions, ...kinds })
       return next
     })
   }
@@ -494,13 +481,6 @@ export default function ScriptSetupBlock({
                   control={<Toggle checked={kinds[k.key]} onChange={() => toggleKind(k.key)} disabled={disabled} />}
                 />
               ))}
-
-            {/* SRI — emits the immutable versioned URL (never the rolling one) */}
-            <PanelRow
-              label="Subresource Integrity (SRI)"
-              caption={`Pins the script to version ${SCRIPT_VERSION} with an integrity hash · you update the tag to adopt new versions`}
-              control={<Toggle checked={showSRI} onChange={toggleSRI} disabled={disabled} />}
-            />
 
             {/* Privacy signals (PULSE-164) — own small list, own polarity;
                 deliberately last, and deliberately not merged with FEATURES
