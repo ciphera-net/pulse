@@ -40,9 +40,9 @@ vi.mock('@/lib/api/billing', () => ({
   // The one purchasable plan (business) needs a price at the tier the tests
   // select (10000 — the legacy solo subscriber's own tier): an unpriced card
   // is DISABLED by design (F-B12), which is a nice accidental proof the guard
-  // works, but not what these tests are for. The backend's
-  // GET /api/billing/prices returns only a `business` key since 11-09-2026.
-  getPrices: vi.fn().mockResolvedValue({ business: { 10000: 3100 } }),
+  // works, but not what these tests are for. GET /api/billing/catalog's 10k
+  // tier (list A+, 07-11-2026): cents with VAT, the year the server's figure.
+  getCatalog: vi.fn().mockResolvedValue({ currency: 'EUR', vat_rate: 21, yearly_months: 10, plans: { business: [{ limit: 10000, month: { price: 900, business_price: 744 }, year: { price: 9000, business_price: 7438 } }] } }),
   getSubscription: (...a: unknown[]) => getSubscription(...a),
   changePlan: (...a: unknown[]) => changePlan(...a),
   estimatePlanChange: (...a: unknown[]) => estimatePlanChange(...a),

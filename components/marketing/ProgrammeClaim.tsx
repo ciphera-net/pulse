@@ -27,12 +27,12 @@ const PROGRAMME_COPY: Record<Programme, { eyebrow: string; plan: string; terms: 
   opensource: {
     eyebrow: 'Open source',
     plan: 'Open Source plan',
-    terms: 'five sites, 100,000 pageviews a month, 2-year retention, every feature, €0.',
+    terms: 'five sites, 100,000 events a month, 2-year retention, every feature, €0.',
   },
   startups: {
     eyebrow: 'Startups',
     plan: 'Startups plan',
-    terms: 'five sites, 100,000 pageviews a month, 2-year retention, every feature, €0 for a year.',
+    terms: 'five sites, 100,000 events a month, 2-year retention, every feature, €0 for a year.',
   },
 }
 

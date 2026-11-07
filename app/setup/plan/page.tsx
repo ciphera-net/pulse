@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check, WarningCircle } from '@phosphor-icons/react'
 import { useSetup } from '@/lib/setup/context'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { getPrices } from '@/lib/api/billing'
+import { getCatalog } from '@/lib/api/billing'
 import useSWR from 'swr'
 import { PLAN_CATALOG, TRAFFIC_TIERS, getPlanPricing } from '@/lib/plans'
 import TierSlider from '@/components/billing/TierSlider'
@@ -22,7 +22,7 @@ export default function SetupPlanPage() {
   const router = useRouter()
   const { pendingPlan, completeStep } = useSetup()
   const { data: subscription } = useSubscription()
-  const { data: prices, error: pricesError, isLoading: pricesLoading, isValidating: pricesValidating, mutate: retryPrices } = useSWR('plan-prices', getPrices)
+  const { data: catalog, error: pricesError, isLoading: pricesLoading, isValidating: pricesValidating, mutate: retryPrices } = useSWR('plan-catalog', getCatalog)
   const planRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(pendingPlan?.planId ?? null)
@@ -207,7 +207,7 @@ export default function SetupPlanPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {['1 site', '5k pageviews', 'Custom events', 'No credit card'].map((f) => (
+                {['1 site', '10k events', 'Every feature', 'No credit card'].map((f) => (
                   <span key={f} className="flex items-center gap-1 text-xs text-neutral-400">
                     <Check className="w-3 h-3 text-brand-ink" weight="bold" />
                     {f}
@@ -233,13 +233,13 @@ export default function SetupPlanPage() {
               />
               {/* The incentive is a note beside the control, never inside the selected segment
                   (orange text on the orange thumb is invisible) — the pricing page's own shape. */}
-              <span className="text-xs text-neutral-500">1 month free with yearly</span>
+              <span className="text-xs text-neutral-500">2 months free with yearly</span>
             </div>
 
             {/* Traffic tier */}
             <div className="mb-6">
               <label className="block text-micro-label uppercase text-neutral-500 mb-3 text-center">
-                Monthly pageviews
+                Monthly events
               </label>
               <TierSlider value={selectedLimit} onChange={setSelectedLimit} />
             </div>
@@ -262,7 +262,7 @@ export default function SetupPlanPage() {
                       key={plan.id}
                       ref={(el) => { planRefs.current[i] = el }}
                       plan={plan}
-                      price={getPlanPricing(prices, plan.id, selectedLimit)}
+                      price={getPlanPricing(catalog, plan.id, selectedLimit)}
                       priceLoading={pricesLoading || pricesValidating}
                       isYearly={isYearly}
                       role="radio"

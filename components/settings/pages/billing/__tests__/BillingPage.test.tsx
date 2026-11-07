@@ -34,7 +34,7 @@ vi.mock('@/lib/api/billing', () => ({
   cancelSubscription: vi.fn(),
   resumeSubscription: vi.fn(),
   getInvoices: vi.fn(),
-  getPrices: vi.fn(),
+  getCatalog: vi.fn(),
   downloadInvoicePDF: vi.fn(),
   updateBillingSettings: vi.fn(),
 }))
@@ -87,7 +87,20 @@ import { toast } from '@ciphera-net/facet'
 import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 import BillingPage from '../BillingPage'
 
-const FREE = '5,000 pageviews a month, 1 site, and data kept for 6 months'
+const FREE = '10,000 events a month, 1 site, and data kept for 6 months'
+
+// GET /api/billing/catalog, three tiers of list A+ (07-11-2026): cents with VAT, the year the server's own figure.
+const tier = (limit: number, month: number, monthBusiness: number, yearBusiness: number) => ({
+  limit,
+  month: { price: month, business_price: monthBusiness },
+  year: { price: month * 10, business_price: yearBusiness },
+})
+const CATALOG = {
+  currency: 'EUR',
+  vat_rate: 21,
+  yearly_months: 10,
+  plans: { business: [tier(10000, 900, 744, 7438), tier(50000, 1500, 1240, 12397), tier(100000, 1900, 1570, 15702)] },
+}
 
 function renderPage() {
   return render(
@@ -148,7 +161,7 @@ beforeEach(() => {
   mockPush.mockClear()
   mockMutate.mockReset().mockResolvedValue(undefined)
   vi.mocked(billingApi.getInvoices).mockReset().mockResolvedValue([invoice])
-  vi.mocked(billingApi.getPrices).mockReset().mockResolvedValue({ business: { 10000: 2300, 50000: 3900, 100000: 4900 } })
+  vi.mocked(billingApi.getCatalog).mockReset().mockResolvedValue(CATALOG)
   vi.mocked(billingApi.cancelSubscription).mockReset()
   vi.mocked(billingApi.resumeSubscription).mockReset()
   vi.mocked(billingApi.updatePaymentMethod).mockReset()
@@ -175,9 +188,9 @@ describe('the plan: one state, its numbers, what needs doing', () => {
     expect(plan.querySelector('[data-kit-status="live"]')?.textContent).toBe('Active')
     await waitFor(() => expect(within(plan).getByText('Price')).toBeInTheDocument())
     const figures = plan.querySelector('[data-billing-facts="figures"]') as HTMLElement
-    expect([...figures.querySelectorAll('p.text-xs')].map((p) => p.textContent)).toEqual(['Pageviews this month', 'Sites', 'Price'])
+    expect([...figures.querySelectorAll('p.text-xs')].map((p) => p.textContent)).toEqual(['Events this month', 'Sites', 'Price'])
     expect(figures.textContent).toContain('4,000 of 10,000')
-    expect(figures.textContent).toContain('€23.00 a monthplus VAT')
+    expect(figures.textContent).toContain('€9.00 a month€7.44 without VAT')
     expect((figures.querySelector('[data-billing-bar] > span') as HTMLElement).style.width).toBe('40%')
     // Renews is said once, in the line.
     expect(within(plan).queryByText('Renews')).toBeNull()
@@ -188,11 +201,21 @@ describe('the plan: one state, its numbers, what needs doing', () => {
     expect(mockPush).toHaveBeenCalledWith('/switch')
   })
 
-  it('a yearly plan prices a year, with what a month comes to', async () => {
+  it('a yearly plan prices a year with VAT, and the year without VAT is the server\'s figure', async () => {
     mockSubscription = { ...business, billing_interval: 'year' }
     renderPage()
     const plan = await planSection()
-    await waitFor(() => expect(plan.textContent).toContain('€253.00 a yearplus VAT, €21.08 a month'))
+    // €74.38, never 10 × €7.44 = €74.40.
+    await waitFor(() => expect(plan.textContent).toContain('€90.00 a year€74.38 without VAT'))
+  })
+
+  it('reads the meter under its event names first (a backend from 07-11-2026 sends both)', async () => {
+    mockSubscription = { ...business, event_limit: 10000, event_usage: 6000, event_hard_ceiling: 20000 }
+    renderPage()
+    const plan = await planSection()
+    const figures = plan.querySelector('[data-billing-facts="figures"]') as HTMLElement
+    expect(figures.textContent).toContain('6,000 of 10,000')
+    expect((figures.querySelector('[data-billing-bar] > span') as HTMLElement).style.width).toBe('60%')
   })
 
   it('a cancelled plan never shows payment trouble, whatever payment_failed_at still holds (carried finding)', async () => {
@@ -304,7 +327,7 @@ describe('usage rows, and a waiting change', () => {
     renderPage()
     await planSection()
     expect(row('over')!.textContent).toBe(
-      "You've used 12,345 of your plan's 10,000 pageviews.Pulse keeps counting up to 20,000, then stops. Change plan to raise the limit.",
+      "You've used 12,345 of your plan's 10,000 events.Pulse keeps counting up to 20,000, then stops. Change plan to raise the limit.",
     )
     expect(row('over')!.querySelector('[data-kit-icon="state"]')!.className).toContain('text-primary')
     expect(row('ceiling')).toBeNull()
@@ -314,7 +337,7 @@ describe('usage rows, and a waiting change', () => {
     mockSubscription = { ...business, pageview_usage: 12345, pageview_hard_ceiling: undefined }
     renderPage()
     await planSection()
-    expect(row('over')!.textContent).toBe("You've used 12,345 of your plan's 10,000 pageviews.Change plan to raise the limit.")
+    expect(row('over')!.textContent).toBe("You've used 12,345 of your plan's 10,000 events.Change plan to raise the limit.")
   })
 
   it('at the ceiling: Pulse stopped counting, in coral, and the bar turns coral', async () => {
@@ -322,7 +345,7 @@ describe('usage rows, and a waiting change', () => {
     renderPage()
     const plan = await planSection()
     expect(row('ceiling')!.textContent).toBe(
-      "Pulse stopped counting: you reached 20,000 pageviews, twice your plan.New visits aren't counted until the plan changes or the count starts over. A bigger plan starts counting again once its payment goes through.",
+      "Pulse stopped counting: you reached 20,000 events, twice your plan.Nothing new is counted until the plan changes or the count starts over. A bigger plan starts counting again once its payment goes through.",
     )
     expect(row('ceiling')!.querySelector('[data-kit-icon="state"]')!.className).toContain('text-destructive')
     expect(row('over')).toBeNull()
@@ -334,7 +357,7 @@ describe('usage rows, and a waiting change', () => {
     mockSubscription = { ...business, pageview_usage: 20000 }
     renderPage()
     await planSection()
-    expect(row('ceiling')!.textContent).toContain("New visits aren't counted until the plan changes. Ask the owner to change it.")
+    expect(row('ceiling')!.textContent).toContain("Nothing new is counted until the plan changes. Ask the owner to change it.")
   })
 
   it('a cancelled team at its ceiling is told so (copy deck §10.8.7)', async () => {
@@ -351,14 +374,14 @@ describe('usage rows, and a waiting change', () => {
     mockSubscription = { ...business, pageview_limit: 50000, pending_plan_id: 'business', pending_limit: 10000, pending_interval: 'month' }
     const { unmount } = renderPage()
     await planSection()
-    await waitFor(() => expect(row('change')!.textContent).toBe('Moving to Business (10,000 pageviews a month) on 3 Dec.'))
+    await waitFor(() => expect(row('change')!.textContent).toBe('Moving to Business (10,000 events a month) on 3 Dec.'))
     unmount()
 
     mockSubscription = { ...business, pending_plan_id: 'business', pending_limit: 100000, pending_interval: 'month' }
     renderPage()
     await planSection()
     await waitFor(() =>
-      expect(row('change')!.textContent).toBe('Moving to Business (100,000 pageviews a month) once the payment goes through.'),
+      expect(row('change')!.textContent).toBe('Moving to Business (100,000 events a month) once the payment goes through.'),
     )
   })
 
@@ -500,7 +523,7 @@ describe('Cancel plan, in the Danger zone (R36)', () => {
       `From 3 DecThe team is on the free Personal plan: ${FREE}.`,
     )
     expect(dialog.querySelector('[data-kit-warning]')!.textContent).toBe(
-      'Your sites stay. Visits and events older than 6 months are deleted within a day.',
+      'Your sites stay. Visits and events older than 6 months are kept for 30 days after the plan ends, then deleted.',
     )
     expect(dialog.textContent).toContain('You have 6 seconds to undo.')
     expect(within(dialog).getByRole('button', { name: 'Hold to cancel' })).toBeInTheDocument()

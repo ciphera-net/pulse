@@ -9,7 +9,7 @@ import useSWR from 'swr'
 import { TRAFFIC_TIERS, formatPlanName } from '@/lib/plans'
 import { formatEuro } from '@/lib/utils/money'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
-import { calculateVAT, getPrices, type VATResult } from '@/lib/api/billing'
+import { calculateVAT, getCatalog, type VATResult } from '@/lib/api/billing'
 
 interface PlanSummaryProps {
   plan: string
@@ -57,13 +57,14 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
   const [vatFailed, setVatFailed] = useState(false)
   const [vatRetryNonce, setVatRetryNonce] = useState(0)
 
-  const { data: prices } = useSWR('plan-prices', getPrices)
-  // null = no price known (fetch pending/failed, or no catalog entry) — a real
-  // state that must render as absence. The old `|| 0` sentinel showed
-  // "Total €0.00" as fact whenever prices hadn't loaded.
-  const monthlyCents = prices?.[plan]?.[limit] ?? null
+  const { data: catalog } = useSWR('plan-catalog', getCatalog)
   const isYearly = interval === 'year'
-  const baseDisplay = monthlyCents === null ? null : isYearly ? (monthlyCents * 11) / 100 : monthlyCents / 100
+  // Before a country is chosen the summary shows the price without VAT for the period, the server's own figure (the
+  // subtotal a domestic buyer's breakdown then shows too). null = no price known (fetch pending/failed, or no catalog
+  // entry): a real state that renders as absence. The old `|| 0` sentinel showed "Total €0.00" as fact.
+  const tier = catalog?.plans?.[plan]?.find((t) => t.limit === limit)
+  const businessCents = tier ? (isYearly ? tier.year.business_price : tier.month.business_price) : null
+  const baseDisplay = businessCents && businessCents > 0 ? businessCents / 100 : null
 
   const tierLabel =
     TRAFFIC_TIERS.find((t) => t.value === limit)?.label ||
@@ -308,7 +309,7 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
         {vatResult ? (
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">
-              <span>Subtotal ({tierLabel} pageviews)</span>
+              <span>Subtotal ({tierLabel} events)</span>
               <span>{formatEuro(parseFloat(vatResult.base_amount))}</span>
             </div>
             {vatResult.vat_exempt ? (
@@ -333,7 +334,7 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
         ) : (
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">
-              <span>Subtotal ({tierLabel} pageviews)</span>
+              <span>Subtotal ({tierLabel} events)</span>
               <span>{baseDisplay === null ? '—' : formatEuro(baseDisplay)}</span>
             </div>
             <div className="flex justify-between text-neutral-500 text-xs">
@@ -345,7 +346,7 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
               <span>{baseDisplay === null ? '—' : formatEuro(baseDisplay)}</span>
             </div>
             {isYearly && baseDisplay !== null && (
-              <p className="text-xs text-neutral-500">{formatEuro(baseDisplay / 12)}/mo &middot; Save 1 month</p>
+              <p className="text-xs text-neutral-500">{formatEuro(baseDisplay / 12)}/mo &middot; 2 months free</p>
             )}
           </div>
         )}

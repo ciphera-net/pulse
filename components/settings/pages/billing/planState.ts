@@ -1,10 +1,12 @@
-import type { Invoice, SubscriptionDetails } from '@/lib/api/billing'
+import type { Invoice, PriceCatalog, SubscriptionDetails } from '@/lib/api/billing'
 import { ApiError } from '@/lib/api/client'
 import {
-  FREE_PAGEVIEW_LIMIT,
+  FREE_EVENT_LIMIT,
+  eventMeter,
   formatPlanName,
   formatRetentionMonths,
   getMaxRetentionMonthsForPlan,
+  getPeriodPriceCents,
 } from '@/lib/plans'
 
 /**
@@ -42,7 +44,7 @@ export const formatCount = (n: number) => n.toLocaleString('en-GB')
 export const FREE_RETENTION = formatRetentionMonths(getMaxRetentionMonthsForPlan('free'))
 
 /** The free plan's facts, in every line that names it (copy deck §10.9, R26). */
-export const FREE_FACTS = `${formatCount(FREE_PAGEVIEW_LIMIT)} pageviews a month, 1 site, and data kept for ${FREE_RETENTION}`
+export const FREE_FACTS = `${formatCount(FREE_EVENT_LIMIT)} events a month, 1 site, and data kept for ${FREE_RETENTION}`
 
 /**
  * ONE state for the plan, and one message for it (copy deck §10.2). The order is the rule: a payment that is past due
@@ -132,36 +134,21 @@ export function planEndsOn(sub: SubscriptionDetails, now: Date): string | null {
   return calendarDay(sub.next_charge_on, now) ?? utcDay(sub.cancel_effective_at, now)
 }
 
-/** What one billing period of a plan costs in cents (VAT aside), from the prices map; null when it is not sold. */
-function periodCents(
-  prices: Record<string, Record<number, number>> | undefined,
-  planId: string,
-  limit: number,
-  interval: string,
-): number | null {
-  const monthly = prices?.[planId]?.[limit]
-  if (typeof monthly !== 'number' || monthly <= 0) return null
-  // A year is 11 months' price, the same formula as lib/plans.ts and the backend.
-  return interval === 'year' ? monthly * 11 : monthly
-}
-
 /**
  * When a waiting plan change applies. The server's own rule (ChangePlanHandler): a change that costs the same or less
  * waits for the renewal; one that costs more applies once its prorated payment goes through (copy deck §10.8.9). By
- * price, not by pageviews: yearly 100,000 to monthly 250,000 costs less and waits. Null when either price is unknown.
+ * price, not by events: yearly 100,000 to monthly 250,000 costs less and waits. Both prices come from the catalog, the
+ * yearly one included, so nothing here multiplies. Null when either price is unknown.
  */
-export function pendingChangeTiming(
-  sub: SubscriptionDetails,
-  prices: Record<string, Record<number, number>> | undefined,
-): 'renewal' | 'payment' | null {
+export function pendingChangeTiming(sub: SubscriptionDetails, catalog: PriceCatalog | undefined): 'renewal' | 'payment' | null {
   if (!sub.pending_plan_id || typeof sub.pending_limit !== 'number') return null
-  const current = periodCents(prices, sub.plan_id, sub.pageview_limit, sub.billing_interval)
-  const pending = periodCents(prices, sub.pending_plan_id, sub.pending_limit, sub.pending_interval || sub.billing_interval)
+  const current = getPeriodPriceCents(catalog, sub.plan_id, eventMeter(sub).limit, sub.billing_interval)
+  const pending = getPeriodPriceCents(catalog, sub.pending_plan_id, sub.pending_limit, sub.pending_interval || sub.billing_interval)
   if (current === null || pending === null) return null
   return pending <= current ? 'renewal' : 'payment'
 }
 
-/** "Moving to Business (10,000 pageviews a month) on 3 Dec." (copy deck §10.5). */
+/** "Moving to Business (10,000 events a month) on 3 Dec." (copy deck §10.5). */
 export function pendingChangeLine(
   sub: SubscriptionDetails,
   timing: 'renewal' | 'payment' | null,
@@ -169,7 +156,7 @@ export function pendingChangeLine(
 ): string {
   const name = formatPlanName(sub.pending_plan_id)
   const size = typeof sub.pending_limit === 'number' && sub.pending_limit > 0
-    ? ` (${formatCount(sub.pending_limit)} pageviews a month)`
+    ? ` (${formatCount(sub.pending_limit)} events a month)`
     : ''
   const next = calendarDay(sub.next_charge_on, now)
   const when = timing === 'payment' ? ' once the payment goes through' : timing === 'renewal' && next ? ` on ${next}` : ''

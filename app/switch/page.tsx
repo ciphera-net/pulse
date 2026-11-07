@@ -8,8 +8,8 @@ import { CheckCircle, ClockCountdown, ArrowRight, WarningCircle, Prohibit } from
 import { toast, Button, Spinner, LoadingOverlay, Switcher } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { getPrices, getSubscription, changePlan, estimatePlanChange, type PlanChangeEstimate } from '@/lib/api/billing'
-import { PLAN_CATALOG, TRAFFIC_TIERS, getPlanPricing, formatPlanName } from '@/lib/plans'
+import { getCatalog, getSubscription, changePlan, estimatePlanChange, type PlanChangeEstimate } from '@/lib/api/billing'
+import { PLAN_CATALOG, TRAFFIC_TIERS, eventMeter, getPlanPricing, formatPlanName } from '@/lib/plans'
 import PlanChoiceCard from '@/components/billing/PlanChoiceCard'
 import TierSlider from '@/components/billing/TierSlider'
 import PlanSummary from '@/components/checkout/PlanSummary'
@@ -110,7 +110,7 @@ function SwitchPlanContent() {
   const searchParams = useSearchParams()
   const { loading: authLoading } = useAuth()
   const { data: subscription, isLoading, mutate: mutateSubscription } = useSubscription()
-  const { data: prices, isLoading: pricesLoading } = useSWR('plan-prices', getPrices)
+  const { data: catalog, isLoading: pricesLoading } = useSWR('plan-catalog', getCatalog)
 
   const [step, setStep] = useState(0)
   const [isYearly, setIsYearly] = useState(false)
@@ -222,8 +222,8 @@ function SwitchPlanContent() {
 
     const limit = isValidTier(paramLimit)
       ? paramLimit
-      : isValidTier(subscription.pageview_limit)
-        ? subscription.pageview_limit
+      : isValidTier(eventMeter(subscription).limit)
+        ? eventMeter(subscription).limit
         : TRAFFIC_TIERS[0].value
     setSelectedLimit(limit)
 
@@ -244,7 +244,7 @@ function SwitchPlanContent() {
     if (
       PLAN_CATALOG.some((p) => p.id === paramPlan) &&
       !(paramPlan === subscription.plan_id &&
-        limit === subscription.pageview_limit &&
+        limit === eventMeter(subscription).limit &&
         (interval || 'month') === subscription.billing_interval)
     ) {
       setSelectedPlan(paramPlan)
@@ -296,7 +296,7 @@ function SwitchPlanContent() {
 
   const currentPlan = subscription.plan_id
   const currentInterval = subscription.billing_interval
-  const currentLimit = subscription.pageview_limit
+  const currentLimit = eventMeter(subscription).limit
   const newInterval = isYearly ? 'year' : 'month'
   const isSubscribed = status === 'active' || status === 'trialing'
 
@@ -327,8 +327,8 @@ function SwitchPlanContent() {
     }
   }
 
-  const currentPricing = getPlanPricing(prices, currentPlan, currentLimit)
-  const newPricing = getPlanPricing(prices, selectedPlan, selectedLimit)
+  const currentPricing = getPlanPricing(catalog, currentPlan, currentLimit)
+  const newPricing = getPlanPricing(catalog, selectedPlan, selectedLimit)
 
   // ── Return-from-Mollie states override the step UI entirely ──
   if (payment !== 'none') {
@@ -470,7 +470,7 @@ function SwitchPlanContent() {
                 </h1>
                 <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
                   {isSubscribed ? (
-                    <>Currently on <span className="text-white font-medium">{formatPlanName(currentPlan)}</span> · {formatLimit(currentLimit)} pageviews · {currentInterval === 'year' ? 'yearly' : 'monthly'} billing.</>
+                    <>Currently on <span className="text-white font-medium">{formatPlanName(currentPlan)}</span> · {formatLimit(currentLimit)} events · {currentInterval === 'year' ? 'yearly' : 'monthly'} billing.</>
                   ) : (
                     <>Currently on the free <span className="text-white font-medium">{formatPlanName(currentPlan)}</span> plan. Pick a plan below — you&apos;ll enter payment details on the next step.</>
                   )}
@@ -495,7 +495,7 @@ function SwitchPlanContent() {
               {/* Traffic tier */}
               <div className="mb-6">
                 <label className="block text-micro-label uppercase text-neutral-500 mb-3 text-center">
-                  Monthly pageviews
+                  Monthly events
                 </label>
                 <TierSlider value={selectedLimit} onChange={setSelectedLimit} />
               </div>
@@ -512,7 +512,7 @@ function SwitchPlanContent() {
                     <PlanChoiceCard
                       key={plan.id}
                       plan={plan}
-                      price={getPlanPricing(prices, plan.id, selectedLimit)}
+                      price={getPlanPricing(catalog, plan.id, selectedLimit)}
                       priceLoading={pricesLoading}
                       isYearly={isYearly}
                       isCurrent={isCurrent}
@@ -555,7 +555,7 @@ function SwitchPlanContent() {
                   <div className="flex-1 rounded-none border border-neutral-700 bg-neutral-800/50 p-4">
                     <p className="text-micro-label uppercase text-neutral-500 mb-1">Current</p>
                     <p className="text-base font-semibold text-white">{formatPlanName(currentPlan)}</p>
-                    <p className="text-sm text-neutral-400">{formatLimit(currentLimit)} pageviews</p>
+                    <p className="text-sm text-neutral-400">{formatLimit(currentLimit)} events</p>
                     <p className="text-xs text-neutral-500 mt-0.5">
                       {currentInterval === 'year' ? 'Yearly' : 'Monthly'} billing
                       {currentPricing ? ` · ${formatEuro(currentInterval === 'year' ? currentPricing.effectiveMonthly : currentPricing.monthly)}/mo` : ''}
@@ -567,7 +567,7 @@ function SwitchPlanContent() {
                   <div className="flex-1 rounded-none border border-brand-orange/50 bg-brand-orange/5 p-4">
                     <p className="text-micro-label uppercase text-brand-ink mb-1">New</p>
                     <p className="text-base font-semibold text-white">{formatPlanName(selectedPlan)}</p>
-                    <p className="text-sm text-neutral-400">{formatLimit(selectedLimit)} pageviews</p>
+                    <p className="text-sm text-neutral-400">{formatLimit(selectedLimit)} events</p>
                     <p className="text-xs text-neutral-500 mt-0.5">
                       {isYearly ? 'Yearly' : 'Monthly'} billing
                       {newPricing ? ` · ${formatEuro(isYearly ? newPricing.effectiveMonthly : newPricing.monthly)}/mo` : ''}
@@ -787,7 +787,7 @@ function SwitchPlanContent() {
                       Plan change pending payment confirmation
                     </h2>
                     <p className="text-sm text-neutral-400">
-                      Your switch to {formatPlanName(selectedPlan)} ({formatLimit(selectedLimit)} pageviews, {isYearly ? 'yearly' : 'monthly'} billing) applies as soon as your payment is confirmed. You can safely leave this page — it happens automatically.
+                      Your switch to {formatPlanName(selectedPlan)} ({formatLimit(selectedLimit)} events, {isYearly ? 'yearly' : 'monthly'} billing) applies as soon as your payment is confirmed. You can safely leave this page — it happens automatically.
                     </p>
                   </>
                 ) : estimate?.direction === 'downgrade' ? (
@@ -803,7 +803,7 @@ function SwitchPlanContent() {
                     <p className="text-sm text-neutral-400">
                       You stay on {formatPlanName(currentPlan)} until{' '}
                       {formatEstimateDate(estimate.current_plan_end) || 'the end of the paid period'}, then move to{' '}
-                      {formatPlanName(selectedPlan)} ({formatLimit(selectedLimit)} pageviews, {isYearly ? 'yearly' : 'monthly'} billing). Nothing else to do.
+                      {formatPlanName(selectedPlan)} ({formatLimit(selectedLimit)} events, {isYearly ? 'yearly' : 'monthly'} billing). Nothing else to do.
                     </p>
                   </>
                 ) : (
@@ -813,7 +813,7 @@ function SwitchPlanContent() {
                       You&apos;re now on {formatPlanName(selectedPlan)}
                     </h2>
                     <p className="text-sm text-neutral-400">
-                      {formatLimit(selectedLimit)} pageviews, {isYearly ? 'yearly' : 'monthly'} billing.
+                      {formatLimit(selectedLimit)} events, {isYearly ? 'yearly' : 'monthly'} billing.
                     </p>
                   </>
                 )}

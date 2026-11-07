@@ -36,7 +36,7 @@ import { ReportsAndInvoices } from './ReportsAndInvoices'
 
 // Copy deck §12.7. Team has no caption because it is never drawn: no email in it is sent (§12.10.3).
 const CAPTIONS: Record<string, string> = {
-  billing: 'Renewals, plan changes and pageview use. Invoices, failed payments and refunds go to the billing email.',
+  billing: 'Renewals, plan changes and event use. Invoices, failed payments and refunds go to the billing email.',
   security: 'A new API key in your team.',
   uptime: 'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
   // The scheduled report email is in this group, so its line names growth reports (§13.2, found while drawing 1).

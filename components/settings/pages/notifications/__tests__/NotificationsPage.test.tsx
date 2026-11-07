@@ -198,7 +198,7 @@ describe('NotificationsPage: Pulse emails', () => {
     renderPage()
     await ready()
     for (const line of [
-      'Renewals, plan changes and pageview use. Invoices, failed payments and refunds go to the billing email.',
+      'Renewals, plan changes and event use. Invoices, failed payments and refunds go to the billing email.',
       'A new API key in your team.',
       'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
       'Performance scores that drop or recover, pages losing visits, finished imports and growth reports.',

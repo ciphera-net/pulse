@@ -60,7 +60,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
   // Members read an import's status here (R23, carried over in round 6); the services stay with owners and admins.
   { key: 'data', label: 'Data', href: '/settings/site/integrations', description: 'Search Console, Bing, Bunny CDN, imports and exports.', icon: Database, site: true, absorbs: ['/settings/site/import', '/settings/site/export'] },
   { key: 'team', label: 'Team', href: '/settings/organization/members', description: "Your team's name, people, beta features and activity.", icon: UsersThree, site: false, absorbs: ['/settings/organization/general', '/settings/organization/roles', '/settings/organization/beta', '/settings/organization/audit'] },
-  { key: 'billing', label: 'Billing', href: '/settings/organization/billing', description: 'Your plan, pageviews, invoices and payment.', icon: CreditCard, site: false, requires: 'billing.view', absorbs: [] },
+  { key: 'billing', label: 'Billing', href: '/settings/organization/billing', description: 'Your plan, events, invoices and payment.', icon: CreditCard, site: false, requires: 'billing.view', absorbs: [] },
   { key: 'developers', label: 'Developers', href: '/settings/organization/api-keys', description: 'API keys and AI assistants that read your stats.', icon: Code, site: false, requires: 'integrations.manage', absorbs: ['/settings/organization/mcp'] },
   { key: 'account', label: 'Account', href: '/settings/account/profile', description: 'Your profile, sign-in and devices.', icon: UserCircle, site: false, absorbs: ['/settings/account/security', '/settings/account/devices'] },
   // Its own page since R41 ("move all email/notifications to a seperate tab"), on today's route.
