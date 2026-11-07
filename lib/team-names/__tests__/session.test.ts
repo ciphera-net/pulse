@@ -3,19 +3,21 @@
 // The session engine against a fake pulse-backend that keeps the routes' contract (design §6.2):
 // POST /me/team-key never overwrites and spends a token only when it writes; PUT resets and deletes
 // every row in both directions; the directory serves current members' keys plus former senders with
-// a kept row for the caller; PUT team-names upserts the caller's rows or answers 409; DELETE takes
-// back every row the caller sent. Real cryptography throughout.
+// a kept row for the caller, and for each row the caller sent the SHA-256 of the row as stored; PUT
+// team-names upserts the caller's rows or answers 409; DELETE takes back every row the caller sent. Real
+// cryptography throughout.
 
 import { createHash } from 'node:crypto'
 import { describe, expect, it, vi, type Mock } from 'vitest'
 import { InvalidCredentialsError, vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
-import { createIdentity, rowEnc } from '@/lib/crypto/team-names'
+import { createIdentity } from '@/lib/crypto/team-names'
 import type { Bytes } from '@/lib/crypto/hpke'
 import type { DirectoryAnswer, KeyRow, NameEntry, PublishKeyBody, Warn } from '../api'
 import { TeamNamesError } from '../errors'
 import { TeamNamesSession, type SessionDeps, type TeamNamesApi } from '../session'
 
 const TEAM = '7e7e7e7e-0000-4000-8000-000000000001'
+const OTHER_TEAM = '7e7e7e7e-0000-4000-8000-0000000000f2'
 const A = 'a1a1a1a1-0000-4000-8000-000000000001'
 const B = 'b2b2b2b2-0000-4000-8000-000000000002'
 const C = 'c3c3c3c3-0000-4000-8000-000000000003'
@@ -103,7 +105,7 @@ class FakeServer {
             forMe: this.rows.filter((r) => r.team === team && r.recipient === caller)
               .map((r) => ({ senderId: r.sender, senderKeyId: r.senderKeyId, recipientKeyId: r.recipientKeyId, sealed: r.sealed })),
             mine: this.rows.filter((r) => r.team === team && r.sender === caller)
-              .map((r) => ({ recipientId: r.recipient, recipientKeyId: r.recipientKeyId, nameTag: r.nameTag, enc: rowEnc(r.sealed) })),
+              .map((r) => ({ recipientId: r.recipient, recipientKeyId: r.recipientKeyId, nameTag: r.nameTag, sealedHash: sha256(r.sealed) })),
           },
         }
       },
@@ -450,6 +452,54 @@ describe('reconcile', () => {
     await a.session.reconcile(TEAM)
     expect(a.session.getSnapshot()).toMatchObject({ status: 'locked', share: null })
     expect(a.session.getSnapshot().teams.size).toBe(0)
+  })
+
+  it('re-seals a row a stolen session replaced behind the genuine enc and tag, and the recipient reads the name again (review M1)', async () => {
+    const server = new FakeServer()
+    const a = await keyed(server, A, 'Ada')
+    const b = await keyed(server, B, 'Bob')
+    await a.session.reconcile(TEAM)
+    await b.session.reconcile(TEAM)
+    expect(b.session.getSnapshot().teams.get(TEAM)?.names.get(A)?.name).toBe('Ada')
+
+    // A's session in other hands: every field of A's row for B kept but the 528 bytes behind the enc.
+    const genuine = server.rows.find((r) => r.team === TEAM && r.sender === A && r.recipient === B) as Row
+    const replaced = new Uint8Array(genuine.sealed)
+    replaced.set(crypto.getRandomValues(new Uint8Array(528)), 1 + 65)
+    const stolen = server.api(A)
+    expect(await stolen.writeNames(TEAM, [{ recipientId: B, recipientKeyId: genuine.recipientKeyId, senderKeyId: genuine.senderKeyId, nameTag: genuine.nameTag, sealed: replaced }]))
+      .toEqual({ kind: 'written' })
+    await b.session.reconcile(TEAM)
+    expect(b.session.getSnapshot().teams.get(TEAM)?.names.has(A)).toBe(false)
+    expect(b.warn).toHaveBeenCalledWith('team_names/open_failed', { userId: A })
+
+    // A's next reconcile does not take it for its own current row.
+    server.events.length = 0
+    await a.session.reconcile(TEAM)
+    expect(server.events).toContain('write')
+    await b.session.reconcile(TEAM)
+    expect(b.session.getSnapshot().teams.get(TEAM)?.names.get(A)?.name).toBe('Ada')
+  })
+
+  it('re-seals, in another team, a row a stolen session copied there byte for byte (review M1)', async () => {
+    const server = new FakeServer()
+    server.members.set(OTHER_TEAM, new Set([A, B]))
+    const a = await keyed(server, A, 'Ada')
+    const b = await keyed(server, B, 'Bob')
+    await a.session.reconcile(TEAM)
+
+    const genuine = server.rows.find((r) => r.team === TEAM && r.sender === A && r.recipient === B) as Row
+    const stolen = server.api(A)
+    expect(await stolen.writeNames(OTHER_TEAM, [{ recipientId: B, recipientKeyId: genuine.recipientKeyId, senderKeyId: genuine.senderKeyId, nameTag: genuine.nameTag, sealed: genuine.sealed }]))
+      .toEqual({ kind: 'written' })
+    await b.session.reconcile(OTHER_TEAM)
+    expect(b.session.getSnapshot().teams.get(OTHER_TEAM)?.names.has(A)).toBe(false)
+
+    server.events.length = 0
+    await a.session.reconcile(OTHER_TEAM)
+    expect(server.events).toContain('write')
+    await b.session.reconcile(OTHER_TEAM)
+    expect(b.session.getSnapshot().teams.get(OTHER_TEAM)?.names.get(A)?.name).toBe('Ada')
   })
 
   it('refuses to go on when the directory serves another key for me', async () => {

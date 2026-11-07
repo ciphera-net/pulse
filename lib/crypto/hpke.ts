@@ -206,13 +206,19 @@ async function dh(suite: HpkeSuite, privateKey: CryptoKey, publicKey: CryptoKey)
 
 async function extractAndExpand(suite: HpkeSuite, dhValue: Bytes, kemContext: Bytes): Promise<Bytes> {
   const id = kemSuiteId(suite)
-  return extractAndExpandBits(
-    suite.kemHash,
-    labeledIkm(id, 'eae_prk', dhValue),
-    new Uint8Array(suite.kemNh),
-    labeledInfo(suite.nSecret, id, 'shared_secret', kemContext),
-    suite.nSecret,
-  )
+  // The labelled IKM holds a copy of the DH output: wiped once imported, as the DH buffers are (review L2).
+  const ikm = labeledIkm(id, 'eae_prk', dhValue)
+  try {
+    return await extractAndExpandBits(
+      suite.kemHash,
+      ikm,
+      new Uint8Array(suite.kemNh),
+      labeledInfo(suite.nSecret, id, 'shared_secret', kemContext),
+      suite.nSecret,
+    )
+  } finally {
+    wipe(ikm)
+  }
 }
 
 async function keySchedule(suite: HpkeSuite, mode: number, sharedSecret: Bytes, info: Bytes): Promise<{ key: Bytes; baseNonce: Bytes }> {

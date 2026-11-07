@@ -3,10 +3,12 @@
 // One team's reconcile, both directions (design §5.3, §5.4, §8.2's five sender cases), with real
 // cryptography on the vector identities A, B and C.
 
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import { vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
+import type { Bytes } from '@/lib/crypto/hpke'
 import {
   createIdentity,
   importTagKey,
@@ -23,6 +25,8 @@ const vectors = JSON.parse(readFileSync(fileURLToPath(new URL('../../crypto/__te
   identities: { label: string; user_id: string; public_key: string; vmk: string; sealed_private_key: string }[]
 }
 const hex = (s: string) => Uint8Array.from(Buffer.from(s, 'hex'))
+/** sealed_hash as the server computes it from the stored row. */
+const sha256 = (b: Uint8Array): Bytes => new Uint8Array(createHash('sha256').update(b).digest())
 const TEAM = '7e7e7e7e-0000-4000-8000-000000000001'
 const OTHER_TEAM = '7e7e7e7e-0000-4000-8000-0000000000f2'
 
@@ -39,13 +43,20 @@ async function freshIdentity(): Promise<TeamIdentity> {
   return (await createIdentity(vaultOpsFor(vmk))).identity
 }
 
-/** A row of mine as the server would hold it, sealed by `sender` for `recipient`. */
-async function myRow(sender: { id: string; identity: TeamIdentity }, recipient: { id: string; identity: TeamIdentity }, name: string): Promise<MyRow> {
+/** A row of mine sealed by `sender` for `recipient`, and the metadata `mine` serves for it (the hash of the stored row). */
+async function sealedRow(sender: { id: string; identity: TeamIdentity }, recipient: { id: string; identity: TeamIdentity }, name: string): Promise<{ row: MyRow; sealed: Bytes }> {
   const sealed = await sealName({
     teamId: TEAM, senderId: sender.id, recipientId: recipient.id, name, sender: sender.identity,
     recipientPublicKey: recipient.identity.publicKey, recipientKeyId: recipient.identity.keyId,
   })
-  return { recipientId: recipient.id, recipientKeyId: recipient.identity.keyId, nameTag: sealed.nameTag, enc: sealed.enc }
+  return {
+    row: { recipientId: recipient.id, recipientKeyId: recipient.identity.keyId, nameTag: sealed.nameTag, sealedHash: sha256(sealed.sealed) },
+    sealed: sealed.sealed,
+  }
+}
+
+async function myRow(sender: { id: string; identity: TeamIdentity }, recipient: { id: string; identity: TeamIdentity }, name: string): Promise<MyRow> {
+  return (await sealedRow(sender, recipient, name)).row
 }
 
 /** A row for `recipient`, as `for_me` serves it. */
@@ -92,17 +103,44 @@ describe('planSeals: the sender side', () => {
   it('re-seals a foreign row with matching metadata (written by a session without my tag secret)', async () => {
     const [a, b] = await Promise.all([person('A'), person('B')])
     // A stolen session can write a well-formed row with the right recipient key id, and any tag it
-    // likes, but never one this person's tag secret produces for this row's enc (review L1).
+    // likes, but never one this person's tag secret produces for this row (review L1).
     const genuine = await myRow(a, b, 'Ada')
-    const forgedTag = await nameTag(await importTagKey(crypto.getRandomValues(new Uint8Array(32))), 'Ada', genuine.recipientKeyId, genuine.enc)
+    const forgedTag = await nameTag(await importTagKey(crypto.getRandomValues(new Uint8Array(32))), 'Ada', TEAM, genuine.recipientKeyId, genuine.sealedHash)
     const foreign: MyRow = { ...genuine, nameTag: forgedTag }
     const plan = await planSeals({ teamId: TEAM, myId: a.id, me: a.identity, share: { kind: 'name', name: 'Ada' }, keys: [a.key, b.key], mine: [foreign], memberIds: new Set([a.id, b.id]), warn: vi.fn() })
     expect(plan.kind === 'write' && plan.entries.map((e) => e.recipientId)).toEqual([b.id])
-    // And a genuine tag moved onto another row's enc does not pass either.
+    // And a genuine tag moved onto another row does not pass either.
     const other = await myRow(a, b, 'Ada')
     const moved: MyRow = { ...other, nameTag: genuine.nameTag }
     const plan2 = await planSeals({ teamId: TEAM, myId: a.id, me: a.identity, share: { kind: 'name', name: 'Ada' }, keys: [a.key, b.key], mine: [moved], memberIds: new Set([a.id, b.id]), warn: vi.fn() })
     expect(plan2.kind).toBe('write')
+  })
+
+  it('re-seals a row whose ciphertext a stolen session replaced behind the genuine enc and tag (review M1)', async () => {
+    const [a, b] = await Promise.all([person('A'), person('B')])
+    const { row: genuine, sealed } = await sealedRow(a, b, 'Ada')
+    const input = { teamId: TEAM, myId: a.id, me: a.identity, keys: [a.key, b.key], memberIds: new Set([a.id, b.id]), warn: vi.fn() }
+    expect(await planSeals({ ...input, share: { kind: 'name', name: 'Ada' }, mine: [genuine] })).toEqual({ kind: 'nothing' })
+    // Stored: 0x01 || the genuine enc || 528 other bytes, under the genuine ids, key ids and tag. Nobody can
+    // open it, and mine serves the hash of what is stored.
+    const replaced = new Uint8Array(sealed)
+    replaced.set(crypto.getRandomValues(new Uint8Array(528)), 1 + 65)
+    const plan = await planSeals({ ...input, share: { kind: 'name', name: 'Ada' }, mine: [{ ...genuine, sealedHash: sha256(replaced) }] })
+    expect(plan.kind === 'write' && plan.entries.map((e) => e.recipientId)).toEqual([b.id])
+    // What replaces it is current once stored.
+    if (plan.kind !== 'write') return
+    const [entry] = plan.entries
+    const stored: MyRow = { recipientId: b.id, recipientKeyId: new Uint8Array(entry.recipientKeyId), nameTag: new Uint8Array(entry.nameTag), sealedHash: sha256(entry.sealed) }
+    expect(await planSeals({ ...input, share: { kind: 'name', name: 'Ada' }, mine: [stored] })).toEqual({ kind: 'nothing' })
+  })
+
+  it('re-seals, in another team, a genuine row a stolen session copied there byte for byte (review M1)', async () => {
+    const [a, b] = await Promise.all([person('A'), person('B')])
+    const genuine = await myRow(a, b, 'Ada') // sealed and tagged in TEAM
+    const input = { myId: a.id, me: a.identity, keys: [a.key, b.key], mine: [genuine], memberIds: new Set([a.id, b.id]), warn: vi.fn() }
+    expect(await planSeals({ ...input, teamId: TEAM, share: { kind: 'name', name: 'Ada' } })).toEqual({ kind: 'nothing' })
+    const plan = await planSeals({ ...input, teamId: OTHER_TEAM, share: { kind: 'name', name: 'Ada' } })
+    expect(plan.kind === 'write' && plan.entries.map((e) => e.recipientId)).toEqual([b.id])
   })
 
   it('withdraws everything when the name is cleared or too long to share, and does nothing with no rows', async () => {

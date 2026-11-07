@@ -14,7 +14,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   HpkeError,
   SUITE_P256_SHA256_AES128GCM,
@@ -51,6 +51,10 @@ interface RfcVector {
 }
 
 const rfc = JSON.parse(readFileSync(RFC_FILE, 'utf8')) as { vectors: { section: string; vector: RfcVector }[] }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 const hex = (s: string) => Uint8Array.from(Buffer.from(s, 'hex'))
 const toHex = (b: Uint8Array) => Buffer.from(b).toString('hex')
@@ -165,6 +169,36 @@ describe('seal with a fresh ephemeral key', () => {
     await expect(
       open({ suite, enc: a.enc, recipient: r, senderPublicKey: other.publicKey, info: params.info, aad: params.aad, ciphertext: a.ciphertext }),
     ).rejects.toBeInstanceOf(HpkeError)
+  })
+})
+
+describe('wiping', () => {
+  const suite = SUITE_P256_SHA256_AES256GCM
+
+  it('zeroes the KEM’s labelled IKM, which holds the DH output, once seal and open have imported it (review L2)', async () => {
+    const pair = async () => {
+      const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits'])
+      return { privateKey: kp.privateKey, publicKey: new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey)) }
+    }
+    const [r, s] = [await pair(), await pair()]
+    const importKey = vi.spyOn(crypto.subtle, 'importKey')
+    const params = { suite, recipientPublicKey: r.publicKey, sender: s, info: new Uint8Array([1]), aad: new Uint8Array([1]), plaintext: new Uint8Array(16) }
+    const sealed = await seal(params)
+    await open({ suite, enc: sealed.enc, recipient: r, senderPublicKey: s.publicKey, info: params.info, aad: params.aad, ciphertext: sealed.ciphertext })
+
+    // The spy keeps the buffers it was handed. "HPKE-v1" || "KEM" || kem_id || "eae_prk" || DH(E) || DH(S).
+    const kemIkmLength = 7 + 5 + 7 + 2 * suite.ndh
+    const hkdfKeys = importKey.mock.calls
+      .filter(([format, , algorithm]) => format === 'raw' && algorithm === 'HKDF')
+      .map(([, keyData]) => keyData)
+      .filter((keyData): keyData is Uint8Array<ArrayBuffer> => keyData instanceof Uint8Array)
+    const kemIkms = hkdfKeys.filter((b) => b.length === kemIkmLength)
+    expect(kemIkms).toHaveLength(2) // one seal, one open
+    for (const b of kemIkms) expect(b.every((x) => x === 0)).toBe(true)
+    // The key schedule's labelled IKM holds no secret and is left as it was: the spy saw live buffers.
+    const schedule = hkdfKeys.filter((b) => b.length !== kemIkmLength)
+    expect(schedule.length).toBeGreaterThan(0)
+    for (const b of schedule) expect(new TextDecoder().decode(b.subarray(0, 7))).toBe('HPKE-v1')
   })
 })
 

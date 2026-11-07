@@ -13,7 +13,7 @@
 
 import apiRequest, { ApiError } from '@/lib/api/client'
 import type { Bytes } from '@/lib/crypto/hpke'
-import { IDENTITY_ENVELOPE_SIZE, KEY_ID_SIZE, NAME_TAG_SIZE, PUBLIC_KEY_SIZE, isUuid } from '@/lib/crypto/team-names'
+import { IDENTITY_ENVELOPE_SIZE, KEY_ID_SIZE, NAME_TAG_SIZE, PUBLIC_KEY_SIZE, SEALED_HASH_SIZE, isUuid } from '@/lib/crypto/team-names'
 import { TeamNamesError } from './errors'
 
 export type Warn = (code: string, detail?: { userId?: string }) => void
@@ -152,7 +152,8 @@ export interface MyRow {
   recipientId: string
   recipientKeyId: Bytes
   nameTag: Bytes
-  enc: Bytes
+  /** SHA-256 of the row as the server stores it, computed by the server: the tag binds it. */
+  sealedHash: Bytes
 }
 
 export interface Directory {
@@ -195,9 +196,9 @@ function decodeDirectory(body: unknown, warn: Warn): Directory {
     const recipientId = uuidField(e?.recipient_id)
     const recipientKeyId = fromBase64(e?.recipient_key_id, KEY_ID_SIZE)
     const nameTag = fromBase64(e?.name_tag, NAME_TAG_SIZE)
-    const enc = fromBase64(e?.enc, PUBLIC_KEY_SIZE)
+    const sealedHash = fromBase64(e?.sealed_hash, SEALED_HASH_SIZE)
     // A malformed row of mine reads as missing, so the reconcile seals it afresh.
-    if (recipientId && recipientKeyId && nameTag && enc) out.mine.push({ recipientId, recipientKeyId, nameTag, enc })
+    if (recipientId && recipientKeyId && nameTag && sealedHash) out.mine.push({ recipientId, recipientKeyId, nameTag, sealedHash })
     else warn('team_names/malformed', { userId: recipientId ?? undefined })
   }
   return out

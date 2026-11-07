@@ -3,9 +3,11 @@
  *
  * Sender side: for every CURRENT member with a key, seal afresh when this person's row for them is
  * missing, names another recipient key, or carries a tag this person's tag secret does not produce
- * for the current name and that row's `enc`. A different tag is a stale name or a row these browsers
- * did not write (a stolen session can write well-formed rows, never this tag); both are replaced, so
- * the reconcile is exact and idempotent, and two tabs running it write equivalent rows. A former
+ * for the current name, this team, that recipient key and the SHA-256 of the row as the server holds it
+ * (`sealedHash`, computed by the server). A different tag is a stale name or a row these browsers did not
+ * write: a stolen session can write well-formed rows, never this tag, and replacing a genuine row's
+ * ciphertext or copying it into another team changes the hash or the team (review M1). All are replaced,
+ * so the reconcile is exact and idempotent, and two tabs running it write equivalent rows. A former
  * member is never a recipient: they must read no one, and the server refuses the row anyway.
  *
  * Recipient side: open every row sealed to this person's own key with the sender's published key, a
@@ -59,7 +61,7 @@ export async function planSeals(p: PlanInput): Promise<SealPlan> {
       const recipientKeyId = await keyIdOf(k.publicKey)
       const row = mineByRecipient.get(k.userId)
       if (row && bytesEqual(row.recipientKeyId, recipientKeyId)) {
-        const expected = await nameTag(p.me.tagKey, name, recipientKeyId, row.enc)
+        const expected = await nameTag(p.me.tagKey, name, p.teamId, recipientKeyId, row.sealedHash)
         if (bytesEqual(expected, row.nameTag)) continue
       }
       const sealed = await sealName({

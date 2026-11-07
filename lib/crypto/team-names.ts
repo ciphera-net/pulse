@@ -11,8 +11,10 @@
  *             info = "pulse/team-names/v1" || 0x00 || team || sender || recipient (UUIDs, 16 raw bytes
  *             each) and aad = 0x01; wire = 0x01 || enc (65) || ct (528) = 594 bytes, always.
  *   tag       HMAC-SHA256(tag_secret, "pulse/team-names/v1/name-tag" || 0x00 || utf8(name) ||
- *             recipient_key_id || enc)[0:16]: bound to the row, so a row this person's browsers did
- *             not write, or a stale name, never matches (review L1).
+ *             team_id || recipient_key_id || SHA-256(sealed))[0:16]: bound to the team and to the whole
+ *             row as stored, so a stale name, a row this person's browsers did not write, a genuine
+ *             row's metadata over another ciphertext, or a genuine row copied into another team never
+ *             matches (review L1, M1).
  *
  * The opener refuses an unknown version byte before deriving anything and takes the aad from the
  * version it expects, never from the wire. Known-answer vectors: lib/crypto/__tests__/vectors/.
@@ -44,6 +46,8 @@ export const PADDED_SIZE = 512
 export const MAX_NAME_BYTES = 400
 export const PUBLIC_KEY_SIZE = 65
 export const KEY_ID_SIZE = 32
+/** SHA-256 of a whole sealed row: what the directory serves for each row of mine, and what the tag binds. */
+export const SEALED_HASH_SIZE = 32
 export const NAME_TAG_SIZE = 16
 export const SEALED_SIZE = 1 + PUBLIC_KEY_SIZE + PADDED_SIZE + 16 // 594
 export const IDENTITY_PLAINTEXT_SIZE = 1 + 32 + PUBLIC_KEY_SIZE + 32 // 130
@@ -171,9 +175,21 @@ export async function importTagKey(tagSecret: Uint8Array): Promise<CryptoKey> {
   return subtle().importKey('raw', asBytes(tagSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
 }
 
-export async function nameTag(tagKey: CryptoKey, name: string, recipientKeyId: Uint8Array, enc: Uint8Array): Promise<Bytes> {
-  if (recipientKeyId.length !== KEY_ID_SIZE || enc.length !== PUBLIC_KEY_SIZE) throw new TeamNamesError('team_names/malformed')
-  const message = concatBytes(utf8(TAG_LABEL), new Uint8Array([0x00]), utf8(name), recipientKeyId, enc)
+/**
+ * The tag over the name, the team, the recipient key id and the SHA-256 of the whole row. The three
+ * fixed-length fields come last, so the encoding is unambiguous: the team id becomes exactly 16 bytes or
+ * throws `team_names/invalid_id`, and a key id or sealed hash of any length but 32 is `team_names/malformed`.
+ */
+export async function nameTag(
+  tagKey: CryptoKey,
+  name: string,
+  teamId: string,
+  recipientKeyId: Uint8Array,
+  sealedHash: Uint8Array,
+): Promise<Bytes> {
+  const team = uuidBytes(teamId)
+  if (recipientKeyId.length !== KEY_ID_SIZE || sealedHash.length !== SEALED_HASH_SIZE) throw new TeamNamesError('team_names/malformed')
+  const message = concatBytes(utf8(TAG_LABEL), new Uint8Array([0x00]), utf8(name), team, recipientKeyId, sealedHash)
   const mac = new Uint8Array(await subtle().sign('HMAC', tagKey, message))
   return mac.slice(0, NAME_TAG_SIZE)
 }
@@ -221,7 +237,9 @@ function sealParams(p: SealNameParams, pt: Bytes): SealParams {
 async function finishSeal(p: SealNameParams, enc: Bytes, ciphertext: Bytes): Promise<SealedName> {
   const sealed = concatBytes(new Uint8Array([WIRE_VERSION]), enc, ciphertext)
   if (sealed.length !== SEALED_SIZE) throw new TeamNamesError('team_names/malformed')
-  return { sealed, enc, nameTag: await nameTag(p.sender.tagKey, p.name, p.recipientKeyId, enc) }
+  // The tag binds the row as the server will store it, so it comes after the seal, over the row's hash.
+  const sealedHash = new Uint8Array(await subtle().digest('SHA-256', sealed))
+  return { sealed, enc, nameTag: await nameTag(p.sender.tagKey, p.name, p.teamId, p.recipientKeyId, sealedHash) }
 }
 
 export async function sealName(p: SealNameParams): Promise<SealedName> {
@@ -242,12 +260,6 @@ export async function sealNameWithEphemeralKeyForTesting(
   const pt = padName(p.name)
   const trace = await sealWithEphemeralKeyForTesting(sealParams(p, pt), ephemeral)
   return { ...(await finishSeal(p, trace.sealed.enc, trace.sealed.ciphertext)), trace }
-}
-
-/** The row's ephemeral public key, bytes 1 to 65 of `sealed`. */
-export function rowEnc(sealed: Uint8Array): Bytes {
-  if (sealed.length !== SEALED_SIZE) throw new TeamNamesError('team_names/malformed')
-  return new Uint8Array(sealed.subarray(1, 1 + PUBLIC_KEY_SIZE))
 }
 
 export interface OpenNameParams {
