@@ -99,14 +99,14 @@ describe('every organization.ts function targets Pulse (API_URL), never Ciphera 
     expect(lastCall(fetchSpy).method).toBe('POST')
   })
 
-  it('updateOrganization: PUT /organizations/:id', async () => {
+  it('updateOrganization: PUT /organizations/:id with the name alone (the server keeps the slug)', async () => {
     const fetchSpy = vi.fn().mockResolvedValue(okJson({ id: 'o1' }))
     vi.stubGlobal('fetch', fetchSpy)
-    await org.updateOrganization('o1', 'New name', 'new-slug')
+    await org.updateOrganization('o1', 'New name')
     const call = lastCall(fetchSpy)
     expect(call.url).toBe(`${API_URL}/api/v1/organizations/o1`)
     expect(call.method).toBe('PUT')
-    expect(call.body).toEqual({ name: 'New name', slug: 'new-slug' })
+    expect(call.body).toEqual({ name: 'New name' })
   })
 
   it('getOrganizationMembers: GET /organizations/:id/members, unwraps {members}', async () => {

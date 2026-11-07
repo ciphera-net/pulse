@@ -131,11 +131,14 @@ export async function completeOnboarding(organizationId: string): Promise<void> 
   })
 }
 
-// Update team details
-export async function updateOrganization(organizationId: string, name: string, slug: string): Promise<Organization> {
+/**
+ * Rename the team (owner or admin). Only the name is sent: the team's slug is internal (unique, never in a URL), so the
+ * server keeps the one it has.
+ */
+export async function updateOrganization(organizationId: string, name: string): Promise<Organization> {
   return await authFetch<Organization>(`/organizations/${organizationId}`, {
     method: 'PUT',
-    body: JSON.stringify({ name, slug }),
+    body: JSON.stringify({ name }),
   })
 }
 

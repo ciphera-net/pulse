@@ -16,9 +16,9 @@ const CAPTION = 'Everyone in the team sees it in Pulse.'
 const LENGTH_ERROR = 'Use 2 to 50 characters.'
 
 /**
- * Name (copy deck §9.2): the team's name, saved through the save bar. The slug field is gone (R2); the rename route
- * still requires one, so the save sends the slug the team already has, which nothing on the page can change.
- * Hidden for somebody alone: their name shows nowhere, and the first invite asks for it (§9.11.6).
+ * Name (copy deck §9.2): the team's name, saved through the save bar. The slug field is gone (R2), and the save sends
+ * the name alone: the server keeps the team's slug. Hidden for somebody alone: their name shows nowhere, and the first
+ * invite asks for it (§9.11.6).
  */
 export function NameSection() {
   // The server lets the owner or an admin rename the team.
@@ -51,13 +51,13 @@ export function NameSection() {
       throw new Error('Team name length')
     }
     try {
-      const updated = await updateOrganization(organization.id, name, organization.slug)
+      const updated = await updateOrganization(organization.id, name)
       await mutate({ ...organization, ...updated }, { revalidate: false })
       setDraft(null)
       // The account menu lists teams by name.
       void revalidateOrganizations()
     } catch (err) {
-      // The route answers 400 only for a name outside 2 to 50 characters (the slug sent is the team's own).
+      // The route answers 400 only for a name outside 2 to 50 characters (no slug is sent).
       toast.error(err instanceof ApiError && err.status === 400 ? LENGTH_ERROR : "Couldn't save the name. Try again.")
       throw err
     }

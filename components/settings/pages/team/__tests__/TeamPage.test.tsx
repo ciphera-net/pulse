@@ -332,7 +332,7 @@ describe('TeamPage, an owner in a team', () => {
     expect(within(dialog).getByLabelText('Invite link')).toHaveValue('https://pulse.example.com/join/new')
   })
 
-  it('saves the name with the team slug it already has, and keeps the draft when the save fails', async () => {
+  it('saves the name alone (the server keeps the slug), and keeps the draft when the save fails', async () => {
     api.updateOrganization.mockRejectedValueOnce(new ApiError('Something went wrong', 500))
     mount()
     const field = await screen.findByLabelText('Team name')
@@ -344,7 +344,7 @@ describe('TeamPage, an owner in a team', () => {
 
     api.updateOrganization.mockResolvedValueOnce({ ...ORG, name: 'Acme Studio' })
     await saveBar.onSave!()
-    expect(api.updateOrganization).toHaveBeenLastCalledWith('org-1', 'Acme Studio', 'acme')
+    expect(api.updateOrganization).toHaveBeenLastCalledWith('org-1', 'Acme Studio')
     await waitFor(() => expect(saveBar.isDirty).toBe(false))
   })
 
@@ -498,6 +498,6 @@ describe('TeamPage, somebody alone', () => {
     expect(within(naming).getByLabelText('Team name')).toHaveValue("Ada's team")
     fireEvent.click(within(naming).getByRole('button', { name: 'Continue' }))
     expect(await screen.findByRole('dialog', { name: 'Invite people' })).toBeInTheDocument()
-    expect(api.updateOrganization).toHaveBeenCalledWith('org-1', "Ada's team", 'acme')
+    expect(api.updateOrganization).toHaveBeenCalledWith('org-1', "Ada's team")
   })
 })

@@ -92,6 +92,18 @@ export async function updatePaymentMethod(paymentMethod?: string): Promise<{ url
   })
 }
 
+/**
+ * What became of the payment method update the team started last, as the server knows it: `updated` once the webhook
+ * stored the new method, `pending` while Mollie or the webhook has not finished, `failed` when Mollie failed, expired
+ * or cancelled the payment, `none` when no update is recorded. Asked on the return from Mollie, which sends every
+ * outcome but an explicit cancel back to the same address.
+ */
+export type PaymentMethodUpdateState = 'updated' | 'pending' | 'failed' | 'none'
+
+export async function getPaymentMethodUpdate(): Promise<{ state: PaymentMethodUpdateState }> {
+  return apiRequest<{ state: PaymentMethodUpdateState }>('/api/billing/payment-method-update')
+}
+
 export interface CancelSubscriptionParams {
   /** If true (default), cancel at end of billing period; if false, cancel immediately. */
   at_period_end?: boolean

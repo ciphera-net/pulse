@@ -11,7 +11,14 @@ import { MastheadAction } from '@/components/settings/shell-slots'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { cancelSubscription, getInvoices, getPrices, resumeSubscription, type SubscriptionDetails } from '@/lib/api/billing'
+import {
+  cancelSubscription,
+  getInvoices,
+  getPaymentMethodUpdate,
+  getPrices,
+  resumeSubscription,
+  type SubscriptionDetails,
+} from '@/lib/api/billing'
 import { useCan } from '@/lib/auth/permissions'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import { usePendingKeys, whilePending } from '@/lib/hold/pending'
@@ -22,6 +29,7 @@ import { BillingDetailsSection } from './BillingDetailsSection'
 import { CancelPlanDialog } from './CancelPlanDialog'
 import { InvoicesSection } from './InvoicesSection'
 import { PaymentMethodDialog } from './PaymentMethodDialog'
+import { CHECK_TIMING, checkPaymentMethodUpdate, RETURN_WORDS } from './paymentMethodReturn'
 import {
   calendarDay,
   formatCount,
@@ -67,18 +75,45 @@ export default function BillingPage() {
   const [dialog, setDialog] = React.useState<'method' | 'cancel' | null>(null)
   const [resuming, setResuming] = React.useState(false)
 
-  // Back from Mollie: its redirect and cancel URLs land here with one of two flags.
+  // Back from Mollie: its cancel address means the person cancelled. Its return address means only that they came
+  // back, whatever happened there (copy deck §10.8.8), so the page asks the server and says only what it confirmed.
+  // Without a definite answer the flag stays in the address, so a reload asks again, as the words say.
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('payment_updated') === 'true') {
-      toast.success('Payment method updated')
-      void mutate()
-    } else if (params.get('payment_update_canceled') === 'true') {
-      toast.info('Payment method not changed.')
-    } else {
+    const clearFlag = () => window.history.replaceState({}, '', window.location.pathname)
+    if (params.get('payment_update_canceled') === 'true') {
+      toast.info(RETURN_WORDS.cancelled)
+      clearFlag()
       return
     }
-    window.history.replaceState({}, '', window.location.pathname)
+    if (params.get('payment_updated') !== 'true') return
+    const controller = new AbortController()
+    void checkPaymentMethodUpdate(async () => (await getPaymentMethodUpdate()).state, {
+      signal: controller.signal,
+      timing: CHECK_TIMING,
+      onSlow: (last) => (last === 'pending' ? toast.info(RETURN_WORDS.notConfirmed) : toast.error(RETURN_WORDS.couldntCheck)),
+    }).then((result) => {
+      switch (result) {
+        case 'updated':
+          toast.success(RETURN_WORDS.updated)
+          void mutate()
+          clearFlag()
+          return
+        case 'failed':
+          toast.error(RETURN_WORDS.failed)
+          clearFlag()
+          return
+        case 'none':
+          // Nothing recorded to ask about (a checkout started before the server kept them): no claim either way.
+          clearFlag()
+          return
+        case 'unresolved':
+        case null:
+          // Still unconfirmed after a minute (said at a few seconds), or the page is gone.
+          return
+      }
+    })
+    return () => controller.abort()
   }, [mutate])
 
   if (!sub) {
