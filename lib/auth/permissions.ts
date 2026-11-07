@@ -38,23 +38,12 @@ const DEFAULT_ADMIN_PERMS: Permission[] = [
   'audit.view',
 ]
 
-// Analyst/viewer fallbacks survive the seed trim: members assigned those
-// roles before batch 4 keep them (the seed is insert-only), so the errored-
-// fetch fallback must still know their shape.
-const DEFAULT_ANALYST_PERMS: Permission[] = [
-  'analytics.export',
-  'goals.manage', 'funnels.manage',
-]
-
 const DEFAULT_MEMBER_PERMS: Permission[] = [
   'analytics.export',
   'billing.view',
 ]
 
-// Viewer's two permissions were both in the deleted set; an errored-fetch
-// viewer holds nothing gated, which matches what the server enforces.
-const DEFAULT_VIEWER_PERMS: Permission[] = []
-
+// A team's roles are owner, admin and member (R1). Any other slug gets nothing until the server's answer arrives.
 function getDefaultPermissions(role?: string): Set<Permission> {
   if (!role) return new Set()
   if (role === 'owner') return new Set([
@@ -62,9 +51,7 @@ function getDefaultPermissions(role?: string): Set<Permission> {
     'sites.reset_data', 'billing.manage', 'roles.manage',
   ] as Permission[])
   if (role === 'admin') return new Set(DEFAULT_ADMIN_PERMS)
-  if (role === 'analyst') return new Set(DEFAULT_ANALYST_PERMS)
   if (role === 'member') return new Set(DEFAULT_MEMBER_PERMS)
-  if (role === 'viewer') return new Set(DEFAULT_VIEWER_PERMS)
   return new Set()
 }
 
