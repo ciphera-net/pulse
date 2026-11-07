@@ -40,9 +40,14 @@
 labels:
   runner: k8s
 
+# The image only (since 07-11-2026). The deploy waited for `test` as well, and on a push that is the full vitest run
+# (about 28 minutes) the PR had already passed, so every merge reached production half an hour after its image was
+# ready. `test` still runs on every push to main and staging, beside this workflow: a red result there turns the
+# pipeline red and fires CiDefaultBranchPipelineFailed (Infra ci-push-check) after 30 minutes. Fix forward or revert
+# the merge it names. Merges here are not "strict", so the merged tree can differ from the tested PR head, which is
+# why that run is kept.
 depends_on:
   - push
-  - test
 
 when:
   - event: push
@@ -682,8 +687,15 @@ steps:
             exit 1 ;;
         esac
 
+  # AFTER THE ROLLOUT (since 07-11-2026). Woodpecker runs a workflow's steps in dependency levels and starts a level
+  # only when the whole previous level has finished (pipeline/frontend/yaml/compiler/dag.go). With no depends_on this
+  # step sat in the first level beside digest and upload-static, so its sleep and verify loop (up to about five
+  # minutes) held deploy-k8s back on every merge. The tracker scripts and the dashboard do not depend on each other;
+  # it now runs beside purge-cdn. A failed upload fails the pipeline after the dashboard has shipped, which
+  # CiDefaultBranchPipelineFailed reports, instead of holding the dashboard back.
   cdn-scripts:
     image: alpine:3.20
+    depends_on: [deploy-k8s]
     backend_options:
       kubernetes:
         resources:
