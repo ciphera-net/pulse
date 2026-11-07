@@ -158,9 +158,49 @@ async function extractAndExpandBits(hash: string, ikm: Bytes, salt: Bytes, info:
   return new Uint8Array(await subtle().deriveBits({ name: 'HKDF', hash, salt, info }, base, length * 8))
 }
 
-/** Deserialises a public key: uncompressed SEC1 only, and WebCrypto refuses a point off the curve. */
+/** Each curve as y² = x³ − 3x + b over GF(p): its field prime and its b (SEC 2, FIPS 186-5). */
+const CURVES: Record<HpkeSuite['curve'], { p: bigint; b: bigint }> = {
+  'P-256': {
+    p: 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffffn,
+    b: 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604bn,
+  },
+  'P-521': {
+    p: (1n << 521n) - 1n,
+    b: 0x0051953eb9618e1c9a1f929a21a0b68540eea2da725b99b315f3b8b489918ef109e156193951ec7e937b1652c0bd3bb1bf073573df883d2c34f1ef451fd46b503f00n,
+  },
+}
+
+function bigEndian(bytes: Uint8Array): bigint {
+  let v = 0n
+  for (let i = 0; i < bytes.length; i++) v = (v << 8n) | BigInt(bytes[i])
+  return v
+}
+
+/**
+ * Partial public-key validation (RFC 9180 §7.1.4, SP 800-56A §5.6.2.3.4) of an uncompressed point:
+ * both coordinates below p, and the curve equation. The encoding cannot express the point at
+ * infinity, and both curves have cofactor one, so a point that passes is in the prime-order group.
+ */
+function isOnCurve(suite: HpkeSuite, publicKey: Uint8Array): boolean {
+  const { p, b } = CURVES[suite.curve]
+  const half = (suite.npk - 1) / 2
+  const x = bigEndian(publicKey.subarray(1, 1 + half))
+  const y = bigEndian(publicKey.subarray(1 + half))
+  if (x >= p || y >= p) return false
+  return (y * y - (x * x * x - 3n * x + b)) % p === 0n
+}
+
+/**
+ * Deserialises a public key: uncompressed SEC1 only, on the curve. The keys imported here are the
+ * other party's (a recipient's key, a sender's key, an enc), which reach the browser from the
+ * server, so the point is validated here before WebCrypto sees it, not left to the engine's import:
+ * lib/crypto/__tests__/browser runs the refusals in Chromium, Firefox and WebKit, and they hold in
+ * all three only because of this check.
+ */
 export async function importPublicKey(suite: HpkeSuite, publicKey: Uint8Array): Promise<CryptoKey> {
-  if (publicKey.length !== suite.npk || publicKey[0] !== 0x04) throw new HpkeError('hpke/invalid_public_key')
+  if (publicKey.length !== suite.npk || publicKey[0] !== 0x04 || !isOnCurve(suite, publicKey)) {
+    throw new HpkeError('hpke/invalid_public_key')
+  }
   try {
     return await subtle().importKey('raw', asBytes(publicKey), { name: 'ECDH', namedCurve: suite.curve }, true, [])
   } catch (cause) {

@@ -196,7 +196,7 @@ export interface FreshSealReport {
 }
 
 export interface PublicKeyReport {
-  valid: Outcome<string>
+  valid: Labelled<string>[]
   invalid: Labelled<string>[]
 }
 
@@ -392,24 +392,51 @@ async function freshSeal(): Promise<FreshSealReport> {
   }
 }
 
-async function publicKeys(v: RfcVector): Promise<PublicKeyReport> {
-  const suite = SUITE_P256_SHA256_AES256GCM
-  const compressed = hex(v.pkRm).slice(0, 33)
+/** y0 = sqrt(b) mod p: (0, y0) is on the curve, and (p, y0) satisfies the equation mod p with x out of range. */
+const EDGE = {
+  p256: { p: 'ffffffff00000001000000000000000000000000ffffffffffffffffffffffff', y0: '66485c780e2f83d72433bd5d84a06bb6541c2af31dae871728bf856a174f93f4' },
+  p521: {
+    p: `01${'ff'.repeat(65)}`,
+    y0: '012df13601594a883ef2d935e44bb90bf4d6619b74e52af7552f97769011c0719eb439cfab2a88d40fe59a2bed1f43557169a2d0a2ccd280c607b92bbf51ffe0b078',
+  },
+}
+
+async function publicKeys(p256Vector: RfcVector, p521Vector: RfcVector): Promise<PublicKeyReport> {
+  const p256 = SUITE_P256_SHA256_AES256GCM
+  const p521 = SUITE_P521_SHA512_AES256GCM
+  const flipped = (h: string, i: number) => {
+    const b = hex(h)
+    b[i] ^= 0x01
+    return b
+  }
+  const compressed = hex(p256Vector.pkRm).slice(0, 33)
   compressed[0] = 0x02
-  const wrongPrefix = hex(v.pkRm)
+  const wrongPrefix = hex(p256Vector.pkRm)
   wrongPrefix[0] = 0x05
-  const offCurve = hex(v.pkRm)
-  offCurve[64] ^= 0x01 // y no longer matches x
-  const cases: [string, Uint8Array][] = [
-    ['compressed', compressed],
-    ['the point at infinity', new Uint8Array([0x00])],
-    ['a wrong prefix', wrongPrefix],
-    ['a point off the curve', offCurve],
-    ['65 zero bytes', new Uint8Array(65)],
+  const valid: [HpkeSuite, string, Uint8Array][] = [
+    [p256, 'the vector key', hex(p256Vector.pkRm)],
+    [p256, 'the point (0, y0)', hex(`04${'00'.repeat(32)}${EDGE.p256.y0}`)],
+    [p521, 'P-521, the point (0, y0)', hex(`04${'00'.repeat(66)}${EDGE.p521.y0}`)],
   ]
-  const invalid: Labelled<string>[] = []
-  for (const [label, bad] of cases) invalid.push(await labelled(label, async () => (await importPublicKey(suite, bad)).type))
-  return { valid: await attempt(async () => (await importPublicKey(suite, hex(v.pkRm))).type), invalid }
+  const invalid: [HpkeSuite, string, Uint8Array][] = [
+    [p256, 'compressed', compressed],
+    [p256, 'the point at infinity', new Uint8Array([0x00])],
+    [p256, 'a wrong prefix', wrongPrefix],
+    [p256, 'a point off the curve', flipped(p256Vector.pkRm, 64)], // y no longer matches x
+    [p256, '65 zero bytes', new Uint8Array(65)],
+    [p256, 'x changed', flipped(p256Vector.pkRm, 1)],
+    [p256, '(0, 0)', hex(`04${'00'.repeat(64)}`)],
+    [p256, 'x = p', hex(`04${EDGE.p256.p}${EDGE.p256.y0}`)],
+    [p256, 'both coordinates 2^256 - 1', hex(`04${'ff'.repeat(64)}`)],
+    [p521, 'P-521, y changed', flipped(p521Vector.pkRm, 132)],
+    [p521, 'P-521, x = p', hex(`04${EDGE.p521.p}${EDGE.p521.y0}`)],
+  ]
+  const imported = async (cases: [HpkeSuite, string, Uint8Array][]) => {
+    const out: Labelled<string>[] = []
+    for (const [suite, label, key] of cases) out.push(await labelled(label, async () => (await importPublicKey(suite, key)).type))
+    return out
+  }
+  return { valid: await imported(valid), invalid: await imported(invalid) }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -600,10 +627,15 @@ async function teamNames(file: TeamNamesFile) {
 export async function runTeamNamesVectors(input: HarnessInput): Promise<HarnessReport> {
   const rfc: RfcReport[] = []
   for (const { section, vector } of input.rfc.vectors) rfc.push(await rfcSection(section, vector))
+  const vectorOf = (suite: HpkeSuite) => {
+    const found = input.rfc.vectors.find(({ vector: v }) => v.kem_id === suite.kemId)
+    if (!found) throw new Error(`no vector for KEM ${suite.kemId}`)
+    return found.vector
+  }
   return {
     rfc,
     freshSeal: await attempt(freshSeal),
-    publicKeys: await publicKeys(input.rfc.vectors[0].vector),
+    publicKeys: await publicKeys(vectorOf(SUITE_P256_SHA256_AES256GCM), vectorOf(SUITE_P521_SHA512_AES256GCM)),
     ...(await teamNames(input.teamNames)),
   }
 }

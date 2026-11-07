@@ -220,6 +220,40 @@ describe('public key validation', () => {
     }
   })
 
+  it('checks the range and the curve equation itself, before WebCrypto sees the key, on both curves', async () => {
+    // y0 = sqrt(b) mod p: (0, y0) is on the curve, and (p, y0) satisfies the equation mod p with x out of range.
+    const p256 = { suite, p: 'ffffffff00000001000000000000000000000000ffffffffffffffffffffffff', y0: '66485c780e2f83d72433bd5d84a06bb6541c2af31dae871728bf856a174f93f4' }
+    const p521 = {
+      suite: SUITE_P521_SHA512_AES256GCM,
+      p: `01${'ff'.repeat(65)}`,
+      y0: '012df13601594a883ef2d935e44bb90bf4d6619b74e52af7552f97769011c0719eb439cfab2a88d40fe59a2bed1f43557169a2d0a2ccd280c607b92bbf51ffe0b078',
+    }
+    await expect(importPublicKey(p256.suite, hex(`04${'00'.repeat(32)}${p256.y0}`))).resolves.toBeDefined()
+    await expect(importPublicKey(p521.suite, hex(`04${'00'.repeat(66)}${p521.y0}`))).resolves.toBeDefined()
+
+    const flipped = (h: string, i: number) => {
+      const b = hex(h)
+      b[i] ^= 0x01
+      return b
+    }
+    const p256Key = rfc.vectors[0].vector.pkRm // A.3.1
+    const p521Key = rfc.vectors[2].vector.pkRm // A.6.1
+    const cases: [HpkeSuite, string, Uint8Array][] = [
+      [p256.suite, 'P-256, x changed', flipped(p256Key, 1)],
+      [p256.suite, 'P-256, y changed', flipped(p256Key, 64)],
+      [p256.suite, 'P-256, (0, 0)', hex(`04${'00'.repeat(64)}`)],
+      [p256.suite, 'P-256, x = p', hex(`04${p256.p}${p256.y0}`)],
+      [p256.suite, 'P-256, both coordinates 2^256 - 1', hex(`04${'ff'.repeat(64)}`)],
+      [p521.suite, 'P-521, y changed', flipped(p521Key, 132)],
+      [p521.suite, 'P-521, x = p', hex(`04${p521.p}${p521.y0}`)],
+    ]
+    const importKey = vi.spyOn(crypto.subtle, 'importKey')
+    for (const [s, label, bad] of cases) {
+      await expect(importPublicKey(s, bad), label).rejects.toMatchObject({ code: 'hpke/invalid_public_key' })
+    }
+    expect(importKey).not.toHaveBeenCalled()
+  })
+
   it('names the code and nothing else in an error message', async () => {
     const err = await importPublicKey(suite, new Uint8Array(65)).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(HpkeError)

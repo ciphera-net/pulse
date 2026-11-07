@@ -165,7 +165,7 @@ for (const [i, { section, vector: v }] of rfc.vectors.entries()) {
     test('refuses the same ciphertext under another aad, another info, or one flipped byte', () => {
       const { refusals } = run().report.rfc[i]
       expect(refusals.map((x) => x.label)).toEqual(['another aad', 'another info', 'one flipped byte'])
-      for (const x of refusals) refused(x.outcome, 'hpke/open_failed')
+      for (const x of refusals) expect.soft(x.outcome, x.label).toMatchObject({ ok: false, error: { code: 'hpke/open_failed' } })
     })
 
     if (v.mode === 2) {
@@ -189,10 +189,24 @@ test('seal with a fresh ephemeral key round-trips in auth mode and never repeats
 
 test('public keys: the uncompressed encoding of a point on the curve and nothing else', () => {
   const { valid, invalid } = run().report.publicKeys
-  expect(value(valid)).toBe('public')
-  expect(invalid.map((x) => x.label)).toEqual(['compressed', 'the point at infinity', 'a wrong prefix', 'a point off the curve', '65 zero bytes'])
+  expect(valid.map((x) => x.label)).toEqual(['the vector key', 'the point (0, y0)', 'P-521, the point (0, y0)'])
+  for (const x of valid) expect.soft(x.outcome, x.label).toEqual({ ok: true, value: 'public' })
+  expect(invalid.map((x) => x.label)).toEqual([
+    'compressed',
+    'the point at infinity',
+    'a wrong prefix',
+    'a point off the curve',
+    '65 zero bytes',
+    'x changed',
+    '(0, 0)',
+    'x = p',
+    'both coordinates 2^256 - 1',
+    'P-521, y changed',
+    'P-521, x = p',
+  ])
+  // Soft, so a failure lists every point the engine took, not the first.
   for (const x of invalid) {
-    expect(x.outcome, x.label).toMatchObject({ ok: false, error: { name: 'HpkeError', code: 'hpke/invalid_public_key', message: 'hpke/invalid_public_key' } })
+    expect.soft(x.outcome, x.label).toMatchObject({ ok: false, error: { name: 'HpkeError', code: 'hpke/invalid_public_key', message: 'hpke/invalid_public_key' } })
   }
 })
 
