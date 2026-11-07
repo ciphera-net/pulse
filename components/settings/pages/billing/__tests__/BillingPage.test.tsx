@@ -30,12 +30,19 @@ vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }
 
 vi.mock('@/lib/api/billing', () => ({
   updatePaymentMethod: vi.fn(),
+  getPaymentMethodUpdate: vi.fn(),
   cancelSubscription: vi.fn(),
   resumeSubscription: vi.fn(),
   getInvoices: vi.fn(),
   getPrices: vi.fn(),
   downloadInvoicePDF: vi.fn(),
   updateBillingSettings: vi.fn(),
+}))
+
+// The return from Mollie asks for real, on a short clock: "not confirmed yet" after 30 ms instead of 4 s.
+vi.mock('../paymentMethodReturn', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../paymentMethodReturn')>()),
+  CHECK_TIMING: { intervalMs: 5, slowAfterMs: 30, giveUpAfterMs: 5_000 },
 }))
 
 vi.mock('@ciphera-net/facet-hold', async () =>
@@ -145,6 +152,7 @@ beforeEach(() => {
   vi.mocked(billingApi.cancelSubscription).mockReset()
   vi.mocked(billingApi.resumeSubscription).mockReset()
   vi.mocked(billingApi.updatePaymentMethod).mockReset()
+  vi.mocked(billingApi.getPaymentMethodUpdate).mockReset()
   vi.mocked(billingApi.updateBillingSettings).mockReset()
   vi.mocked(billingApi.downloadInvoicePDF).mockReset()
   vi.mocked(toast.success).mockClear()
@@ -395,19 +403,76 @@ describe('Update payment method', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't start changing the payment method. Try again."))
   })
 
-  it('back from Mollie: done, or not changed', async () => {
-    window.history.replaceState({}, '', '/settings/organization/billing?payment_updated=true')
-    const { unmount } = renderPage()
+  const backFromMollie = async (flag = 'payment_updated=true') => {
+    window.history.replaceState({}, '', `/settings/organization/billing?${flag}`)
+    const view = renderPage()
     await planSection()
-    expect(toast.success).toHaveBeenCalledWith('Payment method updated')
+    return view
+  }
+
+  it('back from Mollie: "Payment method updated" once the server confirms it, and the plan read again', async () => {
+    vi.mocked(billingApi.getPaymentMethodUpdate).mockResolvedValue({ state: 'updated' })
+    await backFromMollie()
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Payment method updated'))
     expect(mockMutate).toHaveBeenCalled()
     expect(window.location.search).toBe('')
-    unmount()
+    expect(toast.error).not.toHaveBeenCalled()
+  })
 
-    window.history.replaceState({}, '', '/settings/organization/billing?payment_update_canceled=true')
-    renderPage()
-    await planSection()
+  it('back from Mollie after a payment that did not go through: not changed, and what to do', async () => {
+    vi.mocked(billingApi.getPaymentMethodUpdate).mockResolvedValue({ state: 'failed' })
+    await backFromMollie()
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Payment method not changed: the payment didn't go through at Mollie. Try again."),
+    )
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(window.location.search).toBe('')
+  })
+
+  it('back from Mollie while it is pending: never "updated" early; says it is not confirmed yet, then updated once it is', async () => {
+    vi.mocked(billingApi.getPaymentMethodUpdate).mockResolvedValue({ state: 'pending' })
+    await backFromMollie()
+    await waitFor(() =>
+      expect(toast.info).toHaveBeenCalledWith("The new payment method isn't confirmed yet. Reload this page in a minute to check again."),
+    )
+    expect(toast.success).not.toHaveBeenCalled()
+    // The words promise a reload asks again: the flag stays until there is an answer.
+    expect(window.location.search).toBe('?payment_updated=true')
+
+    vi.mocked(billingApi.getPaymentMethodUpdate).mockResolvedValue({ state: 'updated' })
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Payment method updated'))
+    expect(window.location.search).toBe('')
+    expect(toast.info).toHaveBeenCalledTimes(1)
+  })
+
+  it('back from Mollie when the server cannot be asked: says it could not check, keeps the flag, and stops when the page goes', async () => {
+    vi.mocked(billingApi.getPaymentMethodUpdate).mockRejectedValue(new ApiError('Bad gateway', 502))
+    const { unmount } = await backFromMollie()
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't check the new payment method. Reload this page to check again."),
+    )
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(window.location.search).toBe('?payment_updated=true')
+    unmount()
+    const asked = vi.mocked(billingApi.getPaymentMethodUpdate).mock.calls.length
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(vi.mocked(billingApi.getPaymentMethodUpdate).mock.calls.length).toBe(asked)
+  })
+
+  it('back from Mollie with no update on record: no claim either way', async () => {
+    vi.mocked(billingApi.getPaymentMethodUpdate).mockResolvedValue({ state: 'none' })
+    await backFromMollie()
+    await waitFor(() => expect(window.location.search).toBe(''))
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(toast.info).not.toHaveBeenCalled()
+  })
+
+  it('back from Mollie after cancelling there: not changed, without asking', async () => {
+    await backFromMollie('payment_update_canceled=true')
     expect(toast.info).toHaveBeenCalledWith('Payment method not changed.')
+    expect(billingApi.getPaymentMethodUpdate).not.toHaveBeenCalled()
+    expect(window.location.search).toBe('')
   })
 })
 

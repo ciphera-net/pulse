@@ -7,8 +7,7 @@ import { Button, buttonVariants } from '@ciphera-net/facet'
 import { Files } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
-import { listSites } from '@/lib/api/sites'
-import { listSchedules } from '@/lib/api/reports'
+import { getScheduleSummary } from '@/lib/api/reports'
 import { SETTINGS_PAGES, type SettingsPageKey } from '@/components/settings/nav'
 import { KitRow, KitRows, KitSection, KitStatus } from '@/components/settings/kit/Kit'
 import { cn } from '@/lib/utils'
@@ -36,11 +35,12 @@ type Running =
   | { kind: 'counted'; n: number }
   | { kind: 'failed' }
 
-// Every site's schedules, added up: there is no team-wide list, so one read per site.
+// Every site's schedules, added up by the server in one read, over the sites this person can open. An answer that is
+// not a count is a failed read, never a number on the row.
 async function countSchedules(): Promise<number> {
-  const sites = await listSites()
-  const lists = await Promise.all(sites.map((site) => listSchedules(site.id)))
-  return lists.reduce((n, list) => n + list.length, 0)
+  const { running } = await getScheduleSummary()
+  if (!Number.isInteger(running) || running < 0) throw new Error('The scheduled email count is not a count')
+  return running
 }
 
 function useRunningSchedules(): Running {
