@@ -388,7 +388,7 @@ export function ga4StreamsDetails(code: string, raw: unknown): string | null {
 /** Sentences for the callback codes the error map has no entry for (owner: "ship as written", 29-09-2026). */
 const GA4_CALLBACK_ONLY: Readonly<Record<string, string>> = {
   invalid_state:
-    'Google sign-in took too long, or its link was already used, so nothing was connected. Connect again from the Import tab.',
+    'Google sign-in took too long, or its link was already used, so nothing was connected. Try again.',
   error: "Pulse couldn't finish connecting to Google Analytics, so nothing was connected. Try again.",
 }
 

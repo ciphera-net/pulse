@@ -12,7 +12,7 @@ import { toast } from '@ciphera-net/facet'
 import { GA4LandingNotice } from '../GA4LandingNotice'
 
 const INVALID_STATE =
-  'Google sign-in took too long, or its link was already used, so nothing was connected. Connect again from the Import tab.'
+  'Google sign-in took too long, or its link was already used, so nothing was connected. Try again.'
 
 beforeEach(() => {
   ;(toast.error as any).mockClear()
