@@ -60,6 +60,8 @@ vi.mock('@ciphera-net/facet', async (importOriginal) => ({
 }))
 
 import NotificationsPage from '../NotificationsPage'
+import { SignInEmails } from '../SignInEmails'
+import { createRoot } from 'react-dom/client'
 
 // --- Fixtures ------------------------------------------------------------
 
@@ -359,6 +361,42 @@ describe('NotificationsPage: Sign-in emails (Ciphera ID)', () => {
     expect(switchFor('Password and recovery phrase')).toHaveAttribute('aria-checked', 'false')
   })
 
+  it('🔴 a click right after the first paint writes the stored block, never the defaults', async () => {
+    // The page draws its sections once SWR answers, outside act(), as in the browser: React then runs effects in a
+    // later task. A click that lands between the commit and that task (here from a MutationObserver, which runs first)
+    // must still write what the session holds. On 07-11-2026 a copy of the block that an effect filled in later sent
+    // the defaults, dropping file_downloads and resetting two_factor_alerts (pulse main pipeline 2530).
+    h.user = { ...h.user!, preferences: { email_notifications: { login_alerts: true, password_alerts: true, two_factor_alerts: false, file_downloads: true } } }
+    const g = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    const actEnv = g.IS_REACT_ACT_ENVIRONMENT
+    g.IS_REACT_ACT_ENVIRONMENT = false
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    try {
+      const clicked = new Promise<void>((resolve) => {
+        const mo = new MutationObserver(() => {
+          const sw = host.querySelector<HTMLElement>('[role="switch"][aria-label="Email for Password and recovery phrase"]')
+          if (!sw) return
+          mo.disconnect()
+          sw.click()
+          resolve()
+        })
+        mo.observe(host, { childList: true, subtree: true })
+      })
+      root.render(<SignInEmails />)
+      await clicked
+      await waitFor(() => expect(h.updateUserPreferences).toHaveBeenCalledTimes(1))
+      expect(h.updateUserPreferences).toHaveBeenCalledWith({
+        email_notifications: { login_alerts: true, password_alerts: false, two_factor_alerts: false, file_downloads: true },
+      })
+    } finally {
+      root.unmount()
+      host.remove()
+      g.IS_REACT_ACT_ENVIRONMENT = actEnv
+    }
+  })
+
   it('sends the key each switch claims to control', async () => {
     for (const [label, key] of [
       ['New sign-ins', 'login_alerts'],
@@ -373,6 +411,35 @@ describe('NotificationsPage: Sign-in emails (Ciphera ID)', () => {
       const sent = h.updateUserPreferences.mock.calls[0][0].email_notifications as Record<string, boolean>
       expect(Object.entries(sent).filter(([, v]) => v === false).map(([k]) => k)).toEqual([key])
       unmount()
+    }
+  })
+
+  it('shows the session\'s block once it re-reads, and keeps the written one when the re-read brings nothing new', async () => {
+    h.user = { ...h.user!, preferences: { email_notifications: { login_alerts: true } } }
+    // refresh() swallows a failed re-read: the session object stays the same, and the server holds what was written.
+    renderPage()
+    await ready()
+    fireEvent.click(switchFor('New sign-ins'))
+    await waitFor(() => expect(h.refresh).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(switchFor('New sign-ins')).not.toBeDisabled())
+    expect(switchFor('New sign-ins')).toHaveAttribute('aria-checked', 'false')
+    // A re-read that works replaces the session's user: from then on the switches show what it holds, here a value
+    // another device saved meanwhile.
+    h.refresh.mockImplementationOnce(async () => {
+      h.user = { ...h.user!, preferences: { email_notifications: { login_alerts: false, password_alerts: false } } }
+    })
+    fireEvent.click(switchFor('Two-factor and passkeys'))
+    await waitFor(() => expect(h.refresh).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(switchFor('Two-factor and passkeys')).not.toBeDisabled())
+    expect(switchFor('Password and recovery phrase')).toHaveAttribute('aria-checked', 'false')
+    expect(switchFor('Two-factor and passkeys')).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('offers no switch to flip while no one is signed in, so nothing can write the defaults over a stored block', () => {
+    h.user = null
+    render(<SignInEmails />)
+    for (const label of ['New sign-ins', 'Password and recovery phrase', 'Two-factor and passkeys']) {
+      expect(switchFor(label)).toBeDisabled()
     }
   })
 

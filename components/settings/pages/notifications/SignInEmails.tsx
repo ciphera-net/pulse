@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Toggle, toast } from '@ciphera-net/facet'
 import { SignIn } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
@@ -19,6 +19,8 @@ import { KitBlock, KitRow, KitRows, KitSection } from '@/components/settings/kit
  *   defaults spread, never by reading a key directly.
  * - The PUT replaces the whole `email_notifications` block, so every save writes back the whole block as the server
  *   last sent it (keys this app never reads included) with only the flipped key changed.
+ * - The switches read the session's block on every render, never a copy: a copy starts as the defaults and catches up
+ *   in an effect, and a click before it caught up wrote the defaults back (07-11-2026, a test under CI load).
  */
 
 type EmailNotifications = UserPreferences['email_notifications']
@@ -47,28 +49,25 @@ const DEFAULTS: EmailNotifications = {
 
 export function SignInEmails() {
   const { user, refresh } = useAuth()
-  const [settings, setSettings] = useState<EmailNotifications>(DEFAULTS)
+  // The block this page wrote, shown until the session re-reads (a new `user`). refresh() swallows its own failures,
+  // so after a write it saved but could not re-read, the session still holds the old block and the server the new.
+  const [written, setWritten] = useState<{ block: EmailNotifications; session: typeof user } | null>(null)
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    if (user?.preferences?.email_notifications) {
-      setSettings({ ...DEFAULTS, ...user.preferences.email_notifications })
-    }
-  }, [user])
+  const settings: EmailNotifications =
+    written && written.session === user ? written.block : { ...DEFAULTS, ...user?.preferences?.email_notifications }
 
   const flip = async (key: SignInKey) => {
-    const previous = settings
     const next = { ...settings, [key]: !settings[key] }
     // Optimistic: the switch answers the finger at once and goes back if the write fails, so it never shows a state
     // the server does not hold.
-    setSettings(next)
+    setWritten({ block: next, session: user })
     setSaving(true)
     try {
       await updateUserPreferences({ email_notifications: next })
       // Re-read so the session (and anything else reading preferences) holds the server's answer, not this guess.
       await refresh()
     } catch {
-      setSettings(previous)
+      setWritten(null)
       toast.error("Couldn't save. Try again.")
     } finally {
       setSaving(false)
@@ -86,7 +85,7 @@ export function SignInEmails() {
               control={
                 <Toggle
                   checked={settings[e.key]}
-                  disabled={saving}
+                  disabled={saving || !user}
                   aria-label={`Email for ${e.label}`}
                   onChange={() => void flip(e.key)}
                 />
