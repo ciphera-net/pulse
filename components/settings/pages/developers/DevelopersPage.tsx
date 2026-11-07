@@ -3,6 +3,9 @@
 import { LockSimple } from '@phosphor-icons/react'
 import { KitPage, KitSection } from '@/components/settings/kit/Kit'
 import { useCan } from '@/lib/auth/permissions'
+import { useTeamState } from '@/lib/hooks/useTeamState'
+import { TeamNamesPrompt } from '@/components/settings/names/prompt'
+import { usePeopleNames } from '@/components/settings/names/useNames'
 import { ApiKeysSection } from './ApiKeysSection'
 import { AssistantsSection, ConnectedAssistantsSection } from './AssistantsSections'
 
@@ -26,9 +29,20 @@ export default function DevelopersPage() {
   }
   return (
     <KitPage>
+      <NamesPrompt />
       <ApiKeysSection />
       <AssistantsSection />
       <ConnectedAssistantsSection />
     </KitPage>
   )
+}
+
+/**
+ * The team-names prompt (R63, P3 B), at the top of the page as on Team: Connected assistants names teammates. Its own
+ * component, so a member's no-access page reads nothing, and somebody alone has nobody to name.
+ */
+function NamesPrompt() {
+  const names = usePeopleNames()
+  const alone = useTeamState() === 'alone'
+  return names.on && !alone ? <TeamNamesPrompt /> : null
 }

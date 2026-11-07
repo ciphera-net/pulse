@@ -105,6 +105,7 @@ export function KitRow({
   tone = 'neutral',
   state = false,
   logo = false,
+  avatar,
   children,
 }: {
   label: React.ReactNode
@@ -119,11 +120,15 @@ export function KitRow({
   state?: boolean
   /** A platform's own logo (R9), drawn in its own colours. */
   logo?: boolean
+  /** A person's avatar before the label, the caption under the name (team names, R63 P1 B). */
+  avatar?: React.ReactNode
   /** A value (a field, a text) in the middle column, at most 448 px wide. */
   children?: React.ReactNode
 }) {
   const hasValue = children !== undefined && children !== null && children !== false
-  const iconEl = !icon || !(state || logo) ? null : logo ? (
+  const iconEl = avatar ? (
+    <span data-kit-icon="avatar" className="flex h-5 w-5 shrink-0 items-center justify-center">{avatar}</span>
+  ) : !icon || !(state || logo) ? null : logo ? (
     <span data-kit-icon="logo" className="flex h-5 w-4 shrink-0 items-center justify-center [&_svg]:h-4 [&_svg]:w-4">{icon}</span>
   ) : (
     <span data-kit-icon="state" className={cn('flex h-5 w-4 shrink-0 items-center justify-center [&_svg]:h-4 [&_svg]:w-4', INK[tone])}>{icon}</span>

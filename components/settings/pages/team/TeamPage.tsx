@@ -8,6 +8,8 @@ import { BetaSection } from './BetaSection'
 import { DangerZoneSection } from './DangerZoneSection'
 import { NameSection } from './NameSection'
 import { PeopleSection } from './PeopleSection'
+import { TeamNamesPrompt } from '@/components/settings/names/prompt'
+import { usePeopleNames } from '@/components/settings/names/useNames'
 
 /**
  * Settings → Team (PUL-42, round 7; copy deck §9): the team's name, its people with the one Invite (R3), beta
@@ -18,14 +20,19 @@ import { PeopleSection } from './PeopleSection'
  * Somebody alone (one team, one person: PULSE-59) gets no Name, no activity log and no transfer or leave, and nothing
  * on the page calls their account a team. While the team state is not known the page draws the team's layout, so a
  * failure never hides a team's sections from a team.
+ *
+ * With the team-names beta on, what needs the person about teammates' names (locked here, or the one-time step) is a
+ * prompt at the top of the page (R63, P3 B); somebody alone has nobody to name.
  */
 export default function TeamPage() {
   const alone = useTeamState() === 'alone'
   // The owner and admins (audit.view), and only in a team of more than one person.
   const canViewLog = useCan('audit.view')
+  const names = usePeopleNames()
 
   return (
     <KitPage>
+      {names.on && !alone && <TeamNamesPrompt />}
       {!alone && <NameSection />}
       <PeopleSection alone={alone} />
       <BetaSection alone={alone} />

@@ -14,8 +14,11 @@ export interface OpaqueReauthOptions {
    *  Required once ciphera-id #51 deploys; the older backend ignores the extra
    *  field, which is why the frontends ship it FIRST.
    *  'pkr' (16-10-2026) gates removing a passkey; its own purpose so one proof
-   *  cannot both add ('pky', passkey-enrol.ts) and remove one. */
-  purpose: 'del' | 'eml' | 'enr' | 'pkr'
+   *  cannot both add ('pky', passkey-enrol.ts) and remove one.
+   *  'tmk' (07-11-2026) proves a vault holder publishes or resets the person's
+   *  team-names key: pulse-backend has Ciphera ID consume it before it writes
+   *  (team names design §6.3), so a stolen Pulse session cannot. */
+  purpose: 'del' | 'eml' | 'enr' | 'pkr' | 'tmk'
 }
 
 /**

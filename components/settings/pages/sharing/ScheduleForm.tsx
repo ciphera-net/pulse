@@ -25,10 +25,15 @@ import {
 import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { MAX_RECIPIENTS, TOO_MANY_PEOPLE, scheduleError } from './errors'
 import { FormFooter, Problem, siteYear } from './parts'
+import { RecipientLabel } from '@/components/settings/names/people'
+import { sendToCaption } from '@/components/settings/names/prompt'
+import { usePeopleNames } from '@/components/settings/names/useNames'
 
 // Sharing → Scheduled emails: the form (copy deck §6.4; approved as shot B-4, drawn here in the kit). On the 1st,
 // pulse-backend freezes a report of the month or quarter that just ended and tells each chosen member through Iris.
 // Recipients are TEAM MEMBERS ONLY (D7): anyone else gets the link from someone who received it.
+
+const SEND_TO_CAPTION = 'Only members of this team get the email. Forward the link to anyone else.'
 
 const EVERY_OPTIONS: { value: ReportEvery; label: string }[] = [
   { value: 'month', label: 'Month' },
@@ -56,6 +61,8 @@ export function ScheduleForm({ site, onCancel, onScheduled }: { site: Site; onCa
   const { user } = useAuth()
   const { list: members, error: membersError } = useMembers()
   const myId = user?.id
+  // With the team-names beta on (design §7, R63): each teammate's name, role and id, and the page's line in the caption.
+  const names = usePeopleNames()
 
   const [name, setName] = useState('')
   const [every, setEvery] = useState<ReportEvery>('month')
@@ -167,17 +174,24 @@ export function ScheduleForm({ site, onCancel, onScheduled }: { site: Site; onCa
           />
         </KitRow>
 
-        <KitRow label="Send to" caption="Only members of this team get the email. Forward the link to anyone else.">
+        <KitRow
+          label="Send to"
+          caption={names.on ? sendToCaption(SEND_TO_CAPTION, names.lineFor((roster ?? []).map((m) => m.user_id))) : SEND_TO_CAPTION}
+        >
           {roster ? (
             <div role="group" aria-label="Send to" className="flex flex-col gap-1.5">
               {roster.map((m) => (
                 <Checkbox
                   key={m.user_id}
                   label={
-                    <span className="inline-flex items-center gap-2">
-                      <Avatar seed={personAvatarSeed({ userId: m.user_id, avatarSeed: m.avatar_seed })} size={20} />
-                      {memberLabel(m, myId)}
-                    </span>
+                    names.on ? (
+                      <RecipientLabel member={m} who={names.who(m.user_id, true)} />
+                    ) : (
+                      <span className="inline-flex items-center gap-2">
+                        <Avatar seed={personAvatarSeed({ userId: m.user_id, avatarSeed: m.avatar_seed })} size={20} />
+                        {memberLabel(m, myId)}
+                      </span>
+                    )
                   }
                   checked={recipients.has(m.user_id)}
                   onChange={() => toggleRecipient(m.user_id)}

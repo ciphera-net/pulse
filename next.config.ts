@@ -42,6 +42,19 @@ const withPWA = withPWAInit({
         handler: "NetworkOnly",
         options: { cacheName: "import-worker" },
       },
+      // * End-to-end encrypted team names (design §6.5, review L3): a person's sealed key and a
+      // * team's directory are ciphertext, but nothing of the feature may sit in Cache Storage, and a
+      // * stale directory must never feed the reconcile. The default `cross-origin` rule would keep
+      // * both NetworkFirst for an hour. 🔴 A FUNCTION, NOT A REGEXP: Workbox matches a RegExp against
+      // * a cross-origin URL only when the match starts at index 0 of the full URL, so a path pattern
+      // * would match nothing on the API's origin, silently. It is serialised into the worker, so it
+      // * may not refer to anything outside itself.
+      {
+        urlPattern: ({ url }: { url: URL }) =>
+          /^\/api\/v1\/(?:me\/team-key|organizations\/[^/]+\/team-names)$/.test(url.pathname),
+        handler: "NetworkOnly",
+        options: { cacheName: "team-names" },
+      },
     ],
   },
 })

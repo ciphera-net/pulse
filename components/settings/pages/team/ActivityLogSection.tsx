@@ -13,6 +13,9 @@ import { formatPlanName } from '@/lib/plans'
 import { cn } from '@/lib/utils'
 import { KitLoadError, KitLoadingRows } from './states'
 import { personName, shortDayTime } from './words'
+import { useMembers } from '@/lib/swr/members'
+import { PersonAvatar, PersonInline } from '@/components/settings/names/people'
+import { usePeopleNames } from '@/components/settings/names/useNames'
 
 const PAGE_SIZE = 20
 
@@ -73,6 +76,10 @@ const DATE_INPUT = cn(
  * Activity log (copy deck §9.8): the team's changes, with the action and date filters, details and pages of today's
  * Audit log. Teams only, and only for the owner and admins (`audit.view`); the page decides whether it shows. Who
  * did it is "You", "Teammate" and the id, or "Pulse" when no person did.
+ *
+ * With the team-names beta on (design §7, R63), Who takes the People row's device: the avatar, then the name, with the
+ * id beside it only for a former member (the name they had when they left, marked "former"), a name another person
+ * has, or a name equal to one of Pulse's words. Pulse's own words stay grey. The details stay ids, shown as code.
  */
 export function ActivityLogSection() {
   const { user } = useAuth()
@@ -101,6 +108,23 @@ export function ActivityLogSection() {
   const entries: AuditLogEntry[] = data?.entries ?? []
   const total = data?.total ?? 0
   const hasLoadedOnce = data !== undefined
+  const names = usePeopleNames()
+  const { list: members } = useMembers()
+
+  const who = (actorId: string | undefined): ReactNode => {
+    if (!names.on) return actorId ? personName(actorId, user?.id) : 'Pulse'
+    // Not in the team any more: the members the page already read say so while the session cannot (locked).
+    const current = actorId && members ? members.some((m) => m.user_id === actorId) : null
+    const inline = <PersonInline who={names.who(actorId, current)} id={actorId ?? ''} />
+    if (!actorId) return inline
+    // A block-level flex: an inline one sits on the text's baseline, and the rows with an avatar come out taller.
+    return (
+      <span className="flex items-center gap-2">
+        <PersonAvatar id={actorId} seed={data?.avatar_seeds[actorId] ?? null} />
+        {inline}
+      </span>
+    )
+  }
 
   const retry = () => void mutate()
   const toggle = (id: string) =>
@@ -238,7 +262,7 @@ export function ActivityLogSection() {
                       <Fragment key={e.id}>
                         <tr>
                           <td className="whitespace-nowrap py-2 pr-4 align-top tabular-nums text-muted-foreground">{shortDayTime(e.occurred_at, zone)}</td>
-                          <td className="py-2 pr-4 align-top">{e.actor_id ? personName(e.actor_id, user?.id) : 'Pulse'}</td>
+                          <td className="py-2 pr-4 align-top">{who(e.actor_id)}</td>
                           <td className="py-2 align-top">
                             <span className="flex items-center justify-between gap-2">
                               <span>{actionLabelFor(e.action, false)}</span>

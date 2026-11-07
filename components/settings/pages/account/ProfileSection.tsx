@@ -15,13 +15,17 @@ import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
 import { logger } from '@/lib/utils/logger'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { KitRow, KitRows, KitSection } from '@/components/settings/kit/Kit'
+import { CannotOpenRow, ResetDialog, TooLongLine } from '@/components/settings/names/account'
+import { NAMES_WORDS } from '@/components/settings/names/words'
+import { shareableName } from '@/lib/crypto/team-names'
+import { useTeamNames, useTeamNamesActions } from '@/lib/team-names/hooks'
 import { emailChangeErrorMessage, saveNameErrorMessage, unlockErrorMessage } from './errors'
 import { expiryPhrase } from './format'
 import { DecryptingField, FieldError } from './parts'
 
 /**
- * Your name, true today (copy deck §12.2). Round 10's caption (§12.11) names the name you give yourself on the Team
- * page, which needs R33's name per person per team on the server first.
+ * Your name, true while the team-names beta is off in every team of yours (copy deck §12.2). With it on, the caption is
+ * the notice R53 asks for (§14.7): teammates see the name, encrypted for each of them.
  */
 const NAME_CAPTION = 'Shown in your account menu. Your team doesn\'t see it: it stays in your encrypted profile.'
 
@@ -81,6 +85,11 @@ export default function ProfileSection() {
   const [now, setNow] = useState(() => Date.now())
   // A cancel from THIS tab must not read as a confirmation elsewhere.
   const cancelledHere = useRef(false)
+  // Team names (design §5.6, §5.11, §7): with the beta on in any team of the person's, the name reaches teammates.
+  const teamNames = useTeamNames()
+  const teamNamesActions = useTeamNamesActions()
+  const namesOn = teamNames.anyTeamHasBeta
+  const [resetOpen, setResetOpen] = useState(false)
 
   useEffect(() => {
     if (!user || hasInitialized.current) return
@@ -287,17 +296,22 @@ export default function ProfileSection() {
 
   // The name lives inside the encrypted vault, so saving it re-seals the vault with the key this browser holds.
   // Rejects on failure, so the save bar keeps the draft and never says "Saved".
+  //
+  // Then team names follow it (design §5.6): sealed afresh for teammates in every team with the beta, or, when the name
+  // is cleared, every copy withdrawn, beta or not. A withdrawal that fails fails the save, so Save tries both again.
   const handleSave = useCallback(async () => {
+    const name = displayName.trim()
     try {
       await saveDisplayName(user?.id ?? '', displayName)
-      setBaseline(displayName.trim())
-      setUnlockedPII((prev) => (prev ? { ...prev, display_name: displayName.trim() || undefined } : prev))
+      await teamNamesActions?.nameChanged(name)
+      setBaseline(name)
+      setUnlockedPII((prev) => (prev ? { ...prev, display_name: name || undefined } : prev))
       await refresh()
     } catch (err) {
       toast.error(saveNameErrorMessage(err))
       throw err
     }
-  }, [displayName, refresh, user?.id])
+  }, [displayName, refresh, user?.id, teamNamesActions])
 
   if (!user) return null
 
@@ -340,7 +354,13 @@ export default function ProfileSection() {
     ? 'Unlock your profile to change your name.'
     : emailChange.kind === 'pending'
       ? 'Saving your name now makes the waiting email change fail. You\'d need to ask for it again.'
-      : NAME_CAPTION
+      : namesOn
+        ? baseline.trim() === '' ? NAMES_WORDS.noName : NAMES_WORDS.notice
+        : NAME_CAPTION
+  // The saved name is over what a team name can carry (set through another client): it is not shared (§14.7).
+  const nameTooLong = namesOn && !piiUnavailable && !valuesResolving && shareableName(baseline).kind === 'too_long'
+  // This browser cannot open its team-names key, or the server's key contradicts it: the reset fixes both (§5.11).
+  const cannotOpen = namesOn && (teamNames.state === 'cannot_open' || teamNames.state === 'key_mismatch')
 
   const emailCaption =
     emailChange.kind === 'unknown'
@@ -434,7 +454,9 @@ export default function ProfileSection() {
                 disabled={piiUnavailable}
               />
             )}
+            {nameTooLong && <TooLongLine />}
           </KitRow>
+          {cannotOpen && <CannotOpenRow onReset={() => setResetOpen(true)} />}
 
           {/* Its own form: Enter in the name field must not start an email change. */}
           <form onSubmit={handleSendLink} className="divide-y divide-border">
@@ -522,6 +544,7 @@ export default function ProfileSection() {
       </KitSection>
 
       <SettingsSaveBar isDirty={isDirty} onSave={handleSave} onDiscard={() => setDisplayName(baseline)} />
+      {namesOn && <ResetDialog open={resetOpen} onOpenChange={setResetOpen} />}
     </>
   )
 }

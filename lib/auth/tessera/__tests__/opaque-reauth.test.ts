@@ -41,7 +41,7 @@ vi.mock('@ciphera-net/tessera', () => {
 })
 
 import { authFetch } from '@/lib/api/client'
-import { performOpaqueReauth } from '../opaque-reauth'
+import { performOpaqueReauth, performSessionOpaqueReauth } from '../opaque-reauth'
 
 const authFetchSpy = vi.mocked(authFetch)
 
@@ -98,5 +98,34 @@ describe('performOpaqueReauth', () => {
     await expect(
       performOpaqueReauth({ email: 'user@example.com', password: 'wrong', blindIndex: 'bi-123', purpose: 'del' })
     ).rejects.toThrow('bad password 401')
+  })
+})
+
+/**
+ * The team-names proof (design §6.3, R57): the session ceremony with purpose `tmk`. Ciphera ID
+ * stores "<purpose>:<userID>" with the token, so only pulse-backend's consume for this person and
+ * this purpose can spend it.
+ */
+describe('performSessionOpaqueReauth with purpose tmk', () => {
+  beforeEach(() => authFetchSpy.mockClear())
+
+  it('rides "tmk" on the finish body, sends no blind index, and returns the token', async () => {
+    const sent: Record<string, unknown> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authFetchSpy.mockImplementation(async (...args: any[]) => {
+      const path = args[0]
+      const body = args[1]?.body ? JSON.parse(args[1].body) : {}
+      if (path === '/auth/reauth/start') {
+        sent.blindIndex = body.blind_index
+        return { login_id: 'lid', response_b64: 'resp' }
+      }
+      if (path === '/auth/reauth/finish') {
+        sent.purpose = body.purpose
+        return { reauth_token: 'tmk-tok' }
+      }
+      return {}
+    })
+    await expect(performSessionOpaqueReauth({ password: 'hunter2', purpose: 'tmk' })).resolves.toBe('tmk-tok')
+    expect(sent).toEqual({ blindIndex: '', purpose: 'tmk' })
   })
 })

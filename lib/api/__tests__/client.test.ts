@@ -89,3 +89,31 @@ describe('GET dedupe bookkeeping on request failure', () => {
     }
   })
 })
+
+describe("a GET with cache: 'no-store'", () => {
+  // The team-names reconcile re-reads its directory after a 409 and must see the server's answer,
+  // not one the 2s micro-cache kept from before the change (lib/team-names/api.ts).
+  it('always reaches the network, and leaves the micro-cache alone', async () => {
+    const apiRequest = (await import('../client')).default
+    let n = 0
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ n: ++n }), { status: 200 }))
+    try {
+      const path = '/organizations/00000000-0000-4000-8000-0000000000aa/team-names'
+      const first = await apiRequest<{ n: number }>(path, { cache: 'no-store' })
+      const second = await apiRequest<{ n: number }>(path, { cache: 'no-store' })
+      expect([first.n, second.n]).toEqual([1, 2])
+      expect(fetchSpy.mock.calls[0][1]).toMatchObject({ cache: 'no-store' })
+
+      // Control: the same path without it is served from the micro-cache the second time.
+      const plain = '/organizations/00000000-0000-4000-8000-0000000000bb/members'
+      const p1 = await apiRequest<{ n: number }>(plain)
+      const p2 = await apiRequest<{ n: number }>(plain)
+      expect(p2.n).toBe(p1.n)
+      // And a no-store read in between did not empty it.
+      await apiRequest<{ n: number }>(path, { cache: 'no-store' })
+      expect((await apiRequest<{ n: number }>(plain)).n).toBe(p1.n)
+    } finally {
+      fetchSpy.mockRestore()
+    }
+  })
+})

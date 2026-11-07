@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button, Modal, Select, toast } from '@ciphera-net/facet'
 import { changeMemberRole, type OrganizationMember } from '@/lib/api/organization'
 import { listRoles } from '@/lib/api/roles'
@@ -11,6 +11,8 @@ interface Props {
   /** The person whose role changes; null keeps the dialog closed. */
   member: OrganizationMember | null
   name: string
+  /** The person row under the line (team names, R63): the avatar, the name, the role and the id. */
+  person?: ReactNode
   onClose: () => void
   /** The member as the server now has them. */
   onChanged: (updated: OrganizationMember) => void
@@ -20,7 +22,7 @@ interface Props {
  * Change role (R34, copy deck §9.12): the owner gives a person Admin or Member, at once. Owner is not offered:
  * Transfer ownership does that. Not a hold: nothing is destroyed, and the role can be changed back.
  */
-export function ChangeRoleDialog({ orgId, member, name, onClose, onChanged }: Props) {
+export function ChangeRoleDialog({ orgId, member, name, person, onClose, onChanged }: Props) {
   const current: AssignableRole | null = member?.role === 'admin' || member?.role === 'member' ? member.role : null
   const [picked, setPicked] = useState<AssignableRole | null>(current)
   const [saving, setSaving] = useState(false)
@@ -60,6 +62,7 @@ export function ChangeRoleDialog({ orgId, member, name, onClose, onChanged }: Pr
     <Modal isOpen={member !== null} onClose={handleClose} title={`Change ${name}'s role?`} className="max-w-lg">
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">They get the role you pick at once.</p>
+        {person}
         <div className="space-y-1.5">
           <label htmlFor="team-change-role" className="text-xs font-medium text-muted-foreground">
             Role
