@@ -140,9 +140,10 @@ export type KnownSkipReason = SkipReason | ServerSkipReason | AnticipatedSkipRea
 
 // ─── Error codes ───────────────────────────────────────────────────────────
 
+// Copy deck §8.3 (settings overhaul, 05-11-2026): Pulse never says "we", and a fault says what to send support.
 const INTERNAL =
-  'Something went wrong on our side while importing. Nothing more was saved. Try again, and tell us if it keeps happening.'
-const UNEXPECTED = 'Something unexpected came back from Pulse. Nothing more was saved. Try again.'
+  'The import stopped because of a fault in Pulse. Nothing more was saved. Try again, and if it happens again, send the code under Details to support.'
+const UNEXPECTED = "Pulse sent an answer this page can't read. Nothing more was saved. Try again."
 
 interface Vars {
   /** The source's id, as the server names it ("plausible"). */
@@ -222,11 +223,11 @@ const ERROR_SENTENCES: Record<
   row_outside_plan: () => INTERNAL,
 
   // runtime
-  network: () => "Pulse can't be reached. The import is paused where it was; it continues when you try again.",
-  server_error: () => 'Pulse is busy right now. The import is paused where it was; try again in a minute.',
-  rate_limited: () => 'Pulse is busy right now. The import is paused where it was; try again in a minute.',
+  network: () => "Pulse can't be reached. The import is paused where it was and continues when you try again.",
+  server_error: () => "Pulse couldn't take this part. The import is paused where it was. Try again in a minute.",
+  rate_limited: () => 'Pulse is busy. The import is paused where it was. Try again in a minute.',
   unauthorized: () => 'Your session ended. Sign in again and choose the same file to continue.',
-  forbidden: () => 'Only owners and admins of this site can import history.',
+  forbidden: () => "Only your team's owners and admins can import history.",
   unexpected_response: () => UNEXPECTED,
   aborted: null,
   worker_failed: () => "This browser couldn't start the import. Reload the page and try again.",
@@ -246,7 +247,7 @@ const ERROR_SENTENCES: Record<
   user_metrics_disabled: () =>
     'Google Analytics has user metrics turned off for this property, so visitors can\'t be imported. Turn on "Enable user metric reporting" in its settings, then continue.',
   source_unavailable: ({ tool }) =>
-    `${tool} kept failing to answer. The import is paused where it was; try again later.`,
+    `${tool} kept failing to answer. The import is paused where it was. Try again later.`,
   connector_erased: ({ tool }) =>
     `The person who connected ${tool} deleted their account. Connect again to continue.`,
   // An unconfirmed connection expires after an hour for every pull source (DataImportConnectTTL).
@@ -264,7 +265,7 @@ const ERROR_SENTENCES: Record<
   matomo_bad_token: () =>
     "Pulse can't sign in with this token. Check that you copied it in full and that it's still active in Matomo.",
   // As built, M10 fix pass (28-09-2026):
-  invalid_request: () => 'Something went wrong sending that request. Try again.',
+  invalid_request: () => "Pulse couldn't send that request. Try again.",
   property_not_found: ({ source }) =>
     source === 'ga4'
       ? // M5 (owner, 29-09-2026: ship as written): a reconnect by an account that can't read the property the import was planned on.
@@ -387,7 +388,7 @@ export function ga4StreamsDetails(code: string, raw: unknown): string | null {
 /** Sentences for the callback codes the error map has no entry for (owner: "ship as written", 29-09-2026). */
 const GA4_CALLBACK_ONLY: Readonly<Record<string, string>> = {
   invalid_state:
-    'Google sign-in took too long, or its link was already used, so nothing was connected. Connect again from the Import tab.',
+    'Google sign-in took too long, or its link was already used, so nothing was connected. Try again.',
   error: "Pulse couldn't finish connecting to Google Analytics, so nothing was connected. Try again.",
 }
 
@@ -507,10 +508,11 @@ function wrongFileSentence(v: Vars): string {
 /** `no_data_in_range`: why every day was dropped, from the counts the pipeline attaches. */
 function noDataSentence(skipped: Record<string, number> | undefined): string {
   const why: string[] = []
-  if ((skipped?.outside_history_window ?? 0) > 0) why.push("before this site's history window")
+  // Copy deck §8.3: no page defines a "history window"; Privacy names how long a site keeps data.
+  if ((skipped?.outside_history_window ?? 0) > 0) why.push('older than this site keeps data')
   if ((skipped?.pulse_measured ?? 0) > 0) why.push('already measured by Pulse')
   if (why.length === 0) return "There's nothing to import in this file."
-  return `There's nothing to import: every day in this file is ${why.join(' or ')}.`
+  return `There's nothing to import: every day in this file is ${why.join(', or ')}.`
 }
 
 // ─── A stopped upload ──────────────────────────────────────────────────────
@@ -580,7 +582,7 @@ const rows = (n: number) => `${count(n)} ${plural(n, 'row', 'rows')}`
  * same ("couldn't be read") share a phrase and are shown as one line.
  */
 const SKIP_PHRASES: Record<KnownSkipReason, (n: number) => string> = {
-  outside_history_window: (n) => `${rows(n)} dated before this site's history window`,
+  outside_history_window: (n) => `${rows(n)} older than this site keeps data`,
   pulse_measured: (n) => `${rows(n)} on days Pulse already measured`,
   collection_off: (n) => `${rows(n)} for data this site doesn't collect`,
   invalid_path: (n) => `${count(n)} ${plural(n, "row whose page isn't", "rows whose page isn't")} a path on this site`,

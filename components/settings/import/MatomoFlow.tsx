@@ -2,8 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Select } from '@ciphera-net/facet'
-import { PanelRow, PanelRows } from '@/components/settings/panels'
-import { SetupReveal } from '@/components/settings/integrationRows'
+import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { EVENTS_IMPORTED_LINE, MATOMO_GUIDE, NOT_IMPORTED_ANYWHERE, dailyVisitorsCaveat } from '@/lib/import/source-display'
 import type { SourceEvent } from '@/lib/import/core/events'
 import { failedImportMessage, importErrorMessage, messageInputFromApiError, type ImportMessage } from '@/lib/import/messages'
@@ -16,10 +15,11 @@ import {
   type SiteImportStatus,
 } from '@/lib/api/dataImports'
 import { EventMapping, useEventMapping, useKnownEventNames } from './EventMapping'
-import { ImportErrorBanner } from './ImportErrorBanner'
-import { DeleteImportButton, DoneDetails, ProgressRow, SourceHeader, serverProgress } from './ImportRows'
+import { ImportErrorLine } from './ImportErrorLine'
+import { ImportRecord } from './ImportRecord'
+import { CheckLists, WorthKnowingRow } from './CheckParts'
+import { DeleteImportButton, SourceHeader, StepActions, partText, serverProgress } from './ImportRows'
 import { rangeText, slotPhase } from './importFormat'
-import { CACHE_NOTE } from './UploadFlow'
 
 // ─── Matomo: an address and a token, then the site (M11-j, §3.12m10) ───────
 //
@@ -34,8 +34,19 @@ import { CACHE_NOTE } from './UploadFlow'
 //
 // 🔴 Pulse can't revoke a Matomo token (M10-j), so the finished and failed states
 // say where the customer deletes it.
+//
+// Drawn in the settings kit as option B (R51, 07-11-2026): the address and the token under the row, then the site,
+// the two lists and the events as one table; the progress lives in the source's own row, and a failure is said where
+// it happened.
 
 const PULL_PROGRESS = 'You can close this page.'
+
+/**
+ * Where a failure is said (R51: under what caused it): under the source's row (its Cancel), under the token (Load
+ * sites, Connect again), under the Matomo site (the list of sites), or over the step's buttons (Start the import).
+ * A state without that place says it under the source's row.
+ */
+type ErrorPlace = 'row' | 'connect' | 'site' | 'start'
 
 interface MatomoFlowProps {
   siteId: string
@@ -77,7 +88,7 @@ export function MatomoFlow({
   const startingRef = useRef(false)
   const [properties, setProperties] = useState<MatomoProperty[] | null>(null)
   const [propertyId, setPropertyId] = useState('')
-  const [error, setError] = useState<ImportMessage | null>(null)
+  const [error, setError] = useState<{ message: ImportMessage; at: ErrorPlace } | null>(null)
   // M12 (contract §3.12m12b-5): the chosen site's events, read before Start so
   // the confirm step can map them. Held with the site they belong to, so a
   // preview that answers after the choice changed is never mapped to another.
@@ -103,7 +114,9 @@ export function MatomoFlow({
         setPropertyId((prev) => prev || r.suggested_id || r.properties[0]?.id || '')
       })
       .catch((e) => {
-        if (live) setError(importErrorMessage(messageInputFromApiError(e), 'matomo'))
+        if (!live) return
+        const message = importErrorMessage(messageInputFromApiError(e), 'matomo')
+        setError(message ? { message, at: 'site' } : null)
       })
     return () => {
       live = false
@@ -136,9 +149,10 @@ export function MatomoFlow({
     previewed && awaitingId ? `${awaitingId}:${previewed.propertyId}` : null,
   )
 
-  const fail = (e: unknown) => {
+  const fail = (e: unknown, at: ErrorPlace) => {
     const input = messageInputFromApiError(e)
-    setError(importErrorMessage(input, 'matomo'))
+    const message = importErrorMessage(input, 'matomo')
+    setError(message ? { message, at } : null)
     // Someone else's import took the slot, or this one changed under us: read it again.
     if (['import_exists', 'import_not_active', 'not_found', 'expired'].includes(input.code)) onChanged()
   }
@@ -154,7 +168,7 @@ export function MatomoFlow({
       setToken('')
       onChanged(status)
     } catch (e) {
-      fail(e)
+      fail(e, 'connect')
     } finally {
       connectingRef.current = false
       setConnecting(false)
@@ -171,7 +185,7 @@ export function MatomoFlow({
       onChanged(status)
       onClose()
     } catch (e) {
-      fail(e)
+      fail(e, 'start')
     } finally {
       startingRef.current = false
       setStarting(false)
@@ -191,7 +205,7 @@ export function MatomoFlow({
         try {
           await onDiscard(awaiting.id)
         } catch (e) {
-          fail(e)
+          fail(e, 'row')
           return
         }
       }
@@ -225,15 +239,13 @@ export function MatomoFlow({
     [properties],
   )
 
-  const errorBlock = error ? (
-    <div className="border-b border-border px-5 py-3.5">
-      <ImportErrorBanner message={error} />
-    </div>
-  ) : null
+  /** The failure, when it belongs at one of these places. */
+  const errorAt = (...places: ErrorPlace[]) =>
+    error && places.includes(error.at) ? <ImportErrorLine message={error.message} /> : null
 
   const credentialRows = (reconnectId?: string) => (
     <>
-      <PanelRow label="Matomo address" caption={MATOMO_GUIDE.urlCaption} htmlFor="matomo-url">
+      <KitRow label="Matomo address" caption={MATOMO_GUIDE.urlCaption} htmlFor="matomo-url">
         <Input
           id="matomo-url"
           type="url"
@@ -245,8 +257,8 @@ export function MatomoFlow({
           onChange={(e) => setBaseUrl(e.target.value)}
           disabled={connecting}
         />
-      </PanelRow>
-      <PanelRow
+      </KitRow>
+      <KitRow
         label="Token"
         caption={MATOMO_GUIDE.tokenCaption}
         htmlFor="matomo-token"
@@ -270,45 +282,15 @@ export function MatomoFlow({
           onChange={(e) => setToken(e.target.value)}
           disabled={connecting}
         />
-      </PanelRow>
+      </KitRow>
+      {errorAt('connect')}
     </>
   )
 
   // ── Waiting for its site (A4, after Load sites; or found on reload) ──────
   if (awaiting) {
-    const whatRows = (
-      <>
-        <PanelRow label="Imported">
-          <span className="text-sm text-foreground">
-            {[...MATOMO_GUIDE.imported, ...((previewed?.events.length ?? 0) > 0 ? [EVENTS_IMPORTED_LINE] : [])].map((t) => (
-              <span key={t} className="block">
-                {t}
-              </span>
-            ))}
-          </span>
-        </PanelRow>
-        <PanelRow label="Not imported">
-          <span className="text-sm text-muted-foreground">
-            {NOT_IMPORTED_ANYWHERE.map((t) => (
-              <span key={t} className="block">
-                {t}
-              </span>
-            ))}
-          </span>
-        </PanelRow>
-        <PanelRow label="Worth knowing">
-          <span className="text-sm text-muted-foreground">
-            {[dailyVisitorsCaveat('Matomo'), ...MATOMO_GUIDE.worthKnowing].map((t) => (
-              <span key={t} className="block">
-                {t}
-              </span>
-            ))}
-          </span>
-        </PanelRow>
-      </>
-    )
     return (
-      <div>
+      <div data-import-source="matomo" data-import-step="choose">
         <SourceHeader
           source="matomo"
           chip={{ tone: 'neutral', label: 'Choose a site' }}
@@ -322,16 +304,14 @@ export function MatomoFlow({
         />
         {canManage && (
           <div className="border-t border-border" data-testid="matomo-site">
-            {errorBlock}
-            <PanelRows>
-              <PanelRow label="Matomo site" htmlFor="matomo-site-select">
+            <KitRows>
+              {errorAt('row', 'connect')}
+              <KitRow label="Matomo site" htmlFor="matomo-site-select">
                 {properties === null ? (
-                  // A failed list is said in the banner above; this line only waits.
-                  error ? null : <span className="text-sm text-muted-foreground">Loading the sites this token can see…</span>
+                  // A failed list is said under this row; this line only waits.
+                  error?.at === 'site' ? null : <span className="text-sm text-muted-foreground">Loading the sites this token can see…</span>
                 ) : properties.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">
-                    {importErrorMessage({ code: 'no_properties' }, 'matomo')?.text}
-                  </span>
+                  <span className="text-sm text-muted-foreground">{importErrorMessage({ code: 'no_properties' }, 'matomo')?.text}</span>
                 ) : (
                   <Select
                     id="matomo-site-select"
@@ -343,98 +323,79 @@ export function MatomoFlow({
                     aria-label="Matomo site"
                   />
                 )}
-              </PanelRow>
-              {whatRows}
+              </KitRow>
+              {errorAt('site')}
+              <CheckLists
+                imported={[...MATOMO_GUIDE.imported, ...((previewed?.events.length ?? 0) > 0 ? [EVENTS_IMPORTED_LINE] : [])]}
+                notImported={NOT_IMPORTED_ANYWHERE}
+              />
+              <WorthKnowingRow lines={[dailyVisitorsCaveat('Matomo'), ...MATOMO_GUIDE.worthKnowing]} />
               {propertyId && !previewed && !previewError && (
-                <PanelRow label="Events">
+                <KitRow label="Events">
                   <span className="text-sm text-muted-foreground">{"Loading this site's events…"}</span>
-                </PanelRow>
+                </KitRow>
               )}
-            </PanelRows>
-            {previewError && (
-              <div className="border-t border-border px-5 py-3.5">
-                <ImportErrorBanner message={previewError} onRetry={() => setPreviewTry((n) => n + 1)} />
-              </div>
-            )}
-            <EventMapping state={mapping} known={knownNames.known} />
-            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-              <Button
-                size="sm"
-                onClick={() => void start()}
-                disabled={starting || canceling || !propertyId || !previewed || !mapping.valid}
-              >
-                {starting ? 'Starting…' : 'Start the import'}
-              </Button>
-            </div>
+              {previewError && <ImportErrorLine message={previewError} onRetry={() => setPreviewTry((n) => n + 1)} />}
+              <EventMapping state={mapping} known={knownNames.known} tool="Matomo" />
+              {errorAt('start')}
+              <StepActions>
+                <Button size="sm" onClick={() => void start()} disabled={starting || canceling || !propertyId || !previewed || !mapping.valid}>
+                  {starting ? 'Starting…' : 'Start the import'}
+                </Button>
+              </StepActions>
+            </KitRows>
           </div>
         )}
       </div>
     )
   }
 
-  // ── Moving: the server's worker steps it; this page can close (M11-e) ────
+  // ── Moving: the server's worker steps it; this page can close (M11-e). The progress in the source's own row ──
   if (existing && phase === 'active') {
     const progress = serverProgress(existing)
     return (
-      <div>
+      <div data-import-source="matomo" data-import-step="importing">
         <SourceHeader
           source="matomo"
           description={existing.range_start && existing.range_end ? rangeText(existing.range_start, existing.range_end) : undefined}
           chip={{ tone: 'info', label: 'Importing' }}
           action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
+          progress={{
+            done: progress?.done ?? 0,
+            total: progress?.total ?? 1,
+            line: `${progress ? partText(progress.done, progress.total) : 'Starting'} · ${PULL_PROGRESS}`,
+          }}
         />
-        <div className="border-t border-border">
-          <ProgressRow
-            caption={PULL_PROGRESS}
-            left={progress ? `Part ${progress.done.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')}` : 'Starting'}
-            done={progress?.done ?? 0}
-            total={progress?.total ?? 1}
-          />
-        </div>
       </div>
     )
   }
 
   if (existing && phase === 'completed') {
-    const finished = existing.finished_at ? new Date(existing.finished_at).getTime() : null
-    const fresh = finished === null || now().getTime() - finished < 10 * 60 * 1000
-    return (
-      <div>
-        <SourceHeader
-          source="matomo"
-          description={MATOMO_GUIDE.revokeNote}
-          note={fresh ? CACHE_NOTE : undefined}
-          chip={{ tone: 'success', label: 'Imported' }}
-          action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
-        />
-        <DoneDetails status={existing} />
-      </div>
-    )
+    return <ImportRecord status={existing} canManage={canManage} onRequestDelete={onRequestDelete} now={now()} />
   }
 
   if (existing) {
     // Failed (or a state this build does not know). A token Matomo stopped accepting
     // can be replaced, and the import carries on where it stopped (M10 "Routes").
     const failed = phase === 'failed' || phase === 'stopped'
-    const msg = failed ? failedImportMessage(existing, 'matomo', now()) : null
     const reconnect = existing.error_code === 'reconnect_required'
+    if (!reconnect) return <ImportRecord status={existing} canManage={canManage} onRequestDelete={onRequestDelete} now={now()} />
+    const msg = failed ? failedImportMessage(existing, 'matomo', now()) : null
     return (
-      <div>
+      <div data-import-source="matomo" data-import-step="reconnect">
         <SourceHeader
           source="matomo"
           description={MATOMO_GUIDE.revokeNote}
+          note={msg?.text}
           chip={failed ? { tone: 'danger', label: 'Failed' } : { tone: 'neutral', label: 'In progress' }}
           action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
         />
-        {msg && (
-          <div className="border-t border-border px-5 py-3.5">
-            <ImportErrorBanner message={msg} />
-          </div>
-        )}
-        {reconnect && canManage && (
+        {canManage && (
           <div className="border-t border-border">
-            {errorBlock}
-            <PanelRows>{credentialRows(existing.id)}</PanelRows>
+            <KitRows>
+              {errorAt('row', 'site', 'start')}
+              {credentialRows(existing.id)}
+            </KitRows>
           </div>
         )}
       </div>
@@ -442,8 +403,9 @@ export function MatomoFlow({
   }
 
   // ── Idle, or the address and token (A4) ──────────────────────────────────
+  const showStep = open && canManage && !locked
   return (
-    <div>
+    <div data-import-source="matomo" data-import-step={showStep ? 'connect' : 'idle'}>
       <SourceHeader
         source="matomo"
         action={
@@ -460,12 +422,14 @@ export function MatomoFlow({
           ) : null
         }
       />
-      <SetupReveal show={open && canManage && !locked}>
+      {showStep && (
         <div className="border-t border-border" data-testid="matomo-connect">
-          {errorBlock}
-          <PanelRows>{credentialRows()}</PanelRows>
+          <KitRows>
+            {errorAt('row', 'site', 'start')}
+            {credentialRows()}
+          </KitRows>
         </div>
-      </SetupReveal>
+      )}
     </div>
   )
 }

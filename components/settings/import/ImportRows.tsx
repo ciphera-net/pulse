@@ -1,81 +1,106 @@
 'use client'
 
-import { createContext, useContext } from 'react'
 import { Button } from '@ciphera-net/facet'
-import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
-import { PanelRow } from '@/components/settings/panels'
-import { LogoTile, ServiceHeaderRow, DetailRows, type DetailRow } from '@/components/settings/integrationRows'
-import { RailBar } from '@/components/setup/RailBar'
+import { KitRow, KitStatus } from '@/components/settings/kit/Kit'
+import type { ChipTone } from '@/components/settings/StatusChip'
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
-import { SOURCE_DISPLAY, isSourceId, sourceLabel, sourceLogoUrl, type SourceId } from '@/lib/import/source-display'
-import { failedImportMessage, skipLines } from '@/lib/import/messages'
-import { formatDateTime } from '@/lib/utils/formatDate'
+import { SOURCE_DISPLAY, sourceLogoUrl, type SourceId } from '@/lib/import/source-display'
+import { skipLines } from '@/lib/import/messages'
 import type { SiteImportStatus } from '@/lib/api/dataImports'
-import { importTotals, pct, phaseChip, rangeText, slotPhase } from './importFormat'
-import { ImportErrorBanner } from './ImportErrorBanner'
+import { cn } from '@/lib/utils'
+import { pct } from './importFormat'
 
-// ─── The rows every source's block is made of (M11-c…f) ───────────────────
+// ─── The rows every source's block is made of, in the settings kit (R51: option B, 07-11-2026) ─────────────────
 //
-// Built from the Integrations tab's own parts (integrationRows.tsx), so the
-// Import tab speaks the same visual language: a 40px logo tile and the service
-// header row, a status chip, ruled detail rows, and the setup rail's bar.
+// An import is one kit row, as a connected service is (R24, R32): the tool's own mark and name, its state leading
+// the caption as a dot and words, its button on the row's right edge. While an import moves, its progress lives in
+// that same row: a line under the caption, and the row's hairline filling orange as the parts land. Everything a
+// step asks or says sits under the row as kit rows, with no boxes and no strips.
 
-/**
- * A source's header row. The logo is in FULL COLOUR, always (owner, Q-M11: "on
- * the settings screen, use the colored logos"): an import source is a tool the
- * customer already uses, and its logo is how they find it. Never Integrations'
- * `grayscale opacity-60` idle treatment.
- */
 export interface SourceHeaderProps {
   source: SourceId
+  /** The caption's line after the state; the source's own "how" when not given. */
   description?: React.ReactNode
+  /** A second caption line: a failure's reason, a note that matters now. */
   note?: React.ReactNode
   chip?: { tone: ChipTone; label: string } | null
   action?: React.ReactNode
+  /** An import that is moving: its line under the caption, and the fill of the row's hairline. */
+  progress?: { done: number; total: number; line: string } | null
 }
 
-/**
- * A page that draws its rows in another grammar (the settings kit's Data page) renders every flow's header through
- * this, so the flows keep their behaviour and the header matches the page. Unset, the header is the row below.
- */
-export const SourceHeaderRenderer = createContext<((props: SourceHeaderProps) => React.ReactNode) | null>(null)
-
-export function SourceHeader(props: SourceHeaderProps) {
-  const render = useContext(SourceHeaderRenderer)
-  if (render) return <>{render(props)}</>
-  return <DefaultSourceHeader {...props} />
+/** The flows' chip as R24 and R32 draw a state: orange while it moves or is done, coral when it failed, grey else. */
+export function statusTone(chip: { tone: ChipTone; label: string }): 'live' | 'off' | 'broken' {
+  if (chip.label === 'Stopped') return 'off'
+  if (chip.tone === 'danger') return 'broken'
+  if (chip.tone === 'success' || chip.tone === 'info') return 'live'
+  return 'off'
 }
 
-function DefaultSourceHeader({ source, description, note, chip, action }: SourceHeaderProps) {
-  const display = SOURCE_DISPLAY[source]
-  const control =
-    chip || action ? (
-      <div className="flex items-center gap-2">
-        {chip && (
-          <StatusChip tone={chip.tone} dot>
-            {chip.label}
-          </StatusChip>
-        )}
-        {action}
-      </div>
-    ) : undefined
-  return (
-    <ServiceHeaderRow
-      logo={
-        <LogoTile colorize>
-          {/* eslint-disable-next-line @next/next/no-img-element -- a fixed 20px CDN mark, like the /vs pages */}
-          <img src={sourceLogoUrl(source)} alt="" className="h-5 w-5" data-testid={`import-logo-${source}`} />
-        </LogoTile>
+/** The tool's own mark, in full colour (R9; owner, Q-M11: "on the settings screen, use the colored logos"). */
+export function SourceLogo({ source }: { source: SourceId }) {
+  // eslint-disable-next-line @next/next/no-img-element -- a fixed 16 px CDN mark
+  return <img src={sourceLogoUrl(source)} alt="" className="h-4 w-4" data-testid={`import-logo-${source}`} />
+}
+
+/** "Part 5 of 12": an import's place, from the parts it has sent. */
+export function partText(done: number, total: number): string {
+  return `Part ${done.toLocaleString('en-US')} of ${total.toLocaleString('en-US')}`
+}
+
+/** A source's own row: the mark and name, the state leading the caption, and, while it moves, its progress. */
+export function SourceHeader({ source, description, note, chip, action, progress }: SourceHeaderProps) {
+  const line = description ?? SOURCE_DISPLAY[source].how
+  const row = (
+    <KitRow
+      icon={<SourceLogo source={source} />}
+      logo
+      label={SOURCE_DISPLAY[source].label}
+      caption={
+        <>
+          <span className="block">
+            {chip && <KitStatus tone={statusTone(chip)}>{chip.label}</KitStatus>}
+            {chip && line ? ' · ' : null}
+            {line}
+          </span>
+          {note && <span className="mt-1 block">{note}</span>}
+          {progress && (
+            <span data-import-progress="line" className="mt-1 block tabular-nums">
+              {progress.line}
+            </span>
+          )}
+        </>
       }
-      name={display.label}
-      description={description ?? display.how}
-      note={note}
-      control={control}
+      control={action ?? undefined}
     />
+  )
+  if (!progress) return row
+  const value = pct(progress.done, progress.total)
+  return (
+    <div className="relative">
+      {row}
+      {/* Over the row's own hairline, edge to edge: 2 px, filling orange as the parts land. */}
+      <div
+        role="progressbar"
+        aria-label="Import progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={value}
+        aria-valuetext={progress.line}
+        data-import-progress="hairline"
+        className="absolute inset-x-0 -bottom-px z-10 h-0.5 bg-border"
+      >
+        <div
+          className="h-0.5 bg-primary transition-[width] duration-base ease-apple motion-reduce:transition-none"
+          style={{ width: `${value}%` }}
+          data-testid="import-progress-fill"
+        />
+      </div>
+    </div>
   )
 }
 
-/** "Delete imported data": the shared destructive outline, never a filled button (§6). */
+/** "Delete imported data": the shared destructive outline, never a filled button. */
 export function DeleteImportButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} onClick={onClick} disabled={disabled} aria-haspopup="dialog">
@@ -84,60 +109,31 @@ export function DeleteImportButton({ onClick, disabled }: { onClick: () => void;
   )
 }
 
-/**
- * The setup rail's bar in a settings row: one progress device across the
- * product (SetupRail's hairline), never a second variant.
- */
-export function ProgressRow({
-  caption,
-  left,
-  done,
-  total,
-  label = 'Import progress',
-}: {
-  caption?: React.ReactNode
-  left: string
-  done: number
-  total: number
-  label?: string
-}) {
-  const value = pct(done, total)
+/** A step's buttons: a row of their own, 16 px top and bottom, ending on the section's right edge. */
+export function StepActions({ children }: { children: React.ReactNode }) {
   return (
-    <PanelRow label="Progress" caption={caption}>
-      <div
-        role="progressbar"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={value}
-        aria-valuetext={left}
-        className="w-full"
-      >
-        <RailBar left={left} pct={value} fillTestId="import-progress-fill" />
-      </div>
-    </PanelRow>
+    <div data-import-actions="" className="flex items-center justify-end gap-2 py-4">
+      {children}
+    </div>
+  )
+}
+
+/** The lines of a list value, one per line (Imported, Not imported, Skipped). */
+export function Lines({ lines, muted = false, className }: { lines: readonly string[]; muted?: boolean; className?: string }) {
+  return (
+    <span className={cn('block text-sm', muted ? 'text-muted-foreground' : 'text-foreground', className)}>
+      {lines.map((t) => (
+        <span key={t} className="block">
+          {t}
+        </span>
+      ))}
+    </span>
   )
 }
 
 /** The skipped rows, as one muted line each (largest first). */
 export function skippedText(status: Pick<SiteImportStatus, 'skipped'>): string[] {
   return skipLines([status.skipped?.browser, status.skipped?.server]).map((l) => l.text)
-}
-
-/** Done (shot A7): the range, when it finished, how many visitors, what was skipped. */
-export function DoneDetails({ status }: { status: SiteImportStatus }) {
-  const rows: DetailRow[] = []
-  if (status.range_start && status.range_end) rows.push({ label: 'Range', value: rangeText(status.range_start, status.range_end) })
-  if (status.finished_at) rows.push({ label: 'Imported', value: formatDateTime(new Date(status.finished_at)), kind: 'date' })
-  const totals = importTotals(status.totals)
-  if (totals) rows.push({ label: 'Visitors', value: <span className="tabular-nums">{totals.visitors.toLocaleString('en-US')}</span> })
-  const skipped = skippedText(status)
-  rows.push({
-    label: 'Skipped',
-    value: skipped.length > 0 ? skipped.map((t) => <span key={t} className="block">{t}</span>) : 'Nothing',
-    kind: 'muted',
-  })
-  return <DetailRows rows={rows} />
 }
 
 /** An import that is moving: "Part n of total" from the server's cursor. */
@@ -147,49 +143,4 @@ export function serverProgress(status: {
 }): { done: number; total: number } | null {
   if (!status.steps_total || status.steps_total <= 0) return null
   return { done: Math.min(status.cursor?.step ?? 0, status.steps_total), total: status.steps_total }
-}
-
-/**
- * The site's import when no row on this screen drives its source (a source this
- * build has no flow for, or one the server no longer lists): its state, its
- * details, and Delete, so the one-import slot is never held by something the
- * screen cannot show or remove.
- */
-export function ImportRecordRow({
-  status,
-  canManage,
-  onRequestDelete,
-}: {
-  status: SiteImportStatus
-  canManage: boolean
-  onRequestDelete: () => void
-}) {
-  const phase = slotPhase(status)
-  const chip = phaseChip(phase, status.source)
-  const range = status.range_start && status.range_end ? rangeText(status.range_start, status.range_end) : undefined
-  const action = canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null
-  const message = phase === 'failed' || phase === 'stopped' ? failedImportMessage(status, status.source) : null
-  const control = (
-    <div className="flex items-center gap-2">
-      <StatusChip tone={chip.tone} dot>
-        {chip.label}
-      </StatusChip>
-      {action}
-    </div>
-  )
-  return (
-    <div data-testid="import-record">
-      {isSourceId(status.source) ? (
-        <SourceHeader source={status.source} description={range} chip={chip} action={action} />
-      ) : (
-        <ServiceHeaderRow logo={<LogoTile colorize>{null}</LogoTile>} name={sourceLabel(status.source)} description={range ?? ''} control={control} />
-      )}
-      {phase === 'completed' && <DoneDetails status={status} />}
-      {message && (
-        <div className="border-t border-border px-5 py-3.5">
-          <ImportErrorBanner message={message} />
-        </div>
-      )}
-    </div>
-  )
 }

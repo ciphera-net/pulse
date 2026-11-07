@@ -12,7 +12,7 @@ import { toast } from '@ciphera-net/facet'
 import { GA4LandingNotice } from '../GA4LandingNotice'
 
 const INVALID_STATE =
-  'Google sign-in took too long, or its link was already used, so nothing was connected. Connect again from the Import tab.'
+  'Google sign-in took too long, or its link was already used, so nothing was connected. Try again.'
 
 beforeEach(() => {
   ;(toast.error as any).mockClear()
@@ -48,6 +48,6 @@ describe('the GA4 code on a landing page', () => {
   it('never shows an unknown code raw', () => {
     window.history.replaceState({}, '', '/?ga4=<b>x</b>')
     render(<GA4LandingNotice />)
-    expect(toast.error).toHaveBeenCalledWith('Something unexpected came back from Pulse. Nothing more was saved. Try again.')
+    expect(toast.error).toHaveBeenCalledWith("Pulse sent an answer this page can't read. Nothing more was saved. Try again.")
   })
 })
