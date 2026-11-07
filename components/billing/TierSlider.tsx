@@ -6,14 +6,14 @@ import { cn } from '@/lib/cn'
 import { TRAFFIC_TIERS, getTierIndexForLimit } from '@/lib/plans'
 
 interface TierSliderProps {
-  /** Selected pageview limit (a TRAFFIC_TIERS value). */
+  /** Selected event limit (a TRAFFIC_TIERS value). */
   value: number
   onChange: (limit: number) => void
   className?: string
 }
 
 /**
- * Pageview-tier picker shared by /setup/plan and /switch — the same
+ * Event-tier picker shared by /setup/plan and /switch — the same
  * labels-above-slider composition the marketing pricing page uses, so the
  * in-app plan flows keep the grammar a converting visitor already saw.
  * Falls back to the app Select below `sm`, where nine tick labels don't fit.
@@ -30,7 +30,7 @@ export default function TierSlider({ value, onChange, className }: TierSliderPro
               key={tier.label}
               type="button"
               onClick={() => onChange(tier.value)}
-              aria-label={`Select ${tier.label} pageviews per month`}
+              aria-label={`Select ${tier.label} events per month`}
               className={cn(
                 'whitespace-nowrap px-1 py-0.5 text-xs tabular-nums transition-colors duration-fast ease-apple focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
                 i === index ? 'text-brand-ink' : 'text-neutral-500 hover:text-white',
@@ -46,7 +46,7 @@ export default function TierSlider({ value, onChange, className }: TierSliderPro
           min={0}
           max={TRAFFIC_TIERS.length - 1}
           step={1}
-          aria-label={`${TRAFFIC_TIERS[index]?.label} pageviews per month`}
+          aria-label={`${TRAFFIC_TIERS[index]?.label} events per month`}
         />
       </div>
 
@@ -58,7 +58,7 @@ export default function TierSlider({ value, onChange, className }: TierSliderPro
           onChange={(v) => onChange(Number(v))}
           options={TRAFFIC_TIERS.map((tier) => ({
             value: String(tier.value),
-            label: `${tier.label} pageviews/month`,
+            label: `${tier.label} events/month`,
           }))}
         />
       </div>

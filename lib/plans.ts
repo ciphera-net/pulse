@@ -6,11 +6,7 @@
  * remain exported for the legacy switch arms below. limit 10k–10M; month/year interval.
  */
 
-export interface PlanPrices {
-  [planId: string]: {
-    [limit: number]: number // monthly price in EUR cents
-  }
-}
+import type { PriceCatalog, SubscriptionDetails } from '@/lib/api/billing'
 
 /** Retired 11-09-2026 — no longer sold, still valid ids on existing rows. */
 export const PLAN_ID_SOLO = 'solo'
@@ -18,11 +14,11 @@ export const PLAN_ID_TEAM = 'team'
 export const PLAN_ID_BUSINESS = 'business'
 
 /**
- * Monthly pageview allowance on the free (Personal) tier. Single source of truth
- * for the free-tier limit shown in downgrade/expiry copy — do not re-hardcode
- * "5,000" at call sites.
+ * Monthly event allowance on the free (Personal) tier: every event counts, not only pageviews (since 07-11-2026;
+ * 5,000 pageviews before). Single source of truth for the free-tier limit shown in downgrade/expiry copy — do not
+ * re-hardcode "10,000" at call sites.
  */
-export const FREE_PAGEVIEW_LIMIT = 5000
+export const FREE_EVENT_LIMIT = 10000
 
 /**
  * Display name for a subscription plan_id — the single source of truth.
@@ -76,8 +72,8 @@ export interface PlanCatalogEntry {
  * because the in-app pickers (/setup/plan, /switch) only offer paid plans.
  */
 // Plans differ on SCALE, never on features: every plan runs the full product,
-// and the only real dimensions are sites, pageviews and data retention (the
-// enforced limits below) plus Business's priority-support commitment. Do not
+// and the only real dimensions are sites, events and data retention (the
+// enforced limits below) plus Business's reply within one working day. Do not
 // reintroduce feature-gate lines here — there are no feature gates.
 export const FREE_PLAN: PlanCatalogEntry = {
   id: 'free',
@@ -85,7 +81,7 @@ export const FREE_PLAN: PlanCatalogEntry = {
   description: 'For personal sites and side projects',
   highlights: [
     '1 site',
-    `${FREE_PAGEVIEW_LIMIT.toLocaleString('en-US')} pageviews/mo`,
+    `${FREE_EVENT_LIMIT.toLocaleString('en-US')} events/mo`,
     '6-month data retention',
     'Every feature included',
   ],
@@ -105,9 +101,9 @@ export const PLAN_CATALOG: PlanCatalogEntry[] = [
     popular: true,
     highlights: [
       'Up to 5 sites',
-      'Your pageview tier',
+      'Your event tier',
       '2-year data retention',
-      'Priority support',
+      'Email replies within one working day',
       'Every feature included',
     ],
   },
@@ -150,7 +146,7 @@ export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
   {
     label: 'Usage',
     rows: [
-      // The pricing page injects a "Monthly pageviews" row after Sites — its
+      // The pricing page injects a "Monthly events" row after Sites — its
       // paid-plan cells read the live tier slider, so it can't be static here.
       {
         label: 'Sites',
@@ -166,7 +162,7 @@ export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
   },
   {
     label: 'Support',
-    rows: [{ label: 'Priority support', values: fromPlan(PLAN_ID_BUSINESS) }],
+    rows: [{ label: 'A reply within one working day', values: fromPlan(PLAN_ID_BUSINESS) }],
   },
   // Deliberately the longest group: there are no feature gates, and this wall
   // of identical checks is the claim. Plans scale (Usage above) — the product
@@ -189,33 +185,66 @@ export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
 ]
 
 export interface PlanPricing {
-  /** Price per month on monthly billing, in EUR (excl. VAT). */
+  /** Price per month on monthly billing, in EUR, VAT included. */
   monthly: number
-  /** Effective per-month price on yearly billing (11 months paid / 12). */
-  effectiveMonthly: number
-  /** Total billed per year on yearly billing (11 × monthly — 1 month free). */
+  /** The monthly price without VAT (the business price). */
+  monthlyBusiness: number
+  /** Total billed per year on yearly billing, VAT included (ten months' price: two months free). */
   yearlyTotal: number
+  /** The yearly price without VAT, the server's own figure (never 10 × monthlyBusiness: €90 a year is €74.38 without
+   *  VAT, not €74.40). */
+  yearlyBusiness: number
+  /** yearlyTotal over twelve months, VAT included. */
+  effectiveMonthly: number
 }
 
 /**
- * Derive display pricing for a plan at a pageview tier from the
- * GET /api/billing/prices map. Yearly = 11 × monthly (1 month free) — the
- * same formula the backend uses; keep the two in sync.
+ * Display pricing for a plan at an event tier, read from GET /api/billing/catalog. Every number is the server's; the
+ * one division here (a year's price over twelve months) only labels a price, it never sets one.
  */
-export function getPlanPricing(
-  prices: Record<string, Record<number, number>> | undefined,
-  planId: string,
-  limit: number,
-): PlanPricing | null {
-  const baseCents = prices?.[planId]?.[limit]
-  if (!baseCents) return null
-  const monthly = baseCents / 100
-  const yearlyTotal = Math.round(monthly * 11 * 100) / 100
-  const effectiveMonthly = Math.round((yearlyTotal / 12) * 100) / 100
-  return { monthly, effectiveMonthly, yearlyTotal }
+export function getPlanPricing(catalog: PriceCatalog | undefined, planId: string, limit: number): PlanPricing | null {
+  const tier = catalog?.plans?.[planId]?.find((t) => t.limit === limit)
+  if (!tier || tier.month.price <= 0 || tier.year.price <= 0) return null
+  return {
+    monthly: tier.month.price / 100,
+    monthlyBusiness: tier.month.business_price / 100,
+    yearlyTotal: tier.year.price / 100,
+    yearlyBusiness: tier.year.business_price / 100,
+    effectiveMonthly: Math.round(tier.year.price / 12) / 100,
+  }
 }
 
-/** The nine pageview tiers the paid plan is priced at (owner ruling 11-09-2026: keep nine). */
+export interface EventMeter {
+  /** The plan's monthly events. */
+  limit: number
+  /** Events counted this month; null when the server sent no count (unknown, never 0). */
+  usage: number | null
+  /** Where counting stops; null when the server sent none (unknown, never 0, which would read as "already over"). */
+  ceiling: number | null
+}
+
+/**
+ * A subscription's meter, read under the event_* names first and under pageview_* from a backend from before
+ * 07-11-2026: one place decides the fallback, so no screen reads one name and another screen the other. Kept here, not
+ * beside the wire type, so a test that stands in for the API module keeps it.
+ */
+export function eventMeter(sub: SubscriptionDetails): EventMeter {
+  const limit = typeof sub.event_limit === 'number' ? sub.event_limit : sub.pageview_limit
+  const usage = typeof sub.event_usage === 'number' ? sub.event_usage : typeof sub.pageview_usage === 'number' ? sub.pageview_usage : null
+  const rawCeiling = typeof sub.event_hard_ceiling === 'number' ? sub.event_hard_ceiling : sub.pageview_hard_ceiling
+  const ceiling = typeof rawCeiling === 'number' && rawCeiling > 0 ? rawCeiling : null
+  return { limit, usage, ceiling }
+}
+
+/** What one billing period of a plan costs in cents, VAT included, from the catalog; null when it is not sold. */
+export function getPeriodPriceCents(catalog: PriceCatalog | undefined, planId: string, limit: number, interval: string): number | null {
+  const tier = catalog?.plans?.[planId]?.find((t) => t.limit === limit)
+  if (!tier) return null
+  const cents = interval === 'year' ? tier.year.price : tier.month.price
+  return cents > 0 ? cents : null
+}
+
+/** The nine event tiers the paid plan is priced at (owner ruling 11-09-2026: keep nine; events since 07-11-2026). */
 export const TRAFFIC_TIERS = [
   { label: '10k', value: 10000 },
   { label: '50k', value: 50000 },

@@ -20,7 +20,7 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
       { name: 'Features', href: '/features' },
       { name: 'Pricing', href: '/pricing' },
       { name: 'Integrations', href: '/integrations' },
-      { name: 'Changelog', href: '/changelog' },
+      { name: 'Changelog', href: 'https://docs.ciphera.net/changelog/pulse' },
     ],
   },
   {
