@@ -102,6 +102,10 @@ async function sendKey(method: 'POST' | 'PUT', b: PublishKeyBody): Promise<KeyRo
   try {
     body = await apiRequest<unknown>('/me/team-key', {
       method,
+      // pulse-backend answers a refused proof with 401 `reauth_required`. The client's refresh-and-retry would
+      // renew the session for nothing and send the same single-use token again, and a definitive refresh failure
+      // would sign the person out mid-step: the step asks for the password again instead.
+      skipAuthRetry: true,
       body: JSON.stringify({
         reauth_token: b.reauthToken,
         public_key: toBase64(b.publicKey),

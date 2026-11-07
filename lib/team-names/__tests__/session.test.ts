@@ -286,7 +286,8 @@ describe('the one-time step', () => {
     const a = await person(server, A, 'Ada')
     await a.session.start()
     const err = await a.session.setUp('unreachable', [TEAM]).catch((e: unknown) => e)
-    expect((err as TeamNamesError).code).toBe('team_names/request_failed')
+    // Its own code: the step says Ciphera ID's words for it, and Pulse's only for a refused key.
+    expect((err as TeamNamesError).code).toBe('team_names/proof_failed')
     expect(((err as TeamNamesError).cause as Error).message).toMatch(/Network error/)
     expect(a.session.getSnapshot().status).toBe('error')
     expect(server.events).not.toContain('publish:start')

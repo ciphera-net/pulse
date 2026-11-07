@@ -232,9 +232,9 @@ export class TeamNamesSession {
    *                               the step stays and asks again
    *   team_names/reauth_required  pulse-backend says Ciphera ID refused the proof: the step stays and
    *                               asks for the password again
-   *   anything else               the status becomes `error`, not a password prompt; `retry` reads again
-   *                               (a ceremony that failed for another reason is `request_failed`, with
-   *                               its error as the `cause`)
+   *   team_names/proof_failed     the ceremony failed for another reason (its error is the `cause`):
+   *                               the status becomes `error`, not a password prompt; `retry` reads again
+   *   anything else               the status becomes `error` too (a refused key is `request_failed`)
    */
   setUp(password: string, teamIds: readonly string[]): Promise<void> {
     return this.enqueue(async () => {
@@ -296,7 +296,7 @@ export class TeamNamesSession {
     try {
       reauthToken = await this.deps.prove(password)
     } catch (cause) {
-      throw new TeamNamesError(passwordRejected(cause) ? 'team_names/password_failed' : 'team_names/request_failed', { cause })
+      throw new TeamNamesError(passwordRejected(cause) ? 'team_names/password_failed' : 'team_names/proof_failed', { cause })
     }
     if (this.disposed) throw new TeamNamesError('team_names/not_ready')
     const created = await createIdentity(vaultOpsFor(vaultKey))

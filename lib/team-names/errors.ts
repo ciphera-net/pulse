@@ -31,9 +31,15 @@ export type TeamNamesErrorCode =
   | 'team_names/reauth_required'
   /** The password did not match; `cause` holds the ceremony's own error. The step asks again. */
   | 'team_names/password_failed'
+  /**
+   * The password ceremony failed for another reason (a rate limit, Ciphera ID unreachable, no token
+   * minted); `cause` holds its error. Nothing was published. Apart from `request_failed` so the step
+   * can say which side failed: Ciphera ID's words for this one, Pulse's for a refused key.
+   */
+  | 'team_names/proof_failed'
   /** The server answered something this code cannot read. */
   | 'team_names/invalid_response'
-  /** A request failed, or the password ceremony failed for a reason other than the password; `cause` holds the error. */
+  /** A request failed; `cause` holds the error. A step rejects with it when pulse-backend refused or was not reached. */
   | 'team_names/request_failed'
   /** The action needs a state this browser is not in (no vault key, no key, or the wrong step). */
   | 'team_names/not_ready'

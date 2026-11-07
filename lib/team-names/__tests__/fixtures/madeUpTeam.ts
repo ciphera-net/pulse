@@ -9,6 +9,8 @@
 import type { AuditLogEntry } from '@/lib/api/audit'
 import type { Connection } from '@/lib/api/connect'
 import type { OrganizationMember } from '@/lib/api/organization'
+import { duplicateIds } from '@/lib/team-names/reconcile'
+import type { TeamNamesSnapshot, TeamNamesStatus } from '@/lib/team-names/session'
 
 /** How one browser sees the team: no vault key here, no team key yet, some names, every name, copied names. */
 export type MadeUpState = 'locked' | 'first' | 'partial' | 'named' | 'copies'
@@ -125,4 +127,20 @@ export function madeUpConnections(myId: string, now: Date): Connection[] {
     { ...base, id: 'tn-c2', client_name: 'ChatGPT', client_verified: true, client_brand: 'chatgpt', user_id: MAREN, scope_all_sites: false, site_ids: ['a', 'b'], created_at: ago(now, 60 * 24 * 50), last_used_at: ago(now, 60 * 20) },
     { ...base, id: 'tn-c3', client_name: 'Cursor', client_verified: true, client_brand: 'cursor', user_id: AMARA, scope_all_sites: true, site_ids: [], created_at: ago(now, 60 * 24 * 2), last_used_at: null },
   ]
+}
+
+/**
+ * The session's snapshot for one state, as lib/team-names/session.ts builds it: no team read while locked or before the
+ * one-time step, and the duplicates (Pulse's own words included) worked out by the real rule. `own` is my own name.
+ */
+export function madeUpSnapshot(state: MadeUpState, teamId: string, myId: string, own: string | null = MY_NAME): TeamNamesSnapshot {
+  const status: TeamNamesStatus = state === 'locked' ? 'locked' : state === 'first' ? 'needs_setup' : 'ready'
+  if (status !== 'ready') return { status, share: null, teams: new Map() }
+  const names = madeUpNames(state)
+  const memberIds = new Set(madeUpMembers(teamId, myId).map((m) => m.user_id))
+  return {
+    status,
+    share: own ? 'name' : 'none',
+    teams: new Map([[teamId, { status: 'ready', names, memberIds, duplicates: duplicateIds(names, own ? { userId: myId, name: own } : null) }]]),
+  }
 }

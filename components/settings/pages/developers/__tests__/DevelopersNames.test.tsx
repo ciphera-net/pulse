@@ -10,7 +10,13 @@ import { act, render, screen, cleanup, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { TeamNamesContext, type TeamNamesContextValue } from '@/lib/team-names/provider'
 import type { TeamNamesSnapshot } from '@/lib/team-names/session'
-import { madeUpConnections, madeUpMembers, madeUpNames } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
+import {
+  madeUpConnections,
+  madeUpMembers,
+  madeUpNames,
+  madeUpSnapshot,
+  type MadeUpState,
+} from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
@@ -84,7 +90,7 @@ vi.mock('@ciphera-net/facet', () => ({
       {label}
     </label>
   ),
-  Toggle: () => <button type="button" role="switch" />,
+  Toggle: () => <button type="button" role="switch" aria-checked={false} />,
   RailGrid: ({ children, className }: { children?: React.ReactNode; className?: string }) => <div data-railgrid className={className}>{children}</div>,
   CheckIcon: () => <span />,
   CopyIcon: () => <span />,
@@ -108,7 +114,7 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
     share: 'name',
     teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
   }
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -153,5 +159,90 @@ describe("Developers with the team-names beta off: today's DOM, byte for byte", 
     const second = mount(contextWithNames(false))
     await loaded()
     expect(second.container.innerHTML).toBe(today)
+  })
+})
+
+// ─── With the beta on ────────────────────────────────────────────────────────────────────────────────────────────
+
+function sessionFor(state: MadeUpState): TeamNamesContextValue {
+  return {
+    snapshot: madeUpSnapshot(state, TEAM, ME),
+    myId: ME,
+    activeTeamId: TEAM,
+    activeFlagged: true,
+    anyFlagged: true,
+    setUp: vi.fn(),
+    reset: vi.fn(),
+    retry: vi.fn(),
+    nameChanged: vi.fn(),
+  }
+}
+
+async function mountOn(state: MadeUpState) {
+  getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
+  const view = mount(sessionFor(state))
+  await loaded()
+  await waitFor(() => expect(document.querySelectorAll('[data-tn-who]').length).toBe(3))
+  return view
+}
+
+function text(el: Element | null): string {
+  if (!el) return ''
+  const words: string[] = []
+  const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+  while (walk.nextNode()) words.push(walk.currentNode.nodeValue ?? '')
+  return words.join(' ').replace(/\s+/g, ' ').trim()
+}
+const connectedBy = (id: string) => text(screen.getByTestId(`connection-row-${id}`).querySelector('[data-tn-who]'))
+const lines = () => [...document.querySelectorAll('[data-tn-line]')].map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])
+
+describe('Developers with the team-names beta on', () => {
+  it('says who connected each assistant by name, the id only where a name alone could be someone else\'s', async () => {
+    await mountOn('named')
+    expect([connectedBy('tn-c1'), connectedBy('tn-c2'), connectedBy('tn-c3')]).toEqual(['you', 'Maren Lindqvist', 'Amara Okafor'])
+    expect(screen.getByTestId('connection-row-tn-c1').querySelector('[data-tn-who="you"] [data-tn-system]')?.className).toContain('text-muted-foreground')
+    expect(text(screen.getByTestId('connection-row-tn-c2').querySelector('[data-kit-row] p'))).toContain('Connected · Connected by Maren Lindqvist · 2 sites · Last used 20 h ago')
+    expect(lines()).toEqual([])
+  })
+
+  it('shows both ids when two people have the same name', async () => {
+    await mountOn('copies')
+    expect([connectedBy('tn-c2'), connectedBy('tn-c3')]).toEqual(['Maren Lindqvist 3f2a9c1b', 'Maren Lindqvist 2f4e6d8a'])
+  })
+
+  it('a name not arrived: "teammate" and the id, and the line once, in Connected assistants\' line', async () => {
+    await mountOn('partial')
+    expect(connectedBy('tn-c3')).toBe('teammate 2f4e6d8a')
+    expect(lines()).toEqual([['notYet', 'section-line']])
+    expect(text(document.querySelector('[data-kit-section="Connected assistants"] header p'))).toMatch(
+      /or is no longer the owner or an admin\. A teammate's name shows after their next visit to Pulse, if they've set one\.$/,
+    )
+  })
+
+  it.each([
+    ['locked', 'locked', "Your teammates' names are locked"],
+    ['first', 'step', 'Set up team names?'],
+  ] as const)('%s: the prompt at the top of the page, and every teammate by their id', async (state, line, title) => {
+    await mountOn(state)
+    expect(lines()).toEqual([[line, 'prompt']])
+    expect(document.querySelector('[data-kit] section')?.getAttribute('data-kit-section')).toBe(title)
+    expect([connectedBy('tn-c2'), connectedBy('tn-c3')]).toEqual(['teammate 3f2a9c1b', 'teammate 2f4e6d8a'])
+  })
+
+  it('draws no prompt for somebody alone, and nothing at all on a member\'s no-access page', async () => {
+    page.teamState = 'alone'
+    getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
+    mount(sessionFor('first'))
+    await loaded()
+    expect(lines()).toEqual([])
+    cleanup()
+
+    page.canManage = false
+    getMe.mockClear()
+    mount(sessionFor('first'))
+    await act(() => new Promise((r) => setTimeout(r, 50)))
+    expect(lines()).toEqual([])
+    expect(getMe).not.toHaveBeenCalled()
+    expect(listConnectedApps).toHaveBeenCalledTimes(1)
   })
 })

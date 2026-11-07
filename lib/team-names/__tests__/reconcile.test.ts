@@ -240,4 +240,29 @@ describe('duplicateIds', () => {
     expect([...duplicateIds(names, null)].sort()).toEqual(['b', 'c'])
     expect([...duplicateIds(names, { userId: 'a', name: 'pat' })].sort()).toEqual(['a', 'b', 'c', 'e'])
   })
+
+  it.each(['Pulse', 'pulse', ' PULSE ', 'You', 'you', 'Teammate', 'Former teammate', 'FORMER  TEAMMATE', 'Ｐｕｌｓｅ'])(
+    'flags a name equal to one of Pulse’s own words (%j), alone on the page, as a duplicate is (R65)',
+    (word) => {
+      const names = new Map([
+        ['b', { name: word, former: false }],
+        ['c', { name: 'Eve', former: false }],
+      ])
+      expect([...duplicateIds(names, null)]).toEqual(['b'])
+    },
+  )
+
+  it('leaves a name that only starts or ends with one of Pulse’s words alone', () => {
+    const names = new Map([
+      ['b', { name: 'Pulse fan', former: false }],
+      ['c', { name: 'Your team', former: false }],
+      ['d', { name: 'Teammates', former: false }],
+      ['e', { name: 'Former', former: true }],
+    ])
+    expect([...duplicateIds(names, null)]).toEqual([])
+  })
+
+  it('flags the viewer’s own name too when it is one of Pulse’s words', () => {
+    expect([...duplicateIds(new Map(), { userId: 'a', name: 'You' })]).toEqual(['a'])
+  })
 })

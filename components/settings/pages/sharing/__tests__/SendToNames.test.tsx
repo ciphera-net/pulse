@@ -10,7 +10,7 @@ import { act, render, cleanup, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { TeamNamesContext, type TeamNamesContextValue } from '@/lib/team-names/provider'
 import type { TeamNamesSnapshot } from '@/lib/team-names/session'
-import { madeUpMembers, madeUpNames } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
+import { madeUpMembers, madeUpNames, madeUpSnapshot, type MadeUpState } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
@@ -70,7 +70,7 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
     share: 'name',
     teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
   }
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -113,5 +113,80 @@ describe("Send to with the team-names beta off: today's DOM, byte for byte", () 
     mount(contextWithNames(false))
     await loaded()
     expect(sendTo().outerHTML).toBe(today)
+  })
+})
+
+// ─── With the beta on ────────────────────────────────────────────────────────────────────────────────────────────
+
+function sessionFor(state: MadeUpState): TeamNamesContextValue {
+  return {
+    snapshot: madeUpSnapshot(state, TEAM, ME),
+    myId: ME,
+    activeTeamId: TEAM,
+    activeFlagged: true,
+    anyFlagged: true,
+    setUp: vi.fn(),
+    reset: vi.fn(),
+    retry: vi.fn(),
+    nameChanged: vi.fn(),
+  }
+}
+
+async function mountOn(state: MadeUpState) {
+  getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
+  mount(sessionFor(state))
+  await loaded()
+  await waitFor(() => expect(document.querySelector('[role="group"][aria-label="Send to"] [data-tn-avatar]')).not.toBeNull())
+}
+
+function text(el: Element | null): string {
+  if (!el) return ''
+  const words: string[] = []
+  const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+  while (walk.nextNode()) words.push(walk.currentNode.nodeValue ?? '')
+  return words.join(' ').replace(/\s+/g, ' ').trim()
+}
+const labels = () => [...document.querySelectorAll('[role="group"][aria-label="Send to"] label')].map((l) => text(l))
+const caption = () => text(sendTo().querySelector('p'))
+const CAPTION = 'Only members of this team get the email. Forward the link to anyone else.'
+
+describe('Send to with the team-names beta on', () => {
+  it('lists each teammate with today\'s avatar, the name, and the role and id under it; You first', async () => {
+    await mountOn('named')
+    expect(labels()).toEqual(['You', 'Maren Lindqvist Admin · 3f2a9c1b', 'Amara Okafor Admin · 2f4e6d8a', 'Jonas Weber Member · 7c1e2b9d', 'Lena Vogel Member · 8d4e1f60'])
+    const group = document.querySelector('[role="group"][aria-label="Send to"]') as HTMLElement
+    expect(group.querySelectorAll('[data-tn-avatar] [data-avatar]')).toHaveLength(5)
+    expect(group.querySelector('label [data-tn-system]')?.textContent).toBe('You')
+    expect([...group.querySelectorAll('[data-tn-id]')].every((el) => el.className.includes('font-mono'))).toBe(true)
+    expect(caption()).toBe(CAPTION)
+  })
+
+  it('a name not arrived: "Teammate", the id and the role, and the line once, in the caption', async () => {
+    await mountOn('partial')
+    expect(labels()[2]).toBe('Teammate 2f4e6d8a Admin')
+    expect(caption()).toBe(`${CAPTION} A teammate's name shows after their next visit to Pulse, if they've set one.`)
+    expect(document.querySelectorAll('[data-tn-line]')).toHaveLength(1)
+  })
+
+  it.each([
+    ['locked', 'Unlock your profile on Account to see their names.'],
+    ['first', 'Set up team names on the Team page to see their names.'],
+  ] as const)('%s: every teammate by their id, and the caption says what to do', async (state, line) => {
+    await mountOn(state)
+    expect(labels().slice(1)).toEqual(['Teammate 3f2a9c1b Admin', 'Teammate 2f4e6d8a Admin', 'Teammate 7c1e2b9d Member', 'Teammate 8d4e1f60 Member'])
+    expect(caption()).toBe(`${CAPTION} ${line}`)
+  })
+
+  it('a member who named themselves Pulse is a name with their id, never Pulse\'s word', async () => {
+    await mountOn('copies')
+    const lena = [...document.querySelectorAll('[role="group"][aria-label="Send to"] label')][4]
+    expect(text(lena)).toBe('Pulse Member · 8d4e1f60')
+    expect(lena.querySelector('[data-tn-system]')).toBeNull()
+  })
+
+  it('owes no line when the list names nobody but the person', async () => {
+    members.list = madeUpMembers(TEAM, ME).slice(0, 1)
+    await mountOn('first')
+    expect(caption()).toBe(CAPTION)
   })
 })

@@ -7,10 +7,13 @@
 // surfaces existed.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, render, screen, cleanup, waitFor } from '@testing-library/react'
+import { act, render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { TeamNamesContext, type TeamNamesContextValue } from '@/lib/team-names/provider'
-import { MY_EMAIL, MY_NAME } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
+import { ApiError } from '@/lib/api/client'
+import { TeamNamesError } from '@/lib/team-names/errors'
+import type { TeamNamesSnapshot, TeamNamesStatus } from '@/lib/team-names/session'
+import { MY_EMAIL, MY_LONG_NAME, MY_NAME } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
@@ -150,7 +153,7 @@ const iso = (msAgo: number) => new Date(NOW.getTime() - msAgo).toISOString()
 
 /** The context the provider gives with the beta off in every team: no session. */
 function noSession(): TeamNamesContextValue {
-  return { snapshot: null, myId: ME, activeTeamId: TEAM, activeFlagged: false, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot: null, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: false, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -222,5 +225,189 @@ describe("Account with the team-names beta off everywhere: today's DOM, byte for
     await screen.findByText(/Pulse then keeps the key on this device for up to 30 days/)
     await act(() => new Promise((r) => setTimeout(r, 50)))
     expect(profile().outerHTML).toMatchSnapshot()
+  })
+})
+
+// ─── With the beta on in a team of the person's ──────────────────────────────────────────────────────────────────
+
+const actions = { setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => undefined }
+
+function sessionIn(status: TeamNamesStatus, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
+  // The beta is on in another team, not the active one: Account is the same in every team.
+  return { snapshot: { status, share: null, teams: new Map(), ...over }, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: true, ...actions }
+}
+
+function Holder({ initial, children }: { initial: TeamNamesContextValue; children: React.ReactNode }) {
+  const [value, setValue] = React.useState(initial)
+  React.useEffect(() => {
+    holder.set = setValue
+  }, [])
+  return <TeamNamesContext.Provider value={value}>{children}</TeamNamesContext.Provider>
+}
+
+function mountWith(initial: TeamNamesContextValue) {
+  return render(
+    <Holder initial={initial}>
+      <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+        <AccountPage />
+      </SWRConfig>
+    </Holder>,
+  )
+}
+
+const nameRow = () => (screen.getByLabelText('Your name').closest('[data-kit-row]') as HTMLElement)
+const nameCaption = () => nameRow().querySelector('p')?.textContent ?? ''
+
+describe('Account with the team-names beta on', () => {
+  beforeEach(() => {
+    for (const fn of Object.values(actions)) fn.mockReset()
+    actions.retry.mockResolvedValue(undefined)
+    actions.nameChanged.mockResolvedValue(undefined)
+  })
+
+  it('says, as Your name\'s caption, that teammates see the name, encrypted for each of them (C3 W1)', async () => {
+    mountWith(sessionIn('ready', { share: 'name' }))
+    await unlocked()
+    expect(nameCaption()).toBe("Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.")
+    expect(document.querySelector('[data-tn-account]')).toBeNull()
+    expect(document.querySelector('[data-tn-line]')).toBeNull()
+  })
+
+  it('invites somebody with no name to set one', async () => {
+    h.user = { id: ME, org_id: TEAM, email: MY_EMAIL, totp_enabled: false }
+    crypto.open.mockResolvedValue({ email: MY_EMAIL })
+    mountWith(sessionIn('ready', { share: 'none' }))
+    await unlocked()
+    expect(nameCaption()).toBe('Set a name and your teammates see it instead of your id.')
+  })
+
+  it('says, in coral under the name, that a name over the limit is not shared', async () => {
+    h.user = { id: ME, org_id: TEAM, email: MY_EMAIL, display_name: MY_LONG_NAME, totp_enabled: false }
+    crypto.open.mockResolvedValue({ email: MY_EMAIL, display_name: MY_LONG_NAME })
+    mountWith(sessionIn('ready', { share: 'too_long' }))
+    await unlocked()
+    const line = nameRow().querySelector('[data-tn-account="long"]') as HTMLElement
+    expect(line.textContent).toBe('Too long to share with your teammates. Shorten it to 100 characters or fewer.')
+    expect(line.className).toContain('text-destructive')
+    // The notice stays the caption.
+    expect(nameCaption()).toBe("Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.")
+  })
+
+  it.each(['cannot_open', 'key_mismatch'] as const)('%s: a coral row right under the name, with Reset', async (status) => {
+    mountWith(sessionIn(status))
+    await unlocked()
+    const broken = document.querySelector('[data-tn-account="broken"]') as HTMLElement
+    expect(broken.previousElementSibling).toBe(nameRow())
+    expect(broken).toHaveTextContent("Team names can't be opened on this device")
+    expect(broken).toHaveTextContent("Your teammates' names stay hidden here, and yours isn't shared. Reset them with your password.")
+    expect(broken.querySelector('[data-kit-icon="state"]')?.className).toContain('text-destructive')
+    expect(within(broken).getByRole('button', { name: 'Reset' }).className).toMatch(/destructive/)
+  })
+
+  it('resets with the password behind a hold: what goes, what stays, then a toast', async () => {
+    actions.reset.mockResolvedValue(undefined)
+    mountWith(sessionIn('cannot_open'))
+    await unlocked()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading')).toHaveTextContent('Reset team names?')
+    expect(dialog).toHaveTextContent('Your teammates see your name again at once. You see theirs after their next visit to Pulse.')
+    expect(dialog).toHaveTextContent('GoesThe names your teammates shared with you, and every copy of your name in your teams, including teams you left.')
+    expect(dialog).toHaveTextContent('StaysYour account and your name.')
+    const hold = within(dialog).getByRole('button', { name: 'Hold to reset' })
+    expect(hold).toBeDisabled()
+    fireEvent.change(within(dialog).getByLabelText('Your password'), { target: { value: 'correct horse' } })
+    fireEvent.click(hold)
+    await waitFor(() => expect(actions.reset).toHaveBeenCalledWith('correct horse'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(toast.success).toHaveBeenCalledWith('Team names reset')
+  })
+
+  it.each([
+    ['a wrong password', () => new TeamNamesError('team_names/password_failed'), "That password didn't match. Try again.", false],
+    ['Ciphera ID down', () => new TeamNamesError('team_names/proof_failed', { cause: new ApiError('Down', 502) }), "Couldn't reach Ciphera ID. Nothing changed. Try again.", true],
+    ['Pulse refusing the reset', () => new TeamNamesError('team_names/request_failed', { cause: new ApiError('Server error', 500) }), "Couldn't reset team names. Nothing changed. Try again.", true],
+  ])('a reset that fails on %s stays open with the copy deck\'s words', async (_what, error, words, readsAgain) => {
+    actions.reset.mockRejectedValue(error())
+    mountWith(sessionIn('cannot_open'))
+    await unlocked()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+    fireEvent.change(within(screen.getByRole('dialog')).getByLabelText('Your password'), { target: { value: 'correct horse' } })
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Hold to reset' }))
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(words)
+    expect(actions.retry).toHaveBeenCalledTimes(readsAgain ? 1 : 0)
+    expect(within(screen.getByRole('dialog')).getByLabelText('Your password')).toHaveValue('')
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('offers the one-time step as a prompt at the top of Account, and none while the profile is locked', async () => {
+    actions.setUp.mockResolvedValue(undefined)
+    mountWith(sessionIn('needs_setup'))
+    await unlocked()
+    const first = document.querySelector('[data-kit] section') as HTMLElement
+    expect(first.getAttribute('data-kit-section')).toBe('Set up team names?')
+    expect(first.closest('[data-tn-line="step"]')?.getAttribute('data-tn-line-place')).toBe('prompt')
+    fireEvent.click(within(first).getByRole('button', { name: 'Set up' }))
+    const field = within(document.querySelector('[data-tn-step-form]') as HTMLElement).getByLabelText('Your password')
+    fireEvent.change(field, { target: { value: 'correct horse' } })
+    fireEvent.submit(field.closest('form') as HTMLFormElement)
+    await waitFor(() => expect(actions.setUp).toHaveBeenCalledWith('correct horse'))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Team names set up'))
+
+    act(() => holder.set(sessionIn('locked')))
+    expect(document.querySelector('[data-tn-line]')).toBeNull()
+  })
+
+  it('tells the session the saved name, after the vault has it (design §5.6)', async () => {
+    mountWith(sessionIn('ready', { share: 'name' }))
+    await unlocked()
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: '  Alex M  ' } })
+    await act(async () => { await bar.onSave?.() })
+    expect(crypto.saveName).toHaveBeenCalledWith(ME, '  Alex M  ')
+    expect(actions.nameChanged).toHaveBeenCalledWith('Alex M')
+    expect(crypto.saveName.mock.invocationCallOrder[0]).toBeLessThan(actions.nameChanged.mock.invocationCallOrder[0])
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Alex Morgan-Ruiz' } })
+    await act(async () => { await bar.onSave?.() })
+    expect(actions.nameChanged).toHaveBeenLastCalledWith('Alex Morgan-Ruiz')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+  })
+
+  it('tells the session nothing when the vault refused the name', async () => {
+    crypto.saveName.mockRejectedValue(new Error('boom'))
+    mountWith(sessionIn('ready', { share: 'name' }))
+    await unlocked()
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Alex M' } })
+    await act(async () => { await bar.onSave?.().catch(() => undefined) })
+    expect(actions.nameChanged).not.toHaveBeenCalled()
+  })
+
+  it('a withdrawal that fails fails the save, so the draft stays and Save tries again', async () => {
+    actions.nameChanged.mockRejectedValueOnce(new TeamNamesError('team_names/request_failed', { cause: new ApiError('Server error', 500) }))
+    mountWith(sessionIn('ready', { share: 'name' }))
+    await unlocked()
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: '' } })
+    let rejected = false
+    await act(async () => { await bar.onSave?.().catch(() => { rejected = true }) })
+    expect(rejected).toBe(true)
+    expect(actions.nameChanged).toHaveBeenCalledWith('')
+    expect(toast.error).toHaveBeenCalledWith("Couldn't save your name. Try again.")
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
+    await act(async () => { await bar.onSave?.() })
+    expect(actions.nameChanged).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+  })
+})
+
+describe('Account with the team-names beta off everywhere: the clear still withdraws', () => {
+  it('tells the session a cleared name, which takes every copy back with the beta off (design §5.6)', async () => {
+    const context = noSession()
+    mount(context)
+    await unlocked()
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: '' } })
+    await act(async () => { await bar.onSave?.() })
+    expect(context.nameChanged).toHaveBeenCalledWith('')
+    // And nothing of the feature is drawn.
+    expect(document.querySelector('[data-tn-line], [data-tn-account]')).toBeNull()
   })
 })

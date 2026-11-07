@@ -129,9 +129,17 @@ export async function openNamesForMe(p: OpenInput): Promise<Map<string, OpenedNa
 }
 
 /**
- * The people whose name equals someone else's after cleaning and case folding (design §7): every
- * surface shows the id beside each of them. A member can choose another member's name; the person's
- * own name counts too, so a teammate who takes it is flagged.
+ * The words Pulse writes itself where a person would go (R65): "You", "Pulse" (the activity log's word
+ * when nobody acted), "Teammate" and "Former teammate". The surfaces draw them apart from names, and a
+ * name equal to one of them shows its id, as a duplicate does, so a member called Pulse cannot pass for
+ * Pulse itself. Compared under the same key as names.
+ */
+export const PULSE_WORDS: ReadonlySet<string> = new Set(['You', 'Pulse', 'Teammate', 'Former teammate'].map(nameFoldKey))
+
+/**
+ * The people every surface shows the id beside (design §7, R65): whose name equals someone else's
+ * after cleaning and case folding, or equals one of Pulse's own words. A member can choose another
+ * member's name; the person's own name counts too, so a teammate who takes it is flagged.
  */
 export function duplicateIds(names: ReadonlyMap<string, OpenedName>, own: { userId: string; name: string } | null): Set<string> {
   const byKey = new Map<string, string[]>()
@@ -142,6 +150,6 @@ export function duplicateIds(names: ReadonlyMap<string, OpenedName>, own: { user
   for (const [userId, opened] of names) add(userId, opened.name)
   if (own) add(own.userId, own.name)
   const out = new Set<string>()
-  for (const ids of byKey.values()) if (ids.length > 1) for (const id of ids) out.add(id)
+  for (const [key, ids] of byKey) if (ids.length > 1 || PULSE_WORDS.has(key)) for (const id of ids) out.add(id)
   return out
 }

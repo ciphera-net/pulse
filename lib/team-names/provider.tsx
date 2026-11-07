@@ -52,6 +52,8 @@ export interface TeamNamesContextValue {
   activeTeamId: string | null
   /** The beta is on for the active team. */
   activeFlagged: boolean
+  /** The beta is on in at least one of the person's teams, so their name reaches teammates (Account says so). */
+  anyFlagged: boolean
   setUp(password: string): Promise<void>
   reset(password: string): Promise<void>
   /** After the error state: reads the person's key again. */
@@ -153,8 +155,8 @@ export function TeamNamesProvider({ children }: { children: ReactNode }) {
   }, [session, flagged])
 
   const value = useMemo<TeamNamesContextValue>(
-    () => ({ snapshot: session ? snapshot : null, myId: userId, activeTeamId, activeFlagged, setUp, reset, retry, nameChanged }),
-    [session, snapshot, userId, activeTeamId, activeFlagged, setUp, reset, retry, nameChanged],
+    () => ({ snapshot: session ? snapshot : null, myId: userId, activeTeamId, activeFlagged, anyFlagged, setUp, reset, retry, nameChanged }),
+    [session, snapshot, userId, activeTeamId, activeFlagged, anyFlagged, setUp, reset, retry, nameChanged],
   )
 
   return <TeamNamesContext.Provider value={value}>{children}</TeamNamesContext.Provider>

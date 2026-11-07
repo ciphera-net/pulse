@@ -25,6 +25,10 @@ import { InviteDialog } from './InviteDialog'
 import { NameTeamDialog, suggestTeamName } from './NameTeamDialog'
 import { KitLoadError, KitLoadingRows, useTeamRemoval } from './states'
 import { isTeamRole, joinedWords, linkState, personName, ROLE_LINE, roleWord, shortDay } from './words'
+import { DialogPerson, PersonAvatar, PersonCaption, PersonLabel } from '@/components/settings/names/people'
+import { lineWithNotYet } from '@/components/settings/names/prompt'
+import { usePeopleNames } from '@/components/settings/names/useNames'
+import { plainName, shortId, titleName } from '@/components/settings/names/words'
 
 /**
  * People (copy deck §9.3, R3): everyone in the team, then the invite links the owner and admins made, every row with
@@ -33,6 +37,10 @@ import { isTeamRole, joinedWords, linkState, personName, ROLE_LINE, roleWord, sh
  *
  * The people list needs no roles read (R1: three fixed roles), and the invite links are read only for the owner and
  * admins: the server refuses them to a member (§9.11.2), so a member's page never asks.
+ *
+ * With the team-names beta on (design §7, R63): each person with an avatar, their name and, under it, the role and the
+ * id; the remove and change role dialogs carry the same person row over their button, and the Undo bar and toast say
+ * the id in brackets. Off, every row is today's.
  */
 export function PeopleSection({ alone }: { alone: boolean }) {
   const { user } = useAuth()
@@ -51,10 +59,15 @@ export function PeopleSection({ alone }: { alone: boolean }) {
   const { organizations, mutate: revalidateOrganizations } = useUserOrganizations()
   const pendingKeys = usePendingKeys()
   const removeLater = useTeamRemoval()
+  const names = usePeopleNames()
+  // How the dialogs, the Undo bar and the toast name a person: the name alone in a title (the person row under it has
+  // the id), the name and the id in brackets where Facet takes plain text (copy deck §14.3, §14.8).
+  const titleFor = (userId: string) => (names.on ? titleName(names.who(userId, true), userId) : personName(userId, myId))
+  const plainFor = (userId: string) => (names.on ? plainName(names.who(userId, true), userId) : personName(userId, myId))
 
   const [retryingMembers, setRetryingMembers] = useState(false)
   const [retryingLinks, setRetryingLinks] = useState(false)
-  const [confirmRemove, setConfirmRemove] = useState<{ userId: string; name: string } | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<OrganizationMember | null>(null)
   const [confirmRevoke, setConfirmRevoke] = useState<InviteLink | null>(null)
   const [changeRoleFor, setChangeRoleFor] = useState<OrganizationMember | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -102,7 +115,8 @@ export function PeopleSection({ alone }: { alone: boolean }) {
 
   const doRemove = () => {
     if (!orgId || !confirmRemove) return
-    const { userId, name } = confirmRemove
+    const userId = confirmRemove.user_id
+    const name = plainFor(userId)
     removeLater({
       key: `member:${userId}`,
       message: `${name} removed`,
@@ -159,7 +173,9 @@ export function PeopleSection({ alone }: { alone: boolean }) {
     }
   }
 
-  const description = alone ? undefined : canManage ? 'Everyone in this team, and the invite links you made.' : 'Everyone in this team.'
+  const ownDescription = alone ? undefined : canManage ? 'Everyone in this team, and the invite links you made.' : 'Everyone in this team.'
+  // "Not arrived yet" goes in this line (P3 B); locked and the one-time step are the page's prompt (TeamPage).
+  const description = names.on ? lineWithNotYet(ownDescription, names.lineFor(people.map((m) => m.user_id))) : ownDescription
   const now = new Date()
 
   return (
@@ -188,20 +204,31 @@ export function PeopleSection({ alone }: { alone: boolean }) {
             people.map((m) => {
               const isMe = m.user_id === myId
               const name = personName(m.user_id, myId)
+              const who = names.on ? names.who(m.user_id, true) : null
               const isOwnerRow = m.role === 'owner'
               const canRemove = canManage && !isMe && !isOwnerRow
               return (
-                <div key={m.user_id} data-team-person={isMe ? 'me' : 'other'} data-team-role={m.role}>
+                <div
+                  key={m.user_id}
+                  data-team-person={isMe ? 'me' : 'other'}
+                  data-team-role={m.role}
+                  data-tn-person-row={who ? shortId(m.user_id) : undefined}
+                >
                   <KitRow
-                    label={name}
+                    label={who ? <PersonLabel member={m} who={who} /> : name}
+                    avatar={who ? <PersonAvatar id={m.user_id} seed={m.avatar_seed} /> : undefined}
                     caption={
                       <>
-                        <span className="block">
-                          <span data-team-status="live">
-                            <KitStatus tone="live">{roleWord(m.role)}</KitStatus>
+                        {who ? (
+                          <PersonCaption member={m} who={who} zone={zone} now={now} />
+                        ) : (
+                          <span className="block">
+                            <span data-team-status="live">
+                              <KitStatus tone="live">{roleWord(m.role)}</KitStatus>
+                            </span>
+                            {m.joined_at ? ` · Joined ${shortDay(m.joined_at, zone, now)}` : null}
                           </span>
-                          {m.joined_at ? ` · Joined ${shortDay(m.joined_at, zone, now)}` : null}
-                        </span>
+                        )}
                         {isTeamRole(m.role) && <span className="mt-0.5 block">{ROLE_LINE[m.role]}</span>}
                       </>
                     }
@@ -223,8 +250,9 @@ export function PeopleSection({ alone }: { alone: boolean }) {
                           data-team-slot="2"
                           disabled={!canRemove}
                           className={canRemove ? DESTRUCTIVE_OUTLINE : undefined}
-                          onClick={() => setConfirmRemove({ userId: m.user_id, name })}
-                          aria-label={`Remove ${name}`}
+                          onClick={() => setConfirmRemove(m)}
+                          // The id is read out with a name (copy deck §14.2): two people may share one.
+                          aria-label={who?.kind === 'name' ? `Remove ${who.name}, ${shortId(m.user_id)}` : `Remove ${who ? titleFor(m.user_id) : name}`}
                           aria-haspopup="dialog"
                         >
                           Remove
@@ -308,7 +336,12 @@ export function PeopleSection({ alone }: { alone: boolean }) {
           <ChangeRoleDialog
             orgId={orgId}
             member={changeRoleFor}
-            name={changeRoleFor ? personName(changeRoleFor.user_id, myId) : ''}
+            name={changeRoleFor ? titleFor(changeRoleFor.user_id) : ''}
+            person={
+              names.on && changeRoleFor ? (
+                <DialogPerson member={changeRoleFor} who={names.who(changeRoleFor.user_id, true)} zone={zone} now={now} />
+              ) : undefined
+            }
             onClose={() => setChangeRoleFor(null)}
             onChanged={onRoleChanged}
           />
@@ -320,16 +353,20 @@ export function PeopleSection({ alone }: { alone: boolean }) {
         onOpenChange={(open) => {
           if (!open) setConfirmRemove(null)
         }}
-        title={<KitDialogTitle icon={<UserMinus weight="bold" />}>{`Remove ${confirmRemove?.name ?? ''}?`}</KitDialogTitle>}
+        title={<KitDialogTitle icon={<UserMinus weight="bold" />}>{`Remove ${confirmRemove ? titleFor(confirmRemove.user_id) : ''}?`}</KitDialogTitle>}
         description={
           confirmRemove
-            ? `${confirmRemove.name} loses access to this team's sites and settings, and the AI assistants they connected stop working. API keys they made keep working. You have 6 seconds to undo; after that, they need a new invite to come back.`
+            ? `${titleFor(confirmRemove.user_id)} loses access to this team's sites and settings, and the AI assistants they connected stop working. API keys they made keep working. You have 6 seconds to undo; after that, they need a new invite to come back.`
             : undefined
         }
         holdLabel="Hold to remove"
         icon={<UserMinus weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doRemove}
-      />
+      >
+        {names.on && confirmRemove ? (
+          <DialogPerson member={confirmRemove} who={names.who(confirmRemove.user_id, true)} zone={zone} now={now} />
+        ) : null}
+      </HoldDialog>
 
       <HoldDialog
         open={confirmRevoke !== null}

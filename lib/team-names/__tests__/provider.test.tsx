@@ -121,7 +121,7 @@ function Probe() {
   }, [actions])
   return (
     <pre data-testid="probe">
-      {JSON.stringify({ state: view.state, share: view.share, team: view.team?.status ?? null, self, bob, cleo })}
+      {JSON.stringify({ state: view.state, share: view.share, team: view.team?.status ?? null, active: view.activeTeamHasBeta, any: view.anyTeamHasBeta, self, bob, cleo })}
     </pre>
   )
 }
@@ -166,6 +166,29 @@ describe('with the beta off', () => {
     expect(h.api.withdrawNames).toHaveBeenCalledTimes(1)
     await act(async () => { await captured.actions?.nameChanged('Ada') })
     expect(apiCalls()).toBe(1)
+  })
+})
+
+describe('which teams have the beta', () => {
+  it('says the active team has it, and so do some of the person\'s teams', async () => {
+    render(tree())
+    await waitFor(() => expect(read()).toMatchObject({ active: true, any: true }))
+  })
+
+  it('says only "some team" when the beta is on in another team, and runs the session for it', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: [], [OTHER_TEAM]: ['team-names'] }))
+    render(tree())
+    await waitFor(() => expect(read()).toMatchObject({ active: false, any: true, state: 'ready' }))
+    // No team view for the active team: its surfaces stay as they are.
+    expect(read().team).toBeNull()
+    expect(read().bob).toEqual({ kind: 'not_yet', former: null })
+  })
+
+  it('says neither with the beta off everywhere', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: [], [OTHER_TEAM]: [] }))
+    render(tree())
+    await settle()
+    expect(read()).toMatchObject({ active: false, any: false, state: 'off' })
   })
 })
 
