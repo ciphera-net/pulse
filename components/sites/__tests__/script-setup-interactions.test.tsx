@@ -20,9 +20,9 @@ function mount(features: Record<string, unknown> = {}) {
   )
 }
 
-/** The snippet lives behind the "Show snippet" disclosure in this state. */
+/** The snippet lives behind the "Show script" disclosure in this state. */
 function snippet(container: HTMLElement): string {
-  fireEvent.click(screen.getByText('Show snippet'))
+  fireEvent.click(screen.getByText('Show script'))
   return container.textContent ?? ''
 }
 

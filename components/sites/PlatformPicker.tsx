@@ -27,11 +27,11 @@ export interface PlatformPickerWords {
 
 export const INSTALL_PANEL_WORDS: PlatformPickerWords = {
   heading: 'Where are you installing Pulse?',
-  line: 'Pick your platform for the exact snippet and where it goes.',
+  line: 'Pick your platform for the exact script and where it goes.',
   search: (count) => `Search ${count} platforms…`,
   noMatch: (query) => (
     <>
-      No platforms match &ldquo;{query}&rdquo;. The universal snippet below works anywhere you can add a{' '}
+      No platforms match &ldquo;{query}&rdquo;. The tracking script below works anywhere you can add a{' '}
       <code className="font-mono">&lt;script&gt;</code> tag.
     </>
   ),

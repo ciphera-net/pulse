@@ -27,7 +27,7 @@
     "@ciphera-net/facet-hold": "^0.1.1",
     "@ciphera-net/facet-tailwind": "^0.3.0",
     "@ciphera-net/facet-tokens": "^0.1.0",
-    "@ciphera-net/pulse-integrations": "0.1.0",
+    "@ciphera-net/pulse-integrations": "0.1.1",
     "@ciphera-net/pulse-oauth": "0.1.0",
     "@ciphera-net/tessera": "0.3.0",
     "@ducanh2912/next-pwa": "^10.2.9",
