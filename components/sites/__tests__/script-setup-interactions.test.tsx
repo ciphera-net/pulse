@@ -32,7 +32,7 @@ describe('interaction capture rows', () => {
     expect(screen.getByText('Interaction capture')).toBeTruthy()
     // A surviving sibling proves the panel is expanded, so the absences below
     // are about the rows rather than about a collapsed panel.
-    expect(screen.getByText(/Subresource Integrity/i)).toBeTruthy()
+    expect(screen.getByText('Respect Do Not Track')).toBeTruthy()
     for (const k of ['Clicks', 'Copies', 'Form submits']) {
       expect(screen.queryByText(k), `${k} must be hidden while the parent is off`).toBeNull()
     }
@@ -113,11 +113,14 @@ describe('interaction capture rows', () => {
     expect(text, 'no flag for a tag that is not there').not.toContain('data-no-copy')
   })
 
-  it('pins the companion with its OWN integrity hash under SRI', () => {
+  it('names the rolling companion with no integrity, even for a site that stored sri', () => {
+    // The version lock (Subresource Integrity) was removed on 07-11-2026; a stored
+    // `sri: true` from before then must not change the snippet.
     const { container } = mount({ interactions: true, sri: true })
     const text = snippet(container)
-    const hashes = [...text.matchAll(/integrity="([^"]+)"/g)].map((m) => m[1])
-    expect(hashes, 'two scripts, two hashes').toHaveLength(2)
-    expect(new Set(hashes).size, 'the two hashes must differ').toBe(2)
+    expect(text).toContain('src="https://js.ciphera.net/script.js"')
+    expect(text).toContain('src="https://js.ciphera.net/script.interactions.js"')
+    expect(text).not.toContain('integrity=')
+    expect(text).not.toContain('crossorigin=')
   })
 })

@@ -44,16 +44,13 @@ const PUBLIC_ROUTES = new Set([
   '/script.interactions.js',
   '/script.interactions.debug.js',
   // * The note a site owner's own-visits link leaves on their site (tracker 1.8.0). A core loaded from
-  // * this mirror loads its note from here too, and next-pwa precaches it like every public/ file.
+  // * this mirror loads its note from here too.
+  // * Static file in public/, so next-pwa precaches it like every public/ file outside next.config.ts's
+  // * publicExcludes. A 307 to /login here fails the WHOLE service worker install (workbox aborts on one
+  // * bad precache response), so the PWA never installs for signed-out visitors and every page load logs
+  // * a fetch error. Same reason sw.js/workbox-*.js are excluded from the matcher below.
   '/script.note.js',
   '/script.note.debug.js',
-  '/script-sri.json', // * Subresource Integrity manifest (sha384 of the tracking script); consumed by ciphera-website build to pin <script integrity="">.
-  // * Static file in public/, so next-pwa precaches it. A 307 to /login here fails
-  // * the WHOLE service worker install (workbox aborts on one bad precache
-  // * response), so the PWA never installed for signed-out visitors and every page
-  // * load logged a fetch error. Same reason sw.js/workbox-*.js are excluded from
-  // * the matcher below.
-  '/script-versions.json',
   // * The history-import worker (PULSE-107, M2): a static script new Worker()
   // * loads from this origin, and public source in this public repo. Measured on
   // * staging 27-09-2026: without this entry a request with no session 307s to

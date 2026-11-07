@@ -34,7 +34,27 @@ describe('ScriptSetupBlock without the visitor-recognition control', () => {
     expect(text).not.toContain('data-storage')
     // Non-vacuous for the panel half: a surviving sibling row IS rendered,
     // so the removed row's absence is about the row, not a collapsed panel.
-    expect(screen.getByText(/Subresource Integrity/i)).toBeTruthy()
+    expect(screen.getByText('Respect Do Not Track')).toBeTruthy()
     expect(screen.queryByText('Visitor recognition')).toBeNull()
+  })
+})
+
+// The version lock (Subresource Integrity) was removed on 07-11-2026: no row
+// offers it, and a site that stored `sri: true` before then gets the rolling tag.
+describe('ScriptSetupBlock without the version lock', () => {
+  it('renders no Subresource Integrity row and emits the rolling tag for a stored sri', () => {
+    const { container } = render(
+      <ScriptSetupBlock site={{ domain: 'example.com', script_features: { sri: true } }} siteId="s1" />,
+    )
+
+    fireEvent.click(screen.getByText('Show script'))
+    const text = container.textContent ?? ''
+    expect(text).toContain('src="https://js.ciphera.net/script.js"')
+    expect(text).not.toContain('integrity=')
+    expect(text).not.toContain('/v1.')
+    // A surviving sibling row proves the panel is expanded.
+    expect(screen.getByText('Respect Do Not Track')).toBeTruthy()
+    expect(screen.queryByText(/Subresource Integrity/i)).toBeNull()
+    expect(screen.queryByText(/Lock the script/i)).toBeNull()
   })
 })

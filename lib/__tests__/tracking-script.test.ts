@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getIntegration } from '@/lib/integrations'
-import scriptVersions from '@/public/script-versions.json'
 import { choicesFrom, coreFlags, featuresPayload, interactionFlags, trackingScript } from '@/lib/tracking-script'
-
-const manifest = scriptVersions as { baseUrl: string; files: Record<string, { path: string; sha384: string }> }
 
 describe('the tracking script builder', () => {
   it('a site with nothing stored gets the plain tag: every feature on, both signals respected', () => {
@@ -28,22 +25,22 @@ describe('the tracking script builder', () => {
     expect(second).toBe('<script defer data-no-copy src="https://js.ciphera.net/script.interactions.js"></script>')
   })
 
-  it('a locked script names the versioned file with its integrity, never the rolling one', () => {
-    const text = trackingScript('example.com', undefined, choicesFrom({ sri: true }))
-    const meta = manifest.files['script.js']
-    expect(text).toContain(`src="${manifest.baseUrl}${meta.path}"`)
-    expect(text).toContain(`integrity="${meta.sha384}"`)
-    expect(text).toContain('crossorigin="anonymous"')
-    expect(text).not.toContain('https://js.ciphera.net/script.js"')
+  // The version lock (Subresource Integrity) was removed on 07-11-2026. A site that saved General before then still
+  // carries `sri` in script_features, sometimes true: it must change nothing in the copied script.
+  it('ignores a stored sri key: the rolling files, no integrity, for the core and the companion', () => {
+    expect(trackingScript('example.com', undefined, choicesFrom({ sri: true, interactions: true }))).toBe(
+      '<script defer data-domain="example.com" src="https://js.ciphera.net/script.js"></script>\n' +
+        '<script defer src="https://js.ciphera.net/script.interactions.js"></script>',
+    )
   })
 
-  it("uses a platform's own wiring, unless the script is locked", () => {
+  it("uses a platform's own wiring, whatever a stored sri key says", () => {
     const next = getIntegration('nextjs')
     expect(next?.snippet?.code).toBeTruthy()
     const wired = trackingScript('example.com', next, choicesFrom({}))
     expect(wired).not.toMatch(/^<script defer data-domain/)
     expect(wired).toContain('example.com')
-    expect(trackingScript('example.com', next, choicesFrom({ sri: true }))).toMatch(/^<script defer data-domain="example.com"/)
+    expect(trackingScript('example.com', next, choicesFrom({ sri: true }))).toBe(wired)
   })
 
   it('cuts the domain to hostname characters, so a quote cannot leave data-domain', () => {
@@ -53,7 +50,15 @@ describe('the tracking script builder', () => {
 
   it('reports the keys it owns, for a merge over the stored object', () => {
     expect(featuresPayload(choicesFrom({ storage: 'session', scroll: false }))).toEqual({
-      scroll: false, outbound: true, downloads: true, sri: false, interactions: false, clicks: true, copy: true, forms: true,
+      scroll: false, outbound: true, downloads: true, interactions: false, clicks: true, copy: true, forms: true,
     })
+  })
+
+  it('never writes sri, so a merge leaves a stored one as it was and nothing reads it', () => {
+    const stored = { sri: true, scroll: true }
+    const merged = { ...stored, ...featuresPayload(choicesFrom(stored)) }
+    expect(merged.sri).toBe(true)
+    expect(Object.keys(featuresPayload(choicesFrom(stored)))).not.toContain('sri')
+    expect('sri' in choicesFrom(stored)).toBe(false)
   })
 })

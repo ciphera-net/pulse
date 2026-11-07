@@ -64,14 +64,14 @@ describe('privacy-signal rows', () => {
     ).toBeTruthy()
   })
 
-  it('sits after Subresource Integrity — end of the Customize tracking list', () => {
+  it('sits after Interaction capture — end of the Customize tracking list', () => {
     const { container } = mount()
     const text = container.textContent ?? ''
-    const sri = text.indexOf('Subresource Integrity')
+    const interactions = text.indexOf('Interaction capture')
     const dnt = text.indexOf('Respect Do Not Track')
     const gpc = text.indexOf('Respect Global Privacy Control')
-    expect(sri).toBeGreaterThan(-1)
-    expect(dnt).toBeGreaterThan(sri)
+    expect(interactions).toBeGreaterThan(-1)
+    expect(dnt).toBeGreaterThan(interactions)
     expect(gpc).toBeGreaterThan(dnt)
   })
 
