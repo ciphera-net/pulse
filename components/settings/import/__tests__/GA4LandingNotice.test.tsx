@@ -48,6 +48,6 @@ describe('the GA4 code on a landing page', () => {
   it('never shows an unknown code raw', () => {
     window.history.replaceState({}, '', '/?ga4=<b>x</b>')
     render(<GA4LandingNotice />)
-    expect(toast.error).toHaveBeenCalledWith('Something unexpected came back from Pulse. Nothing more was saved. Try again.')
+    expect(toast.error).toHaveBeenCalledWith("Pulse sent an answer this page can't read. Nothing more was saved. Try again.")
   })
 })

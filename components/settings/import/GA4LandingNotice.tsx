@@ -12,8 +12,8 @@ import { ga4CallbackMessage } from '@/lib/import/messages'
  * Console result is said on its landing page (`?gsc=`): a toast, then the code
  * is scrubbed from the address so a reload doesn't say it again.
  *
- * A code that did reach a site lands on the Import tab instead, which says it
- * in the GA4 row (SiteImportTab). Renders nothing.
+ * A code that did reach a site lands on Settings → Data instead, which says it
+ * under the Google Analytics row (DataPage). Renders nothing.
  */
 export function GA4LandingNotice() {
   useEffect(() => {

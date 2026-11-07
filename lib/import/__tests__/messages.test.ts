@@ -171,11 +171,11 @@ describe('the import error map', () => {
 
   it('says a code it does not know as the unexpected sentence, with the server code behind Details', () => {
     expect(importErrorMessage({ code: 'brand_new_code', detail: { server_code: 'brand_new_code' } }, 'plausible')).toEqual({
-      text: 'Something unexpected came back from Pulse. Nothing more was saved. Try again.',
+      text: "Pulse sent an answer this page can't read. Nothing more was saved. Try again.",
       details: 'brand_new_code',
     })
     expect(importErrorMessage({ code: 'unexpected_response', detail: { server_code: 'teapot' } }, 'plausible')).toEqual({
-      text: 'Something unexpected came back from Pulse. Nothing more was saved. Try again.',
+      text: "Pulse sent an answer this page can't read. Nothing more was saved. Try again.",
       details: 'teapot',
     })
   })
@@ -217,6 +217,31 @@ describe('the import error map', () => {
     ).toBe("There's nothing to import: every day in this file is already measured by Pulse.")
   })
 
+  // Copy deck §8.3 (settings overhaul): no "we", no "history window" no page defines, no "busy" for a server error.
+  it('says the copy deck §8.3 words for a fault, a lost connection, a server error, a refusal and old days', () => {
+    expect(importErrorMessage({ code: 'invalid_batch' }, 'plausible')?.text).toBe(
+      'The import stopped because of a fault in Pulse. Nothing more was saved. Try again, and if it happens again, send the code under Details to support.',
+    )
+    expect(importErrorMessage({ code: 'network' }, 'plausible')?.text).toBe(
+      "Pulse can't be reached. The import is paused where it was and continues when you try again.",
+    )
+    expect(importErrorMessage({ code: 'server_error' }, 'plausible')?.text).toBe(
+      "Pulse couldn't take this part. The import is paused where it was. Try again in a minute.",
+    )
+    expect(importErrorMessage({ code: 'rate_limited' }, 'plausible')?.text).toBe('Pulse is busy. The import is paused where it was. Try again in a minute.')
+    expect(importErrorMessage({ code: 'forbidden' }, 'plausible')?.text).toBe("Only your team's owners and admins can import history.")
+    expect(importErrorMessage({ code: 'source_unavailable' }, 'matomo')?.text).toBe(
+      'Matomo kept failing to answer. The import is paused where it was. Try again later.',
+    )
+    expect(
+      importErrorMessage({ code: 'no_data_in_range', detail: { skipped: { outside_history_window: 2, pulse_measured: 4 } } }, 'plausible')?.text,
+    ).toBe("There's nothing to import: every day in this file is older than this site keeps data, or already measured by Pulse.")
+    expect(
+      importErrorMessage({ code: 'no_data_in_range', detail: { skipped: { outside_history_window: 2 } } }, 'plausible')?.text,
+    ).toBe("There's nothing to import: every day in this file is older than this site keeps data.")
+    for (const s of allSentences()) expect(s, s).not.toMatch(/\bwe\b|our side|history window|busy right now/i)
+  })
+
   it('shows Matomo\'s own words only behind Details on a bad token', () => {
     const m = importErrorMessage(
       { code: 'matomo_bad_token', sourceMessage: 'Unable to authenticate with the provided token.' },
@@ -242,7 +267,7 @@ describe('the import error map', () => {
   // length check above.
   it('says a malformed request is a try-again, not a reason', () => {
     expect(importErrorMessage({ code: 'invalid_request' }, 'matomo')?.text).toBe(
-      'Something went wrong sending that request. Try again.',
+      "Pulse couldn't send that request. Try again.",
     )
   })
 
@@ -308,14 +333,14 @@ describe('the import error map', () => {
   it('reads a code named like an Object member as one it does not know', () => {
     for (const code of OBJECT_MEMBER_NAMES) {
       expect(importErrorMessage({ code }, 'plausible')).toEqual({
-        text: 'Something unexpected came back from Pulse. Nothing more was saved. Try again.',
+        text: "Pulse sent an answer this page can't read. Nothing more was saved. Try again.",
         details: code,
       })
       const failed = failedImportMessage(
         { error_code: code, steps_total: 1, cursor: null, progressed_at: null, started_at: null, created_at: '2026-09-26T09:00:00Z' },
         'plausible',
       )
-      expect(failed.text).toMatch(/^Something unexpected/)
+      expect(failed.text).toMatch(/^Pulse sent an answer this page can't read\./)
     }
   })
 
@@ -396,7 +421,7 @@ describe('a stopped upload', () => {
     expect(failedImportMessage({ ...base, error_code: 'reconnect_required' }, 'matomo').text).toBe(
       'Matomo no longer accepts the connection. Connect again; the import continues where it stopped.',
     )
-    expect(failedImportMessage({ ...base, error_code: null }, 'plausible').text).toMatch(/^Something unexpected/)
+    expect(failedImportMessage({ ...base, error_code: null }, 'plausible').text).toMatch(/^Pulse sent an answer this page can't read\./)
   })
 })
 
@@ -404,7 +429,7 @@ describe('skipped rows', () => {
   it('adds browser and server counts reason by reason, largest first, zeros dropped', () => {
     const lines = skipLines([{ outside_history_window: 412, pulse_measured: 0 }, { collection_off: 20, outside_history_window: 3 }])
     expect(lines.map((l) => l.text)).toEqual([
-      "415 rows dated before this site's history window",
+      '415 rows older than this site keeps data',
       "20 rows for data this site doesn't collect",
     ])
   })
@@ -427,7 +452,7 @@ describe('skipped rows', () => {
   })
 
   it('writes one row in the singular', () => {
-    expect(skipReasonPhrase('outside_history_window', 1)).toBe("1 row dated before this site's history window")
+    expect(skipReasonPhrase('outside_history_window', 1)).toBe('1 row older than this site keeps data')
     expect(skipReasonPhrase('needs_place_names', 1)).toBe('1 region or city with no name Pulse knows')
   })
 })

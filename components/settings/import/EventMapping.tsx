@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Input, Toggle } from '@ciphera-net/facet'
-import { PanelRow, PanelRows } from '@/components/settings/panels'
+import { KitBlock, KitRow } from '@/components/settings/kit/Kit'
 import { listGoals } from '@/lib/api/goals'
 import { getGoalStats } from '@/lib/api/stats'
 import type { SourceEvent } from '@/lib/import/core/events'
@@ -18,14 +18,12 @@ import {
   type MappingRow,
 } from './mappingRows'
 
-// ─── The mapping step (M12-d, owner pick A, 28-09-2026) ────────────────────
+// ─── The mapping step (M12-d, owner pick A, 28-09-2026; drawn as one table since R51, option B) ────────────────
 //
-// One settings row per source event, the grid every settings row uses
-// (PanelRow): the tool's label and its count on the left, the editable name in
-// Pulse in the middle (monospace, because the value IS an event key, as the
-// Goals tab's Event name field), and Facet's Toggle as the include switch. The
-// section sits in the confirm state after "Skipped", before the footer, for
-// every upload source and for Matomo (through its events preview).
+// One table row per source event: the tool's label and its count, the editable name in Pulse (monospace, because the
+// value IS an event key, as Goals' event name field), and Facet's Toggle as the include switch. The section sits in
+// the check after "Skipped", before the step's buttons, for every upload source, for Google Analytics and for Matomo
+// (through their events preview).
 
 /** The names this site already records, for W-M12-3 and the goal suggestion. */
 export interface KnownEventNames {
@@ -107,54 +105,82 @@ export function useEventMapping(
   return { rows, setName, toggle, ...result }
 }
 
-/** The Events section: the header row, then one row per source event. */
-export function EventMapping({ state, known }: { state: EventMappingState; known: ReadonlySet<string> }) {
+// The rules table's grammar (Privacy, copy deck §7.6): one column template for the header and every row, so the
+// columns line up; each row is its own grid, and an `auto` column would size to each row's content. The count column
+// fits "1,234,567" and the last one Facet's 44 px switch, so the switch ends on the section's right edge.
+const COLUMNS = 'md:grid-cols-[minmax(0,1fr)_6rem_minmax(0,1.25fr)_3rem]'
+
+/**
+ * The Events section (R51, option B): its row with the caption and the count, then one table, Event in {tool} ·
+ * Events · Name in Pulse · Import. The name is an event key, so its field reads in mono (as Goals' event name), at the
+ * settings fields' height. Rows stack below `md`, so a phone never scrolls sideways.
+ */
+export function EventMapping({ state, known, tool }: { state: EventMappingState; known: ReadonlySet<string>; tool: string }) {
   const { rows } = state
   if (rows.length === 0) return null
   return (
-    <div className="border-t border-border" data-testid="import-event-mapping">
-      <PanelRows>
-        <PanelRow label="Events" caption={EVENT_MAPPING_CAPTION}>
-          <span className="text-sm text-muted-foreground" data-testid="import-events-count">
-            {eventsImportedCount(state.included, rows.length)}
-          </span>
-        </PanelRow>
-        {rows.map((row, i) => {
-          const problem = rowProblem(row)
-          const notes = rowNotes(rows, i, known)
-          const inputId = `import-event-${i}`
-          return (
-            <PanelRow
-              key={row.source_name}
-              label={
-                <span className="block truncate" title={row.source_name}>
-                  {row.source_name}
-                </span>
-              }
-              caption={<span className="tabular-nums">{`${row.count.toLocaleString('en-US')} ${row.count === 1 ? 'event' : 'events'}`}</span>}
-              control={<Toggle checked={row.included} onChange={() => state.toggle(i)} aria-label={`Import ${row.source_name}`} />}
-            >
-              <Input
-                id={inputId}
-                value={row.name}
-                onChange={(e) => state.setName(i, e.target.value)}
-                disabled={!row.included}
-                spellCheck={false}
-                autoComplete="off"
-                aria-label={`Name in Pulse for ${row.source_name}`}
-                aria-invalid={problem !== null || undefined}
-                className={`h-9 font-mono ${problem ? 'border-destructive focus:border-destructive' : ''}`}
-              />
-              {problem && <p className="mt-1 text-xs text-destructive">{PROBLEM_TEXT[problem]}</p>}
-              {notes.map((n) => (
-                <p key={n} className="mt-1 text-xs text-muted-foreground">
-                  {n}
-                </p>
-              ))}
-            </PanelRow>
-          )
-        })}
-      </PanelRows>
+    <div className="divide-y divide-border" data-testid="import-event-mapping">
+      <KitRow label="Events" caption={EVENT_MAPPING_CAPTION}>
+        <span className="text-sm text-muted-foreground" data-testid="import-events-count">
+          {eventsImportedCount(state.included, rows.length)}
+        </span>
+      </KitRow>
+      <KitBlock>
+        <div role="table" aria-label="Events" data-import-events="table" className="w-full text-sm">
+          <div role="rowgroup">
+            <div role="row" className={`hidden gap-3 pb-2 text-xs text-muted-foreground md:grid ${COLUMNS}`}>
+              <span role="columnheader">{`Event in ${tool}`}</span>
+              <span role="columnheader" className="text-right">
+                Events
+              </span>
+              <span role="columnheader">Name in Pulse</span>
+              <span role="columnheader" className="text-right">
+                Import
+              </span>
+            </div>
+          </div>
+          <div role="rowgroup" className="divide-y divide-border md:border-t md:border-border">
+            {rows.map((row, i) => {
+              const problem = rowProblem(row)
+              const notes = rowNotes(rows, i, known)
+              return (
+                <div key={row.source_name} role="row" data-import-event="" className={`grid grid-cols-1 gap-3 py-3 md:items-start ${COLUMNS}`}>
+                  {/* Text cells sit 12 px down and the switch 10 px, so each centres on the 44 px field's line. */}
+                  <div role="cell" className="min-w-0 truncate font-medium text-foreground md:pt-3" title={row.source_name}>
+                    {row.source_name}
+                  </div>
+                  <div role="cell" className="tabular-nums text-muted-foreground md:pt-3 md:text-right">
+                    {row.count.toLocaleString('en-US')}
+                    {/* Below md the column's header is hidden, so the count names its unit. */}
+                    <span className="md:hidden">{row.count === 1 ? ' event' : ' events'}</span>
+                  </div>
+                  <div role="cell" className="min-w-0">
+                    <Input
+                      id={`import-event-${i}`}
+                      value={row.name}
+                      onChange={(e) => state.setName(i, e.target.value)}
+                      disabled={!row.included}
+                      spellCheck={false}
+                      autoComplete="off"
+                      aria-label={`Name in Pulse for ${row.source_name}`}
+                      className="font-mono"
+                      error={problem ? PROBLEM_TEXT[problem] : undefined}
+                    />
+                    {notes.map((n) => (
+                      <p key={n} className="mt-1 text-xs text-muted-foreground">
+                        {n}
+                      </p>
+                    ))}
+                  </div>
+                  <div role="cell" className="flex md:justify-end md:pt-2.5">
+                    <Toggle checked={row.included} onChange={() => state.toggle(i)} aria-label={`Import ${row.source_name}`} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </KitBlock>
     </div>
   )
 }
