@@ -61,8 +61,9 @@ export function Dropzone({
         // A button takes no aria-invalid: the refusal is announced (role="alert") and named as its description.
         aria-describedby={error ? errorId : undefined}
         data-testid="import-dropzone"
+        // 12 px in, not the fields' 14: the icon's own inner space then puts its ink in line with the picker's text below.
         className={cn(
-          'flex h-11 w-full items-center gap-2 rounded-none border border-dashed px-3.5 text-left text-sm transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+          'flex h-11 w-full items-center gap-2 rounded-none border border-dashed px-3 text-left text-sm transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
           // A refused file keeps its coral edge under the pointer too.
           error ? 'border-destructive' : over ? 'border-neutral-600' : 'border-border hover:border-neutral-600',
         )}

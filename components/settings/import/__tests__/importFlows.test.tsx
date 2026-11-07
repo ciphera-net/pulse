@@ -283,6 +283,8 @@ describe('choosing a file (A2)', () => {
     expect(drop.className).toContain('h-11')
     expect(drop.className).toContain('border-dashed')
     expect(drop.className).not.toContain('py-6')
+    // 12 px in, so the icon's ink lines up with the picker's text under it (as the drawing measured).
+    expect(drop.className).toMatch(/(^| )px-3( |$)/)
     const input = screen.getByTestId('import-file-input')
     expect(input).toHaveAttribute('accept', expect.stringContaining('.zip'))
     expect(input).not.toHaveAttribute('multiple')
