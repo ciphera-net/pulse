@@ -1,0 +1,42 @@
+# The changelog note gate. A PR titled [Feature], [Fix], [Change], [Design], [Copy] or [Improvement] must add a note
+# under .changes/ (format in .changes/README.md), which the Monday job on ciphera-net/docs publishes on
+# docs.ciphera.net/changelog. Any other title passes.
+#
+# ⚠️ THE FILENAME IS LOAD-BEARING: Woodpecker names the GitHub check after the file (ci/woodpecker/pr/changes). Once
+# that context is required in branch protection, renaming or deleting this file blocks every PR.
+#
+# skip_clone: the check needs only the PR title and its changed files, which Woodpecker passes as CI_COMMIT_MESSAGE
+# and CI_PIPELINE_FILES. Every `$$` below is the shell's own variable, read at run time, so the title is never pasted
+# into the script and a crafted PR title cannot run anything.
+labels:
+  runner: k8s
+
+when:
+  - event: pull_request
+    evaluate: 'CI_COMMIT_AUTHOR != "dependabot[bot]"'
+
+skip_clone: true
+
+steps:
+  note:
+    image: alpine:3.20
+    commands:
+      - |
+        title="$$(printf '%s\n' "$$CI_COMMIT_MESSAGE" | head -n 1)"
+        case "$$title" in
+          "[Feature]"*|"[Fix]"*|"[Change]"*|"[Design]"*|"[Copy]"*|"[Improvement]"*) ;;
+          *) echo "No changelog note needed: the title does not mark a customer-facing change."; exit 0 ;;
+        esac
+        if [ -z "$${CI_PIPELINE_FILES:-}" ]; then
+          echo "Woodpecker sent no file list (it omits it above 500 changed files), so the note cannot be checked here."
+          exit 0
+        fi
+        notes="$$(printf '%s' "$$CI_PIPELINE_FILES" | grep -oE '"[.]changes/[^"/]+[.]md"' | grep -v 'README[.]md' || true)"
+        if [ -n "$$notes" ]; then
+          echo "Changelog note: $$notes"
+          exit 0
+        fi
+        echo "This PR is titled as a customer-facing change but adds no changelog note."
+        echo "Add one file, .changes/<branch-name>.md (format in .changes/README.md), or title the PR [Chore], [CI],"
+        echo "[Test], [Refactor] or [Docs] if customers cannot notice the change."
+        exit 1

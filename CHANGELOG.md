@@ -1,13 +1,14 @@
 # Changelog
 
-All notable changes to Pulse (frontend and product) are documented in this file.
+**This file is no longer updated.** Since 7 November 2026, Pulse's changes are published every week at
+[docs.ciphera.net/changelog/pulse](https://docs.ciphera.net/changelog/pulse), one dated post per week. The entries
+below are kept as history.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Pulse uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version numbers stopped at **1.0.0**
+(16-08-2026), whose entry describes the public read API's stability guarantee. The hosted app has carried no version
+number since, and the next section covers 17 August to 7 November 2026.
 
-**1.0.0** was released on 16-08-2026. The stability guarantee it carries is the
-public read API's — see that entry for what it does and does not cover.
-
-## [Unreleased]
+## 17 August to 7 November 2026
 
 ### Added
 
@@ -971,7 +972,6 @@ internal endpoints and the schema continue to change.
 
 ---
 
-[Unreleased]: https://github.com/ciphera-net/pulse/compare/v0.13.0-alpha...HEAD
 [0.13.0-alpha]: https://github.com/ciphera-net/pulse/releases/tag/v0.13.0-alpha
 [0.12.0-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.1-alpha...v0.12.0-alpha
 [0.11.1-alpha]: https://github.com/ciphera-net/pulse/compare/v0.11.0-alpha...v0.11.1-alpha
