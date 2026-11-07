@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Select } from '@ciphera-net/facet'
-import { PanelRow, PanelRows } from '@/components/settings/panels'
-import { SetupReveal } from '@/components/settings/integrationRows'
+import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { prepareImport, type EventMap, type ImportEvent, type PreparedImport, type SkipSample } from '@/lib/import'
 import { ImportError } from '@/lib/import/errors'
 import { appTransport } from '@/lib/import/app-transport'
@@ -20,19 +19,24 @@ import {
   isRetryableUploadError,
   skipLines,
   stoppedUploadMessage,
-  failedImportMessage,
   type ImportMessage,
 } from '@/lib/import/messages'
 import { timezoneGroupsFor } from '@/lib/utils/timezones'
 import type { SiteImportStatus } from '@/lib/api/dataImports'
+import { spanDays } from '@/lib/view/view'
 import { RailBar } from '@/components/setup/RailBar'
 import { Dropzone } from './Dropzone'
 import { EventMapping, useEventMapping, useKnownEventNames } from './EventMapping'
-import { ImportErrorBanner } from './ImportErrorBanner'
-import { DeleteImportButton, DoneDetails, ProgressRow, SourceHeader, serverProgress } from './ImportRows'
+import { ImportErrorLine } from './ImportErrorLine'
+import { ImportRecord } from './ImportRecord'
+import { CheckFigures, CheckLists, WorthKnowingRow, daysText } from './CheckParts'
+import { DeleteImportButton, Lines, SourceHeader, StepActions, partText, serverProgress } from './ImportRows'
 import { acceptFor, dayAfterText, fileNounFor, pct, rangeText, slotPhase } from './importFormat'
 
 // ─── One upload source's block: choose → confirm → upload → the record (M11-d…f) ─
+//
+// Drawn in the settings kit as option B (R51, 07-11-2026): the file is one line under its row, the check opens with
+// the figures and the two lists, the events are one table, and the progress lives in the source's own row.
 //
 // The browser runs an upload (D9): the file is read and folded in a Worker and
 // only per-day aggregates are sent. So the progress text says the tab must stay
@@ -50,10 +54,8 @@ import { acceptFor, dayAfterText, fileNounFor, pct, rangeText, slotPhase } from 
 /** W4 A (owner, Q-M11): the upload runs in this tab. */
 export const KEEP_OPEN =
   'Keep this tab open until it finishes. If it closes, choose the same file again and it carries on where it stopped.'
-/** W3 A (owner, Q-M11): the dashboard's cache can hold pre-import numbers for up to a minute. */
-export const CACHE_NOTE = 'It can take a minute before the dashboard shows the imported days.'
-/** How long after completion the cache note is still worth saying (the cache TTL is 60 s). */
-const CACHE_NOTE_FOR_MS = 10 * 60 * 1000
+/** What the export file's row says while the file is read. */
+export const READING_CAPTION = 'Read here, in your browser. Nothing is sent until you confirm.'
 
 type Step =
   | { name: 'choose' }
@@ -287,135 +289,91 @@ export function UploadFlow({
     )
   ) : null
 
-  const errorRow = error ? (
-    <div className="border-t border-border px-5 py-3.5">
-      <ImportErrorBanner message={error} onRetry={retryable && preparedRef.current ? () => void upload(preparedRef.current!) : undefined} />
-    </div>
-  ) : null
+  const retry = retryable && preparedRef.current ? () => void upload(preparedRef.current!) : undefined
+  const takeFile = (files: File[]) => {
+    setError(null)
+    setFile(files[0] ?? null)
+  }
 
-  // ── Uploading from this tab (A6) ────────────────────────────────────────
+  // ── Uploading from this tab (A6): the progress in the source's own row ──
   if (step.name === 'uploading') {
     const prepared = preparedRef.current
     const range = prepared ? rangeText(prepared.plan.range_start, prepared.plan.range_end) : undefined
     return (
-      <div>
-        <SourceHeader source={source} description={range} chip={{ tone: 'info', label: 'Importing' }} />
-        <div className="border-t border-border">
-          <ProgressRow
-            caption={KEEP_OPEN}
-            left={`Part ${step.partsDone.toLocaleString('en-US')} of ${step.partsTotal.toLocaleString('en-US')}`}
-            done={step.partsDone}
-            total={step.partsTotal}
-          />
-        </div>
-        {errorRow}
-      </div>
-    )
-  }
-
-  // ── The record: this source's import, when no flow here is driving it ───
-  if (existing && step.name === 'choose' && !error && phase === 'completed') {
-    const finished = existing.finished_at ? new Date(existing.finished_at).getTime() : null
-    const fresh = finished === null || now().getTime() - finished < CACHE_NOTE_FOR_MS
-    return (
-      <div>
+      <div data-import-source={source} data-import-step="uploading">
         <SourceHeader
           source={source}
-          description="Your export file never left your browser."
-          note={fresh ? CACHE_NOTE : undefined}
-          chip={{ tone: 'success', label: 'Imported' }}
-          action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
+          description={range}
+          chip={{ tone: 'info', label: 'Importing' }}
+          progress={{ done: step.partsDone, total: step.partsTotal, line: `${partText(step.partsDone, step.partsTotal)} · ${KEEP_OPEN}` }}
         />
-        <DoneDetails status={existing} />
-      </div>
-    )
-  }
-
-  if (existing && (phase === 'failed' || phase === 'unknown') && step.name === 'choose') {
-    const msg = phase === 'failed' ? failedImportMessage(existing, source, now()) : null
-    return (
-      <div>
-        <SourceHeader
-          source={source}
-          description={existing.range_start && existing.range_end ? rangeText(existing.range_start, existing.range_end) : undefined}
-          chip={phase === 'failed' ? { tone: 'danger', label: 'Failed' } : { tone: 'neutral', label: 'In progress' }}
-          action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
-        />
-        {msg && (
-          <div className="border-t border-border px-5 py-3.5">
-            <ImportErrorBanner message={msg} />
+        {error && (
+          <div className="border-t border-border">
+            <ImportErrorLine message={error} onRetry={retry} />
           </div>
         )}
       </div>
     )
+  }
+
+  // ── The record: this source's import, when no flow here is driving it (the settled row, as the page draws it) ──
+  if (existing && step.name === 'choose' && !error && phase === 'completed') {
+    return <ImportRecord status={existing} canManage={canManage} onRequestDelete={onRequestDelete} now={now()} />
+  }
+
+  if (existing && (phase === 'failed' || phase === 'unknown') && step.name === 'choose') {
+    return <ImportRecord status={existing} canManage={canManage} onRequestDelete={onRequestDelete} now={now()} />
   }
 
   // A stopped upload (A8), or one moving without this tab (another tab, or a tab
   // that closed less than a day ago): both carry on from the same file.
   if (existing && (phase === 'stopped' || phase === 'active')) {
     const stopped = phase === 'stopped'
-    const progress = serverProgress(existing)
+    const progress = stopped ? null : serverProgress(existing)
     const range = existing.range_start && existing.range_end ? rangeText(existing.range_start, existing.range_end) : undefined
+    const elsewhere = error
+      ? 'The upload paused here. Choose the same file and it carries on where it stopped.'
+      : 'This import is uploading from another tab or window. If that tab closed, choose the same file here and it carries on where it stopped.'
     return (
-      <div>
+      <div data-import-source={source} data-import-step={stopped ? 'stopped' : 'elsewhere'}>
         <SourceHeader
           source={source}
           description={range}
           chip={stopped ? { tone: 'danger', label: 'Stopped' } : { tone: 'info', label: 'Importing' }}
+          // A stopped upload's reason is the line under its caption, as a failed import's is.
+          note={stopped ? stoppedUploadMessage(existing, now()) : undefined}
+          progress={progress ? { ...progress, line: `${partText(progress.done, progress.total)} · ${elsewhere}` } : null}
           action={canManage ? <DeleteImportButton onClick={onRequestDelete} disabled={busy} /> : null}
         />
-        {stopped ? (
-          <div className="border-t border-border px-5 py-3.5">
-            <ImportErrorBanner message={{ text: stoppedUploadMessage(existing, now()), details: null }} />
-          </div>
-        ) : (
-          progress && (
-            <div className="border-t border-border">
-              <ProgressRow
-                caption={
-                  error
-                    ? 'The upload paused here. Choose the same file and it carries on where it stopped.'
-                    : 'This import is uploading from another tab or window. If that tab closed, choose the same file here and it carries on where it stopped.'
-                }
-                left={`Part ${progress.done.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')}`}
-                done={progress.done}
-                total={progress.total}
-              />
-            </div>
-          )
-        )}
-        {errorRow}
         {canManage && (
           <div className="border-t border-border">
-            <PanelRows>
+            <KitRows>
               {step.name === 'reading' ? (
                 <ReadingRow step={step} file={file} />
               ) : (
-                <PanelRow label="Export file">
+                <KitRow label="Export file">
                   <Dropzone
                     lead={file ? file.name : `Choose the same ${noun}`}
                     sub={file ? 'Choose another file' : 'or drop it here'}
                     accept={accept}
-                    onFiles={(files) => {
-                      setError(null)
-                      setFile(files[0] ?? null)
-                    }}
+                    error={error}
+                    onFiles={takeFile}
                   />
-                </PanelRow>
+                </KitRow>
               )}
-            </PanelRows>
-            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-              <Button size="sm" onClick={() => void prepare()} disabled={!file || busy}>
-                {step.name === 'reading' ? 'Reading…' : 'Continue the import'}
-              </Button>
-            </div>
+              <StepActions>
+                <Button size="sm" onClick={() => void prepare()} disabled={!file || busy}>
+                  {step.name === 'reading' ? 'Reading…' : 'Continue the import'}
+                </Button>
+              </StepActions>
+            </KitRows>
           </div>
         )}
       </div>
     )
   }
 
-  // ── Confirm (A5) ────────────────────────────────────────────────────────
+  // ── The check (A5): the figures, the two lists, the events, then Start ──
   if (step.name === 'confirm') {
     const { prepared } = step
     const plan = prepared.plan
@@ -425,14 +383,16 @@ export function UploadFlow({
       (plan.skipped.pulse_measured ?? 0) > 0 && prepared.window.allowed_through
         ? dayAfterText(prepared.window.allowed_through)
         : null
-    const days = rangeText(plan.range_start, plan.range_end)
-    const dayCount = days.split(' · ')[1]
     const zone = prepared.sourceTimezone
+    const zoneText = zone === prepared.window.site_timezone ? `${zone}, the same as this site` : zone
     const notImported = [...guide.notImported, ...NOT_IMPORTED_ANYWHERE]
     if (plan.ignored_files.length > 0) notImported.push(`Files it doesn't read: ${plan.ignored_files.join(', ')}`)
     const worthKnowing = [...(aggregate ? [dailyVisitorsCaveat(tool)] : []), ...guide.worthKnowing]
+    const line = `${daysText(plan.range_start, plan.range_end)} · ${zoneText}${
+      measuredFrom ? `. Pulse measures this site from ${measuredFrom}, so the import stops the day before.` : ''
+    }`
     return (
-      <div>
+      <div data-import-source={source} data-import-step="check">
         <SourceHeader
           source={source}
           description={`${file?.name ?? 'Your export'} · read in your browser`}
@@ -444,53 +404,14 @@ export function UploadFlow({
           }
         />
         <div className="border-t border-border" data-testid="import-confirm">
-          <PanelRows>
-            <PanelRow
-              label="Range"
-              caption={measuredFrom ? `Pulse measures this site from ${measuredFrom}, so the import stops the day before.` : undefined}
-            >
-              <span className="text-sm text-foreground">{days}</span>
-            </PanelRow>
-            <PanelRow label="In the file">
-              <span className="text-sm tabular-nums text-foreground">
-                {plan.totals.visitors.toLocaleString('en-US')} visitors · {plan.totals.pageviews.toLocaleString('en-US')} pageviews
-              </span>
-            </PanelRow>
-            <PanelRow label="Timezone">
-              <span className="text-sm text-foreground">
-                {zone === prepared.window.site_timezone ? `${zone}, the same as this site` : zone}
-              </span>
-            </PanelRow>
-            <PanelRow label="Imported">
-              <span className="text-sm text-foreground">
-                {[...guide.imported, ...(plan.events.length > 0 ? [EVENTS_IMPORTED_LINE] : [])].map((t) => (
-                  <span key={t} className="block">
-                    {t}
-                  </span>
-                ))}
-              </span>
-            </PanelRow>
-            <PanelRow label="Not imported">
-              <span className="text-sm text-muted-foreground">
-                {notImported.map((t) => (
-                  <span key={t} className="block">
-                    {t}
-                  </span>
-                ))}
-              </span>
-            </PanelRow>
-            {worthKnowing.length > 0 && (
-              <PanelRow label="Worth knowing">
-                <span className="text-sm text-muted-foreground">
-                  {worthKnowing.map((t) => (
-                    <span key={t} className="block">
-                      {t}
-                    </span>
-                  ))}
-                </span>
-              </PanelRow>
-            )}
-            <PanelRow
+          <KitRows>
+            <CheckFigures
+              figures={{ days: spanDays({ start: plan.range_start, end: plan.range_end }), visitors: plan.totals.visitors, pageviews: plan.totals.pageviews }}
+              line={line}
+            />
+            <CheckLists imported={[...guide.imported, ...(plan.events.length > 0 ? [EVENTS_IMPORTED_LINE] : [])]} notImported={notImported} />
+            <WorthKnowingRow lines={worthKnowing} />
+            <KitRow
               label="Skipped"
               control={
                 samples.length > 0 ? (
@@ -500,18 +421,10 @@ export function UploadFlow({
                 ) : undefined
               }
             >
-              <span className="text-sm text-muted-foreground">
-                {lines.length === 0
-                  ? 'Nothing'
-                  : lines.map((l) => (
-                      <span key={l.text} className="block">
-                        {l.text}
-                      </span>
-                    ))}
-              </span>
-            </PanelRow>
+              {lines.length === 0 ? <span className="text-sm text-muted-foreground">Nothing</span> : <Lines lines={lines.map((l) => l.text)} muted />}
+            </KitRow>
             {showLines && samples.length > 0 && (
-              <PanelRow label="Where they are" caption="File and line only. Nothing from the rows is shown or sent.">
+              <KitRow label="Where they are" caption="File and line only. Nothing from the rows is shown or sent.">
                 <ul className="text-sm text-muted-foreground" data-testid="import-skip-samples">
                   {samples.map((s) => (
                     <li key={`${s.file}:${s.line}`}>
@@ -520,52 +433,46 @@ export function UploadFlow({
                     </li>
                   ))}
                 </ul>
-              </PanelRow>
+              </KitRow>
             )}
-          </PanelRows>
-          <EventMapping state={mapping} known={knownNames.known} />
-          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-            <Button variant="outline" size="sm" onClick={reset}>
-              Back
-            </Button>
-            <Button size="sm" onClick={() => void upload(prepared, mapping.map)} disabled={!mapping.valid}>
-              Import {dayCount}
-            </Button>
-          </div>
+            <EventMapping state={mapping} known={knownNames.known} tool={tool} />
+            <StepActions>
+              <Button variant="outline" size="sm" onClick={reset}>
+                Back
+              </Button>
+              <Button size="sm" onClick={() => void upload(prepared, mapping.map)} disabled={!mapping.valid}>
+                Start the import
+              </Button>
+            </StepActions>
+          </KitRows>
         </div>
       </div>
     )
   }
 
-  // ── Idle, or choose / reading (A1, A2) ──────────────────────────────────
+  // ── Idle, or choose / reading (A1, A2): the file and the tool's timezone under the row ──
+  const showStep = open && canManage && !locked
   return (
-    <div>
+    <div data-import-source={source} data-import-step={!showStep ? 'idle' : step.name}>
       <SourceHeader source={source} action={verbButton} />
-      <SetupReveal show={open && canManage && !locked}>
+      {showStep && (
         <div className="border-t border-border" data-testid="import-choose">
-          {error && (
-            <div className="border-b border-border px-5 py-3.5">
-              <ImportErrorBanner message={error} />
-            </div>
-          )}
-          <PanelRows>
+          <KitRows>
             {step.name === 'reading' ? (
               <ReadingRow step={step} file={file} />
             ) : (
-              <PanelRow label="Export file" caption={guide.exportHelp}>
+              <KitRow label="Export file" caption={guide.exportHelp}>
                 <Dropzone
                   lead={file ? file.name : `Choose the ${noun}`}
                   sub={file ? 'Choose another file' : 'or drop it here'}
                   accept={accept}
-                  onFiles={(files) => {
-                    setError(null)
-                    setFile(files[0] ?? null)
-                  }}
+                  error={error}
+                  onFiles={takeFile}
                 />
-              </PanelRow>
+              </KitRow>
             )}
             {aggregate && (
-              <PanelRow
+              <KitRow
                 label={`${tool} timezone`}
                 caption={`The timezone your ${tool} site reports in. The export doesn't say, and imported days keep ${tool}'s calendar.`}
                 htmlFor={`import-tz-${source}`}
@@ -575,30 +482,30 @@ export function UploadFlow({
                   value={timezone}
                   onChange={setTimezone}
                   groups={tzGroups}
-                  placeholder="Select a timezone…"
+                  placeholder="Pick a timezone"
                   disabled={busy}
                   className="w-full"
                   aria-label={`${tool} timezone`}
                 />
-              </PanelRow>
+              </KitRow>
             )}
-          </PanelRows>
-          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-            <Button size="sm" onClick={() => void prepare()} disabled={!file || busy || (aggregate && !timezone)}>
-              {step.name === 'reading' ? 'Reading…' : 'Review import'}
-            </Button>
-          </div>
+            <StepActions>
+              <Button size="sm" onClick={() => void prepare()} disabled={!file || busy || (aggregate && !timezone)}>
+                {step.name === 'reading' ? 'Reading…' : 'Review import'}
+              </Button>
+            </StepActions>
+          </KitRows>
         </div>
-      </SetupReveal>
+      )}
     </div>
   )
 }
 
-/** Reading and planning the file in the browser (the `reading` / `planning` events). */
+/** Reading and planning the file in the browser (the `reading` / `planning` events), in the export file's row. */
 function ReadingRow({ step, file }: { step: Extract<Step, { name: 'reading' }>; file: File | null }) {
   const left = step.planning ? 'Planning the import' : `Reading ${file?.name ?? 'the file'}`
   return (
-    <PanelRow label="Export file" caption="Read here, in your browser. Nothing is sent until you confirm.">
+    <KitRow label="Export file" caption={READING_CAPTION}>
       <div
         role="progressbar"
         aria-label="Reading the export"
@@ -610,6 +517,6 @@ function ReadingRow({ step, file }: { step: Extract<Step, { name: 'reading' }>; 
       >
         <RailBar left={left} pct={step.planning ? 100 : pct(step.bytesRead, step.bytesTotal)} />
       </div>
-    </PanelRow>
+    </KitRow>
   )
 }

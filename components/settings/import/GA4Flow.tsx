@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@ciphera-net/facet'
-import { PanelRow, PanelRows } from '@/components/settings/panels'
+import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { EVENTS_IMPORTED_LINE, GA4_GUIDE, NOT_IMPORTED_ANYWHERE, dailyVisitorsCaveat } from '@/lib/import/source-display'
 import type { SourceEvent } from '@/lib/import/core/events'
 import {
@@ -26,11 +26,12 @@ import {
 } from '@/lib/api/dataImports'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { EventMapping, useEventMapping, useKnownEventNames } from './EventMapping'
-import { ImportErrorBanner } from './ImportErrorBanner'
-import { DeleteImportButton, DoneDetails, ProgressRow, SourceHeader, serverProgress } from './ImportRows'
+import { ImportErrorLine } from './ImportErrorLine'
+import { ImportRecord } from './ImportRecord'
+import { CheckFigures, CheckLists, WorthKnowingRow, daysText } from './CheckParts'
+import { DeleteImportButton, SourceHeader, StepActions, partText, serverProgress } from './ImportRows'
 import { hostsSummary, otherHostsCaption, rangeText, slotPhase, waitUntilText } from './importFormat'
 import { formatLongDay } from '@/lib/view/view'
-import { CACHE_NOTE } from './UploadFlow'
 
 // ─── Google Analytics: sign in with Google, then what to import (M5-k) ────
 //
@@ -42,7 +43,7 @@ import { CACHE_NOTE } from './UploadFlow'
 //      server until the callback, so the waiting row is client state only, and
 //      it ends when the person comes back to this tab (visibilitychange), which
 //      reads the slot again. The callback's own sentence shows IN THE POPUP
-//      (SiteImportTab reads `?ga4=`).
+//      (the Data page reads `?ga4=`).
 //   2. NO PICKER (owner): the server resolves the property from the site's
 //      domain and this row shows it as a fact. None, or several, stop with the
 //      owner's two sentences; "Use another account" is the way out.
@@ -58,11 +59,21 @@ import { CACHE_NOTE } from './UploadFlow'
 //      until when, in the viewer's display timezone.
 //   7. `reconnect_required` (and `connector_erased`) show a "Google account" row
 //      with "Connect again", which opens Google for the same import.
+//
+// Drawn in the settings kit as option B (R51, 07-11-2026): the plan opens with the figures and the two lists, the
+// events are one table, the progress lives in the source's own row, and a failure is said where it happened.
 
 const PULL_PROGRESS = 'You can close this page.'
 
-/** Search Console's own sentence for a blocked popup (SiteIntegrationsTab), reused. */
-export const POPUP_BLOCKED = 'Your browser blocked the sign-in popup. Allow popups for this site and try again.'
+/** A blocked Google window, in Search Console's words (copy deck §8.2, §8.3). */
+export const POPUP_BLOCKED = 'Your browser blocked the Google window. Allow pop-ups for Pulse and try again.'
+
+/**
+ * Where a failure is said (R51: under what caused it): under the source's row (its Connect or Cancel, and what the
+ * Google window's landing page said), under the Google account row (its Use another account or Connect again), or
+ * over the step's buttons (Start the import). A state without that place says it under the source's row.
+ */
+type ErrorPlace = 'row' | 'account' | 'start'
 
 /** How long the kept hostnames must sit still before the plan is read again. */
 export const PLAN_PREVIEW_DEBOUNCE_MS = 300
@@ -73,7 +84,7 @@ export function rangeCaption(plan: Pick<GA4PlanPreview, 'native_start' | 'histor
   if (plan.native_start) {
     parts.push(`Pulse measures this site from ${formatLongDay(plan.native_start)}, so the import stops the day before.`)
   }
-  if (plan.history_clipped) parts.push("Earlier days are outside this site's history window.")
+  if (plan.history_clipped) parts.push('Earlier days are older than this site keeps data (Privacy).')
   return parts.length > 0 ? parts.join(' ') : undefined
 }
 
@@ -121,7 +132,7 @@ export function GA4Flow({
   now = () => new Date(),
 }: GA4FlowProps) {
   const { zone } = useDisplayZone(siteTimezone)
-  const [error, setError] = useState<ImportMessage | null>(notice)
+  const [error, setError] = useState<{ message: ImportMessage; at: ErrorPlace } | null>(notice ? { message: notice, at: 'row' } : null)
   const [waiting, setWaiting] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -145,7 +156,7 @@ export function GA4Flow({
   const [previewTry, setPreviewTry] = useState(0)
 
   useEffect(() => {
-    if (notice) setError(notice)
+    if (notice) setError({ message: notice, at: 'row' })
   }, [notice])
 
   const phase = existing ? slotPhase(existing) : null
@@ -164,7 +175,7 @@ export function GA4Flow({
       if (t) return { text: `Pulse has to wait until ${t} so your Google Analytics stays usable. Start the import then.`, details: null }
     }
     const m = importErrorMessage({ ...input, detail: { ...input.detail, domain: siteDomain ?? undefined } }, 'ga4') ?? {
-      text: 'Something unexpected came back from Pulse. Nothing more was saved. Try again.',
+      text: "Pulse sent an answer this page can't read. Nothing more was saved. Try again.",
       details: null,
     }
     if (input.code === 'no_matching_property' || input.code === 'several_matching_properties') {
@@ -184,7 +195,7 @@ export function GA4Flow({
   useEffect(() => stopListening, [])
 
   // One window per press: a second would race the first for the site's one slot.
-  const connect = async (importId?: string) => {
+  const connect = async (importId?: string, at: ErrorPlace = 'row') => {
     if (connectingRef.current || !canManage) return
     connectingRef.current = true
     lastImportId.current = importId
@@ -196,7 +207,7 @@ export function GA4Flow({
       // cut off from this page: the same protection `noopener` gives.
       const popup = window.open(url, '_blank')
       if (!popup) {
-        setError({ text: POPUP_BLOCKED, details: null })
+        setError({ message: { text: POPUP_BLOCKED, details: null }, at })
         return
       }
       popup.opener = null
@@ -214,7 +225,7 @@ export function GA4Flow({
       document.addEventListener('visibilitychange', onVisible)
     } catch (e) {
       const input = messageInputFromApiError(e)
-      setError(messageFor(e))
+      setError({ message: messageFor(e), at })
       if (['import_exists', 'import_not_active', 'not_found'].includes(input.code)) onChanged()
     } finally {
       connectingRef.current = false
@@ -365,7 +376,7 @@ export function GA4Flow({
       onClose()
     } catch (e) {
       const input = messageInputFromApiError(e)
-      setError(messageFor(e))
+      setError({ message: messageFor(e), at: 'start' })
       if (['import_exists', 'import_not_active', 'not_found', 'expired', 'reconnect_required'].includes(input.code)) onChanged()
     } finally {
       startingRef.current = false
@@ -386,7 +397,7 @@ export function GA4Flow({
         try {
           await onDiscard(awaiting.id)
         } catch (e) {
-          setError(messageFor(e))
+          setError({ message: messageFor(e), at: 'row' })
           return
         }
       }
@@ -397,51 +408,42 @@ export function GA4Flow({
     }
   }
 
-  const errorBlock = error ? (
-    <div className="border-b border-border px-5 py-3.5">
-      <ImportErrorBanner message={error} />
-    </div>
-  ) : null
+  /** The failure, when it belongs at one of these places. */
+  const errorAt = (...places: ErrorPlace[]) =>
+    error && places.includes(error.at) ? <ImportErrorLine message={error.message} /> : null
 
-  const waitingRow = (
-    <PanelRow
+  const waitingRow = (at: ErrorPlace) => (
+    <KitRow
       label={GA4_GUIDE.waitingLabel}
       caption={GA4_GUIDE.waitingCaption}
       control={
-        <Button variant="outline" size="sm" onClick={() => void connect(lastImportId.current)} disabled={connecting}>
+        <Button variant="outline" size="sm" onClick={() => void connect(lastImportId.current, at)} disabled={connecting}>
           {GA4_GUIDE.waitingButton}
         </Button>
       }
     />
   )
 
-  const list = (lines: readonly string[]) =>
-    lines.map((t) => (
-      <span key={t} className="block">
-        {t}
-      </span>
-    ))
-
   // ── choosing what to import (states 2–5) ─────────────────────────────────
   if (awaiting) {
     const stop = property?.state === 'error' ? property.message : null
-    let hostRows: React.ReactNode = null
+    let hostRow: React.ReactNode = null
     if (hosts?.state === 'loading') {
-      hostRows = (
-        <PanelRow label="Hostnames">
+      hostRow = (
+        <KitRow label="Hostnames">
           <span className="text-sm text-muted-foreground">{GA4_GUIDE.hostnamesLoading}</span>
-        </PanelRow>
+        </KitRow>
       )
     } else if (hostList && hostList.length === 0) {
-      hostRows = (
-        <PanelRow label="Hostnames">
+      hostRow = (
+        <KitRow label="Hostnames">
           <span className="text-sm text-muted-foreground">{importErrorMessage({ code: 'no_data_in_range' }, 'ga4')?.text}</span>
-        </PanelRow>
+        </KitRow>
       )
     } else if (hostList) {
       // Layout B (owner, 30-09-2026): one line, the same whether or not other websites share the property.
-      hostRows = (
-        <PanelRow label="Hostnames" caption={otherHostsCaption(otherHosts)}>
+      hostRow = (
+        <KitRow label="Hostnames" caption={otherHostsCaption(otherHosts)}>
           {keptHosts.length > 0 ? (
             <span className="text-sm text-foreground" data-testid="ga4-hosts-kept">
               {hostsSummary(keptHosts)}
@@ -450,12 +452,26 @@ export function GA4Flow({
             // Only other websites in the range: nothing of this site to import.
             <span className="text-sm text-muted-foreground">{importErrorMessage({ code: 'no_data_in_range' }, 'ga4')?.text}</span>
           )}
-        </PanelRow>
+        </KitRow>
       )
     }
 
+    let figures: React.ReactNode = null
+    if (planNow?.state === 'loading') {
+      figures = <CheckFigures figures={null} />
+    } else if (planNow?.state === 'ready') {
+      const p = planNow.value
+      const zoneText = p.source_timezone === p.site_timezone ? `${p.source_timezone}, the same as this site` : p.source_timezone
+      const caption = rangeCaption(p)
+      // The figures carry the three numbers B draws; the property's visits and events stay in the line under them.
+      const line = `${daysText(p.range_start, p.range_end)} · ${zoneText} · ${p.totals.visits.toLocaleString('en-US')} visits · ${p.totals.events.toLocaleString('en-US')} events${caption ? `. ${caption}` : ''}`
+      figures = <CheckFigures figures={{ days: p.days, visitors: p.totals.visitors, pageviews: p.totals.pageviews }} line={line} />
+    } else if (planNow?.state === 'error') {
+      figures = <ImportErrorLine message={planNow.message} onRetry={() => setPlanTry((n) => n + 1)} />
+    }
+
     return (
-      <div>
+      <div data-import-source="ga4" data-import-step="choose">
         <SourceHeader
           source="ga4"
           chip={{ tone: 'neutral', label: GA4_GUIDE.awaitingChip }}
@@ -469,117 +485,60 @@ export function GA4Flow({
         />
         {canManage && (
           <div className="border-t border-border" data-testid="ga4-setup">
-            {errorBlock}
-            {stop && (
-              <div className="border-b border-border px-5 py-3.5">
-                <ImportErrorBanner message={stop} />
-              </div>
-            )}
-            <PanelRows>
-              <PanelRow
+            <KitRows>
+              {errorAt('row')}
+              <KitRow
                 label="Google account"
                 caption={GA4_GUIDE.accountCaption}
                 control={
-                  <Button variant="outline" size="sm" onClick={() => void connect(awaiting.id)} disabled={connecting || canceling}>
+                  <Button variant="outline" size="sm" onClick={() => void connect(awaiting.id, 'account')} disabled={connecting || canceling}>
                     Use another account
                   </Button>
                 }
               >
                 {email ? <span className="text-sm text-foreground">{email}</span> : null}
-              </PanelRow>
-              {waiting && waitingRow}
+              </KitRow>
+              {errorAt('account')}
+              {waiting && waitingRow('account')}
               {property?.state === 'loading' && (
-                <PanelRow label="Property">
+                <KitRow label="Property">
                   {/* Owner, 29-09-2026 ("ship as written"): the property is being resolved from the site's domain. */}
                   <span className="text-sm text-muted-foreground">{"Finding this site's property…"}</span>
-                </PanelRow>
+                </KitRow>
               )}
+              {stop && <ImportErrorLine message={stop} />}
               {property?.state === 'ready' && (
-                <PanelRow label="Property">
+                <KitRow label="Property">
                   <span className="text-sm text-foreground">{`${property.value.name} · web stream ${property.value.stream_host}`}</span>
-                </PanelRow>
+                </KitRow>
               )}
-              {hostRows}
-              {planNow?.state === 'loading' && (
-                <>
-                  {['Range', 'In the property', 'Timezone'].map((label) => (
-                    <PanelRow key={label} label={label}>
-                      {/* Unruled: the rows wait for the plan. */}
-                      <span className="text-sm text-muted-foreground">Loading…</span>
-                    </PanelRow>
-                  ))}
-                </>
-              )}
-              {planNow?.state === 'ready' && (
-                <>
-                  <PanelRow label="Range" caption={rangeCaption(planNow.value)}>
-                    <span className="text-sm text-foreground">
-                      {`${formatLongDay(planNow.value.range_start)} to ${formatLongDay(planNow.value.range_end)} · ${planNow.value.days.toLocaleString('en-US')} ${planNow.value.days === 1 ? 'day' : 'days'}`}
-                    </span>
-                  </PanelRow>
-                  <PanelRow label="In the property">
-                    <span className="text-sm tabular-nums text-foreground">
-                      {`${planNow.value.totals.visitors.toLocaleString('en-US')} visitors · ${planNow.value.totals.visits.toLocaleString('en-US')} visits · ${planNow.value.totals.pageviews.toLocaleString('en-US')} pageviews · ${planNow.value.totals.events.toLocaleString('en-US')} events`}
-                    </span>
-                  </PanelRow>
-                  <PanelRow label="Timezone">
-                    <span className="text-sm text-foreground">
-                      {planNow.value.source_timezone === planNow.value.site_timezone
-                        ? `${planNow.value.source_timezone}, the same as this site`
-                        : planNow.value.source_timezone}
-                    </span>
-                  </PanelRow>
-                </>
-              )}
+              {hostRow}
+              {hosts?.state === 'error' && <ImportErrorLine message={hosts.message} onRetry={() => setHostsTry((n) => n + 1)} />}
+              {figures}
               {property?.state === 'ready' && (
-                <>
-                  <PanelRow label="Imported">
-                    <span className="text-sm text-foreground">
-                      {list([...GA4_GUIDE.imported, ...((previewed?.events.length ?? 0) > 0 ? [EVENTS_IMPORTED_LINE] : [])])}
-                    </span>
-                  </PanelRow>
-                  <PanelRow label="Not imported">
-                    <span className="text-sm text-muted-foreground">{list([...GA4_GUIDE.notImported, ...NOT_IMPORTED_ANYWHERE])}</span>
-                  </PanelRow>
-                  <PanelRow label="Worth knowing">
-                    <span className="text-sm text-muted-foreground">
-                      {list([dailyVisitorsCaveat('Google Analytics'), ...GA4_GUIDE.worthKnowing])}
-                    </span>
-                  </PanelRow>
-                  {!previewed && !previewError && (
-                    <PanelRow label="Events">
-                      {/* Owner, 29-09-2026 ("ship as written"): Matomo's "Loading this site's events…", for a property. */}
-                      <span className="text-sm text-muted-foreground">{"Loading this property's events…"}</span>
-                    </PanelRow>
-                  )}
-                </>
+                <CheckLists
+                  imported={[...GA4_GUIDE.imported, ...((previewed?.events.length ?? 0) > 0 ? [EVENTS_IMPORTED_LINE] : [])]}
+                  notImported={[...GA4_GUIDE.notImported, ...NOT_IMPORTED_ANYWHERE]}
+                />
               )}
-            </PanelRows>
-            {planNow?.state === 'error' && (
-              <div className="border-t border-border px-5 py-3.5">
-                <ImportErrorBanner message={planNow.message} onRetry={() => setPlanTry((n) => n + 1)} />
-              </div>
-            )}
-            {hosts?.state === 'error' && (
-              <div className="border-t border-border px-5 py-3.5">
-                <ImportErrorBanner message={hosts.message} onRetry={() => setHostsTry((n) => n + 1)} />
-              </div>
-            )}
-            {previewError && (
-              <div className="border-t border-border px-5 py-3.5">
-                <ImportErrorBanner message={previewError} onRetry={() => setPreviewTry((n) => n + 1)} />
-              </div>
-            )}
-            {property?.state === 'ready' && (
-              <>
-                <EventMapping state={mapping} known={knownNames.known} />
-                <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+              {property?.state === 'ready' && <WorthKnowingRow lines={[dailyVisitorsCaveat('Google Analytics'), ...GA4_GUIDE.worthKnowing]} />}
+              {property?.state === 'ready' && !previewed && !previewError && (
+                <KitRow label="Events">
+                  {/* Owner, 29-09-2026 ("ship as written"): Matomo's "Loading this site's events…", for a property. */}
+                  <span className="text-sm text-muted-foreground">{"Loading this property's events…"}</span>
+                </KitRow>
+              )}
+              {previewError && <ImportErrorLine message={previewError} onRetry={() => setPreviewTry((n) => n + 1)} />}
+              {property?.state === 'ready' && <EventMapping state={mapping} known={knownNames.known} tool="Google Analytics" />}
+              {errorAt('start')}
+              {property?.state === 'ready' && (
+                <StepActions>
                   <Button size="sm" onClick={() => void start()} disabled={starting || canceling || !ready}>
                     {starting ? 'Starting…' : 'Start the import'}
                   </Button>
-                </div>
-              </>
-            )}
+                </StepActions>
+              )}
+            </KitRows>
           </div>
         )}
       </div>
@@ -588,88 +547,74 @@ export function GA4Flow({
 
   const range = existing?.range_start && existing?.range_end ? rangeText(existing.range_start, existing.range_end) : undefined
 
-  // ── moving; a quota pause is a caption, never a state (state 6 A) ────────
+  // ── moving: the progress in the source's own row; a quota pause is its line, never a state (state 6 A) ──
   if (existing && phase === 'active') {
     const progress = serverProgress(existing)
     const pausedAt =
       existing.status === 'waiting' && existing.error_code === 'quota_waiting'
         ? waitUntilText(existing.wait_until, now(), zone)
         : null
+    const caption = pausedAt ? GA4_GUIDE.pausedUntil(pausedAt) : PULL_PROGRESS
     return (
-      <div>
+      <div data-import-source="ga4" data-import-step="importing">
         <SourceHeader
           source="ga4"
           description={range}
           chip={{ tone: 'info', label: 'Importing' }}
           action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
+          progress={{
+            done: progress?.done ?? 0,
+            total: progress?.total ?? 1,
+            line: `${progress ? partText(progress.done, progress.total) : 'Starting'} · ${caption}`,
+          }}
         />
-        <div className="border-t border-border">
-          <ProgressRow
-            caption={pausedAt ? GA4_GUIDE.pausedUntil(pausedAt) : PULL_PROGRESS}
-            left={progress ? `Part ${progress.done.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')}` : 'Starting'}
-            done={progress?.done ?? 0}
-            total={progress?.total ?? 1}
-          />
-        </div>
       </div>
     )
   }
 
   if (existing && phase === 'completed') {
-    const finished = existing.finished_at ? new Date(existing.finished_at).getTime() : null
-    const fresh = finished === null || now().getTime() - finished < 10 * 60 * 1000
-    return (
-      <div>
-        <SourceHeader
-          source="ga4"
-          description={range}
-          note={fresh ? CACHE_NOTE : undefined}
-          chip={{ tone: 'success', label: 'Imported' }}
-          action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
-        />
-        <DoneDetails status={existing} />
-      </div>
-    )
+    return <ImportRecord status={existing} canManage={canManage} onRequestDelete={onRequestDelete} now={now()} />
   }
 
   if (existing) {
     // Failed (or a state this build does not know). A grant Google stopped
     // accepting is replaced by signing in again; the import carries on (state 7 A).
     const failed = phase === 'failed' || phase === 'stopped'
-    const msg = failed ? failedImportMessage(existing, 'ga4', now()) : null
     const reconnect = failed && RECONNECTABLE.has(existing.error_code ?? '')
+    if (!reconnect) return <ImportRecord status={existing} canManage={canManage} onRequestDelete={onRequestDelete} now={now()} />
+    const msg = failedImportMessage(existing, 'ga4', now())
     const progress = serverProgress(existing)
     return (
-      <div>
+      <div data-import-source="ga4" data-import-step="reconnect">
         <SourceHeader
           source="ga4"
           description={range}
-          chip={failed ? { tone: 'danger', label: 'Failed' } : { tone: 'neutral', label: 'In progress' }}
+          chip={{ tone: 'danger', label: 'Failed' }}
+          // Where it stopped is said in words: the row's hairline fills only while an import moves.
+          note={
+            <>
+              <span className="block">{msg.text}</span>
+              {progress && <span className="mt-1 block tabular-nums">{GA4_GUIDE.stoppedAt(progress.done, progress.total)}</span>}
+            </>
+          }
           action={canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null}
         />
-        {msg && (
-          <div className="border-t border-border px-5 py-3.5">
-            <ImportErrorBanner message={msg} />
-          </div>
-        )}
-        {reconnect && canManage && (
+        {canManage && (
           <div className="border-t border-border">
-            {errorBlock}
-            <PanelRows>
-              <PanelRow
+            <KitRows>
+              {errorAt('row', 'start')}
+              <KitRow
                 label="Google account"
                 caption={GA4_GUIDE.reconnectCaption(email)}
                 control={
-                  <Button variant="outline" size="sm" onClick={() => void connect(existing.id)} disabled={connecting}>
+                  <Button variant="outline" size="sm" onClick={() => void connect(existing.id, 'account')} disabled={connecting}>
                     Connect again
                   </Button>
                 }
               />
-              {waiting && waitingRow}
-              {progress && (
-                <ProgressRow left={GA4_GUIDE.stoppedAt(progress.done, progress.total)} done={progress.done} total={progress.total} />
-              )}
-            </PanelRows>
+              {errorAt('account')}
+              {waiting && waitingRow('account')}
+            </KitRows>
           </div>
         )}
       </div>
@@ -679,7 +624,7 @@ export function GA4Flow({
   // ── idle, or waiting for the Google window (state 1 A) ───────────────────
   const showWaiting = waiting && open && canManage && !locked
   return (
-    <div>
+    <div data-import-source="ga4" data-import-step={showWaiting ? 'waiting' : 'idle'}>
       <SourceHeader
         source="ga4"
         note={GA4_GUIDE.connectNote}
@@ -700,8 +645,10 @@ export function GA4Flow({
       />
       {(showWaiting || (error && canManage)) && (
         <div className="border-t border-border" data-testid="ga4-connect">
-          {errorBlock}
-          {showWaiting && <PanelRows>{waitingRow}</PanelRows>}
+          <KitRows>
+            {errorAt('row', 'account', 'start')}
+            {showWaiting && waitingRow('row')}
+          </KitRows>
         </div>
       )}
     </div>

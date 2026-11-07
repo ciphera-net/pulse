@@ -61,39 +61,14 @@ describe('tracker script endpoints', () => {
   })
 })
 
-describe('versioned script manifest', () => {
-  // * public/script-versions.json is imported by ScriptSetupBlock at build time and is
-  // * the only source for the SRI-pinned embed tag. Bumping SCRIPT_VERSION without
-  // * re-running `npm run build:scripts` leaves the manifest describing the previous
-  // * version, and the snippet UI would hand customers a stale pin.
-  it('agrees with SCRIPT_VERSION in build-scripts.mjs', () => {
-    const manifest = JSON.parse(readFileSync(join(ROOT, 'public/script-versions.json'), 'utf8'))
-    const builder = readFileSync(join(ROOT, 'scripts/build-scripts.mjs'), 'utf8')
-
-    const declared = builder.match(/const SCRIPT_VERSION = '([^']+)'/)?.[1]
-    expect(declared, 'SCRIPT_VERSION not found in scripts/build-scripts.mjs').toBeTruthy()
-    expect(manifest.version).toBe(declared)
-    expect(manifest.files['script.js'].path).toBe(`/v${declared}/script.js`)
-  })
-
-  // * A pinned tag carries integrity="<sha384>"; if the hash is absent or malformed the
-  // * browser refuses to execute the script at all, which costs that customer every
-  // * metric rather than just the engagement beacon.
-  it('carries a well-formed sha384 for the pinned artifact', () => {
-    const manifest = JSON.parse(readFileSync(join(ROOT, 'public/script-versions.json'), 'utf8'))
-    expect(manifest.files['script.js'].sha384).toMatch(/^sha384-[A-Za-z0-9+/]{64}={0,2}$/)
-  })
-})
-
-
 /**
  * The SERVED artifact, as opposed to the source above.
  *
  * 🔴 Until 05-09-2026 these were the same file, and that was the bug. The deploy
  * uploaded the unminified source to js.ciphera.net/script.js (22,233 B raw /
  * 7,668 B gzipped) while scripts/build-scripts.mjs enforced its 3,072 B budget
- * against the minified VERSIONED sibling — an artifact a customer reaches only by
- * toggling SRI on, which defaults to false. A size budget existed, passed on every
+ * against the minified VERSIONED sibling — an artifact a customer reached only by
+ * toggling SRI on, which defaulted to false. A size budget existed, passed on every
  * build, and never once measured the bytes customers download; ~35 published
  * marketing claims drifted away from reality with nothing to catch them.
  *

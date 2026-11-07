@@ -13,7 +13,8 @@ import {
  * `scriptSnippet` substituted only DOMAIN and dropped the `data-no-*` flags, so
  * turning "Outbound links" off on a Next.js site produced a `<Script>` with no
  * `data-no-outbound` — and the only thing that made the toggles work was
- * enabling SRI, which bypasses the framework path entirely.
+ * enabling SRI (the version lock, removed 07-11-2026), which bypassed the
+ * framework path entirely.
  *
  * Six platforms were affected: nextjs, nuxt, astro, svelte, remix, gatsby.
  */

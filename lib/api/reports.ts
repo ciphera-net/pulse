@@ -159,6 +159,14 @@ export async function listSchedules(siteId: string): Promise<ReportSchedule[]> {
   return data.schedules ?? []
 }
 
+/**
+ * How many scheduled emails run across every site you can open, in one request: what `listSchedules` would list for
+ * each of those sites, added up, with the same permission (analytics.export).
+ */
+export async function getScheduleSummary(): Promise<{ running: number }> {
+  return apiRequest<{ running: number }>('/report-schedules/summary')
+}
+
 /** Stops the emails. Reports already sent keep their own links. */
 export async function stopSchedule(siteId: string, scheduleId: string, send: SendOptions = {}): Promise<void> {
   await apiRequest<void>(`/sites/${siteId}/report-schedules/${scheduleId}`, { method: 'DELETE', keepalive: send.keepalive })

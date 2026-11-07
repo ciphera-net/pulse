@@ -1,5 +1,4 @@
 import { renderSnippet, type Integration } from '@/lib/integrations'
-import scriptVersions from '@/public/script-versions.json'
 
 /**
  * The tracking script a site pastes, built from its choices: ONE builder for every surface that shows the script
@@ -9,18 +8,10 @@ import scriptVersions from '@/public/script-versions.json'
  * flags the raw tag applied).
  */
 
-// * Immutable versioned manifest: SRI is pinned ONLY against these URLs, never the rolling js.ciphera.net/script.js,
-// * whose bytes change on every deploy and would silently break a pinned integrity hash.
-const VERSION_MANIFEST = scriptVersions as {
-  version: string
-  baseUrl: string
-  files: Record<string, { path: string; sha384: string; sha512: string }>
-}
-
+// * Every copied script names the rolling files, so a site gets each new version without replacing its tag. The option
+// * to lock a site to one version (Subresource Integrity) was removed on 07-11-2026; tags pasted with it keep loading
+// * the js.ciphera.net/v<version>/ copies, which stay on the CDN.
 const ROLLING_BASE = 'https://js.ciphera.net'
-
-/** The version a locked script runs (Subresource Integrity). */
-export const SCRIPT_VERSION = VERSION_MANIFEST.version
 
 /** The core script's opt-outs the script actually reads, in the order they are written. */
 export const FEATURE_KEYS = ['scroll', 'outbound', 'downloads'] as const
@@ -46,8 +37,6 @@ export interface ScriptChoices {
   /** The companion tag (clicks, copies and forms): off unless a site opted in. */
   interactions: boolean
   kinds: Record<InteractionKey, boolean>
-  /** Lock the script to this version (Subresource Integrity). */
-  sri: boolean
   /** Positive polarity: on means the browser's signal is respected, off adds `data-ignore-*`. */
   respectDnt: boolean
   respectGpc: boolean
@@ -55,8 +44,8 @@ export interface ScriptChoices {
 
 /**
  * A site's stored choices, with today's defaults for anything unset: the three features and the three kinds on, the
- * companion and the lock off, both privacy signals respected. `undefined` signals mean the server has not sent them yet,
- * which is respecting (true), never false.
+ * companion off, both privacy signals respected. `undefined` signals mean the server has not sent them yet, which is
+ * respecting (true), never false. Keys this builder does not know (`sri`, `storage`, `ttl`) are ignored.
  */
 export function choicesFrom(
   sf: Record<string, unknown> | null | undefined,
@@ -69,7 +58,6 @@ export function choicesFrom(
     features: { scroll: on('scroll', true), outbound: on('outbound', true), downloads: on('downloads', true) },
     interactions: on('interactions', false),
     kinds: { clicks: on('clicks', true), copy: on('copy', true), forms: on('forms', true) },
-    sri: on('sri', false),
     respectDnt: respectDnt ?? true,
     respectGpc: respectGpc ?? true,
   }
@@ -77,10 +65,11 @@ export function choicesFrom(
 
 /**
  * The keys of `script_features` these choices own. A caller MERGES them over the site's stored object, never replaces
- * it: legacy keys (storage, ttl) must survive a save, the stored-but-unread contract of the visitor-recognition removal.
+ * it: legacy keys (storage, ttl, sri) must survive a save, the stored-but-unread contract of the visitor-recognition
+ * and version-lock removals.
  */
 export function featuresPayload(c: ScriptChoices): Record<string, unknown> {
-  return { ...c.features, sri: c.sri, interactions: c.interactions, ...c.kinds }
+  return { ...c.features, interactions: c.interactions, ...c.kinds }
 }
 
 /**
@@ -104,28 +93,21 @@ export function interactionFlags(c: ScriptChoices): string[] | null {
 }
 
 /**
- * The script text. A platform's own wiring (next/script and the like) unless the script is locked, since SRI needs the
- * literal tag with its integrity attribute; otherwise the universal tag, plus the companion's line when it is on.
+ * The script text. A platform's own wiring (next/script and the like) when the platform has one; otherwise the
+ * universal tag, plus the companion's line when it is on.
  *
  * 🔴 The domain is cut to the hostname character set before it is written: the text is pasted into the site's
- * <head>, so a double quote in it could break out of `data-domain` and add an attacker's `src`, defeating the very lock
- * this builder exists to write.
+ * <head>, so a double quote in it could break out of `data-domain` and add an attacker's `src` to the site's page.
  */
 export function trackingScript(domain: string, platform: Integration | undefined, c: ScriptChoices): string {
   const safeDomain = domain.replace(/[^a-zA-Z0-9.-]/g, '')
   const flags = coreFlags(c)
   const companion = interactionFlags(c)
-  if (platform?.snippet?.code && !c.sri) {
+  if (platform?.snippet?.code) {
     return renderSnippet(platform.snippet, safeDomain, flags, companion)
   }
-  const tag = (file: string, attrs: string[]) => {
-    const meta = VERSION_MANIFEST.files[file]
-    const src =
-      c.sri && meta
-        ? [`src="${VERSION_MANIFEST.baseUrl}${meta.path}"`, `integrity="${meta.sha384}"`, 'crossorigin="anonymous"']
-        : [`src="${ROLLING_BASE}/${file}"`]
-    return `<script ${['defer', ...attrs, ...src].join(' ')}></script>`
-  }
+  const tag = (file: string, attrs: string[]) =>
+    `<script ${['defer', ...attrs, `src="${ROLLING_BASE}/${file}"`].join(' ')}></script>`
   const core = tag('script.js', [`data-domain="${safeDomain}"`, ...flags])
   // The companion has no data-domain: it reads nothing of its own and calls the core through window.pulse.
   return companion === null ? core : `${core}\n${tag('script.interactions.js', companion)}`

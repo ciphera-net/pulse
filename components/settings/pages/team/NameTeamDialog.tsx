@@ -3,7 +3,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Button, Input, Modal } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
-import { getOrganization, updateOrganization } from '@/lib/api/organization'
+import { updateOrganization } from '@/lib/api/organization'
 import { teamNameFits } from './words'
 
 /**
@@ -58,10 +58,7 @@ export function NameTeamDialog({ orgId, suggestedName, open, onCancel, onNamed }
     setSaving(true)
     setError(null)
     try {
-      // The rename route still takes the slug (R2 took the field away, not the route's need). Read at this moment, so
-      // the team's own slug is sent back unchanged.
-      const current = await getOrganization(orgId)
-      await updateOrganization(orgId, trimmed, current.slug)
+      await updateOrganization(orgId, trimmed)
       onNamed()
     } catch (err) {
       // Stay open with the reason in view: the invite dialog must not open on a rename that did not happen.

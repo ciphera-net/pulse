@@ -73,7 +73,7 @@ describe("GA4's callback codes (the popup's landing page)", () => {
       const m = ga4CallbackMessage(code)
       expect(m?.text.length, code).toBeGreaterThan(10)
       expect(m!.text, code).not.toMatch(FORBIDDEN)
-      expect(m!.text, code).not.toMatch(/Something unexpected/)
+      expect(m!.text, code).not.toMatch(/answer this page can't read/)
     }
   })
 
@@ -87,7 +87,7 @@ describe("GA4's callback codes (the popup's landing page)", () => {
 
   it('never shows a code it does not know raw', () => {
     expect(ga4CallbackMessage('brand_new')).toEqual({
-      text: 'Something unexpected came back from Pulse. Nothing more was saved. Try again.',
+      text: "Pulse sent an answer this page can't read. Nothing more was saved. Try again.",
       details: 'brand_new',
     })
     expect(ga4CallbackMessage('__proto__')?.details).toBe('__proto__')

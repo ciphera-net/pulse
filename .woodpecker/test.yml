@@ -44,39 +44,19 @@ steps:
       #
       # It also pins public/script.js, which is now BUILT from tracker/script.js
       # rather than hand-edited: the deploy step is bare alpine with no node, so the
-      # built bytes have to be committed for it to upload them. Same contract as
-      # script-sri.json below — the gate FAILS rather than fixes, because a step
-      # that regenerates and carries on leaves the wrong bytes in the commit and
-      # still reports green.
+      # built bytes have to be committed for it to upload them. The gate FAILS
+      # rather than fixes, because a step that regenerates and carries on leaves the
+      # wrong bytes in the commit and still reports green.
       # 🔴 EVERY built artifact must be listed TWICE here — once to prove it is
       # tracked, once to prove the commit agrees with a fresh build. A file
       # missing from either list is committed but unverified, which is exactly
       # the drift the comment above describes.
-      - git ls-files --error-unmatch public/script.js public/script.debug.js public/script.interactions.js public/script.interactions.debug.js public/script.note.js public/script.note.debug.js public/script-versions.json
+      # The ls-files line is the gate on the gate: if a file were ever gitignored
+      # or untracked, `git diff --exit-code` would return 0 forever and the check
+      # would pass by never looking at anything.
+      - git ls-files --error-unmatch public/script.js public/script.debug.js public/script.interactions.js public/script.interactions.debug.js public/script.note.js public/script.note.debug.js
       - npm run build:scripts
-      - git diff --exit-code public/script.js public/script.debug.js public/script.interactions.js public/script.interactions.debug.js public/script.note.js public/script.note.debug.js public/script-versions.json
-      # 🔴 public/script-sri.json is DERIVED from public/script.js, and until now
-      # NOTHING made them agree at commit time. On 26-08-2026 commit e2c98da1
-      # edited script.js without regenerating the manifest, leaving a hash in git
-      # that did not describe the file it names; it was corrected by accident two
-      # commits later, when script.js happened to change again.
-      #
-      # No customer was exposed and that is worth stating precisely, so nobody
-      # later mistakes this for a live-outage guard: both serving paths recompute
-      # the hash from the real bytes at build/deploy time, and the customer embed
-      # snippet pins `integrity` against script-versions.json, NOT this file.
-      # The gate exists so a committed integrity hash cannot quietly lie —
-      # before some future consumer starts trusting it.
-      #
-      # It FAILS rather than fixes. A step that regenerates and carries on would
-      # leave the wrong hash in the commit and still report green.
-      #
-      # The ls-files line is the gate on the gate: if this file were ever
-      # gitignored or untracked, `git diff --exit-code` would return 0 forever
-      # and the check would pass by never looking at anything.
-      - git ls-files --error-unmatch public/script-sri.json
-      - npm run generate:sri
-      - git diff --exit-code public/script-sri.json
+      - git diff --exit-code public/script.js public/script.debug.js public/script.interactions.js public/script.interactions.debug.js public/script.note.js public/script.note.debug.js
       # Types are ALREADY a gate — `next build` fails on them and has no
       # `typescript.ignoreBuildErrors` — but that gate lives in the image build,
       # which runs only on push to main/staging. So a type error used to pass
