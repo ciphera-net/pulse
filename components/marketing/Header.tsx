@@ -56,7 +56,7 @@ const productLinks: LinkItem[] = [
   { title: 'Pricing', href: '/pricing', icon: Tag, description: 'Plans and the free tier' },
   { title: 'Live demo', href: '/demo', icon: Eye, description: 'Real data, no signup' },
   { title: 'Integrations', href: '/integrations', icon: PlugsConnected, description: '75+ framework guides' },
-  { title: 'Changelog', href: '/changelog', icon: ClockCounterClockwise, description: "What's new in Pulse" },
+  { title: 'Changelog', href: 'https://docs.ciphera.net/changelog/pulse', icon: ClockCounterClockwise, description: "What's new in Pulse" },
 ]
 
 // Compare dropdown — one row per comparison page, straight from the registry

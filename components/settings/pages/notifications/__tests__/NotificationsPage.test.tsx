@@ -184,12 +184,11 @@ describe('NotificationsPage: the page (R42 option G, R43 option I)', () => {
 // --- Pulse emails ----------------------------------------------------------
 
 describe('NotificationsPage: Pulse emails', () => {
-  it("draws the registry's groups in its order, never Team or a group the registry list does not name", async () => {
+  it("draws the registry's groups in its order, Team included, never a group the registry list does not name", async () => {
     renderPage()
     await ready()
     const ids = [...document.querySelectorAll('[data-notif-email-group]')].map((el) => el.getAttribute('data-notif-email-group'))
-    expect(ids).toEqual(['billing', 'security', 'uptime', 'site', 'system', 'lifecycle'])
-    expect(screen.queryByText('Team')).toBeNull()
+    expect(ids).toEqual(['billing', 'security', 'uptime', 'site', 'team', 'system', 'lifecycle'])
     expect(screen.queryByText('Account & sign-in')).toBeNull()
     expect(screen.queryByText('Operator')).toBeNull()
   })
@@ -199,13 +198,27 @@ describe('NotificationsPage: Pulse emails', () => {
     await ready()
     for (const line of [
       'Renewals, plan changes and event use. Invoices, failed payments and refunds go to the billing email.',
-      'A new API key in your team.',
+      'A new API key, or a dashboard shared by link, in your team.',
       'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
-      'Performance scores that drop or recover, pages losing visits, finished imports and growth reports.',
+      "Performance scores that drop or recover, pages losing visits, a goal's first conversion, finished imports and growth reports.",
+      'A change to your role in the team.',
       'Announcements and scheduled maintenance from Ciphera.',
       'Help with setting up a site, the first visits arriving, and a note if your team goes quiet.',
     ]) {
       expect(screen.getByText(line)).toBeInTheDocument()
+    }
+  })
+
+  it('draws Team with its switch, for somebody alone in this team too: a role change is emailed again (§13.3)', async () => {
+    for (const state of ['team', 'alone'] as const) {
+      h.teamState = state
+      const { unmount } = renderPage()
+      await ready()
+      const team = document.querySelector('[data-notif-email-group="team"]') as HTMLElement
+      expect(team, state).not.toBeNull()
+      expect(within(team).getByText('A change to your role in the team.')).toBeInTheDocument()
+      expect(within(team).getByRole('switch', { name: 'Email for Team' })).toBeInTheDocument()
+      unmount()
     }
   })
 

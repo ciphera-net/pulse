@@ -34,13 +34,16 @@ import { ReportsAndInvoices } from './ReportsAndInvoices'
  * - A write sends ONE boolean for ONE group and adopts the server's re-read document, never an optimistic guess.
  */
 
-// Copy deck §12.7. Team has no caption because it is never drawn: no email in it is sent (§12.10.3).
+// Copy deck §12.7, and §13.3 for the three emails added on 07-11-2026: a role change (Team), a dashboard shared by link
+// (Security) and a goal's first conversion (Site activity).
 const CAPTIONS: Record<string, string> = {
   billing: 'Renewals, plan changes and event use. Invoices, failed payments and refunds go to the billing email.',
-  security: 'A new API key in your team.',
+  security: 'A new API key, or a dashboard shared by link, in your team.',
   uptime: 'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
   // The scheduled report email is in this group, so its line names growth reports (§13.2, found while drawing 1).
-  site: 'Performance scores that drop or recover, pages losing visits, finished imports and growth reports.',
+  site: "Performance scores that drop or recover, pages losing visits, a goal's first conversion, finished imports and growth reports.",
+  // Sent to the member whose role changed, and to nobody else (pulse-backend announceRoleChange).
+  team: 'A change to your role in the team.',
   system: 'Announcements and scheduled maintenance from Ciphera.',
   lifecycle: 'Help with setting up a site, the first visits arriving, and a note if your team goes quiet.',
   summary: "Every Monday: last week's visitors, top pages and top sources for each site that had visits.",
@@ -53,9 +56,10 @@ const WEEKLY_SUMMARY_BETA = 'weekly-summary'
 /**
  * The registry's list is the page's order AND its filter: the document also carries groups this page never shows
  * (Ciphera ID's own, and internal ones for staff), so a group is drawn only when this list names it (§12.11.1).
+ * Team is drawn for everyone, somebody alone in this team included: the switches are the person's across every team
+ * (one document per person), so they may have teammates elsewhere (§13.3).
  */
 function shown(id: string, summaryBeta: boolean): boolean {
-  if (id === 'team') return false
   if (id === 'summary') return summaryBeta
   return true
 }
