@@ -7,8 +7,9 @@ import { FREE_FACTS, FREE_RETENTION } from './planState'
 
 /**
  * Cancel plan, held to confirm, then 6 seconds to undo (copy deck §10.5 and §10.9). What happens, then what follows
- * from the end date, then what is deleted: R26, the free plan keeps data for 6 months, so the next daily pass after
- * the plan ends deletes the older visits and events for good. The person reads that before the hold.
+ * from the end date, then what is deleted: R26, the free plan keeps data for 6 months, and since 07-11-2026 (D16) the
+ * older visits and events are kept for 30 days after the plan ends, then deleted for good. The person reads that
+ * before the hold.
  */
 export function CancelPlanDialog({
   open,
@@ -49,9 +50,9 @@ export function CancelPlanDialog({
         />
         <div className="border-t border-border pt-4">
           <KitWarningLine icon={<WarningCircle weight="fill" />}>
-            {/* text-pretty: at 480 px the sentence otherwise leaves "day." alone on its last line (round 8, by eye). */}
+            {/* text-pretty: at 480 px the sentence otherwise leaves its last word alone on a line (round 8, by eye). */}
             <span className="text-pretty">
-              {`Your sites stay. Visits and events older than ${FREE_RETENTION} are deleted within a day.`}
+              {`Your sites stay. Visits and events older than ${FREE_RETENTION} are kept for 30 days after the plan ends, then deleted.`}
             </span>
           </KitWarningLine>
         </div>

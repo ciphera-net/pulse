@@ -13,16 +13,16 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { useSubscription } from '@/lib/swr/dashboard'
 import {
   cancelSubscription,
+  getCatalog,
   getInvoices,
   getPaymentMethodUpdate,
-  getPrices,
   resumeSubscription,
   type SubscriptionDetails,
 } from '@/lib/api/billing'
 import { useCan } from '@/lib/auth/permissions'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import { usePendingKeys, whilePending } from '@/lib/hold/pending'
-import { formatPlanName, getPlanPricing } from '@/lib/plans'
+import { eventMeter, formatPlanName, getPlanPricing } from '@/lib/plans'
 import { formatEuro } from '@/lib/utils/money'
 import { cn } from '@/lib/utils'
 import { BillingDetailsSection } from './BillingDetailsSection'
@@ -67,7 +67,7 @@ export default function BillingPage() {
   // Somebody alone is billed as themselves; a team is billed as a team (PULSE-59).
   const alone = useTeamState() === 'alone'
   const { data: sub, error, isValidating, mutate } = useSubscription()
-  const { data: prices } = useSWR('plan-prices', getPrices)
+  const { data: catalog } = useSWR('plan-catalog', getCatalog)
   // Read beside the plan, not after it: loading, empty and failed are three different states of the list.
   const invoices = useSWR('billing-invoices', getInvoices)
   const { defer } = useUndo()
@@ -142,22 +142,20 @@ export default function BillingPage() {
   // R36: no Cancel plan while a payment is past due, as today; "at the end of the period" means nothing then.
   const offerCancel = manage && paid && !pastDue
 
-  const usage = typeof sub.pageview_usage === 'number' ? sub.pageview_usage : null
-  const limit = sub.pageview_limit
-  // The ceiling is the only point where counting stops. Absent means unknown (an older backend), never 0.
-  const ceiling = typeof sub.pageview_hard_ceiling === 'number' && sub.pageview_hard_ceiling > 0 ? sub.pageview_hard_ceiling : null
+  // Every event counts since 07-11-2026. The ceiling is the only point where counting stops; absent means unknown.
+  const { usage, limit, ceiling } = eventMeter(sub)
   const atCeiling = ceiling !== null && usage !== null && usage >= ceiling
   const over = limit > 0 && usage !== null && usage > limit && !atCeiling
   const ask = manage ? 'Change plan to raise the limit.' : 'Ask the owner to change the plan.'
 
-  const pricing = paid ? getPlanPricing(prices, sub.plan_id, limit) : null
+  const pricing = paid ? getPlanPricing(catalog, sub.plan_id, limit) : null
   const yearly = sub.billing_interval === 'year'
 
   const figures: { label: string; value: React.ReactNode }[] = []
   if (usage !== null && limit > 0) {
     const ratio = Math.min(1, usage / limit)
     figures.push({
-      label: 'Pageviews this month',
+      label: 'Events this month',
       value: (
         <>
           {formatCount(usage)}
@@ -176,15 +174,16 @@ export default function BillingPage() {
       value: (
         <>
           {yearly ? `${formatEuro(pricing.yearlyTotal)} a year` : `${formatEuro(pricing.monthly)} a month`}
+          {/* D19: the price includes VAT; without it, under it. */}
           <span className="mt-0.5 block text-xs font-normal tracking-normal text-muted-foreground">
-            {yearly ? `plus VAT, ${formatEuro(pricing.effectiveMonthly)} a month` : 'plus VAT'}
+            {`${formatEuro(yearly ? pricing.yearlyBusiness : pricing.monthlyBusiness)} without VAT`}
           </span>
         </>
       ),
     })
   }
 
-  const timing = pendingChangeTiming(sub, prices)
+  const timing = pendingChangeTiming(sub, catalog)
   const retentionLine = pendingRetentionLine(sub)
 
   const doCancel = () => {
@@ -277,7 +276,7 @@ export default function BillingPage() {
                 state
                 tone="orange"
                 icon={<WarningCircle weight="fill" />}
-                label={`You've used ${formatCount(usage)} of your plan's ${formatCount(limit)} pageviews.`}
+                label={`You've used ${formatCount(usage)} of your plan's ${formatCount(limit)} events.`}
                 caption={ceiling !== null ? `Pulse keeps counting up to ${formatCount(ceiling)}, then stops. ${ask}` : ask}
               />
             </div>
@@ -288,11 +287,11 @@ export default function BillingPage() {
                 state
                 tone="coral"
                 icon={<WarningOctagon weight="fill" />}
-                label={`Pulse stopped counting: you reached ${formatCount(ceiling)} pageviews, twice your plan.`}
+                label={`Pulse stopped counting: you reached ${formatCount(ceiling)} events, twice your plan.`}
                 caption={
                   manage
-                    ? "New visits aren't counted until the plan changes or the count starts over. A bigger plan starts counting again once its payment goes through."
-                    : "New visits aren't counted until the plan changes. Ask the owner to change it."
+                    ? "Nothing new is counted until the plan changes or the count starts over. A bigger plan starts counting again once its payment goes through."
+                    : "Nothing new is counted until the plan changes. Ask the owner to change it."
                 }
               />
             </div>

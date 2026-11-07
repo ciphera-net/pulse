@@ -32,7 +32,7 @@ vi.mock('swr', () => ({
   default: () => ({ ...swrState, mutate: mockRetryPrices }),
 }))
 
-vi.mock('@/lib/api/billing', () => ({ getPrices: vi.fn() }))
+vi.mock('@/lib/api/billing', () => ({ getCatalog: vi.fn() }))
 
 // framer-motion: render children directly, drop animation props.
 vi.mock('framer-motion', () => ({
