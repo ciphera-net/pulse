@@ -322,7 +322,7 @@ export default function ScriptSetupBlock({
               ) : selected ? (
                 'Installed and reporting'
               ) : (
-                'Set it to get the exact snippet and where it goes'
+                'Set it to get the exact script and where it goes'
               )}
               {installData?.last_event_at && <> · last event {relativeTime(installData.last_event_at)}</>}
             </p>
@@ -333,7 +333,7 @@ export default function ScriptSetupBlock({
               onClick={() => setSnippetOpen((v) => !v)}
               className="border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
             >
-              {snippetOpen ? 'Hide snippet' : 'Show snippet'}
+              {snippetOpen ? 'Hide script' : 'Show script'}
             </button>
             {showFrameworkPicker && (
               <button
@@ -386,7 +386,7 @@ export default function ScriptSetupBlock({
 
       {/* ── 3. The snippet + where to paste it ───────────────────────────────── */}
       {/* An installed site does not need the code on screen by default — it is
-          one click away behind "Show snippet". */}
+          one click away behind "Show script". */}
       {(showSetupFlow || snippetOpen) && (isPlugin && selected?.snippet ? (
         <div className="rounded-none border border-border bg-muted p-4">
           <p className="text-sm text-muted-foreground">{selected.snippet.note}</p>

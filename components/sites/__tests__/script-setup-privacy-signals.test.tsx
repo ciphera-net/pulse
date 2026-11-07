@@ -23,7 +23,7 @@ function mount(overrides: Record<string, unknown> = {}, props: Record<string, un
 }
 
 /**
- * The snippet lives behind the "Show snippet" disclosure in this state.
+ * The snippet lives behind the "Show script" disclosure in this state.
  *
  * 🔑 Scoped to the `<pre>` CopyBlock renders the code into — NOT the whole
  * container. The two rows' own caption copy says "your tag gets
@@ -32,7 +32,7 @@ function mount(overrides: Record<string, unknown> = {}, props: Record<string, un
  * find the CAPTION even with both signals on and every toggle untouched.
  */
 function snippet(container: HTMLElement): string {
-  fireEvent.click(screen.getByText('Show snippet'))
+  fireEvent.click(screen.getByText('Show script'))
   return container.querySelector('pre')?.textContent ?? ''
 }
 
@@ -172,7 +172,7 @@ describe('privacy-signal rows', () => {
 
     it('an inline attribute-style framework snippet (Next.js, via renderSnippet)', () => {
       // Installed + framework already selected: the block shows the resolved
-      // header, so the snippet is still behind "Show snippet".
+      // header, so the snippet is still behind "Show script".
       const { container } = mount({ respect_gpc: false, detected_framework: 'nextjs' })
       expect(screen.getAllByText('app/layout.tsx').length).toBeGreaterThan(0)
       const out = snippet(container)

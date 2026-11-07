@@ -26,8 +26,8 @@ describe('ScriptSetupBlock without the visitor-recognition control', () => {
       />,
     )
 
-    // In this state the tag sits behind the "Show snippet" disclosure.
-    fireEvent.click(screen.getByText('Show snippet'))
+    // In this state the tag sits behind the "Show script" disclosure.
+    fireEvent.click(screen.getByText('Show script'))
     const text = container.textContent ?? ''
     // Non-vacuous for the snippet half: the tag itself is on screen.
     expect(text).toContain('data-domain')
