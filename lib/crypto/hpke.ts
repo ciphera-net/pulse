@@ -170,6 +170,9 @@ const CURVES: Record<HpkeSuite['curve'], { p: bigint; b: bigint }> = {
   },
 }
 
+/** The length of an uncompressed SEC1 point on each curve: 0x04, then x and y. */
+const UNCOMPRESSED_POINT_LENGTH: Record<HpkeSuite['curve'], number> = { 'P-256': 65, 'P-521': 133 }
+
 function bigEndian(bytes: Uint8Array): bigint {
   let v = 0n
   for (let i = 0; i < bytes.length; i++) v = (v << 8n) | BigInt(bytes[i])
@@ -181,13 +184,18 @@ function bigEndian(bytes: Uint8Array): bigint {
  * both coordinates below p, and the curve equation. The encoding cannot express the point at
  * infinity, and both curves have cofactor one, so a point that passes is in the prime-order group.
  */
-function isOnCurve(suite: HpkeSuite, publicKey: Uint8Array): boolean {
-  const { p, b } = CURVES[suite.curve]
-  const half = (suite.npk - 1) / 2
+function isOnCurve(curve: HpkeSuite['curve'], publicKey: Uint8Array): boolean {
+  const { p, b } = CURVES[curve]
+  const half = (UNCOMPRESSED_POINT_LENGTH[curve] - 1) / 2
   const x = bigEndian(publicKey.subarray(1, 1 + half))
   const y = bigEndian(publicKey.subarray(1 + half))
   if (x >= p || y >= p) return false
   return (y * y - (x * x * x - 3n * x + b)) % p === 0n
+}
+
+/** An uncompressed SEC1 point on `curve` that passes isOnCurve. */
+function isValidPoint(curve: HpkeSuite['curve'], publicKey: Uint8Array): boolean {
+  return publicKey.length === UNCOMPRESSED_POINT_LENGTH[curve] && publicKey[0] === 0x04 && isOnCurve(curve, publicKey)
 }
 
 /**
@@ -198,11 +206,25 @@ function isOnCurve(suite: HpkeSuite, publicKey: Uint8Array): boolean {
  * all three only because of this check.
  */
 export async function importPublicKey(suite: HpkeSuite, publicKey: Uint8Array): Promise<CryptoKey> {
-  if (publicKey.length !== suite.npk || publicKey[0] !== 0x04 || !isOnCurve(suite, publicKey)) {
+  if (publicKey.length !== suite.npk || !isValidPoint(suite.curve, publicKey)) {
     throw new HpkeError('hpke/invalid_public_key')
   }
   try {
     return await subtle().importKey('raw', asBytes(publicKey), { name: 'ECDH', namedCurve: suite.curve }, true, [])
+  } catch (cause) {
+    throw new HpkeError('hpke/invalid_public_key', { cause })
+  }
+}
+
+/**
+ * Another party's ECDH public key outside HPKE, with importPublicKey's validation. For the relay's key
+ * (lib/crypto/relay.ts), which also reaches the browser from a server: Linux WebKit imports an off-curve point and
+ * computes ECDH with it, so the engine's own import is not the check (the 07-11-2026 re-review's I2).
+ */
+export async function importEcdhPublicKey(curve: HpkeSuite['curve'], publicKey: Uint8Array): Promise<CryptoKey> {
+  if (!isValidPoint(curve, publicKey)) throw new HpkeError('hpke/invalid_public_key')
+  try {
+    return await subtle().importKey('raw', asBytes(publicKey), { name: 'ECDH', namedCurve: curve }, false, [])
   } catch (cause) {
     throw new HpkeError('hpke/invalid_public_key', { cause })
   }
@@ -218,10 +240,11 @@ function base64url(bytes: Uint8Array): string {
  * Imports a private key from its scalar and its own public key, non-extractable, usage deriveBits.
  *
  * ⚠️ WebCrypto's JWK import does not check that `d` matches `(x, y)`. Callers only pass a pair that
- * `generateKey` produced (sealed together in the identity envelope) or a pair from a vector.
+ * `generateKey` produced (sealed together in the identity envelope) or a pair from a vector. The public half still
+ * passes the point check every imported public key passes (the 07-11-2026 re-review's I1).
  */
 export async function importPrivateKey(suite: HpkeSuite, d: Uint8Array, publicKey: Uint8Array): Promise<CryptoKey> {
-  if (d.length !== suite.nsk || publicKey.length !== suite.npk || publicKey[0] !== 0x04) {
+  if (d.length !== suite.nsk || publicKey.length !== suite.npk || !isValidPoint(suite.curve, publicKey)) {
     throw new HpkeError('hpke/invalid_private_key')
   }
   const half = (suite.npk - 1) / 2

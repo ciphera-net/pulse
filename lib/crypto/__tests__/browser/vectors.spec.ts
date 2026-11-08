@@ -210,6 +210,16 @@ test('public keys: the uncompressed encoding of a point on the curve and nothing
   }
 })
 
+test('public keys outside HPKE (importEcdhPublicKey, the relay key): the same points, the same answers', () => {
+  const { valid, invalid, ecdhValid, ecdhInvalid } = run().report.publicKeys
+  expect(ecdhValid.map((x) => x.label)).toEqual(valid.map((x) => x.label))
+  expect(ecdhInvalid.map((x) => x.label)).toEqual(invalid.map((x) => x.label))
+  for (const x of ecdhValid) expect.soft(x.outcome, x.label).toEqual({ ok: true, value: 'public' })
+  for (const x of ecdhInvalid) {
+    expect.soft(x.outcome, x.label).toMatchObject({ ok: false, error: { name: 'HpkeError', code: 'hpke/invalid_public_key', message: 'hpke/invalid_public_key' } })
+  }
+})
+
 // ---------------------------------------------------------------------------------------------
 // Team names (team-names.test.ts)
 // ---------------------------------------------------------------------------------------------

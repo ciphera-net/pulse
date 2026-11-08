@@ -14,9 +14,14 @@
  * API_URL). The HKDF `info` label ('ciphera-relay-v2'), empty salt, and P-256 curve
  * are unchanged — they MUST match id-backend's relay envelope, or the relay cannot
  * decrypt the new email and delivery breaks.
+ *
+ * One more difference since 08-11-2026: the relay's key is imported through hpke.ts's
+ * point check (importEcdhPublicKey), as every other public key this browser receives
+ * from a server is. id-frontend's copy still imports it unchecked.
  */
 
 import { ID_API_URL } from '@/lib/api/client'
+import { importEcdhPublicKey } from '@/lib/crypto/hpke'
 
 /**
  * Encrypt an email for Ciphera Relay using ECDH P-256 + AES-256-GCM.
@@ -27,14 +32,8 @@ export async function sealForRelay(
 ): Promise<Uint8Array> {
   const encoder = new TextEncoder()
 
-  // Import relay's P-256 public key
-  const relayKey = await crypto.subtle.importKey(
-    'raw',
-    relayPublicKey as BufferSource,
-    { name: 'ECDH', namedCurve: 'P-256' },
-    false,
-    []
-  )
+  // Import relay's P-256 public key: uncompressed and on the curve, or an hpke/invalid_public_key error
+  const relayKey = await importEcdhPublicKey('P-256', relayPublicKey)
 
   // Generate ephemeral ECDH keypair
   const ephemeral = await crypto.subtle.generateKey(
