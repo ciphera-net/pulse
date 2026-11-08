@@ -188,9 +188,12 @@ describe('arrange', () => {
     expect(rows.map((r) => r.entry.text)).toEqual(['Pulse no longer recognises a reader from one day to the next.'])
   })
 
-  it('keeps at most eight rows', () => {
+  it('keeps at most four rows, newest first', () => {
     const many = Array.from({ length: 12 }, (_, i) => ({ ...older, slug: `post-${i}` }))
-    expect(arrange([week, ...many]).rows).toHaveLength(8)
+    const { rows } = arrange([week, ...many])
+    expect(rows).toHaveLength(4)
+    expect(rows.map((r) => r.key)).toEqual(arrange([week, ...many, ...many]).rows.map((r) => r.key))
+    expect(rows[0].post.slug).toBe(week.slug)
   })
 
   it('has nothing to lead with when there are no posts', () => {
