@@ -20,6 +20,7 @@ import {
   SUITE_P256_SHA256_AES128GCM,
   SUITE_P256_SHA256_AES256GCM,
   SUITE_P521_SHA512_AES256GCM,
+  importEcdhPublicKey,
   importPrivateKey,
   importPublicKey,
   open,
@@ -258,6 +259,50 @@ describe('public key validation', () => {
     const err = await importPublicKey(suite, new Uint8Array(65)).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(HpkeError)
     expect((err as HpkeError).message).toBe('hpke/invalid_public_key')
+  })
+})
+
+describe('the same validation outside HPKE and on a private key\'s public half (the 07-11 re-review\'s I2 and I1)', () => {
+  const p256Key = () => hex(rfc.vectors[0].vector.pkRm) // A.3.1
+  const p521Key = () => hex(rfc.vectors[2].vector.pkRm) // A.6.1
+
+  it('importEcdhPublicKey takes a point on the named curve and refuses the rest before WebCrypto sees it', async () => {
+    await expect(importEcdhPublicKey('P-256', p256Key())).resolves.toBeDefined()
+    await expect(importEcdhPublicKey('P-521', p521Key())).resolves.toBeDefined()
+    const offCurve = p256Key()
+    offCurve[64] ^= 0x01 // y no longer matches x
+    const compressed = p256Key().slice(0, 33)
+    compressed[0] = 0x02
+    const wrongPrefix = p256Key()
+    wrongPrefix[0] = 0x05
+    const xIsP = hex(
+      '04ffffffff00000001000000000000000000000000ffffffffffffffffffffffff66485c780e2f83d72433bd5d84a06bb6541c2af31dae871728bf856a174f93f4',
+    )
+    const cases: [string, HpkeSuite['curve'], Uint8Array][] = [
+      ['off the curve', 'P-256', offCurve],
+      ['compressed', 'P-256', compressed],
+      ['a wrong prefix', 'P-256', wrongPrefix],
+      ['65 zero bytes', 'P-256', new Uint8Array(65)],
+      ['x = p', 'P-256', xIsP],
+      ['a P-521 key named P-256', 'P-256', p521Key()],
+      ['a P-256 key named P-521', 'P-521', p256Key()],
+    ]
+    const importKey = vi.spyOn(crypto.subtle, 'importKey')
+    for (const [label, curve, bad] of cases) {
+      await expect(importEcdhPublicKey(curve, bad), label).rejects.toMatchObject({ code: 'hpke/invalid_public_key' })
+    }
+    expect(importKey).not.toHaveBeenCalled()
+  })
+
+  it('importPrivateKey refuses a public half off the curve before WebCrypto sees it', async () => {
+    const v = rfc.vectors[0].vector
+    const suite = SUITE_P256_SHA256_AES128GCM
+    await expect(importPrivateKey(suite, hex(v.skRm), hex(v.pkRm))).resolves.toBeDefined()
+    const offCurve = hex(v.pkRm)
+    offCurve[64] ^= 0x01
+    const importKey = vi.spyOn(crypto.subtle, 'importKey')
+    await expect(importPrivateKey(suite, hex(v.skRm), offCurve)).rejects.toMatchObject({ code: 'hpke/invalid_private_key' })
+    expect(importKey).not.toHaveBeenCalled()
   })
 })
 

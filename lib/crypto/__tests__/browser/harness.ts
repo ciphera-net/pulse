@@ -17,6 +17,7 @@ import {
   SUITE_P256_SHA256_AES128GCM,
   SUITE_P256_SHA256_AES256GCM,
   SUITE_P521_SHA512_AES256GCM,
+  importEcdhPublicKey,
   importPrivateKey,
   importPublicKey,
   open,
@@ -198,6 +199,9 @@ export interface FreshSealReport {
 export interface PublicKeyReport {
   valid: Labelled<string>[]
   invalid: Labelled<string>[]
+  /** The same points through importEcdhPublicKey, the import of a key outside HPKE (the relay's). */
+  ecdhValid: Labelled<string>[]
+  ecdhInvalid: Labelled<string>[]
 }
 
 export interface IdentityReport {
@@ -436,7 +440,17 @@ async function publicKeys(p256Vector: RfcVector, p521Vector: RfcVector): Promise
     for (const [suite, label, key] of cases) out.push(await labelled(label, async () => (await importPublicKey(suite, key)).type))
     return out
   }
-  return { valid: await imported(valid), invalid: await imported(invalid) }
+  const importedEcdh = async (cases: [HpkeSuite, string, Uint8Array][]) => {
+    const out: Labelled<string>[] = []
+    for (const [suite, label, key] of cases) out.push(await labelled(label, async () => (await importEcdhPublicKey(suite.curve, key)).type))
+    return out
+  }
+  return {
+    valid: await imported(valid),
+    invalid: await imported(invalid),
+    ecdhValid: await importedEcdh(valid),
+    ecdhInvalid: await importedEcdh(invalid),
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
