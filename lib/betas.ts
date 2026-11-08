@@ -25,4 +25,7 @@ export const BETAS: readonly Beta[] = [
   // End-to-end encrypted team names (lib/team-names/). Its surfaces read useFeature and its provider reads /me's
   // teams[].features under the same key, so the switch's write to /me is all a team needs.
   { flag: 'team-names', name: 'Team names', revalidates: [] },
+  // Team members' email addresses, end-to-end encrypted for owners and admins (lib/team-names/, design §16). Its surfaces
+  // read the same provider, which reads /me's teams[].features, so the switch's write to /me is all a team needs.
+  { flag: 'team-emails', name: 'Team emails', revalidates: [] },
 ]
