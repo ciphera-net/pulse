@@ -13,6 +13,17 @@ export default defineConfig({
     // copies of source + tests and shadow the real suite.
     exclude: [...configDefaults.exclude, '**/.worktrees/**'],
     globals: true,
+    // Pre-bundle the three dependencies every component test loads (since 08-11-2026). Vitest gives each test file a
+    // fresh module graph, and @phosphor-icons/react's entry is a barrel over 4,541 module files (57 MB): Facet imports
+    // its icons from it, and so do 121 of this app's source files, so every file that renders a component used to
+    // load the whole icon set again (the setup file alone imports Facet, through lib/api/client). Bundled once into
+    // node_modules/.vite, each file loads one module per dependency instead, and Facet's bundle keeps only the icons
+    // it uses. Measured on the whole suite (node:22, 4 CPUs, CI settings): 1,593 s → 278 s, 375 of 375 files passing.
+    deps: {
+      optimizer: {
+        client: { enabled: true, include: ['@ciphera-net/facet', '@phosphor-icons/react', 'framer-motion'] },
+      },
+    },
     // In CI the test pod requests 500m CPU while os.cpus() reports the full
     // node, so the default thread-per-core pool oversubscribes ~20:1 and
     // waitFor budgets starve — the known ResetDataModal timeout at default
