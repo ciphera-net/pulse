@@ -114,7 +114,7 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
     share: 'name',
     teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
   }
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -171,7 +171,6 @@ function sessionFor(state: MadeUpState): TeamNamesContextValue {
     activeTeamId: TEAM,
     activeFlagged: true,
     anyFlagged: true,
-    setUp: vi.fn(),
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
@@ -219,27 +218,31 @@ describe('Developers with the team-names beta on', () => {
     )
   })
 
-  it.each([
-    ['locked', 'locked', "Your teammates' names are locked"],
-    ['first', 'step', 'Set up team names?'],
-  ] as const)('%s: the prompt at the top of the page, and every teammate by their id', async (state, line, title) => {
-    await mountOn(state)
-    expect(lines()).toEqual([[line, 'prompt']])
-    expect(document.querySelector('[data-kit] section')?.getAttribute('data-kit-section')).toBe(title)
+  it('locked: the prompt at the top of the page, and every teammate by their id', async () => {
+    await mountOn('locked')
+    expect(lines()).toEqual([['locked', 'prompt']])
+    expect(document.querySelector('[data-kit] section')?.getAttribute('data-kit-section')).toBe("Your teammates' names are locked")
+    expect([connectedBy('tn-c2'), connectedBy('tn-c3')]).toEqual(['teammate 3f2a9c1b', 'teammate 2f4e6d8a'])
+  })
+
+  it('first: no prompt while the key is published (R72), and every teammate by their id', async () => {
+    await mountOn('first')
+    expect(lines()).toEqual([])
+    expect(screen.queryByText('Set up team names?')).toBeNull()
     expect([connectedBy('tn-c2'), connectedBy('tn-c3')]).toEqual(['teammate 3f2a9c1b', 'teammate 2f4e6d8a'])
   })
 
   it('draws no prompt for somebody alone, and nothing at all on a member\'s no-access page', async () => {
     page.teamState = 'alone'
     getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
-    mount(sessionFor('first'))
+    mount(sessionFor('locked'))
     await loaded()
     expect(lines()).toEqual([])
     cleanup()
 
     page.canManage = false
     getMe.mockClear()
-    mount(sessionFor('first'))
+    mount(sessionFor('locked'))
     await act(() => new Promise((r) => setTimeout(r, 50)))
     expect(lines()).toEqual([])
     expect(getMe).not.toHaveBeenCalled()

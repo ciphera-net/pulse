@@ -54,7 +54,7 @@ vi.mock('@/lib/auth/vault-store', () => ({
 vi.mock('@/lib/auth/vault-restore', () => ({ openVaultWithKey: h.openVaultWithKey }))
 vi.mock('@/lib/team-names/api', async (importActual) => ({ ...(await importActual<object>()), ...h.api }))
 
-import { createIdentity, sealName, type TeamIdentity } from '@/lib/crypto/team-names'
+import { createIdentity, keyIdOf, sealName, type TeamIdentity } from '@/lib/crypto/team-names'
 import { TeamNamesProvider } from '../provider'
 import { useTeamNames, useTeammateName, useTeamNamesActions } from '../hooks'
 
@@ -67,12 +67,13 @@ const me = (features: Record<string, string[]>) => ({
 let vmk: VaultKey
 let a: { identity: TeamIdentity; envelope: Uint8Array }
 let b: TeamIdentity
+let bEnvelope: Uint8Array
 let c: TeamIdentity
 
 beforeEach(async () => {
   vmk = (await crypto.subtle.importKey('raw', crypto.getRandomValues(new Uint8Array(32)), 'HKDF', false, ['deriveKey'])) as VaultKey
   a = await createIdentity(vaultOpsFor(vmk))
-  b = (await createIdentity(vaultOpsFor(vmk))).identity
+  ;({ identity: b, envelope: bEnvelope } = await createIdentity(vaultOpsFor(vmk)))
   c = (await createIdentity(vaultOpsFor(vmk))).identity
   const rowFrom = async (senderId: string, sender: TeamIdentity, name: string) => {
     const { sealed } = await sealName({ teamId: TEAM, senderId, recipientId: A, name, sender, recipientPublicKey: a.identity.publicKey, recipientKeyId: a.identity.keyId })
@@ -209,12 +210,41 @@ describe('with the beta on', () => {
     await waitFor(() => expect(read().bob).toMatchObject({ kind: 'name', duplicate: true }))
   })
 
-  it('asks for the one-time step when the person has no key', async () => {
+  it('publishes a first key with no password, and shares the name in every team with the beta at once (R72)', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-names'], [OTHER_TEAM]: ['team-names'] }))
     h.api.fetchOwnKey.mockResolvedValue(null)
+    let published: Uint8Array | null = null
+    h.api.publishKey.mockImplementation(async (body: { publicKey: Uint8Array; sealedPrivateKey: Uint8Array }) => {
+      published = body.publicKey
+      return { keyId: await keyIdOf(body.publicKey), publicKey: body.publicKey, sealedPrivateKey: body.sealedPrivateKey }
+    })
+    h.api.fetchDirectory.mockImplementation(async () => ({
+      kind: 'directory',
+      directory: { keys: [{ userId: A, publicKey: published }, { userId: B, publicKey: b.publicKey }], forMe: [], mine: [] },
+    }))
+    const view = render(tree())
+    await waitFor(() => expect(read().state).toBe('ready'))
+    expect(h.api.publishKey).toHaveBeenCalledTimes(1)
+    expect(h.api.publishKey.mock.calls[0][0]).not.toHaveProperty('reauthToken')
+    // My name reaches B in both teams, the open one and the other, with no step.
+    await waitFor(() => expect(new Set(h.api.writeNames.mock.calls.map((call) => call[0]))).toEqual(new Set([TEAM, OTHER_TEAM])))
+    const otherReads = () => h.api.fetchDirectory.mock.calls.filter((call) => call[0] === OTHER_TEAM).length
+    expect(otherReads()).toBe(1)
+    // Once per session: a later render sends nothing again.
+    view.rerender(tree())
+    await settle()
+    expect(otherReads()).toBe(1)
+    expect(h.api.publishKey).toHaveBeenCalledTimes(1)
+  })
+
+  it('reads and shares team by team when the key already exists', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-names'], [OTHER_TEAM]: ['team-names'] }))
     render(tree())
-    await waitFor(() => expect(read().state).toBe('needs_setup'))
-    expect(h.api.fetchDirectory).not.toHaveBeenCalled()
-    expect(read().bob).toEqual({ kind: 'not_yet', former: null })
+    await waitFor(() => expect(h.api.writeNames).toHaveBeenCalledTimes(1))
+    await settle()
+    expect(h.api.publishKey).not.toHaveBeenCalled()
+    // Only the open team: the other is read when it is opened.
+    expect(h.api.fetchDirectory.mock.calls.map((call) => call[0])).toEqual([TEAM])
   })
 
   it('writes nothing of the feature to storage', async () => {
@@ -264,9 +294,12 @@ describe('the names leave memory when the session ends', () => {
   it('on a switch to another account', async () => {
     const view = await named()
     h.auth.user = { id: B, org_id: TEAM }
-    h.api.fetchOwnKey.mockResolvedValue(null)
+    h.api.fetchOwnKey.mockResolvedValue({ keyId: b.keyId, publicKey: b.publicKey, sealedPrivateKey: bEnvelope })
     view.rerender(tree())
-    await waitFor(() => expect(read().state).toBe('needs_setup'))
-    expect(read().cleo).toEqual({ kind: 'not_yet', former: null })
+    // The new account's own session: it read B's key, and the names A's session held are gone.
+    await waitFor(() => expect(h.api.fetchOwnKey).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(read().state).toBe('ready'))
+    // B's session read the team, so it knows C left, but it holds no name for them.
+    expect(read().cleo).toEqual({ kind: 'not_yet', former: true })
   })
 })

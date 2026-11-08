@@ -23,7 +23,7 @@ import {
   type MadeUpState,
 } from './madeUpTeam'
 
-/** What Account shows on its own: the name set, none, one too long, a key this browser cannot open, the step. */
+/** What Account shows on its own: the name set, none, one too long, a key this browser cannot open, no key yet. */
 export type MadeUpAccount = 'set' | 'noname' | 'long' | 'broken' | 'first'
 
 export interface MadeUpNetworkInput {
@@ -42,7 +42,7 @@ export interface MadeUpNetwork {
   members: { members: ReturnType<typeof madeUpMembers>; avatar_seeds: Record<string, string> }
   audit: { entries: ReturnType<typeof madeUpAudit>; total: number; avatar_seeds: Record<string, string> }
   connections: { connections: ReturnType<typeof madeUpConnections>; avatar_seeds: Record<string, string> }
-  /** GET /me/team-key: the row, or null for a 404 (the one-time step). */
+  /** GET /me/team-key: the row, or null for a 404 (no key yet: since R72 the browser publishes one on its own). */
   teamKey: { key_id: string; public_key: string; sealed_private_key: string } | null
   directory: {
     keys: { user_id: string; public_key: string }[]
@@ -86,12 +86,15 @@ export async function buildMadeUpNetwork(input: MadeUpNetworkInput): Promise<Mad
       : broken
         ? { key_id: b64(broken.identity.keyId), public_key: b64(broken.identity.publicKey), sealed_private_key: b64(broken.envelope) }
         : { key_id: b64(me.identity.keyId), public_key: b64(me.identity.publicKey), sealed_private_key: b64(me.envelope) }
+  // No key yet: the server serves none for me, so nobody sealed anything for me and I sealed nothing. The browser
+  // publishes a key at the first visit with the vault open (R72); the check answers that POST itself.
+  const keyless = teamKey === null
 
   // Every teammate has a key, and so does the former member whose row is kept (R54).
   const people = await Promise.all(MADE_UP_PEOPLE.map(async (p) => ({ ...p, ...(await stranger()) })))
   const tomas = await stranger()
   const keys = [
-    { user_id: myId, public_key: b64((broken ?? me).identity.publicKey) },
+    ...(keyless ? [] : [{ user_id: myId, public_key: b64((broken ?? me).identity.publicKey) }]),
     ...people.map((p) => ({ user_id: p.id, public_key: b64(p.identity.publicKey) })),
     { user_id: TOMAS, public_key: b64(tomas.identity.publicKey) },
   ]
@@ -104,15 +107,15 @@ export async function buildMadeUpNetwork(input: MadeUpNetworkInput): Promise<Mad
   }
   for (const p of people) {
     const name = p.names[state]
-    if (name) await sealFor(p.id, p.identity, name)
+    if (name && !keyless) await sealFor(p.id, p.identity, name)
   }
-  if (state === 'partial' || state === 'named' || state === 'copies') await sealFor(TOMAS, tomas.identity, FORMER_NAME)
+  if (!keyless && (state === 'partial' || state === 'named' || state === 'copies')) await sealFor(TOMAS, tomas.identity, FORMER_NAME)
 
   // What I sealed for each current teammate, current for my name: nothing is left for the reconcile to write. A name
   // that is not shared has no rows at all, or the reconcile would take them back (a write).
   const mine: MadeUpNetwork['directory']['mine'] = []
   const share = shareableName(myName)
-  if (share.kind === 'name' && !broken) {
+  if (share.kind === 'name' && !broken && !keyless) {
     for (const p of people) {
       const sealed = await sealName({ teamId, senderId: myId, recipientId: p.id, name: share.name, sender: me.identity, recipientPublicKey: p.identity.publicKey, recipientKeyId: p.identity.keyId })
       mine.push({ recipient_id: p.id, recipient_key_id: b64(p.identity.keyId), name_tag: b64(sealed.nameTag), sealed_hash: b64(await sha256(sealed.sealed)) })

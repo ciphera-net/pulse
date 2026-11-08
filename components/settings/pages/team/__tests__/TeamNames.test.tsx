@@ -9,8 +9,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { commitLast, deferred, resetDeferred } from '@/lib/hold/__tests__/facetHoldStandIn'
-import { ApiError } from '@/lib/api/client'
-import { TeamNamesError } from '@/lib/team-names/errors'
 import { TeamNamesContext, type TeamNamesContextValue } from '@/lib/team-names/provider'
 import type { TeamNamesSnapshot } from '@/lib/team-names/session'
 import {
@@ -172,7 +170,6 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
     activeTeamId: TEAM,
     activeFlagged,
     anyFlagged: true,
-    setUp: vi.fn(),
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
@@ -291,7 +288,7 @@ describe('the Team page with the team-names beta off: today\'s DOM, byte for byt
 
 // ─── With the beta on ────────────────────────────────────────────────────────────────────────────────────────────
 
-const actions = { setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+const actions = { reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => undefined }
 
 function sessionFor(state: MadeUpState, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
@@ -493,74 +490,24 @@ describe('the Team page with the team-names beta on', () => {
     ])
   })
 
-  it('the one-time step: the prompt, its password row, the empty password, then set up with a toast', async () => {
-    actions.setUp.mockResolvedValue(undefined)
+  it('asks for nothing while a first key is published (R72): no prompt, no password, every teammate Teammate and their id', async () => {
     await mountOn('first')
-    expect(lines().map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])).toEqual([['step', 'prompt']])
-    const prompt = document.querySelector('[data-tn-line="step"]') as HTMLElement
-    expect(text(prompt.querySelector('h2'))).toBe('Set up team names?')
-    expect(text(prompt.querySelector('header p'))).toBe("See your teammates' names and share yours. Pulse asks for your password once.")
-    for (const id of [MAREN, AMARA, JONAS, LENA]) expect(text(row(id).querySelector('[data-kit-row] .font-medium'))).toBe(`Teammate ${id.slice(0, 8)}`)
-    fireEvent.click(within(prompt).getByRole('button', { name: 'Set up' }))
-    const field = screen.getByLabelText('Your password')
-    expect(document.activeElement).toBe(field)
-    expect(screen.getByText("Once for your account. Your other devices won't ask.")).toBeInTheDocument()
-    fireEvent.submit(field.closest('form') as HTMLFormElement)
-    expect(await screen.findByText('Enter your password.')).toBeInTheDocument()
-    expect(actions.setUp).not.toHaveBeenCalled()
-    fireEvent.change(field, { target: { value: 'correct horse' } })
-    fireEvent.submit(field.closest('form') as HTMLFormElement)
-    await waitFor(() => expect(actions.setUp).toHaveBeenCalledWith('correct horse'))
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Team names set up'))
-    expect(actions.retry).not.toHaveBeenCalled()
-  })
-
-  it.each([
-    ['a wrong password', () => new TeamNamesError('team_names/password_failed', { cause: new Error('tessera: invalid credentials') }), "That password didn't match. Try again.", false],
-    ['a proof Ciphera ID refused', () => new TeamNamesError('team_names/reauth_required'), "Couldn't confirm your password. Try again.", false],
-    ['too many tries', () => new TeamNamesError('team_names/proof_failed', { cause: new ApiError('Too many', 429) }), 'Too many tries in a short time. Wait about a minute and try again.', true],
-    ['Ciphera ID down', () => new TeamNamesError('team_names/proof_failed', { cause: new ApiError('Down', 503) }), "Couldn't reach Ciphera ID. Nothing changed. Try again.", true],
-    ['no connection to Ciphera ID', () => new TeamNamesError('team_names/proof_failed', { cause: new Error('Network error, please try again.') }), "Couldn't connect. Check your connection and try again.", true],
-    ['no token minted', () => new TeamNamesError('team_names/proof_failed', { cause: new Error('Re-authentication did not return a token') }), "Couldn't confirm your password. Try again.", true],
-    ['Pulse refusing the key', () => new TeamNamesError('team_names/request_failed', { cause: new ApiError('Server error', 500) }), "Couldn't set up team names. Try again.", true],
-    ['no connection to Pulse', () => new TeamNamesError('team_names/request_failed', { cause: new ApiError('Network error, please try again.', 0) }), "Couldn't connect. Check your connection and try again.", true],
-  ])('the one-time step says %s in the copy deck\'s words', async (_what, error, words, readsAgain) => {
-    actions.setUp.mockRejectedValue(error())
-    await mountOn('first')
-    fireEvent.click(screen.getByRole('button', { name: 'Set up' }))
-    fireEvent.change(screen.getByLabelText('Your password'), { target: { value: 'correct horse' } })
-    fireEvent.submit(screen.getByLabelText('Your password').closest('form') as HTMLFormElement)
-    expect(await screen.findByText(words)).toBeInTheDocument()
-    expect(actions.retry).toHaveBeenCalledTimes(readsAgain ? 1 : 0)
-    expect(screen.getByLabelText('Your password')).toHaveValue('')
-    expect(toast.success).not.toHaveBeenCalled()
-  })
-
-  it('keeps the step and its failure on screen while the session reads the key again after a failed try', async () => {
-    actions.setUp.mockRejectedValue(new TeamNamesError('team_names/request_failed', { cause: new ApiError('Server error', 500) }))
-    // The session's own error state, then its loading, as a real retry moves through them.
-    actions.retry.mockImplementation(async () => {
-      act(() => holder.set(sessionFor('first', { status: 'error' })))
-    })
-    await mountOn('first')
-    fireEvent.click(screen.getByRole('button', { name: 'Set up' }))
-    fireEvent.change(screen.getByLabelText('Your password'), { target: { value: 'correct horse' } })
-    fireEvent.submit(screen.getByLabelText('Your password').closest('form') as HTMLFormElement)
-    expect(await screen.findByText("Couldn't set up team names. Try again.")).toBeInTheDocument()
-    expect(screen.getByLabelText('Your password')).toBeInTheDocument()
-    act(() => holder.set(sessionFor('first', { status: 'loading' })))
-    expect(screen.getByText("Couldn't set up team names. Try again.")).toBeInTheDocument()
-    // Done elsewhere in the meantime (another device's key was adopted): the step leaves.
-    act(() => holder.set(sessionFor('named')))
     expect(lines()).toEqual([])
+    expect(screen.queryByText('Set up team names?')).toBeNull()
+    expect(screen.queryByLabelText('Your password')).toBeNull()
+    for (const id of [MAREN, AMARA, JONAS, LENA]) expect(text(row(id).querySelector('[data-kit-row] .font-medium'))).toBe(`Teammate ${id.slice(0, 8)}`)
+    // Published, and the team read before anyone sealed a name for the new key: People's line says names are coming.
+    const memberIds = new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id))
+    act(() => holder.set(sessionFor('first', { status: 'ready', share: 'name', teams: new Map([[TEAM, { status: 'ready', names: new Map(), memberIds, duplicates: new Set() }]]) })))
+    expect(lines().map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])).toEqual([['notYet', 'section-line']])
   })
 
-  it('draws nothing for somebody alone: nobody to name', async () => {
+  it('draws nothing for somebody alone, not even the locked prompt: nobody to name', async () => {
     teamState.value = 'alone'
     getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
     api.getOrganizationMembers.mockResolvedValue(madeUpMembers(TEAM, ME).slice(0, 1))
     render(
-      <Holder initial={sessionFor('first')}>
+      <Holder initial={sessionFor('locked')}>
         <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
           <TeamPage />
         </SWRConfig>

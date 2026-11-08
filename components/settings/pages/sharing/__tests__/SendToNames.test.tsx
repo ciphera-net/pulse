@@ -70,7 +70,7 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
     share: 'name',
     teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
   }
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -125,7 +125,6 @@ function sessionFor(state: MadeUpState): TeamNamesContextValue {
     activeTeamId: TEAM,
     activeFlagged: true,
     anyFlagged: true,
-    setUp: vi.fn(),
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
@@ -169,12 +168,13 @@ describe('Send to with the team-names beta on', () => {
   })
 
   it.each([
-    ['locked', 'Unlock your profile on Account to see their names.'],
-    ['first', 'Set up team names on the Team page to see their names.'],
-  ] as const)('%s: every teammate by their id, and the caption says what to do', async (state, line) => {
+    ['locked', ` Unlock your profile on Account to see their names.`],
+    // R72: no step to point to; while the first key is published the caption is the list's own.
+    ['first', ''],
+  ] as const)('%s: every teammate by their id, and the caption says what to do, if anything', async (state, line) => {
     await mountOn(state)
     expect(labels().slice(1)).toEqual(['Teammate 3f2a9c1b Admin', 'Teammate 2f4e6d8a Admin', 'Teammate 7c1e2b9d Member', 'Teammate 8d4e1f60 Member'])
-    expect(caption()).toBe(`${CAPTION} ${line}`)
+    expect(caption()).toBe(`${CAPTION}${line}`)
   })
 
   it('a member who named themselves Pulse is a name with their id, never Pulse\'s word', async () => {
@@ -186,7 +186,7 @@ describe('Send to with the team-names beta on', () => {
 
   it('owes no line when the list names nobody but the person', async () => {
     members.list = madeUpMembers(TEAM, ME).slice(0, 1)
-    await mountOn('first')
+    await mountOn('locked')
     expect(caption()).toBe(CAPTION)
   })
 })

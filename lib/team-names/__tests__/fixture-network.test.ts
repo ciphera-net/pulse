@@ -1,25 +1,52 @@
 // The made-up team's network answers (./fixtures/network.ts) put through the real session and the real decoders of
-// lib/team-names/api.ts: each state opens to what the browser check of the built pages expects to draw, and none
-// leaves anything for the reconcile to write, so the check's read-only guard never sees a write attempted.
+// lib/team-names/api.ts: each state opens to what the browser check of the built pages expects to draw. None but
+// `first` leaves anything for the reconcile to write, so the check's read-only guard never sees a write attempted;
+// `first` (no key yet) publishes a key with no proof and then shares the name, as the browser does since R72.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
 
-const net = vi.hoisted(() => ({ body: null as null | Record<string, unknown>, calls: [] as string[] }))
+const net = vi.hoisted(() => ({
+  me: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d',
+  body: null as null | Record<string, unknown>,
+  calls: [] as string[],
+  /** The key the session published with POST /me/team-key, as the server would store it. */
+  posted: null as null | { key_id: string; public_key: string; sealed_private_key: string },
+  /** Rows written with PUT team-names after that POST. */
+  written: 0,
+}))
 vi.mock('@/lib/api/client', async (importActual) => {
   const actual = await importActual<typeof import('@/lib/api/client')>()
   return {
     ...actual,
-    default: async (path: string, options: { method?: string } = {}) => {
+    default: async (path: string, options: { method?: string; body?: string } = {}) => {
       const method = options.method ?? 'GET'
       net.calls.push(`${method} ${path}`)
       const b = net.body as Record<string, unknown>
+      // The two writes a person with no key makes (R72): the key, with no proof, then their name for the team.
+      if (method === 'POST' && path === '/me/team-key') {
+        const sent = JSON.parse(options.body ?? '{}') as Record<string, string>
+        if (b.teamKey || net.posted || 'reauth_token' in sent) throw new Error(`a key POST that should not happen: ${Object.keys(sent)}`)
+        const pub = Uint8Array.from(atob(sent.public_key), (ch) => ch.charCodeAt(0))
+        const keyId = new Uint8Array(await crypto.subtle.digest('SHA-256', pub))
+        net.posted = { key_id: btoa(String.fromCharCode(...keyId)), public_key: sent.public_key, sealed_private_key: sent.sealed_private_key }
+        return net.posted
+      }
+      if (method === 'PUT' && path.endsWith('/team-names') && net.posted) {
+        net.written += (JSON.parse(options.body ?? '{}') as { entries: unknown[] }).entries.length
+        return null
+      }
       if (method !== 'GET') throw new Error(`a write was attempted: ${method} ${path}`)
       if (path === '/me/team-key') {
-        if (!b.teamKey) throw new actual.ApiError('Not found', 404)
-        return b.teamKey
+        const row = b.teamKey ?? net.posted
+        if (!row) throw new actual.ApiError('Not found', 404)
+        return row
       }
-      if (path.endsWith('/team-names')) return b.directory
+      if (path.endsWith('/team-names')) {
+        // Once published, the server serves my key with the others.
+        const directory = b.directory as { keys: { user_id: string; public_key: string }[] }
+        return net.posted ? { ...directory, keys: [{ user_id: net.me, public_key: net.posted.public_key }, ...directory.keys] } : directory
+      }
       if (path.endsWith('/members')) return b.members
       throw new Error(`unexpected ${path}`)
     },
@@ -32,7 +59,7 @@ import { TeamNamesSession } from '../session'
 import { buildMadeUpNetwork, type MadeUpAccount } from './fixtures/network'
 import { AMARA, GONE, JONAS, LENA, MAREN, TOMAS, type MadeUpState } from './fixtures/madeUpTeam'
 
-const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
+const ME = net.me
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
 const VMK = new Uint8Array(32).fill(7)
 
@@ -46,7 +73,7 @@ async function open(state: MadeUpState, account: MadeUpAccount = 'set') {
     loadVaultKey: async () => key,
     readVault: (k) => decryptVaultH({ kind: 'opaque', vault: vaultOpsFor(k) }, body.vault.encrypted_vault),
     prove: async () => {
-      throw new Error('the check never runs the password step')
+      throw new Error('no state asks for the password')
     },
     warn: vi.fn(),
   })
@@ -60,6 +87,8 @@ const names = (snapshot: Awaited<ReturnType<typeof open>>) =>
 
 beforeEach(() => {
   net.calls = []
+  net.posted = null
+  net.written = 0
 })
 
 describe('the made-up team, through the real session', () => {
@@ -91,9 +120,16 @@ describe('the made-up team, through the real session', () => {
     expect([...(s.teams.get(TEAM)?.duplicates ?? [])].sort()).toEqual([AMARA, LENA, MAREN].sort())
   })
 
-  it('first: the one-time step', async () => {
-    expect((await open('first')).status).toBe('needs_setup')
-    expect((await open('named', 'first')).status).toBe('needs_setup')
+  it.each([
+    ['first', 'set'],
+    ['named', 'first'],
+  ] as const)('no key yet (%s, %s): published with no step and no proof, then my name goes to every teammate (R72)', async (state, account) => {
+    const s = await open(state, account)
+    expect(s).toMatchObject({ status: 'ready', firstKey: true, share: 'name' })
+    expect(net.calls.filter((c) => !c.startsWith('GET'))).toEqual(['POST /me/team-key', `PUT /organizations/${TEAM}/team-names`])
+    expect(net.written).toBe(4) // the four current teammates; nothing for the former member
+    // Nobody could seal a name for a key that did not exist: names arrive after each teammate's next visit.
+    expect(names(s)).toEqual({})
   })
 
   it.each([

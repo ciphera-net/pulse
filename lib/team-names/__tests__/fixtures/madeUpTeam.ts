@@ -130,11 +130,12 @@ export function madeUpConnections(myId: string, now: Date): Connection[] {
 }
 
 /**
- * The session's snapshot for one state, as lib/team-names/session.ts builds it: no team read while locked or before the
- * one-time step, and the duplicates (Pulse's own words included) worked out by the real rule. `own` is my own name.
+ * The session's snapshot for one state, as lib/team-names/session.ts builds it: no team read while locked or while the
+ * first key is being published (`first`: since R72 that happens on its own, under `loading`), and the duplicates
+ * (Pulse's own words included) worked out by the real rule. `own` is my own name.
  */
 export function madeUpSnapshot(state: MadeUpState, teamId: string, myId: string, own: string | null = MY_NAME): TeamNamesSnapshot {
-  const status: TeamNamesStatus = state === 'locked' ? 'locked' : state === 'first' ? 'needs_setup' : 'ready'
+  const status: TeamNamesStatus = state === 'locked' ? 'locked' : state === 'first' ? 'loading' : 'ready'
   if (status !== 'ready') return { status, share: null, teams: new Map() }
   const names = madeUpNames(state)
   const memberIds = new Set(madeUpMembers(teamId, myId).map((m) => m.user_id))

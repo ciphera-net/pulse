@@ -92,7 +92,8 @@ export async function fetchOwnKey(): Promise<KeyRow | null> {
 }
 
 export interface PublishKeyBody {
-  reauthToken: string
+  /** The reset's proof (purpose `tmk`). A first key carries none (R72). */
+  reauthToken?: string
   publicKey: Uint8Array
   sealedPrivateKey: Uint8Array
 }
@@ -102,19 +103,20 @@ async function sendKey(method: 'POST' | 'PUT', b: PublishKeyBody): Promise<KeyRo
   try {
     body = await apiRequest<unknown>('/me/team-key', {
       method,
-      // pulse-backend answers a refused proof with 401 `reauth_required`. The client's refresh-and-retry would
-      // renew the session for nothing and send the same single-use token again, and a definitive refresh failure
-      // would sign the person out mid-step: the step asks for the password again instead.
-      skipAuthRetry: true,
+      // A reset carries a single-use proof, refused with 401 `reauth_required`: the client's refresh-and-retry
+      // would renew the session for nothing and send the spent token again, and a definitive refresh failure would
+      // sign the person out mid-reset, so the reset asks for the password again instead. A first key carries no
+      // proof, and an expired session is renewed as for any other request.
+      skipAuthRetry: b.reauthToken !== undefined,
       body: JSON.stringify({
-        reauth_token: b.reauthToken,
+        ...(b.reauthToken !== undefined ? { reauth_token: b.reauthToken } : {}),
         public_key: toBase64(b.publicKey),
         sealed_private_key: toBase64(b.sealedPrivateKey),
       }),
     })
   } catch (err) {
-    // Ciphera ID refused the proof (spent, expired, another purpose or another person), and
-    // pulse-backend says so with this code, whatever the status: the password step asks again.
+    // Ciphera ID refused the reset's proof (spent, expired, another purpose or another person), and
+    // pulse-backend says so with this code, whatever the status: the reset asks for the password again.
     if (errorCode(err) === 'reauth_required') throw new TeamNamesError('team_names/reauth_required', { cause: err })
     throw requestFailed(err)
   }
@@ -122,16 +124,16 @@ async function sendKey(method: 'POST' | 'PUT', b: PublishKeyBody): Promise<KeyRo
 }
 
 /**
- * POST /me/team-key: publishes a first key. The answer is the person's key, which is this browser's
- * when its public key comes back (201) and another device's when a different one does (200): the
- * caller compares the bytes rather than reading a status the client does not expose.
+ * POST /me/team-key: publishes a first key, with no proof (R72). The answer is the person's key, which is
+ * this browser's when its public key comes back (201) and another device's when a different one does
+ * (200): the caller compares the bytes rather than reading a status the client does not expose.
  */
-export function publishKey(b: PublishKeyBody): Promise<KeyRow> {
-  return sendKey('POST', b)
+export function publishKey(b: Omit<PublishKeyBody, 'reauthToken'>): Promise<KeyRow> {
+  return sendKey('POST', { publicKey: b.publicKey, sealedPrivateKey: b.sealedPrivateKey })
 }
 
-/** PUT /me/team-key: the reset. The server deletes every row in both directions and stores this key. */
-export function resetKey(b: PublishKeyBody): Promise<KeyRow> {
+/** PUT /me/team-key: the reset, behind its proof. The server deletes every row in both directions and stores this key. */
+export function resetKey(b: PublishKeyBody & { reauthToken: string }): Promise<KeyRow> {
   return sendKey('PUT', b)
 }
 

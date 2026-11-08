@@ -36,13 +36,12 @@ import { duplicateIds, openNamesForMe, planSeals, type OpenedName } from './reco
  * Where this browser stands:
  *   loading       working it out
  *   locked        this browser does not hold the vault key: ids, and the line to unlock on Account
- *   needs_setup   the person has no key yet: the one-time password step
  *   cannot_open   a key exists that this browser's vault key does not open: the reset
  *   key_mismatch  the server's key for this person contradicts their envelope: nothing is sealed or opened
  *   ready         names are read and shared
  *   error         the server could not be reached; ids until the next try
  */
-export type TeamNamesStatus = 'loading' | 'locked' | 'needs_setup' | 'cannot_open' | 'key_mismatch' | 'ready' | 'error'
+export type TeamNamesStatus = 'loading' | 'locked' | 'cannot_open' | 'key_mismatch' | 'ready' | 'error'
 
 export interface TeamState {
   status: 'loading' | 'ready' | 'too_large' | 'unavailable' | 'error'
@@ -58,13 +57,18 @@ export interface TeamNamesSnapshot {
   status: TeamNamesStatus
   /** What this person's own display name does, once read from the vault: shared, none, or too long. */
   share: ShareableName['kind'] | null
+  /**
+   * This session published the person's first key (R72): the provider then seals their name in every team with
+   * the beta at once, which the one-time step used to do, rather than team by team as each one is opened.
+   */
+  firstKey?: boolean
   teams: ReadonlyMap<string, TeamState>
 }
 
 export interface TeamNamesApi {
   fetchOwnKey(): Promise<KeyRow | null>
-  publishKey(body: PublishKeyBody): Promise<KeyRow>
-  resetKey(body: PublishKeyBody): Promise<KeyRow>
+  publishKey(body: Omit<PublishKeyBody, 'reauthToken'>): Promise<KeyRow>
+  resetKey(body: PublishKeyBody & { reauthToken: string }): Promise<KeyRow>
   fetchDirectory(teamId: string, warn: Warn): Promise<DirectoryAnswer>
   fetchMemberIds(teamId: string): Promise<string[]>
   writeNames(teamId: string, entries: NameEntry[]): Promise<WriteOutcome>
@@ -78,7 +82,7 @@ export interface SessionDeps {
   loadVaultKey(userId: string): Promise<VaultKey | null>
   /** The person's own vault, read fresh from Ciphera ID: the one source of their current name. */
   readVault(key: VaultKey): Promise<VaultData>
-  /** The password step: the OPAQUE re-auth ceremony with purpose `tmk`; resolves with its single-use token. */
+  /** The reset's password: the OPAQUE re-auth ceremony with purpose `tmk`; resolves with its single-use token. */
   prove(password: string): Promise<string>
   warn: Warn
 }
@@ -185,9 +189,34 @@ export class TeamNamesSession {
     const row = await this.deps.api.fetchOwnKey()
     if (this.disposed) return
     if (!row) {
-      this.set({ status: 'needs_setup' })
+      // R72: no prompt and no password. The first visit with the vault open publishes the key.
+      await this.publishFirst(vaultKey)
       return
     }
+    await this.adopt(vaultKey, row)
+  }
+
+  /**
+   * The person's first key, created under the vault key this browser holds and published at once (R72: the
+   * server takes a first key without a proof; the reset keeps one). A failure leaves the error state, and the
+   * next try reads again. Nothing is sealed until the answer names the key to use (design §4.3).
+   */
+  private async publishFirst(vaultKey: VaultKey): Promise<void> {
+    const created = await createIdentity(vaultOpsFor(vaultKey))
+    if (this.disposed) return
+    const row = await this.deps.api.publishKey({
+      publicKey: created.identity.publicKey,
+      sealedPrivateKey: created.envelope,
+    })
+    if (this.disposed) return
+    if (bytesEqual(row.publicKey, created.identity.publicKey)) {
+      if (!(await this.servedKeyMatches(created.identity, row))) return
+      if (this.disposed) return
+      this.identity = created.identity
+      this.set({ status: 'ready', teams: new Map(), firstKey: true })
+      return
+    }
+    // Another device of the person published first: its key is theirs, and the same vault key opens it.
     await this.adopt(vaultKey, row)
   }
 
@@ -221,28 +250,8 @@ export class TeamNamesSession {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // The one-time step and the reset (design §4.3, §6.3)
+  // The reset (design §6.3): the one place the password is still asked for (R72)
   // ---------------------------------------------------------------------------------------------
-
-  /**
-   * The one-time step: the password once, a key created and published with the proof, then the
-   * person's name sealed in every team given. Rejects with a coded error, and what it leaves behind
-   * tells the surface what to show:
-   *   team_names/password_failed  the password did not match (the ceremony's error is the `cause`):
-   *                               the step stays and asks again
-   *   team_names/reauth_required  pulse-backend says Ciphera ID refused the proof: the step stays and
-   *                               asks for the password again
-   *   team_names/proof_failed     the ceremony failed for another reason (its error is the `cause`):
-   *                               the status becomes `error`, not a password prompt; `retry` reads again
-   *   anything else               the status becomes `error` too (a refused key is `request_failed`)
-   */
-  setUp(password: string, teamIds: readonly string[]): Promise<void> {
-    return this.enqueue(async () => {
-      if (this.snapshot.status !== 'needs_setup') throw new TeamNamesError('team_names/not_ready')
-      await this.publishOrFail('POST', password)
-      await this.reconcileEach(teamIds)
-    })
-  }
 
   /** The reset: a new key, and every row of the old one deleted in both directions, in every team. */
   reset(password: string, teamIds: readonly string[]): Promise<void> {
@@ -251,7 +260,7 @@ export class TeamNamesSession {
       if (status !== 'cannot_open' && status !== 'key_mismatch' && status !== 'ready') {
         throw new TeamNamesError('team_names/not_ready')
       }
-      await this.publishOrFail('PUT', password)
+      await this.publishOrFail(password)
       await this.reconcileEach(teamIds)
     })
   }
@@ -268,9 +277,17 @@ export class TeamNamesSession {
     })
   }
 
-  private async publishOrFail(method: 'POST' | 'PUT', password: string): Promise<void> {
+  /**
+   * The reset's key, behind the password. Rejects with a coded error, and what it leaves behind tells the surface
+   * what to show:
+   *   team_names/password_failed  the password did not match (the ceremony's error is the `cause`): asks again
+   *   team_names/reauth_required  pulse-backend says Ciphera ID refused the proof: asks for the password again
+   *   team_names/proof_failed     the ceremony failed for another reason: the status becomes `error`
+   *   anything else               the status becomes `error` too
+   */
+  private async publishOrFail(password: string): Promise<void> {
     try {
-      await this.publish(method, password)
+      await this.publishReset(password)
     } catch (err) {
       const asksAgain = isTeamNamesError(err, 'team_names/password_failed') || isTeamNamesError(err, 'team_names/reauth_required')
       if (!asksAgain && !this.disposed && this.snapshot.status !== 'locked') {
@@ -282,7 +299,7 @@ export class TeamNamesSession {
     }
   }
 
-  private async publish(method: 'POST' | 'PUT', password: string): Promise<void> {
+  private async publishReset(password: string): Promise<void> {
     // The envelope is sealed under the vault key this browser holds. Read it before the ceremony, so
     // no token is spent when it has expired since the session began.
     const vaultKey = await this.deps.loadVaultKey(this.deps.userId)
@@ -300,24 +317,19 @@ export class TeamNamesSession {
     }
     if (this.disposed) throw new TeamNamesError('team_names/not_ready')
     const created = await createIdentity(vaultOpsFor(vaultKey))
-    const body: PublishKeyBody = {
+    const body: PublishKeyBody & { reauthToken: string } = {
       reauthToken,
       publicKey: created.identity.publicKey,
       sealedPrivateKey: created.envelope,
     }
     // Nothing is sealed until this answer names the key to use (design §4.3).
-    const row = method === 'POST' ? await this.deps.api.publishKey(body) : await this.deps.api.resetKey(body)
+    const row = await this.deps.api.resetKey(body)
     if (this.disposed) throw new TeamNamesError('team_names/not_ready')
     if (bytesEqual(row.publicKey, created.identity.publicKey)) {
       if (!(await this.servedKeyMatches(created.identity, row))) return
       this.identity = created.identity
       // A reset deleted every row sealed to the old key, so nothing read before it stands.
       this.set({ status: 'ready', teams: new Map() })
-      return
-    }
-    if (method === 'POST') {
-      // Another device won the race; its key is the person's key, and the same vault key opens it.
-      await this.adopt(vaultKey, row)
       return
     }
     // A reset must answer with the key it was given.

@@ -21,8 +21,8 @@ import { usePeopleNames } from '@/components/settings/names/useNames'
  * on the page calls their account a team. While the team state is not known the page draws the team's layout, so a
  * failure never hides a team's sections from a team.
  *
- * With the team-names beta on, what needs the person about teammates' names (locked here, or the one-time step) is a
- * prompt at the top of the page (R63, P3 B); somebody alone has nobody to name.
+ * With the team-names beta on, teammates' names locked in this browser is a prompt at the top of the page (R63, P3 B;
+ * a first key needs no step since R72); somebody alone has nobody to name.
  */
 export default function TeamPage() {
   const alone = useTeamState() === 'alone'

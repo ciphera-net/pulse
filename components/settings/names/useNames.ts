@@ -8,10 +8,11 @@ import { useTeamNames, useTeammateNameLookup, type TeamNamesPageState } from '@/
 import type { PersonWho } from './words'
 
 /**
- * The once-per-page line a page owes (copy deck §14.6, P3 B): `locked` and `step` need the person, so they are the
- * page's prompt; `notYet` needs nothing, so it is the section's line. At most one, never per row.
+ * The once-per-page line a page owes (copy deck §14.6, P3 B): `locked` needs the person, so it is the page's prompt;
+ * `notYet` needs nothing, so it is the section's line. At most one, never per row. (The one-time step's line went
+ * with the step, R72.)
  */
-export type NamesLine = 'locked' | 'step' | 'notYet' | null
+export type NamesLine = 'locked' | 'notYet' | null
 
 export interface PeopleNames {
   /**
@@ -53,7 +54,6 @@ export function usePeopleNames(): PeopleNames {
       // A page that names nobody but the person owes no line.
       if (!on || !teammateIds.some((id) => id !== myId)) return null
       if (view.state === 'locked') return 'locked'
-      if (view.state === 'needs_setup') return 'step'
       // Only when the team's names were read: a team too large to serve them, or one that failed to load, is not a
       // name on its way.
       if (view.state === 'ready' && view.team?.status === 'ready' && teammateIds.some((id) => id !== myId && who(id, true).kind === 'teammate')) {

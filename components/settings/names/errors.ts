@@ -4,12 +4,12 @@ import { ID_DOWN, NO_CONNECTION, TOO_MANY, isNetworkError } from '@/components/s
 import { NAMES_WORDS } from './words'
 
 /**
- * The one-time step's and the reset's failures in the copy deck's words (§14.6, §14.7). The session says which side
- * failed (lib/team-names/session.ts): the password itself, Ciphera ID's proof, or pulse-backend's key route, so "Ciphera
- * ID" is never blamed for something Pulse refused.
+ * The reset's failures in the copy deck's words (§14.7). The session says which side failed
+ * (lib/team-names/session.ts): the password itself, Ciphera ID's proof, or pulse-backend's key route, so "Ciphera ID"
+ * is never blamed for something Pulse refused. (The one-time step and its words went with R72.)
  */
 
-/** The step asks for the password again after these; any other failure left the session in its error state. */
+/** The reset asks for the password again after these; any other failure left the session in its error state. */
 export function asksForPassword(err: unknown): boolean {
   return isTeamNamesError(err, 'team_names/password_failed') || isTeamNamesError(err, 'team_names/reauth_required')
 }
@@ -33,7 +33,5 @@ function keyStepError(err: unknown, refused: string): string {
   if (status === 429) return TOO_MANY
   return refused
 }
-
-export const setUpErrorMessage = (err: unknown): string => keyStepError(err, NAMES_WORDS.setUpFailed)
 
 export const resetErrorMessage = (err: unknown): string => keyStepError(err, NAMES_WORDS.resetFailed)

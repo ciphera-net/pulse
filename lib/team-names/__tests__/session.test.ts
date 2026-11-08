@@ -1,8 +1,8 @@
 // @vitest-environment node
 //
 // The session engine against a fake pulse-backend that keeps the routes' contract (design §6.2):
-// POST /me/team-key never overwrites and spends a token only when it writes; PUT resets and deletes
-// every row in both directions; the directory serves current members' keys plus former senders with
+// POST /me/team-key takes a first key with no proof (R72) and never overwrites; PUT, the reset, spends
+// its token and deletes every row in both directions; the directory serves current members' keys plus former senders with
 // a kept row for the caller, and for each row the caller sent the SHA-256 of the row as stored; PUT
 // team-names upserts the caller's rows or answers 409; DELETE takes back every row the caller sent. Real
 // cryptography throughout.
@@ -78,9 +78,10 @@ class FakeServer {
           this.failNextPublish = false
           throw new TeamNamesError('team_names/request_failed')
         }
+        // R72: a first key carries no proof, and the browser sends none.
+        if ('reauthToken' in body) throw new Error('a first key was sent with a re-auth token')
         const existing = this.keys.get(caller)
         if (existing) return existing
-        spend(body.reauthToken)
         await this.beforeInsert?.(caller)
         const winner = this.keys.get(caller)
         this.events.push('publish:end')
@@ -174,34 +175,35 @@ async function person(server: FakeServer, id: string, name: string | undefined):
   return Object.assign(p, { session: new TeamNamesSession(deps) })
 }
 
-/** A person with a key already published (another browser of theirs did the one-time step). */
+/** A person whose first visit with the vault open published their key (R72). */
 async function keyed(server: FakeServer, id: string, name: string | undefined): Promise<Person> {
   const p = await person(server, id, name)
   await p.session.start()
-  await p.session.setUp('correct horse', [])
   expect(p.session.getSnapshot().status).toBe('ready')
   return p
 }
 
 describe('session start', () => {
-  it('is locked without the vault key, and asks for the one-time step without a key', async () => {
+  it('is locked without the vault key, and publishes nothing', async () => {
     const server = new FakeServer()
     const a = await person(server, A, 'Ada')
     a.vaultKeyHeld = false
     await a.session.start()
     expect(a.session.getSnapshot().status).toBe('locked')
-    const b = await person(server, B, 'Bob')
-    await b.session.start()
-    expect(b.session.getSnapshot().status).toBe('needs_setup')
+    expect(server.events).not.toContain('publish:start')
+    expect(server.keys.size).toBe(0)
   })
 
-  it('opens the served key on a new device, with no password', async () => {
+  it('opens the served key on a new device, with no password and no new key', async () => {
     const server = new FakeServer()
     const first = await keyed(server, A, 'Ada')
     const second = await person(server, A, 'Ada')
     second.vmk = first.vmk
+    server.events.length = 0
     await second.session.start()
     expect(second.session.getSnapshot().status).toBe('ready')
+    expect(second.session.getSnapshot().firstKey).toBeUndefined()
+    expect(server.events).not.toContain('publish:start')
   })
 
   it('cannot open an envelope sealed under another vault key, and offers the reset', async () => {
@@ -231,21 +233,22 @@ describe('session start', () => {
   })
 })
 
-describe('the one-time step', () => {
-  it('publishes the key with the proof, and seals nothing before the POST answers', async () => {
+describe('the first key (R72)', () => {
+  it('is published at the first visit with the vault open, with no password, and seals nothing before the POST answers', async () => {
     const server = new FakeServer()
     const b = await keyed(server, B, 'Bob')
     server.events.length = 0
     const a = await person(server, A, 'Ada')
+    const mint = vi.spyOn(server, 'mint')
     await a.session.start()
-    const publish = vi.spyOn(server, 'mint')
-    await a.session.setUp('correct horse', [TEAM])
-    expect(publish).toHaveBeenCalledTimes(1)
-    expect(a.session.getSnapshot().status).toBe('ready')
+    expect(mint).not.toHaveBeenCalled()
+    expect(a.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
     const row = server.keys.get(A) as KeyRow
     expect(row.publicKey.length).toBe(65)
     expect(row.sealedPrivateKey.length).toBe(219)
-    expect(server.tokens.size).toBe(0) // spent
+    expect(server.events).not.toContain('write') // the session seals nothing on its own; the provider asks
+    // The provider then shares the name in every team with the beta at once.
+    await a.session.reconcileAll([TEAM])
     expect(server.events.indexOf('publish:end')).toBeLessThan(server.events.indexOf('write'))
     expect(server.events.filter((e) => e === 'write')).toHaveLength(1)
     // B's next session reads Ada.
@@ -253,108 +256,90 @@ describe('the one-time step', () => {
     expect(b.session.getSnapshot().teams.get(TEAM)?.names.get(A)).toEqual({ name: 'Ada', former: false })
   })
 
-  it('takes no key without the password, and maps the failure to a coded error that keeps its cause', async () => {
+  it('leaves the error state when the POST fails, not a password prompt, and retry publishes', async () => {
     const server = new FakeServer()
     const a = await person(server, A, 'Ada')
-    await a.session.start()
-    const err = await a.session.setUp('wrong', [TEAM]).catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(TeamNamesError)
-    expect((err as TeamNamesError).code).toBe('team_names/password_failed')
-    expect(((err as TeamNamesError).cause as Error).message).toBe('tessera: invalid credentials')
-    expect(server.keys.size).toBe(0)
-    expect(server.events).not.toContain('publish:start')
-    expect(a.session.getSnapshot().status).toBe('needs_setup')
-  })
-
-  it('keeps the step when the proof is refused, so the password is asked again, and logs no token', async () => {
-    const server = new FakeServer()
-    const a = await person(server, A, 'Ada')
-    await a.session.start()
-    vi.spyOn(server, 'mint').mockReturnValueOnce('tmk-token-never-issued-do-not-log')
-    const err = await a.session.setUp('correct horse', [TEAM]).catch((e: unknown) => e)
-    expect((err as TeamNamesError).code).toBe('team_names/reauth_required')
-    expect(`${(err as Error).message} ${(err as Error).stack}`).not.toContain('do-not-log')
-    expect(server.keys.size).toBe(0)
-    expect(a.session.getSnapshot().status).toBe('needs_setup')
-    // Asked again, with a token Ciphera ID will accept, it goes through.
-    await a.session.setUp('correct horse', [TEAM])
-    expect(a.session.getSnapshot().status).toBe('ready')
-  })
-
-  it('treats a ceremony that failed for another reason as the error state, not the password prompt', async () => {
-    const server = new FakeServer()
-    const a = await person(server, A, 'Ada')
-    await a.session.start()
-    const err = await a.session.setUp('unreachable', [TEAM]).catch((e: unknown) => e)
-    // Its own code: the step says Ciphera ID's words for it, and Pulse's only for a refused key.
-    expect((err as TeamNamesError).code).toBe('team_names/proof_failed')
-    expect(((err as TeamNamesError).cause as Error).message).toMatch(/Network error/)
-    expect(a.session.getSnapshot().status).toBe('error')
-    expect(server.events).not.toContain('publish:start')
-  })
-
-  it('turns any other failure into the error state, not a password prompt, and retry reads the key again', async () => {
-    const server = new FakeServer()
-    const a = await person(server, A, 'Ada')
-    await a.session.start()
     server.failNextPublish = true
-    await expect(a.session.setUp('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/request_failed' })
+    await a.session.start()
     expect(a.session.getSnapshot().status).toBe('error')
-    await expect(a.session.setUp('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
+    expect(a.warn).toHaveBeenCalledWith('team_names/request_failed')
+    expect(server.keys.size).toBe(0)
     await a.session.retry()
-    expect(a.session.getSnapshot().status).toBe('needs_setup')
+    expect(a.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
+    expect(server.keys.size).toBe(1)
   })
 
-  it('spends no token when the vault key has gone since the session began', async () => {
+  it('refuses a first key the server answers with another key id (the own-key check), and seals nothing', async () => {
     const server = new FakeServer()
+    await keyed(server, B, 'Bob')
     const a = await person(server, A, 'Ada')
-    await a.session.start()
-    const mint = vi.spyOn(server, 'mint')
-    a.vaultKeyHeld = false
-    await expect(a.session.setUp('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
-    expect(mint).not.toHaveBeenCalled()
-    expect(a.session.getSnapshot().status).toBe('locked')
+    const api = server.api(A)
+    const s = new TeamNamesSession({
+      userId: A,
+      api: { ...api, publishKey: async (body) => ({ ...(await api.publishKey(body)), keyId: sha256(new Uint8Array([1])) }) },
+      loadVaultKey: async () => a.vmk,
+      readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
+      prove: async () => { throw new Error('unused') },
+      warn: a.warn,
+    })
+    await s.start()
+    expect(s.getSnapshot().status).toBe('key_mismatch')
+    expect(s.getSnapshot().firstKey).toBeUndefined()
+    expect(a.warn).toHaveBeenCalledWith('team_names/own_key_mismatch', { userId: A })
+    server.events.length = 0
+    await s.reconcileAll([TEAM])
+    expect(server.events).not.toContain('write')
   })
 
   it('adopts the key another device published first, opened with the same vault key', async () => {
     const server = new FakeServer()
     const a = await person(server, A, 'Ada')
-    await a.session.start()
     await keyed(server, B, 'Bob')
-    // Another browser of A's, same vault key, publishes between A's token check and A's insert.
+    // Another browser of A's, same vault key, publishes between A's read and A's insert.
     const won: { key: Bytes | null } = { key: null }
     server.beforeInsert = async (caller) => {
       const other = await createIdentity(vaultOpsFor(a.vmk))
       won.key = other.identity.publicKey
       server.keys.set(caller, { keyId: sha256(other.identity.publicKey), publicKey: other.identity.publicKey, sealedPrivateKey: other.envelope })
     }
-    await a.session.setUp('correct horse', [TEAM])
+    await a.session.start()
     expect(a.session.getSnapshot().status).toBe('ready')
+    // The other device published, so its session is the one that shares the name everywhere.
+    expect(a.session.getSnapshot().firstKey).toBeUndefined()
     if (!won.key) throw new Error('the race did not run')
     expect(same((server.keys.get(A) as KeyRow).publicKey, won.key)).toBe(true)
-    // The rows A wrote name the winner's key id.
+    // The rows A writes name the winner's key id.
+    await a.session.reconcile(TEAM)
     const written = server.rows.filter((r) => r.sender === A)
     expect(written).toHaveLength(1)
     expect(same(written[0].senderKeyId, sha256(won.key))).toBe(true)
   })
 
+  it('ends with one key when two devices start at once: one publishes, the other adopts it', async () => {
+    const server = new FakeServer()
+    const first = await person(server, A, 'Ada')
+    const second = await person(server, A, 'Ada')
+    second.vmk = first.vmk
+    await Promise.all([first.session.start(), second.session.start()])
+    // Both read no key and both sent a POST: the race ran, and the server kept the first.
+    expect(server.events.filter((e) => e === 'publish:start')).toHaveLength(2)
+    expect(first.session.getSnapshot().status).toBe('ready')
+    expect(second.session.getSnapshot().status).toBe('ready')
+    expect(server.keys.size).toBe(1)
+    expect([first, second].filter((p) => p.session.getSnapshot().firstKey === true)).toHaveLength(1)
+  })
+
   it('offers the reset when the winning device’s envelope does not open here', async () => {
     const server = new FakeServer()
     const a = await person(server, A, 'Ada')
-    await a.session.start()
     server.beforeInsert = async (caller) => {
       const other = await createIdentity(vaultOpsFor(await newVmk()))
       server.keys.set(caller, { keyId: sha256(other.identity.publicKey), publicKey: other.identity.publicKey, sealedPrivateKey: other.envelope })
     }
-    await a.session.setUp('correct horse', [TEAM])
+    await a.session.start()
     expect(a.session.getSnapshot().status).toBe('cannot_open')
+    await a.session.reconcile(TEAM)
     expect(server.rows.filter((r) => r.sender === A)).toHaveLength(0)
-  })
-
-  it('is refused outside the needs_setup state', async () => {
-    const server = new FakeServer()
-    const a = await keyed(server, A, 'Ada')
-    await expect(a.session.setUp('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
   })
 })
 
@@ -376,6 +361,79 @@ describe('the reset', () => {
     await b.session.reconcile(TEAM)
     await lost.session.reconcile(TEAM)
     expect(lost.session.getSnapshot().teams.get(TEAM)?.names.get(B)?.name).toBe('Bob')
+  })
+
+  /** A's key, published from another device, and this device's vault key, which does not open it. */
+  async function cannotOpen(server: FakeServer): Promise<Person> {
+    await keyed(server, A, 'Ada')
+    const lost = await person(server, A, 'Ada')
+    await lost.session.start()
+    expect(lost.session.getSnapshot().status).toBe('cannot_open')
+    server.events.length = 0
+    return lost
+  }
+
+  it('takes no key without the password, and maps the failure to a coded error that keeps its cause', async () => {
+    const server = new FakeServer()
+    const lost = await cannotOpen(server)
+    const before = server.keys.get(A)
+    const err = await lost.session.reset('wrong', [TEAM]).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(TeamNamesError)
+    expect((err as TeamNamesError).code).toBe('team_names/password_failed')
+    expect(((err as TeamNamesError).cause as Error).message).toBe('tessera: invalid credentials')
+    expect(server.keys.get(A)).toBe(before)
+    expect(server.events).not.toContain('reset')
+    expect(lost.session.getSnapshot().status).toBe('cannot_open')
+  })
+
+  it('asks for the password again when the proof is refused, and logs no token', async () => {
+    const server = new FakeServer()
+    const lost = await cannotOpen(server)
+    vi.spyOn(server, 'mint').mockReturnValueOnce('tmk-token-never-issued-do-not-log')
+    const err = await lost.session.reset('correct horse', [TEAM]).catch((e: unknown) => e)
+    expect((err as TeamNamesError).code).toBe('team_names/reauth_required')
+    expect(`${(err as Error).message} ${(err as Error).stack}`).not.toContain('do-not-log')
+    expect(lost.session.getSnapshot().status).toBe('cannot_open')
+    // Asked again, with a token Ciphera ID will accept, it goes through.
+    await lost.session.reset('correct horse', [TEAM])
+    expect(lost.session.getSnapshot().status).toBe('ready')
+  })
+
+  it('treats a ceremony that failed for another reason as the error state, not the password prompt', async () => {
+    const server = new FakeServer()
+    const lost = await cannotOpen(server)
+    const err = await lost.session.reset('unreachable', [TEAM]).catch((e: unknown) => e)
+    // Its own code: the reset says Ciphera ID's words for it, and Pulse's only for a refused key.
+    expect((err as TeamNamesError).code).toBe('team_names/proof_failed')
+    expect(((err as TeamNamesError).cause as Error).message).toMatch(/Network error/)
+    expect(lost.session.getSnapshot().status).toBe('error')
+    expect(server.events).not.toContain('reset')
+    // retry reads the key again, which still does not open here.
+    await lost.session.retry()
+    expect(lost.session.getSnapshot().status).toBe('cannot_open')
+  })
+
+  it('spends no token when the vault key has gone since the session began', async () => {
+    const server = new FakeServer()
+    const lost = await cannotOpen(server)
+    const mint = vi.spyOn(server, 'mint')
+    lost.vaultKeyHeld = false
+    await expect(lost.session.reset('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
+    expect(mint).not.toHaveBeenCalled()
+    expect(lost.session.getSnapshot().status).toBe('locked')
+  })
+
+  it('is refused while locked or in the error state', async () => {
+    const server = new FakeServer()
+    const a = await person(server, A, 'Ada')
+    a.vaultKeyHeld = false
+    await a.session.start()
+    await expect(a.session.reset('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
+    const b = await person(server, B, 'Bob')
+    server.failNextPublish = true
+    await b.session.start()
+    expect(b.session.getSnapshot().status).toBe('error')
+    await expect(b.session.reset('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
   })
 })
 
@@ -552,6 +610,6 @@ describe('dispose', () => {
     await inFlight
     expect(server.events).not.toContain('write')
     expect(s.getSnapshot()).toEqual({ status: 'loading', share: null, teams: new Map() })
-    await expect(s.setUp('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
+    await expect(s.reset('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
   })
 })

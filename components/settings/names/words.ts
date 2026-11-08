@@ -14,27 +14,17 @@ export const NAMES_WORDS = {
   formerTeammateLower: 'former teammate',
   former: 'former',
 
-  // The three lines a page shows once (§14.6).
+  // The lines a page shows once (§14.6; the one-time step's went with R72).
   notYet: "A teammate's name shows after their next visit to Pulse, if they've set one.",
   lockedTitle: "Your teammates' names are locked",
   lockedLine: 'Unlock your profile on Account to see them in this browser.',
   lockedButton: 'Unlock on Account',
   lockedSendTo: 'Unlock your profile on Account to see their names.',
-  stepTitle: 'Set up team names?',
-  stepLine: "See your teammates' names and share yours. Pulse asks for your password once.",
-  stepButton: 'Set up',
-  stepBusy: 'Setting up…',
-  stepSendTo: 'Set up team names on the Team page to see their names.',
   password: 'Your password',
-  passwordCaption: "Once for your account. Your other devices won't ask.",
-  cancel: 'Cancel',
-  stepDone: 'Team names set up',
 
-  // The password step's failures (§14.6, Account's own words where they are Account's, §12.9).
-  emptyPassword: 'Enter your password.',
+  // The reset's password failures (§14.7, Account's own words where they are Account's, §12.9).
   wrongPassword: "That password didn't match. Try again.",
   notConfirmed: "Couldn't confirm your password. Try again.",
-  setUpFailed: "Couldn't set up team names. Try again.",
 
   // Account (§14.7).
   notice: "Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.",

@@ -1,5 +1,5 @@
 // The parts every team-names surface shares (design §7; R63 to R65; copy deck §14): how a person is resolved and
-// written, which line a page owes, and the password step's failures in the deck's words.
+// written, which line a page owes, and the reset's failures in the deck's words.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
@@ -18,10 +18,10 @@ vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { id: '0a1b2c3d-4
 
 import { usePeopleNames, type PeopleNames } from '../useNames'
 import { plainName, titleName, type PersonWho } from '../words'
-import { asksForPassword, resetErrorMessage, setUpErrorMessage } from '../errors'
+import { asksForPassword, resetErrorMessage } from '../errors'
 
 function session(snapshot: TeamNamesSnapshot | null): TeamNamesContextValue {
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 const got: { names: PeopleNames | null } = { names: null }
@@ -82,7 +82,8 @@ describe('who a person is', () => {
 describe('the line a page owes', () => {
   it.each([
     ['locked', 'locked'],
-    ['first', 'step'],
+    // R72: a first key is published on its own while the state is loading, so nothing is asked and no line shows.
+    ['first', null],
     ['partial', 'notYet'],
     ['named', null],
   ] as const)('%s: %s', (state, line) => {
@@ -90,10 +91,10 @@ describe('the line a page owes', () => {
   })
 
   it('owes none with the beta off, or for a page that names nobody but the person', () => {
-    expect(resolve(of('first')).lineFor([ME])).toBeNull()
+    expect(resolve(of('locked')).lineFor([ME])).toBeNull()
     cleanup()
     flag.value = null
-    expect(resolve(of('first')).lineFor(everyone)).toBeNull()
+    expect(resolve(of('locked')).lineFor(everyone)).toBeNull()
     cleanup()
     flag.value = false
     expect(resolve(of('partial')).lineFor(everyone)).toBeNull()
@@ -121,21 +122,20 @@ describe('a person in text', () => {
   })
 })
 
-describe('the password step\'s failures', () => {
-  it.each<[string, unknown, string, string]>([
-    ['a wrong password', new TeamNamesError('team_names/password_failed'), "That password didn't match. Try again.", "That password didn't match. Try again."],
-    ['the proof refused', new TeamNamesError('team_names/reauth_required'), "Couldn't confirm your password. Try again.", "Couldn't confirm your password. Try again."],
-    ['Ciphera ID rate-limiting', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('x', 429) }), 'Too many tries in a short time. Wait about a minute and try again.', 'Too many tries in a short time. Wait about a minute and try again.'],
-    ['Ciphera ID down', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('x', 500) }), "Couldn't reach Ciphera ID. Nothing changed. Try again.", "Couldn't reach Ciphera ID. Nothing changed. Try again."],
-    ['Ciphera ID refusing otherwise', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('x', 400) }), "Couldn't confirm your password. Try again.", "Couldn't confirm your password. Try again."],
-    ['no connection on the way to Ciphera ID', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('Network error, please try again.', 0) }), "Couldn't connect. Check your connection and try again.", "Couldn't connect. Check your connection and try again."],
-    ['Pulse down', new TeamNamesError('team_names/request_failed', { cause: new ApiError('x', 503) }), "Couldn't set up team names. Try again.", "Couldn't reset team names. Nothing changed. Try again."],
-    ['Pulse rate-limiting', new TeamNamesError('team_names/request_failed', { cause: new ApiError('x', 429) }), 'Too many tries in a short time. Wait about a minute and try again.', 'Too many tries in a short time. Wait about a minute and try again.'],
-    ['no connection to Pulse', new TeamNamesError('team_names/request_failed', { cause: new ApiError('Network error, please try again.', 0) }), "Couldn't connect. Check your connection and try again.", "Couldn't connect. Check your connection and try again."],
-    ['a key that came back wrong', new TeamNamesError('team_names/invalid_response'), "Couldn't set up team names. Try again.", "Couldn't reset team names. Nothing changed. Try again."],
-    ['the session gone mid-step', new TeamNamesError('team_names/not_ready'), "Couldn't set up team names. Try again.", "Couldn't reset team names. Nothing changed. Try again."],
-  ])('%s', (_what, err, setUp, reset) => {
-    expect(setUpErrorMessage(err)).toBe(setUp)
+describe('the reset\'s failures', () => {
+  it.each<[string, unknown, string]>([
+    ['a wrong password', new TeamNamesError('team_names/password_failed'), "That password didn't match. Try again."],
+    ['the proof refused', new TeamNamesError('team_names/reauth_required'), "Couldn't confirm your password. Try again."],
+    ['Ciphera ID rate-limiting', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('x', 429) }), 'Too many tries in a short time. Wait about a minute and try again.'],
+    ['Ciphera ID down', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('x', 500) }), "Couldn't reach Ciphera ID. Nothing changed. Try again."],
+    ['Ciphera ID refusing otherwise', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('x', 400) }), "Couldn't confirm your password. Try again."],
+    ['no connection on the way to Ciphera ID', new TeamNamesError('team_names/proof_failed', { cause: new ApiError('Network error, please try again.', 0) }), "Couldn't connect. Check your connection and try again."],
+    ['Pulse down', new TeamNamesError('team_names/request_failed', { cause: new ApiError('x', 503) }), "Couldn't reset team names. Nothing changed. Try again."],
+    ['Pulse rate-limiting', new TeamNamesError('team_names/request_failed', { cause: new ApiError('x', 429) }), 'Too many tries in a short time. Wait about a minute and try again.'],
+    ['no connection to Pulse', new TeamNamesError('team_names/request_failed', { cause: new ApiError('Network error, please try again.', 0) }), "Couldn't connect. Check your connection and try again."],
+    ['a key that came back wrong', new TeamNamesError('team_names/invalid_response'), "Couldn't reset team names. Nothing changed. Try again."],
+    ['the session gone mid-step', new TeamNamesError('team_names/not_ready'), "Couldn't reset team names. Nothing changed. Try again."],
+  ])('%s', (_what, err, reset) => {
     expect(resetErrorMessage(err)).toBe(reset)
   })
 
