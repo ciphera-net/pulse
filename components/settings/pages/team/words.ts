@@ -2,8 +2,7 @@ import type { InviteLink } from '@/lib/api/organization'
 
 /**
  * The Team page's fixed words (copy deck §9): the three roles and their lines (R1: owner, admin and member are
- * fixed, each explained in one line where it is picked and where it shows), how a person is named, and the short
- * dates the page prints.
+ * fixed, each explained in one line where it is picked and where it shows), and the short dates the page prints.
  */
 
 export type TeamRole = 'owner' | 'admin' | 'member'
@@ -37,14 +36,6 @@ export function roleWord(role: string): string {
 
 /** The role options of the invite and change-role pickers: Member, then Admin, each with its line. */
 export const ROLE_OPTIONS = ASSIGNABLE_ROLES.map((r) => ({ value: r, label: ROLE_WORD[r], description: ROLE_LINE[r] }))
-
-/**
- * How the page names a person: "You", else "Teammate" and the start of their id. Pulse holds no one's name (they
- * live encrypted in each person's Ciphera ID profile), and "Member {id}" read as a role (§9.10).
- */
-export function personName(userId: string, myId: string | null | undefined): string {
-  return userId === myId ? 'You' : `Teammate ${userId.slice(0, 8)}`
-}
 
 // "3 Nov", composed from a fixed month table: current ICU data writes en-GB September as "Sept", which put
 // "22 Sept" beside "3 Nov" (copy deck §9.11.10). The day and month come from Intl as numbers, in the viewer's zone.

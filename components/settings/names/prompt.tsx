@@ -13,8 +13,8 @@ import { NAMES_WORDS } from './words'
  * What needs the person, as a prompt at the top of the page (R63, P3 B): the device of Account's "Set up a recovery
  * phrase?". Only `locked` remains, a browser that holds no vault key and so reads no name (design §5.11): since R72 a
  * first key is created on its own at the first vault-open visit, so there is no one-time step to offer. Team and
- * Developers mount it whenever the beta is on and somebody else is named, and it draws nothing in every other state.
- * Account does not mount it: Account unlocks the profile itself.
+ * Developers mount it in a team of more than one person, and it draws nothing in every other state. Account does not
+ * mount it: Account unlocks the profile itself.
  */
 export function TeamNamesPrompt() {
   const { state } = useTeamNames()

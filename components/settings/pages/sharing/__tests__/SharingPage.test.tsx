@@ -666,7 +666,7 @@ describe('Scheduled emails', () => {
     expect(screen.getByText('Each email links to its own report.')).toBeInTheDocument()
 
     const people = within(screen.getByRole('group', { name: 'Send to' })).getAllByRole('checkbox')
-    expect(people.map((c) => c.textContent)).toEqual(['You', 'anna@example.com', 'Member 0f3c9a51'])
+    expect(people.map((c) => c.textContent)).toEqual(['You', 'Teammate anna Admin', 'Teammate 0f3c9a51 Member'])
     expect(people.map((c) => c.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
 
     fireEvent.change(screen.getByPlaceholderText('Monthly update'), { target: { value: 'Monthly update' } })

@@ -9,7 +9,6 @@ import { DangerZoneSection } from './DangerZoneSection'
 import { NameSection } from './NameSection'
 import { PeopleSection } from './PeopleSection'
 import { TeamNamesPrompt } from '@/components/settings/names/prompt'
-import { usePeopleNames } from '@/components/settings/names/useNames'
 
 /**
  * Settings → Team (PUL-42, round 7; copy deck §9): the team's name, its people with the one Invite (R3), beta
@@ -21,18 +20,17 @@ import { usePeopleNames } from '@/components/settings/names/useNames'
  * on the page calls their account a team. While the team state is not known the page draws the team's layout, so a
  * failure never hides a team's sections from a team.
  *
- * With the team-names beta on, teammates' names locked in this browser is a prompt at the top of the page (R63, P3 B;
- * a first key needs no step since R72); somebody alone has nobody to name.
+ * Teammates' names locked in this browser is a prompt at the top of the page (R63, P3 B; a first key needs no step
+ * since R72); somebody alone has nobody to name.
  */
 export default function TeamPage() {
   const alone = useTeamState() === 'alone'
   // The owner and admins (audit.view), and only in a team of more than one person.
   const canViewLog = useCan('audit.view')
-  const names = usePeopleNames()
 
   return (
     <KitPage>
-      {names.on && !alone && <TeamNamesPrompt />}
+      {!alone && <TeamNamesPrompt />}
       {!alone && <NameSection />}
       <PeopleSection alone={alone} />
       <BetaSection alone={alone} />

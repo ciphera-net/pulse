@@ -2,9 +2,8 @@
 
 import { useId, useState } from 'react'
 import { Button, Checkbox, Input, Switcher, toast } from '@ciphera-net/facet'
-import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { useAuth } from '@/lib/auth/context'
-import { useMembers, type OrganizationMember } from '@/lib/swr/members'
+import { useMembers } from '@/lib/swr/members'
 import {
   createSchedule,
   type ReportCompare,
@@ -25,7 +24,7 @@ import {
 import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { MAX_RECIPIENTS, TOO_MANY_PEOPLE, scheduleError } from './errors'
 import { FormFooter, Problem, siteYear } from './parts'
-import { RecipientLabel, WithEmail } from '@/components/settings/names/people'
+import { RecipientLabel } from '@/components/settings/names/people'
 import { sendToCaption } from '@/components/settings/names/prompt'
 import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
@@ -47,24 +46,15 @@ const EXPIRY_OPTIONS: { value: string; label: string }[] = [
   { value: 'never', label: 'Never' },
 ]
 
-/**
- * A member's name on the Send to list, by the Members tab's own rule: "You" for the signed-in person, the email when
- * the backend has one, a short id otherwise. Pulse stores no names, and a raw uuid is never a name.
- */
-export function memberLabel(member: OrganizationMember, myId: string | undefined): string {
-  if (member.user_id === myId) return 'You'
-  return member.user_email || `Member ${member.user_id.slice(0, 8)}`
-}
-
 export function ScheduleForm({ site, onCancel, onScheduled }: { site: Site; onCancel: () => void; onScheduled: () => void }) {
   const idBase = useId()
   const timezone = safeTimeZone(site.timezone)
   const { user } = useAuth()
   const { list: members, error: membersError } = useMembers()
   const myId = user?.id
-  // With the team-names beta on (design §7, R63): each teammate's name, role and id, and the page's line in the caption.
+  // Each teammate's name, role and id, and the page's line in the caption (design §7, R63).
   const names = usePeopleNames()
-  // With the team-emails beta on, an owner's or admin's list shows each teammate's address beside the name (R74).
+  // An owner's or admin's list shows each teammate's address beside the name (R74).
   const emails = usePeopleEmails()
 
   const [name, setName] = useState('')
@@ -177,10 +167,7 @@ export function ScheduleForm({ site, onCancel, onScheduled }: { site: Site; onCa
           />
         </KitRow>
 
-        <KitRow
-          label="Send to"
-          caption={names.on ? sendToCaption(SEND_TO_CAPTION, names.lineFor((roster ?? []).map((m) => m.user_id))) : SEND_TO_CAPTION}
-        >
+        <KitRow label="Send to" caption={sendToCaption(SEND_TO_CAPTION, names.lineFor((roster ?? []).map((m) => m.user_id)))}>
           {roster ? (
             <div role="group" aria-label="Send to" className="flex flex-col gap-1.5">
               {roster.map((m) => {
@@ -188,16 +175,7 @@ export function ScheduleForm({ site, onCancel, onScheduled }: { site: Site; onCa
                 return (
                   <Checkbox
                     key={m.user_id}
-                    label={
-                      names.on ? (
-                        <RecipientLabel member={m} who={names.who(m.user_id, true)} email={email} />
-                      ) : (
-                        <span className="inline-flex items-center gap-2">
-                          <Avatar seed={personAvatarSeed({ userId: m.user_id, avatarSeed: m.avatar_seed })} size={20} />
-                          {email !== null ? <WithEmail email={email}>{memberLabel(m, myId)}</WithEmail> : memberLabel(m, myId)}
-                        </span>
-                      )
-                    }
+                    label={<RecipientLabel member={m} who={names.who(m.user_id, true)} email={email} />}
                     checked={recipients.has(m.user_id)}
                     onChange={() => toggleRecipient(m.user_id)}
                   />

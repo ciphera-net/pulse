@@ -8,7 +8,6 @@ import { KitBlock, KitDialogTitle, KitRow, KitRows, KitSection, KitStatus } from
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 import { BRAND_MARKS } from '@/components/connect/AppMark'
 import { CopyBlock } from '@/components/ui/CopyBlock'
-import { useAuth } from '@/lib/auth/context'
 import { disconnectApp, listConnectedApps, type Connection } from '@/lib/api/connect'
 import { cdnUrl } from '@/lib/cdn'
 import { usePendingKeys } from '@/lib/hold/pending'
@@ -100,7 +99,6 @@ type ConnectionList = { status: 'loading' } | { status: 'failed' } | { status: '
  */
 export function ConnectedAssistantsSection() {
   const { zone } = useDisplayZone()
-  const { user } = useAuth()
   const alone = useTeamState() === 'alone'
   const [list, setList] = React.useState<ConnectionList>({ status: 'loading' })
   const [retrying, setRetrying] = React.useState(false)
@@ -145,11 +143,10 @@ export function ConnectedAssistantsSection() {
     })
   }
 
-  // pulse-backend holds user ids only: "you", or "teammate" and the id. With the team-names beta on, the name a teammate
-  // shared, the id beside it only where a name alone could be someone else's (design §7). Leaving the team ends every
+  // pulse-backend holds user ids only: "you", the name a teammate shared (the id beside it only where a name alone could
+  // be someone else's, design §7), or "teammate" and the id until it reaches this browser. Leaving the team ends every
   // assistant the person connected, so nobody here is a former member (copy deck §14.10).
   const names = usePeopleNames()
-  const who = (c: Connection) => (c.user_id === user?.id ? 'you' : `teammate ${c.user_id.slice(0, 8)}`)
   const shown = list.status === 'ready' ? list.connections.filter((c) => !pending.has(`mcp:${c.id}`)) : []
   const ownDescription = alone
     ? 'Each one reads only the sites you gave it. It ends after 30 days without activity.'
@@ -159,7 +156,7 @@ export function ConnectedAssistantsSection() {
     <>
       <KitSection
         title="Connected assistants"
-        description={names.on ? lineWithNotYet(ownDescription, names.lineFor(shown.map((c) => c.user_id))) : ownDescription}
+        description={lineWithNotYet(ownDescription, names.lineFor(shown.map((c) => c.user_id)))}
         icon={<Plugs />}
       >
         <KitRows>
@@ -179,15 +176,9 @@ export function ConnectedAssistantsSection() {
                       <>
                         <span className="block">
                           <KitStatus tone="live">Connected</KitStatus>
-                          {names.on ? (
-                            <>
-                              {' · Connected by '}
-                              <PersonInline who={names.who(c.user_id, true)} id={c.user_id} lower />
-                              {` · ${sitesWord(c.scope_all_sites, c.site_ids)} · `}
-                            </>
-                          ) : (
-                            ` · Connected by ${who(c)} · ${sitesWord(c.scope_all_sites, c.site_ids)} · `
-                          )}
+                          {' · Connected by '}
+                          <PersonInline who={names.who(c.user_id, true)} id={c.user_id} lower />
+                          {` · ${sitesWord(c.scope_all_sites, c.site_ids)} · `}
                           <LastUsed iso={c.last_used_at} zone={zone} />
                           {` · Since ${shortDate(c.created_at, zone)}`}
                         </span>

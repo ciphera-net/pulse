@@ -24,8 +24,8 @@ import { ChangeRoleDialog } from './ChangeRoleDialog'
 import { InviteDialog } from './InviteDialog'
 import { NameTeamDialog, suggestTeamName } from './NameTeamDialog'
 import { KitLoadError, KitLoadingRows, useTeamRemoval } from './states'
-import { isTeamRole, joinedWords, linkState, personName, ROLE_LINE, roleWord, shortDay } from './words'
-import { DialogPerson, PersonAvatar, PersonCaption, PersonLabel, WithEmail } from '@/components/settings/names/people'
+import { isTeamRole, joinedWords, linkState, ROLE_LINE, roleWord, shortDay } from './words'
+import { DialogPerson, PersonAvatar, PersonCaption, PersonLabel } from '@/components/settings/names/people'
 import { lineWithNotYet } from '@/components/settings/names/prompt'
 import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
@@ -39,12 +39,11 @@ import { plainName, shortId, titleName } from '@/components/settings/names/words
  * The people list needs no roles read (R1: three fixed roles), and the invite links are read only for the owner and
  * admins: the server refuses them to a member (§9.11.2), so a member's page never asks.
  *
- * With the team-names beta on (design §7, R63): each person with an avatar, their name and, under it, the role and the
- * id; the remove and change role dialogs carry the same person row over their button, and the Undo bar and toast say
- * the id in brackets. Off, every row is today's.
+ * Each person with an avatar, their name and, under it, the role and the id (design §7, R63); the remove and change
+ * role dialogs carry the same person row over their button, and the Undo bar and toast say the id in brackets.
  *
- * With the team-emails beta on (design §16, R74 option A), an owner or admin sees each teammate's address beside the
- * name, on the row and in the dialogs' person row; a member sees none. Off, every row is today's.
+ * An owner or admin sees each teammate's address beside the name, on the row and in the dialogs' person row (design
+ * §16, R74 option A); a member sees none.
  */
 export function PeopleSection({ alone }: { alone: boolean }) {
   const { user } = useAuth()
@@ -67,8 +66,8 @@ export function PeopleSection({ alone }: { alone: boolean }) {
   const emails = usePeopleEmails()
   // How the dialogs, the Undo bar and the toast name a person: the name alone in a title (the person row under it has
   // the id), the name and the id in brackets where Facet takes plain text (copy deck §14.3, §14.8).
-  const titleFor = (userId: string) => (names.on ? titleName(names.who(userId, true), userId) : personName(userId, myId))
-  const plainFor = (userId: string) => (names.on ? plainName(names.who(userId, true), userId) : personName(userId, myId))
+  const titleFor = (userId: string) => titleName(names.who(userId, true), userId)
+  const plainFor = (userId: string) => plainName(names.who(userId, true), userId)
 
   const [retryingMembers, setRetryingMembers] = useState(false)
   const [retryingLinks, setRetryingLinks] = useState(false)
@@ -180,7 +179,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
 
   const ownDescription = alone ? undefined : canManage ? 'Everyone in this team, and the invite links you made.' : 'Everyone in this team.'
   // "Not arrived yet" goes in this line (P3 B); locked is the page's prompt (TeamPage).
-  const description = names.on ? lineWithNotYet(ownDescription, names.lineFor(people.map((m) => m.user_id))) : ownDescription
+  const description = lineWithNotYet(ownDescription, names.lineFor(people.map((m) => m.user_id)))
   const now = new Date()
 
   return (
@@ -208,8 +207,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
           ) : (
             people.map((m) => {
               const isMe = m.user_id === myId
-              const name = personName(m.user_id, myId)
-              const who = names.on ? names.who(m.user_id, true) : null
+              const who = names.who(m.user_id, true)
               const email = emails.of(m.user_id)
               const isOwnerRow = m.role === 'owner'
               const canRemove = canManage && !isMe && !isOwnerRow
@@ -218,23 +216,14 @@ export function PeopleSection({ alone }: { alone: boolean }) {
                   key={m.user_id}
                   data-team-person={isMe ? 'me' : 'other'}
                   data-team-role={m.role}
-                  data-tn-person-row={who ? shortId(m.user_id) : undefined}
+                  data-tn-person-row={shortId(m.user_id)}
                 >
                   <KitRow
-                    label={who ? <PersonLabel member={m} who={who} email={email} /> : email !== null ? <WithEmail email={email}>{name}</WithEmail> : name}
-                    avatar={who ? <PersonAvatar id={m.user_id} seed={m.avatar_seed} /> : undefined}
+                    label={<PersonLabel member={m} who={who} email={email} />}
+                    avatar={<PersonAvatar id={m.user_id} seed={m.avatar_seed} />}
                     caption={
                       <>
-                        {who ? (
-                          <PersonCaption member={m} who={who} zone={zone} now={now} />
-                        ) : (
-                          <span className="block">
-                            <span data-team-status="live">
-                              <KitStatus tone="live">{roleWord(m.role)}</KitStatus>
-                            </span>
-                            {m.joined_at ? ` · Joined ${shortDay(m.joined_at, zone, now)}` : null}
-                          </span>
-                        )}
+                        <PersonCaption member={m} who={who} zone={zone} now={now} />
                         {isTeamRole(m.role) && <span className="mt-0.5 block">{ROLE_LINE[m.role]}</span>}
                       </>
                     }
@@ -258,7 +247,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
                           className={canRemove ? DESTRUCTIVE_OUTLINE : undefined}
                           onClick={() => setConfirmRemove(m)}
                           // The id is read out with a name (copy deck §14.2): two people may share one.
-                          aria-label={who?.kind === 'name' ? `Remove ${who.name}, ${shortId(m.user_id)}` : `Remove ${who ? titleFor(m.user_id) : name}`}
+                          aria-label={who.kind === 'name' ? `Remove ${who.name}, ${shortId(m.user_id)}` : `Remove ${titleFor(m.user_id)}`}
                           aria-haspopup="dialog"
                         >
                           Remove
@@ -344,7 +333,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
             member={changeRoleFor}
             name={changeRoleFor ? titleFor(changeRoleFor.user_id) : ''}
             person={
-              names.on && changeRoleFor ? (
+              changeRoleFor ? (
                 <DialogPerson member={changeRoleFor} who={names.who(changeRoleFor.user_id, true)} email={emails.of(changeRoleFor.user_id)} zone={zone} now={now} />
               ) : undefined
             }
@@ -369,7 +358,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
         icon={<UserMinus weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doRemove}
       >
-        {names.on && confirmRemove ? (
+        {confirmRemove ? (
           <DialogPerson member={confirmRemove} who={names.who(confirmRemove.user_id, true)} email={emails.of(confirmRemove.user_id)} zone={zone} now={now} />
         ) : null}
       </HoldDialog>

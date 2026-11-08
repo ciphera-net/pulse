@@ -230,7 +230,7 @@ function teamPath(teamId: string): string {
 
 /**
  * Reads a directory (either kind) past every cache: `too_large` over 500 members (422), `unavailable` a 404 (not a
- * member, or that beta is off there), and any other failure a failed request.
+ * member), and any other failure a failed request.
  */
 async function readDirectory<T>(path: string, decode: (body: unknown) => T): Promise<{ kind: 'directory'; directory: T } | { kind: 'too_large' } | { kind: 'unavailable' }> {
   let body: unknown
@@ -245,7 +245,7 @@ async function readDirectory<T>(path: string, decode: (body: unknown) => T): Pro
   return { kind: 'directory', directory: decode(body) }
 }
 
-/** GET /organizations/:id/team-names. `unavailable` is a 404: not a member, or the beta is off there. */
+/** GET /organizations/:id/team-names. `unavailable` is a 404: not a member. */
 export async function fetchDirectory(teamId: string, warn: Warn): Promise<DirectoryAnswer> {
   return readDirectory(teamPath(teamId), (body) => decodeDirectory(body, warn))
 }
@@ -308,7 +308,7 @@ export async function writeNames(teamId: string, entries: NameEntry[]): Promise<
   return { kind: 'written' }
 }
 
-/** DELETE /me/team-names: every row this person sent, in every team, current or left. Works with the beta off. */
+/** DELETE /me/team-names: every row this person sent, in every team, current or left. */
 export async function withdrawNames(): Promise<void> {
   try {
     await apiRequest<unknown>('/me/team-names', { method: 'DELETE' })
@@ -374,7 +374,7 @@ function teamEmailsPath(teamId: string): string {
   return `/organizations/${teamId.toLowerCase()}/team-emails`
 }
 
-/** GET /organizations/:id/team-emails. `unavailable` is a 404: not a member, or the team-emails beta is off there. */
+/** GET /organizations/:id/team-emails. `unavailable` is a 404: not a member. */
 export async function fetchEmailDirectory(teamId: string, warn: Warn): Promise<EmailDirectoryAnswer> {
   return readDirectory(teamEmailsPath(teamId), (body) => decodeEmailDirectory(body, warn))
 }
@@ -415,8 +415,8 @@ export async function writeEmails(teamId: string, entries: EmailEntry[]): Promis
 }
 
 /**
- * DELETE /me/team-emails: every address row this person sent, in every team, current or left. Works with the beta off,
- * as the names' DELETE does: the browser calls it when the vault's address stops passing the check (design §16.3).
+ * DELETE /me/team-emails: every address row this person sent, in every team, current or left. The browser calls it when
+ * the vault's address stops passing the check (design §16.3).
  */
 export async function withdrawEmails(): Promise<void> {
   try {

@@ -12,8 +12,7 @@
 // while they are an owner or admin, and the key of exactly the people it names; PUT team-emails refuses a
 // recipient who is not a member, not an owner or admin, or under a stale key (409, nothing written); a role
 // that stops being owner or admin deletes the rows sealed for it; DELETE takes back every address row the
-// caller sent. A session runs the email pass only in a team whose flags say so; every test above the email
-// block runs with team names alone, as before team emails.
+// caller sent. Every reconcile runs both passes, the names' and the addresses'.
 
 import { createHash } from 'node:crypto'
 import { describe, expect, it, vi, type Mock } from 'vitest'
@@ -22,7 +21,7 @@ import { createIdentity } from '@/lib/crypto/team-names'
 import type { Bytes } from '@/lib/crypto/hpke'
 import type { DirectoryAnswer, EmailDirectoryAnswer, EmailEntry, KeyRow, NameEntry, PublishKeyBody, Warn } from '../api'
 import { TeamNamesError } from '../errors'
-import { TeamNamesSession, type SessionDeps, type TeamFlags, type TeamNamesApi } from '../session'
+import { TeamNamesSession, type SessionDeps, type TeamNamesApi } from '../session'
 
 const TEAM = '7e7e7e7e-0000-4000-8000-000000000001'
 const OTHER_TEAM = '7e7e7e7e-0000-4000-8000-0000000000f2'
@@ -32,11 +31,6 @@ const C = 'c3c3c3c3-0000-4000-8000-000000000003'
 
 const sha256 = (b: Uint8Array): Bytes => new Uint8Array(createHash('sha256').update(b).digest())
 const same = (a: Uint8Array, b: Uint8Array) => Buffer.from(a).equals(Buffer.from(b))
-
-/** A team with team names alone: what every session ran before team emails. */
-const NAMES_ONLY: TeamFlags = { names: true, emails: false }
-const BOTH: TeamFlags = { names: true, emails: true }
-const EMAILS_ONLY: TeamFlags = { names: false, emails: true }
 
 type Role = 'owner' | 'admin' | 'member'
 
@@ -78,7 +72,7 @@ class FakeServer {
   failNextEmailRead = false
   /** The next email PUT fails the way a 5xx does. */
   failNextEmailWrite = false
-  /** Directory reads per kind: a team without a kind's beta never reads its directory. */
+  /** Directory reads per kind. */
   reads = { names: 0, emails: 0 }
   /** Runs inside POST before the insert: lets a test make another device win the race. */
   beforeInsert: ((caller: string) => Promise<void>) | null = null
@@ -264,8 +258,6 @@ interface Person {
   name: string | undefined
   /** The address in the person's vault. */
   email: string
-  /** Each team's betas, as the provider would read them from /me; a team not listed has team names alone. */
-  flags: Map<string, TeamFlags>
   vaultKeyHeld: boolean
   readFails: boolean
   warn: Mock<Warn>
@@ -273,12 +265,11 @@ interface Person {
 }
 
 async function person(server: FakeServer, id: string, name: string | undefined, email = 'x@example.com'): Promise<Person> {
-  // Mutable on purpose: tests change the name, the address or the flags, or take the vault key away mid-session.
-  const p = { id, vmk: await newVmk(), name, email, flags: new Map<string, TeamFlags>(), vaultKeyHeld: true, readFails: false, warn: vi.fn<Warn>() }
+  // Mutable on purpose: tests change the name or the address, or take the vault key away mid-session.
+  const p = { id, vmk: await newVmk(), name, email, vaultKeyHeld: true, readFails: false, warn: vi.fn<Warn>() }
   const deps: SessionDeps = {
     userId: id,
     api: server.api(id),
-    flagsFor: (team) => p.flags.get(team) ?? NAMES_ONLY,
     loadVaultKey: async () => (p.vaultKeyHeld ? p.vmk : null),
     readVault: async () => {
       if (p.readFails) throw new Error('network')
@@ -366,7 +357,7 @@ describe('the first key (R72)', () => {
     expect(row.publicKey.length).toBe(65)
     expect(row.sealedPrivateKey.length).toBe(219)
     expect(server.events).not.toContain('write') // the session seals nothing on its own; the provider asks
-    // The provider then shares the name in every team with the beta at once.
+    // The provider then shares the name in every team of the person's at once.
     await a.session.reconcileAll([TEAM])
     expect(server.events.indexOf('publish:end')).toBeLessThan(server.events.indexOf('write'))
     expect(server.events.filter((e) => e === 'write')).toHaveLength(1)
@@ -396,7 +387,6 @@ describe('the first key (R72)', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, publishKey: async (body) => ({ ...(await api.publishKey(body)), keyId: sha256(new Uint8Array([1])) }) },
-      flagsFor: () => NAMES_ONLY,
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -691,7 +681,7 @@ describe('reconcile', () => {
     if (answer.kind !== 'directory') throw new Error('no directory')
     const swapped: DirectoryAnswer = { kind: 'directory', directory: { ...answer.directory, keys: answer.directory.keys.map((k) => (k.userId === A ? { ...k, publicKey: impostor } : k)) } }
     const s2 = new TeamNamesSession({
-      userId: A, api: { ...api, fetchDirectory: async () => swapped }, flagsFor: () => NAMES_ONLY, loadVaultKey: async () => a.vmk,
+      userId: A, api: { ...api, fetchDirectory: async () => swapped }, loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }), prove: async () => { throw new Error('unused') }, warn: vi.fn(),
     })
     await s2.start()
@@ -714,7 +704,6 @@ describe('dispose', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, fetchDirectory: async (team, warn) => { await gate; return api.fetchDirectory(team, warn) } },
-      flagsFor: () => NAMES_ONLY,
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -738,13 +727,12 @@ describe('dispose', () => {
 // ─── The email pass (design §16.4) ───────────────────────────────────────────────────────────────────────────────
 
 describe('the email pass (design §16.4)', () => {
-  /** The team: A the owner, B an admin, C a member, each keyed, each with the betas `flags`. */
-  async function team(flags: TeamFlags) {
+  /** The team: A the owner, B an admin, C a member, each keyed. */
+  async function team() {
     const server = new FakeServer()
     const a = await keyed(server, A, 'Ada', 'ada@example.com')
     const b = await keyed(server, B, 'Bob', 'bob@example.com')
     const c = await keyed(server, C, 'Cleo', 'cleo@example.com')
-    for (const p of [a, b, c]) p.flags.set(TEAM, flags)
     return { server, a, b, c }
   }
   const teamOf = (p: Person) => p.session.getSnapshot().teams.get(TEAM)
@@ -753,7 +741,7 @@ describe('the email pass (design §16.4)', () => {
   const emailEvents = (server: FakeServer) => server.events.filter((e) => e.startsWith('email-'))
 
   it('seals my address for every owner and admin the server lists, never for a member or myself; an owner or admin opens it, a member opens none', async () => {
-    const { server, a, b, c } = await team(BOTH)
+    const { server, a, b, c } = await team()
     for (const p of [c, b, a]) await p.session.reconcile(TEAM)
     expect(sealedBy(server, C)).toEqual([A, B].sort())
     expect(sealedBy(server, B)).toEqual([A])
@@ -769,40 +757,26 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('writes nothing on the next visit: every row is current', async () => {
-    const { server, a, b, c } = await team(BOTH)
+    const { server, a, b, c } = await team()
     for (const p of [a, b, c]) await p.session.reconcile(TEAM)
     server.events.length = 0
     for (const p of [a, b, c]) await p.session.reconcile(TEAM)
     expect(emailEvents(server)).toEqual([])
   })
 
-  it('in a team with only team emails: seals and opens addresses, and never reads the names directory', async () => {
-    const { server, a, c } = await team(EMAILS_ONLY)
+  it('runs both passes in every reconcile: one read of each directory, the names and the addresses both opened', async () => {
+    const { server, a, b, c } = await team()
+    for (const p of [b, c]) await p.session.reconcile(TEAM)
     server.reads = { names: 0, emails: 0 }
-    await c.session.reconcile(TEAM)
     await a.session.reconcile(TEAM)
-    expect(server.reads).toEqual({ names: 0, emails: 2 })
-    expect(server.rows).toEqual([])
-    expect(server.events).not.toContain('write')
-    expect(emailsOf(a)).toEqual({ [C]: { email: 'cleo@example.com', former: false } })
-    expect(teamOf(a)).toMatchObject({ status: 'loading', emailStatus: 'ready' })
-    expect(teamOf(a)?.names.size).toBe(0)
-    expect(teamOf(a)?.memberIds).toEqual(new Set([A, B, C]))
-  })
-
-  it('in a team without team emails: no email route is called and nothing is opened', async () => {
-    const { server, a, b, c } = await team(NAMES_ONLY)
-    server.reads = { names: 0, emails: 0 }
-    for (const p of [a, b, c]) await p.session.reconcile(TEAM)
-    expect(server.reads).toEqual({ names: 3, emails: 0 })
-    expect(emailEvents(server)).toEqual([])
-    expect(server.emailRows).toEqual([])
-    expect(teamOf(a)).toMatchObject({ status: 'ready', emailStatus: 'off' })
-    expect(teamOf(a)?.emails.size).toBe(0)
+    expect(server.reads).toEqual({ names: 1, emails: 1 })
+    expect(teamOf(a)).toMatchObject({ status: 'ready', emailStatus: 'ready' })
+    expect(teamOf(a)?.names.get(C)?.name).toBe('Cleo')
+    expect(emailsOf(a)[C]).toEqual({ email: 'cleo@example.com', former: false })
   })
 
   it('marks the addresses, never the names, when the email pass fails; addresses read before a failed write stay shown', async () => {
-    const { server, a, b, c } = await team(BOTH)
+    const { server, a, b, c } = await team()
     for (const p of [b, c]) await p.session.reconcile(TEAM)
     server.failNextEmailRead = true
     await a.session.reconcile(TEAM)
@@ -820,13 +794,12 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('runs the email pass even when the names directory fails, and marks only the names', async () => {
-    const { server, a, c } = await team(BOTH)
+    const { server, a, c } = await team()
     await c.session.reconcile(TEAM)
     const api = server.api(A)
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, fetchDirectory: async () => { throw new TeamNamesError('team_names/request_failed') } },
-      flagsFor: () => BOTH,
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -839,7 +812,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('reads again once after a 409, and stops there', async () => {
-    const { server, c } = await team(BOTH)
+    const { server, c } = await team()
     server.emailConflictsLeft = 1
     server.events.length = 0
     await c.session.reconcile(TEAM)
@@ -858,7 +831,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('re-seals for every owner and admin when the address changes: the tag binds it', async () => {
-    const { server, a, b, c } = await team(BOTH)
+    const { server, a, b, c } = await team()
     for (const p of [c, a]) await p.session.reconcile(TEAM)
     c.email = 'cleo@new.example.com'
     server.events.length = 0
@@ -871,7 +844,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('takes every address row back when the vault\'s address cannot be shared, and asks nothing when none was sent', async () => {
-    const { server, c } = await team(BOTH)
+    const { server, c } = await team()
     await c.session.reconcile(TEAM)
     expect(sealedBy(server, C)).toHaveLength(2)
     c.email = 'not an address'
@@ -885,7 +858,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('never writes or withdraws an address when the vault cannot be read, and still opens what was sealed for me', async () => {
-    const { server, a, c } = await team(BOTH)
+    const { server, a, c } = await team()
     await c.session.reconcile(TEAM)
     a.readFails = true
     server.events.length = 0
@@ -895,7 +868,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('opens a former member\'s kept address, marked former, and seals nothing for them', async () => {
-    const { server, a, c } = await team(BOTH)
+    const { server, a, c } = await team()
     await c.session.reconcile(TEAM)
     server.leave(TEAM, C)
     await a.session.reconcile(TEAM)
@@ -904,7 +877,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('a demoted admin is served no address, and their next reconcile drops the ones they held', async () => {
-    const { server, a, b, c } = await team(BOTH)
+    const { server, a, b, c } = await team()
     for (const p of [a, c, b]) await p.session.reconcile(TEAM)
     expect(Object.keys(emailsOf(b)).sort()).toEqual([A, C].sort())
     server.setRole(TEAM, B, 'member')
@@ -918,7 +891,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('flags two people showing one address, and a teammate showing mine, case-insensitively', async () => {
-    const { a, b, c } = await team(BOTH)
+    const { a, b, c } = await team()
     c.email = 'bob@example.com'
     for (const p of [b, c]) await p.session.reconcile(TEAM)
     await a.session.reconcile(TEAM)
@@ -931,12 +904,11 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('shows no address for a team too large to serve them', async () => {
-    const { server, a } = await team(BOTH)
+    const { server, a } = await team()
     const api = server.api(A)
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, fetchEmailDirectory: async () => ({ kind: 'too_large' }) },
-      flagsFor: () => BOTH,
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -949,7 +921,7 @@ describe('the email pass (design §16.4)', () => {
   })
 
   it('refuses to go on when the email directory serves another key for me', async () => {
-    const { server, a, c } = await team(EMAILS_ONLY)
+    const { server, a, c } = await team()
     await c.session.reconcile(TEAM)
     const impostor = (await createIdentity(vaultOpsFor(await newVmk()))).identity.publicKey
     const api = server.api(A)
@@ -963,7 +935,6 @@ describe('the email pass (design §16.4)', () => {
           return { kind: 'directory', directory: { ...answer.directory, keys: [...answer.directory.keys, { userId: A, publicKey: impostor }] } }
         },
       },
-      flagsFor: () => EMAILS_ONLY,
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -980,13 +951,11 @@ describe('the email pass (design §16.4)', () => {
     const server = new FakeServer()
     const a = await keyed(server, A, 'Ada', 'ada@example.com')
     const c = await person(server, C, 'Cleo', 'cleo@example.com')
-    c.flags.set(TEAM, BOTH)
     await c.session.start()
     expect(c.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
     await c.session.reconcileAll([TEAM])
     // B has no key yet, so only the owner is listed.
     expect(sealedBy(server, C)).toEqual([A])
-    a.flags.set(TEAM, BOTH)
     await a.session.reconcile(TEAM)
     expect(emailsOf(a)[C]?.email).toBe('cleo@example.com')
   })
@@ -995,10 +964,8 @@ describe('the email pass (design §16.4)', () => {
     const server = new FakeServer()
     const a = await keyed(server, A, 'Ada', 'ada@example.com')
     const c = await keyed(server, C, 'Cleo', 'cleo@example.com')
-    for (const p of [a, c]) p.flags.set(TEAM, BOTH)
     await c.session.reconcile(TEAM)
     const lost = await person(server, C, 'Cleo', 'cleo@example.com') // a device whose vault key does not open the envelope
-    lost.flags.set(TEAM, BOTH)
     await lost.session.start()
     expect(lost.session.getSnapshot().status).toBe('cannot_open')
     await lost.session.reset('correct horse', [TEAM])

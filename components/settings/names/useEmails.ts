@@ -5,8 +5,8 @@ import { useTeammateEmailLookup } from '@/lib/team-names/hooks'
 
 /**
  * The addresses a page in the active team draws beside its people (design §16; R74, option A, R75): on an owner's or
- * admin's screen only, and only an address that person's own browser sealed for this one. Null for everyone else, for
- * the viewer themselves, and with the team-emails beta off, which every surface draws as the DOM it drew before.
+ * admin's screen only, and only an address that person's own browser sealed for this one. Null for everyone else and
+ * for the viewer themselves, which every surface draws as the person without an address.
  */
 export interface PeopleEmails {
   /** The address beside a person the page lists. */

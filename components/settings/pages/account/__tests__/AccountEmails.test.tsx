@@ -1,9 +1,6 @@
 // Team emails on Account (design Pulse/docs/plans/07-11-2026-team-names-e2e-design.md §16; R73, R77; copy deck §16.2):
-// the Email row's caption gains the notice (E2 W1) once the team-emails beta is on in a team of the person's. The API,
-// the ceremonies and Facet's controls are stood in; the session is a context value the test controls.
-//
-// 🔴 WITH TEAM EMAILS OFF IN EVERY TEAM THE PAGE IS TODAY'S, BYTE FOR BYTE: the snapshots were recorded on the commit
-// before the surfaces existed, with team names off and on. React's generated ids are written as one token.
+// the Email row's caption carries the notice (E2 W1). The API, the ceremonies and Facet's controls are stood in; the
+// session is a context value the test controls.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, cleanup, waitFor } from '@testing-library/react'
@@ -142,19 +139,12 @@ import AccountPage from '../AccountPage'
 const KEY = {} as CryptoKey
 const iso = (msAgo: number) => new Date(NOW.getTime() - msAgo).toISOString()
 
-/** The DOM as drawn, React's generated ids written as one token. */
-const dom = (markup: string) => markup.replace(/_r_[0-9a-z]+_/g, '_r_id_')
-
-/** The context the provider gives: a beta on in a team of the person's (Account is the same in every team), or none. */
-function sessionIn(status: TeamNamesStatus | null, flags: { names: boolean; emails?: boolean }, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
+/** The context the provider gives: a session in `status` (Account is the same in every team), or none yet. */
+function sessionIn(status: TeamNamesStatus | null, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
   return {
     snapshot: status ? { status, share: 'name', teams: new Map(), ...over } : null,
     myId: ME,
     activeTeamId: TEAM,
-    activeFlagged: false,
-    anyFlagged: flags.names,
-    activeEmailsFlagged: false,
-    anyEmailsFlagged: flags.emails ?? false,
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
@@ -206,57 +196,37 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("Account with team emails off in every team: today's DOM, byte for byte", () => {
-  it('team names off: the unlocked page', async () => {
-    const view = mount(null)
-    await unlocked()
-    const today = dom(view.container.innerHTML)
-    expect(dom(profile().outerHTML)).toMatchSnapshot('profile')
-    expect(today).toMatchSnapshot('page')
-    cleanup()
-    // A session that runs for nothing of this page's (team emails off everywhere) draws the same page.
-    const again = mount(sessionIn('ready', { names: false }))
-    await unlocked()
-    expect(dom(again.container.innerHTML)).toBe(today)
-  })
-
-  it('team names on in a team of the person\'s: the unlocked page', async () => {
-    const view = mount(sessionIn('ready', { names: true }))
-    await unlocked()
-    expect(dom(profile().outerHTML)).toMatchSnapshot('profile')
-    expect(dom(view.container.innerHTML)).toMatchSnapshot('page')
-  })
-})
-
-// ─── With team emails on in a team of the person's ───────────────────────────────────────────────────────────────
-
-const TODAY = 'Changing it needs your password, then a click on a link sent to the new address.'
+// The Email caption before team emails, which E2 keeps as its first sentence.
+const BEFORE = 'Changing it needs your password, then a click on a link sent to the new address.'
 const E2 = "Changing it needs your password, then a click on a link sent to the new address. The owners and admins of your teams see it too. Pulse encrypts it for each of them and can't read it."
 const emailCaption = () => (screen.getByText('Email').closest('[data-kit-row]') as HTMLElement).querySelector('p')?.textContent ?? ''
 
-describe('Account with team emails on in a team of the person\'s', () => {
-  it('the Email caption is today\'s sentence, word for word, then the notice (E2 W1)', async () => {
-    mount(sessionIn('ready', { names: false, emails: true }))
+describe('Account with team emails', () => {
+  it('the Email caption is the earlier sentence, word for word, then the notice (E2 W1)', async () => {
+    mount(sessionIn('ready'))
     await unlocked()
     expect(emailCaption()).toBe(E2)
-    expect(E2.startsWith(`${TODAY} `)).toBe(true)
+    expect(E2.startsWith(`${BEFORE} `)).toBe(true)
   })
 
-  it('says it with team names on too, beside the names notice; and for a member, whose address is shared all the same', async () => {
+  it('says it beside the names notice; and for a member, whose address is shared all the same', async () => {
     h.user = { ...(h.user as NonNullable<typeof h.user>), role: 'member' }
-    mount(sessionIn('ready', { names: true, emails: true }))
+    mount(sessionIn('ready'))
     await unlocked()
     expect(emailCaption()).toBe(E2)
     expect(profile().textContent).toContain("Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.")
   })
 
-  it('keeps today\'s caption with team emails off, and a waiting change\'s own caption with it on', async () => {
-    mount(sessionIn('ready', { names: true, emails: false }))
+  it('says it before a session runs too, beside the names notice', async () => {
+    mount(sessionIn(null))
     await unlocked()
-    expect(emailCaption()).toBe(TODAY)
-    cleanup()
+    expect(emailCaption()).toBe(E2)
+    expect(profile().textContent).toContain("Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.")
+  })
+
+  it('a waiting change keeps its own caption', async () => {
     api.getPendingEmailChange.mockResolvedValue({ expiresAt: new Date(NOW.getTime() + 3_600_000).toISOString() })
-    mount(sessionIn('ready', { names: false, emails: true }))
+    mount(sessionIn('ready'))
     await unlocked()
     await waitFor(() => expect(emailCaption()).toBe('Waiting for the link at the new address to be opened.'))
   })

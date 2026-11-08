@@ -274,7 +274,7 @@ describe('AccountPage', () => {
   it('saves the name through the vault, and a failed save rejects with the deck\'s words so the draft stays', async () => {
     renderPage()
     const name = await screen.findByLabelText('Your name')
-    expect(screen.getByText("Shown in your account menu. Your team doesn't see it: it stays in your encrypted profile.")).toBeInTheDocument()
+    expect(screen.getByText("Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.")).toBeInTheDocument()
     fireEvent.change(name, { target: { value: 'Ada L' } })
     expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
     await act(async () => { await lastOnSave!() })

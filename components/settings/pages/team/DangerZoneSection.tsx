@@ -15,7 +15,6 @@ import { activateTeam } from '@/lib/auth/switchOrganization'
 import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { useMembers } from '@/lib/swr/members'
 import { useOrganization } from '@/lib/swr/organizations'
-import { personName, roleWord } from './words'
 import { PickedPerson, transferOptions } from '@/components/settings/names/people'
 import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
@@ -30,11 +29,11 @@ type DangerDialog = 'transfer' | 'leave' | 'delete' | null
  * no team to leave. Transfer, leave and delete reload or end the session, so the page stays put during the Undo
  * window and only navigates once the request has gone through.
  *
- * With the team-names beta on, the transfer picker names each person with their avatar, the role and the id, and the
- * line under it says the role and the id of the person picked, so the hold is always on the exact account (§14.3).
+ * The transfer picker names each person with their avatar, the role and the id, and the line under it says the role
+ * and the id of the person picked, so the hold is always on the exact account (§14.3).
  *
- * With the team-emails beta on (design §16, R74 option A), each person in the list carries their address beside the
- * label, muted (Facet's `detail`); the field, once someone is picked, shows the label alone.
+ * Each person in the list carries their address beside the label, muted (Facet's `detail`; design §16, R74 option A);
+ * the field, once someone is picked, shows the label alone.
  */
 export function DangerZoneSection({ alone }: { alone: boolean }) {
   const { user, refresh } = useAuth()
@@ -67,7 +66,7 @@ export function DangerZoneSection({ alone }: { alone: boolean }) {
   const confirmTransfer = () => {
     if (!orgId || !targetId) return
     const target = targetId
-    const name = names.on ? plainName(names.who(target, true), target) : personName(target, user?.id)
+    const name = plainName(names.who(target, true), target)
     defer(
       whilePending(`team:${orgId}`, {
         message: `Ownership transferred to ${name}`,
@@ -147,7 +146,7 @@ export function DangerZoneSection({ alone }: { alone: boolean }) {
     }
   }
 
-  const picked = names.on && targetId ? candidates.find((m) => m.user_id === targetId) : undefined
+  const picked = targetId ? candidates.find((m) => m.user_id === targetId) : undefined
   const transferPicker = membersError && !members ? (
     <div role="alert">
       <KitDialogRow
@@ -171,14 +170,7 @@ export function DangerZoneSection({ alone }: { alone: boolean }) {
         value={targetId ?? undefined}
         onChange={(v) => setTargetId(v || null)}
         placeholder="Pick a person"
-        options={
-          names.on
-            ? transferOptions(candidates, (id) => names.who(id, true), emails.of)
-            : candidates.map((m) => {
-                const email = emails.of(m.user_id)
-                return { value: m.user_id, label: personName(m.user_id, user?.id), ...(email !== null ? { detail: email } : {}), description: roleWord(m.role) }
-              })
-        }
+        options={transferOptions(candidates, (id) => names.who(id, true), emails.of)}
         className="w-full"
         disabled={!members}
       />

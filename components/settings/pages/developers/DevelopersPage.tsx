@@ -5,7 +5,6 @@ import { KitPage, KitSection } from '@/components/settings/kit/Kit'
 import { useCan } from '@/lib/auth/permissions'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import { TeamNamesPrompt } from '@/components/settings/names/prompt'
-import { usePeopleNames } from '@/components/settings/names/useNames'
 import { ApiKeysSection } from './ApiKeysSection'
 import { AssistantsSection, ConnectedAssistantsSection } from './AssistantsSections'
 
@@ -42,7 +41,6 @@ export default function DevelopersPage() {
  * component, so a member's no-access page reads nothing, and somebody alone has nobody to name.
  */
 function NamesPrompt() {
-  const names = usePeopleNames()
   const alone = useTeamState() === 'alone'
-  return names.on && !alone ? <TeamNamesPrompt /> : null
+  return alone ? null : <TeamNamesPrompt />
 }

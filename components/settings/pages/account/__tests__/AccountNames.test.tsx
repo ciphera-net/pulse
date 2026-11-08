@@ -3,9 +3,6 @@
 // not open with its Reset, no prompt (a first key needs no step since R72), and the call that tells the session a name
 // was saved. The API, the ceremonies and Facet's controls are stood in; the session is a context value the test
 // controls.
-//
-// 🔴 WITH THE BETA OFF THE PAGE IS TODAY'S, BYTE FOR BYTE: the snapshots were recorded on the commit before the
-// surfaces existed.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
@@ -152,9 +149,9 @@ import AccountPage from '../AccountPage'
 const KEY = {} as CryptoKey
 const iso = (msAgo: number) => new Date(NOW.getTime() - msAgo).toISOString()
 
-/** The context the provider gives with the beta off in every team: no session. */
+/** The context the provider gives before a session runs: no snapshot. */
 function noSession(): TeamNamesContextValue {
-  return { snapshot: null, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: false, activeEmailsFlagged: false, anyEmailsFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot: null, myId: ME, activeTeamId: TEAM, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -165,8 +162,6 @@ function mount(context: TeamNamesContextValue | null = null) {
   )
   return render(context ? <TeamNamesContext.Provider value={context}>{tree}</TeamNamesContext.Provider> : tree)
 }
-
-const profile = () => document.querySelector('[data-kit-section="Profile"]') as HTMLElement
 
 async function unlocked() {
   await screen.findByText('Unlocked on this device. Your name and email are decrypted here only.')
@@ -204,39 +199,12 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("Account with the team-names beta off everywhere: today's DOM, byte for byte", () => {
-  it('draws the unlocked page as today, with and without the provider around it', async () => {
-    const first = mount()
-    await unlocked()
-    const today = first.container.innerHTML
-    expect(profile().outerHTML).toMatchSnapshot()
-    expect(today).toMatchSnapshot()
-    expect(profile().textContent).toContain("Shown in your account menu. Your team doesn't see it: it stays in your encrypted profile.")
-    cleanup()
-
-    const second = mount(noSession())
-    await unlocked()
-    expect(second.container.innerHTML).toBe(today)
-  })
-
-  it('draws the locked profile as today', async () => {
-    h.user = { id: ME, org_id: TEAM, email: '', totp_enabled: false }
-    crypto.loadKey.mockResolvedValue(null)
-    mount(noSession())
-    await screen.findByText(/Pulse then keeps the key on this device for up to 30 days/)
-    await act(() => new Promise((r) => setTimeout(r, 50)))
-    expect(profile().outerHTML).toMatchSnapshot()
-  })
-})
-
-// ─── With the beta on in a team of the person's ──────────────────────────────────────────────────────────────────
-
 const actions = { reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => undefined }
 
 function sessionIn(status: TeamNamesStatus, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
-  // The beta is on in another team, not the active one: Account is the same in every team.
-  return { snapshot: { status, share: null, teams: new Map(), ...over }, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, ...actions }
+  // Account is the same in every team, so the session holds no team here.
+  return { snapshot: { status, share: null, teams: new Map(), ...over }, myId: ME, activeTeamId: TEAM, ...actions }
 }
 
 function Holder({ initial, children }: { initial: TeamNamesContextValue; children: React.ReactNode }) {
@@ -260,7 +228,7 @@ function mountWith(initial: TeamNamesContextValue) {
 const nameRow = () => (screen.getByLabelText('Your name').closest('[data-kit-row]') as HTMLElement)
 const nameCaption = () => nameRow().querySelector('p')?.textContent ?? ''
 
-describe('Account with the team-names beta on', () => {
+describe('Account with team names', () => {
   beforeEach(() => {
     for (const fn of Object.values(actions)) fn.mockReset()
     actions.retry.mockResolvedValue(undefined)
@@ -389,15 +357,17 @@ describe('Account with the team-names beta on', () => {
   })
 })
 
-describe('Account with the team-names beta off everywhere: the clear still withdraws', () => {
-  it('tells the session a cleared name, which takes every copy back with the beta off (design §5.6)', async () => {
+describe('Account before a session runs', () => {
+  it('says what the name does, and tells the provider a cleared name, which takes every copy back (design §5.6)', async () => {
     const context = noSession()
     mount(context)
     await unlocked()
+    // The notice is Your name's caption without a session too.
+    expect(nameCaption()).toBe("Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.")
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: '' } })
     await act(async () => { await bar.onSave?.() })
     expect(context.nameChanged).toHaveBeenCalledWith('')
-    // And nothing of the feature is drawn.
+    // And nothing that needs a session is drawn.
     expect(document.querySelector('[data-tn-line], [data-tn-account]')).toBeNull()
   })
 })
