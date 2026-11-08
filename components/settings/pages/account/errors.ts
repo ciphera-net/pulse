@@ -13,11 +13,12 @@ import type { DeletionBlocker } from '@/lib/api/user'
  * falls back to the password.
  */
 
-const TOO_MANY = 'Too many tries in a short time. Wait about a minute and try again.'
-const NO_CONNECTION = 'Couldn\'t connect. Check your connection and try again.'
-const ID_DOWN = 'Couldn\'t reach Ciphera ID. Nothing changed. Try again.'
+// Exported for the team-names password step, which says the same three things (copy deck §14.6).
+export const TOO_MANY = 'Too many tries in a short time. Wait about a minute and try again.'
+export const NO_CONNECTION = 'Couldn\'t connect. Check your connection and try again.'
+export const ID_DOWN = 'Couldn\'t reach Ciphera ID. Nothing changed. Try again.'
 
-function isNetworkError(err: unknown): boolean {
+export function isNetworkError(err: unknown): boolean {
   return err instanceof Error && /network|fetch/i.test(err.message)
 }
 

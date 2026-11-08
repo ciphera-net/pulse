@@ -9,6 +9,8 @@ import { listPasskeys } from '@/lib/api/webauthn'
 import { getRecoveryStatus } from '@/lib/api/recovery'
 import { usePreferences } from '@/lib/hooks/usePreferences'
 import { KitPage, KitSection } from '@/components/settings/kit/Kit'
+import { TeamNamesPrompt } from '@/components/settings/names/prompt'
+import { useTeamNames } from '@/lib/team-names/hooks'
 import ProfileSection from './ProfileSection'
 import DisplaySection from './DisplaySection'
 import SignInSection from './SignInSection'
@@ -27,7 +29,9 @@ import { LoadingRows } from './parts'
  * lives on the Notifications page (R41).
  *
  * The page owns only what two sections share: two-factor (its switch is in Sign-in and security, its codes in
- * Recovery), the passkey and phrase dialogs, and the one-time prompt to set up a recovery phrase.
+ * Recovery), the passkey and phrase dialogs, and the one-time prompt to set up a recovery phrase. With the team-names
+ * beta on in any team of the person's, the team-names one-time step is a prompt here too (R63, P3 B); locked, Profile's
+ * own Unlock is the way in.
  */
 export default function AccountPage() {
   const { user } = useAuth()
@@ -36,6 +40,7 @@ export default function AccountPage() {
   const { requestRecoveryEnrol, modal: recoveryModal } = useRecoveryEnrolDialog()
   const { mutate } = useSWRConfig()
   const { shouldNudge, dismiss: dismissNudge, markPasskeyEnrolled } = useRecoveryPrompt()
+  const namesOn = useTeamNames().anyTeamHasBeta
 
   // Add a passkey: OPAQUE re-auth, the vault key re-wrapped under the authenticator's PRF output, one atomic write.
   const addPasskey = useCallback(async () => {
@@ -93,6 +98,7 @@ export default function AccountPage() {
           }
         />
       )}
+      {namesOn && <TeamNamesPrompt locked={false} />}
       <ProfileSection />
       <DisplaySection />
       <SignInSection twoFactor={twoFactor} onAddPasskey={addPasskey} />

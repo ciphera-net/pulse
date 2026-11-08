@@ -77,3 +77,25 @@ steps:
       # pinned sign is half a guard, and the half that was missing is the half
       # that shipped.
       - npm run test:tz-positive
+
+  # 🔴 The crypto vectors a SECOND time, in Chromium, Firefox and WebKit (team-names
+  # design §8.2). `npm test` checks lib/crypto/__tests__/vectors on Node's WebCrypto
+  # only, but team names seal and open in the browser: an engine that differs in JWK
+  # import, HKDF, ECDH deriveBits or point validation fails there while Node stays
+  # green. lib/crypto/__tests__/browser/vectors.spec.ts bundles the production
+  # modules unchanged and compares every value each engine computes with the files.
+  #
+  # Runs after `test` and reuses the node_modules it installed (same workspace, linux
+  # x64; nothing this run loads is built against Node's ABI). The image ships the
+  # browsers for exactly @playwright/test 1.59.1, the version package.json pins: bump
+  # the two together, or the browsers fail to launch. Same resource class as `test`;
+  # measured peak 0.92 GiB with the three browsers running at once.
+  crypto-vectors:
+    image: registry.ops.ciphera.net/mirror/mcr.microsoft.com/playwright:v1.59.1-noble@sha256:eac9b0a5312cdab40ee8c2429df5bf19bffdccf8f3bf3c42268e173f97541645
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 1Gi, cpu: 500m }
+          limits: { memory: 4Gi }
+    commands:
+      - npm run test:crypto-vectors
