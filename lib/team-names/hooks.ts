@@ -6,10 +6,10 @@
  *
  *   useTeammateName(id)       the name of one person for the active team, or why there is none
  *   useTeammateNameLookup()   the same answer for many people at once (a list, a table)
- *   useTeamNames()            the page-level state: the one-time step, the locked line, the reset
- *   useTeamNamesActions       the password step, the reset, a retry after the error state, and the call
- *                             Account makes after a save. The password step and the reset reject with a
- *                             coded error: `team_names/reauth_required` (the proof was refused) and
+ *   useTeamNames()            the page-level state: the locked line, the reset (a first key needs no step, R72)
+ *   useTeamNamesActions       the reset, a retry after the error state, and the call Account makes after a
+ *                             save. The reset rejects with a coded error: `team_names/reauth_required`
+ *                             (the proof was refused) and
  *                             `team_names/password_failed` (the password did not match; the ceremony's
  *                             error is the `cause`) ask for the password again; anything else leaves the
  *                             state at `error`, which is not a password prompt: `team_names/proof_failed`
@@ -98,10 +98,10 @@ export function useTeammateNameLookup(): (userId: string | null | undefined) => 
   return useCallback((userId: string | null | undefined) => teammateName(ctx, userId), [ctx])
 }
 
-export function useTeamNamesActions(): Pick<TeamNamesContextValue, 'setUp' | 'reset' | 'retry' | 'nameChanged'> | null {
+export function useTeamNamesActions(): Pick<TeamNamesContextValue, 'reset' | 'retry' | 'nameChanged'> | null {
   const ctx = useContext(TeamNamesContext)
   return useMemo(
-    () => (ctx ? { setUp: ctx.setUp, reset: ctx.reset, retry: ctx.retry, nameChanged: ctx.nameChanged } : null),
+    () => (ctx ? { reset: ctx.reset, retry: ctx.retry, nameChanged: ctx.nameChanged } : null),
     [ctx],
   )
 }

@@ -1,7 +1,8 @@
 // Team names on Account (design Pulse/docs/plans/07-11-2026-team-names-e2e-design.md §5.1, §5.6, §5.11, §7; R63 to
-// R65; copy deck §14.6, §14.7): the notice as Your name's caption, a name too long to share, the key that will not
-// open with its Reset, the one-time step, and the call that tells the session a name was saved. The API, the
-// ceremonies and Facet's controls are stood in; the session is a context value the test controls.
+// R65, R72; copy deck §14.6, §14.7): the notice as Your name's caption, a name too long to share, the key that will
+// not open with its Reset, no prompt (a first key needs no step since R72), and the call that tells the session a name
+// was saved. The API, the ceremonies and Facet's controls are stood in; the session is a context value the test
+// controls.
 //
 // 🔴 WITH THE BETA OFF THE PAGE IS TODAY'S, BYTE FOR BYTE: the snapshots were recorded on the commit before the
 // surfaces existed.
@@ -153,7 +154,7 @@ const iso = (msAgo: number) => new Date(NOW.getTime() - msAgo).toISOString()
 
 /** The context the provider gives with the beta off in every team: no session. */
 function noSession(): TeamNamesContextValue {
-  return { snapshot: null, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: false, setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot: null, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -230,7 +231,7 @@ describe("Account with the team-names beta off everywhere: today's DOM, byte for
 
 // ─── With the beta on in a team of the person's ──────────────────────────────────────────────────────────────────
 
-const actions = { setUp: vi.fn(), reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+const actions = { reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => undefined }
 
 function sessionIn(status: TeamNamesStatus, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
@@ -341,22 +342,11 @@ describe('Account with the team-names beta on', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
-  it('offers the one-time step as a prompt at the top of Account, and none while the profile is locked', async () => {
-    actions.setUp.mockResolvedValue(undefined)
-    mountWith(sessionIn('needs_setup'))
+  it.each(['loading', 'locked', 'ready', 'cannot_open', 'error'] as const)('draws no team-names prompt on Account while %s (R72: no step to offer, and Account unlocks the profile itself)', async (status) => {
+    mountWith(sessionIn(status))
     await unlocked()
-    const first = document.querySelector('[data-kit] section') as HTMLElement
-    expect(first.getAttribute('data-kit-section')).toBe('Set up team names?')
-    expect(first.closest('[data-tn-line="step"]')?.getAttribute('data-tn-line-place')).toBe('prompt')
-    fireEvent.click(within(first).getByRole('button', { name: 'Set up' }))
-    const field = within(document.querySelector('[data-tn-step-form]') as HTMLElement).getByLabelText('Your password')
-    fireEvent.change(field, { target: { value: 'correct horse' } })
-    fireEvent.submit(field.closest('form') as HTMLFormElement)
-    await waitFor(() => expect(actions.setUp).toHaveBeenCalledWith('correct horse'))
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Team names set up'))
-
-    act(() => holder.set(sessionIn('locked')))
     expect(document.querySelector('[data-tn-line]')).toBeNull()
+    expect(screen.queryByText('Set up team names?')).toBeNull()
   })
 
   it('tells the session the saved name, after the vault has it (design §5.6)', async () => {

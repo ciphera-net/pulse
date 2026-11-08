@@ -18,7 +18,7 @@
  * the private key and every name from memory.
  */
 
-import { createContext, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useAuth } from '@/lib/auth/context'
@@ -54,7 +54,6 @@ export interface TeamNamesContextValue {
   activeFlagged: boolean
   /** The beta is on in at least one of the person's teams, so their name reaches teammates (Account says so). */
   anyFlagged: boolean
-  setUp(password: string): Promise<void>
   reset(password: string): Promise<void>
   /** After the error state: reads the person's key again. */
   retry(): Promise<void>
@@ -73,7 +72,7 @@ function defaultDeps(userId: string): SessionDeps {
     api: { fetchOwnKey, publishKey, resetKey, fetchDirectory, fetchMemberIds, writeNames, withdrawNames },
     loadVaultKey,
     readVault: openVaultWithKey,
-    // The OPAQUE re-auth ceremony with purpose `tmk` (design §6.3), loaded when the step runs.
+    // The OPAQUE re-auth ceremony with purpose `tmk` (design §6.3), loaded when a reset runs: a first key needs none (R72).
     prove: async (password) => (await import('@/lib/auth/tessera/opaque-reauth')).performSessionOpaqueReauth({ password, purpose: 'tmk' }),
     warn,
   }
@@ -135,10 +134,16 @@ export function TeamNamesProvider({ children }: { children: ReactNode }) {
     if (session && ready && activeFlagged && activeTeamId) void session.reconcile(activeTeamId)
   }, [session, ready, activeFlagged, activeTeamId])
 
-  const setUp = useCallback(async (password: string) => {
-    if (!session) throw new TeamNamesError('team_names/not_ready')
-    await session.setUp(password, flagged ?? [])
-  }, [session, flagged])
+  // A first key this session published (R72): the name goes to every team with the beta at once, as the one-time
+  // step used to send it, instead of team by team as each is opened. The active team is reconciled above too; the
+  // session's queue runs the two in order.
+  const firstKey = snapshot?.firstKey === true
+  const firstKeySealed = useRef<TeamNamesSession | null>(null)
+  useEffect(() => {
+    if (!session || !ready || !firstKey || !flagged || flagged.length === 0 || firstKeySealed.current === session) return
+    firstKeySealed.current = session
+    void session.reconcileAll(flagged)
+  }, [session, ready, firstKey, flagged])
 
   const reset = useCallback(async (password: string) => {
     if (!session) throw new TeamNamesError('team_names/not_ready')
@@ -155,8 +160,8 @@ export function TeamNamesProvider({ children }: { children: ReactNode }) {
   }, [session, flagged])
 
   const value = useMemo<TeamNamesContextValue>(
-    () => ({ snapshot: session ? snapshot : null, myId: userId, activeTeamId, activeFlagged, anyFlagged, setUp, reset, retry, nameChanged }),
-    [session, snapshot, userId, activeTeamId, activeFlagged, anyFlagged, setUp, reset, retry, nameChanged],
+    () => ({ snapshot: session ? snapshot : null, myId: userId, activeTeamId, activeFlagged, anyFlagged, reset, retry, nameChanged }),
+    [session, snapshot, userId, activeTeamId, activeFlagged, anyFlagged, reset, retry, nameChanged],
   )
 
   return <TeamNamesContext.Provider value={value}>{children}</TeamNamesContext.Provider>

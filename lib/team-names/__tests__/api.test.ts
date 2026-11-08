@@ -56,32 +56,38 @@ describe('fetchDirectory: the rows of mine', () => {
 })
 
 describe('the key routes', () => {
-  const body = { reauthToken: 'tmk-token', publicKey: bytes(65, 4), sealedPrivateKey: bytes(219, 5) }
+  const key = { publicKey: bytes(65, 4), sealedPrivateKey: bytes(219, 5) }
   const KEY_ROW = { key_id: b64(bytes(32, 6)), public_key: b64(bytes(65, 4)), sealed_private_key: b64(bytes(219, 5)) }
 
-  it.each([
-    ['POST', publishKey],
-    ['PUT', resetKey],
-  ] as const)('%s /me/team-key never takes the client\'s refresh-and-retry on a 401', async (method, send) => {
+  it('POST /me/team-key sends no proof, and takes the client\'s refresh-and-retry like any other request (R72)', async () => {
     apiRequest.mockResolvedValueOnce(KEY_ROW)
-    await send(body)
+    // Even handed a token, the first key's POST carries none.
+    await publishKey({ ...key, reauthToken: 'tmk-token' } as Parameters<typeof publishKey>[0])
     expect(apiRequest).toHaveBeenCalledTimes(1)
     const [path, options] = apiRequest.mock.calls[0]
     expect(path).toBe('/me/team-key')
-    expect(options).toMatchObject({ method, skipAuthRetry: true })
+    expect(options).toMatchObject({ method: 'POST', skipAuthRetry: false })
+    expect(JSON.parse(options.body)).toEqual({ public_key: KEY_ROW.public_key, sealed_private_key: KEY_ROW.sealed_private_key })
   })
 
-  it.each([
-    ['POST', publishKey],
-    ['PUT', resetKey],
-  ] as const)('%s reads a 401 reauth_required as the proof refused, so the step asks for the password again', async (_method, send) => {
+  it('PUT /me/team-key carries the reset\'s proof and never takes the client\'s refresh-and-retry on a 401', async () => {
+    apiRequest.mockResolvedValueOnce(KEY_ROW)
+    await resetKey({ ...key, reauthToken: 'tmk-token' })
+    expect(apiRequest).toHaveBeenCalledTimes(1)
+    const [path, options] = apiRequest.mock.calls[0]
+    expect(path).toBe('/me/team-key')
+    expect(options).toMatchObject({ method: 'PUT', skipAuthRetry: true })
+    expect(JSON.parse(options.body)).toMatchObject({ reauth_token: 'tmk-token' })
+  })
+
+  it('reads a 401 reauth_required on the reset as the proof refused, so it asks for the password again', async () => {
     apiRequest.mockRejectedValueOnce(new ApiError('Session expired', 401, { error: 'reauth_required' }))
-    await expect(send(body)).rejects.toMatchObject({ code: 'team_names/reauth_required' })
+    await expect(resetKey({ ...key, reauthToken: 'tmk-token' })).rejects.toMatchObject({ code: 'team_names/reauth_required' })
   })
 
   it('reads any other refusal as a failed request, keeping its cause', async () => {
     const refused = new ApiError('Bad request', 400, { error: 'invalid_key' })
     apiRequest.mockRejectedValueOnce(refused)
-    await expect(publishKey(body)).rejects.toMatchObject({ code: 'team_names/request_failed', cause: refused })
+    await expect(publishKey(key)).rejects.toMatchObject({ code: 'team_names/request_failed', cause: refused })
   })
 })

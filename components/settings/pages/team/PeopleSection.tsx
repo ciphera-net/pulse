@@ -174,7 +174,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
   }
 
   const ownDescription = alone ? undefined : canManage ? 'Everyone in this team, and the invite links you made.' : 'Everyone in this team.'
-  // "Not arrived yet" goes in this line (P3 B); locked and the one-time step are the page's prompt (TeamPage).
+  // "Not arrived yet" goes in this line (P3 B); locked is the page's prompt (TeamPage).
   const description = names.on ? lineWithNotYet(ownDescription, names.lineFor(people.map((m) => m.user_id))) : ownDescription
   const now = new Date()
 
