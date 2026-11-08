@@ -10,7 +10,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { AMARA, FORMER_NAME, GONE, JONAS, LENA, MAREN, MADE_UP_PEOPLE, MY_EMAIL, MY_NAME, TOMAS } from './fixtures/madeUpTeam'
+import { AMARA, FORMER_EMAIL, FORMER_NAME, GONE, JONAS, LENA, MAREN, MADE_UP_PEOPLE, MY_EMAIL, MY_NAME, TOMAS } from './fixtures/madeUpTeam'
 
 const root = fileURLToPath(new URL('../../../', import.meta.url))
 
@@ -42,7 +42,10 @@ describe('the made-up team', () => {
   })
 
   it('leaves no made-up id or name in anything the app is built from', () => {
-    const made = [MAREN, AMARA, JONAS, LENA, TOMAS, GONE, ...MADE_UP_PEOPLE.flatMap((p) => Object.values(p.names)), FORMER_NAME, MY_NAME, MY_EMAIL]
+    const made = [
+      MAREN, AMARA, JONAS, LENA, TOMAS, GONE, ...MADE_UP_PEOPLE.flatMap((p) => Object.values(p.names)), FORMER_NAME, MY_NAME, MY_EMAIL,
+      ...MADE_UP_PEOPLE.map((p) => p.email), FORMER_EMAIL,
+    ]
       .filter((v): v is string => typeof v === 'string' && v !== 'Pulse')
     const needles = [...new Set(made.flatMap((v) => (/^[0-9a-f-]{36}$/.test(v) ? [v, v.slice(0, 8)] : [v])))]
     const offenders: string[] = []

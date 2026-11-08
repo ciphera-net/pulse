@@ -40,7 +40,7 @@ const useSite = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({ useSite: (...a: unknown[]) => useSite(...a) }))
 
 let perms: Record<string, boolean> = {}
-vi.mock('@/lib/auth/permissions', () => ({ useCan: (p: string) => perms[p] ?? false }))
+vi.mock('@/lib/auth/permissions', () => ({ useCan: (p: string) => perms[p] ?? false, useIsAdminOrOwner: () => false }))
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { id: 'me' } }) }))
 const MEMBERS = [
   { organization_id: 'o', user_id: 'anna', role: 'admin', joined_at: '', user_email: 'anna@example.com' },

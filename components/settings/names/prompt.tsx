@@ -37,21 +37,26 @@ export function TeamNamesPrompt() {
   )
 }
 
+const NOT_YET_LINE: Record<'notYet' | 'notYetEmail', string> = {
+  notYet: NAMES_WORDS.notYet,
+  notYetEmail: NAMES_WORDS.notYetEmail,
+}
+
 /** A section's line with "not arrived yet" after its own sentence (P3 B: what needs nothing stays in the line). */
 export function lineWithNotYet(base: string | undefined, line: NamesLine): React.ReactNode {
-  if (line !== 'notYet') return base
+  if (line !== 'notYet' && line !== 'notYetEmail') return base
   return (
     <>
       {base ? `${base} ` : null}
-      <span data-tn-line="notYet" data-tn-line-place="section-line">
-        {NAMES_WORDS.notYet}
+      <span data-tn-line={line} data-tn-line-place="section-line">
+        {NOT_YET_LINE[line]}
       </span>
     </>
   )
 }
 
 const SEND_TO_LINE: Record<Exclude<NamesLine, null>, string> = {
-  notYet: NAMES_WORDS.notYet,
+  ...NOT_YET_LINE,
   locked: NAMES_WORDS.lockedSendTo,
 }
 

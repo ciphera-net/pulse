@@ -18,7 +18,7 @@ import { KitRow, KitRows, KitSection } from '@/components/settings/kit/Kit'
 import { CannotOpenRow, ResetDialog, TooLongLine } from '@/components/settings/names/account'
 import { NAMES_WORDS } from '@/components/settings/names/words'
 import { shareableName } from '@/lib/crypto/team-names'
-import { useTeamNames, useTeamNamesActions } from '@/lib/team-names/hooks'
+import { useTeamEmails, useTeamNames, useTeamNamesActions } from '@/lib/team-names/hooks'
 import { emailChangeErrorMessage, saveNameErrorMessage, unlockErrorMessage } from './errors'
 import { expiryPhrase } from './format'
 import { DecryptingField, FieldError } from './parts'
@@ -89,6 +89,8 @@ export default function ProfileSection() {
   const teamNames = useTeamNames()
   const teamNamesActions = useTeamNamesActions()
   const namesOn = teamNames.anyTeamHasBeta
+  // Team emails (design §16): with the beta on in any team of the person's, their address reaches its owners and admins.
+  const emailsOn = useTeamEmails().anyTeamHasBeta
   const [resetOpen, setResetOpen] = useState(false)
 
   useEffect(() => {
@@ -371,7 +373,9 @@ export default function ProfileSection() {
           ? 'Couldn\'t check for a waiting change. You can still send a link: it replaces any earlier one, and nothing changes until it\'s opened.'
           : emailResolvedNote
             ? 'That change was confirmed or it expired. Unlock to see your address.'
-            : 'Changing it needs your password, then a click on a link sent to the new address.'
+            : emailsOn
+              ? NAMES_WORDS.emailNotice
+              : 'Changing it needs your password, then a click on a link sent to the new address.'
 
   const emailControl = valuesResolving || emailEditing || !canEditEmail ? undefined : (
     <>

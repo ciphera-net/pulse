@@ -25,8 +25,9 @@ import {
 import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { MAX_RECIPIENTS, TOO_MANY_PEOPLE, scheduleError } from './errors'
 import { FormFooter, Problem, siteYear } from './parts'
-import { RecipientLabel } from '@/components/settings/names/people'
+import { RecipientLabel, WithEmail } from '@/components/settings/names/people'
 import { sendToCaption } from '@/components/settings/names/prompt'
+import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
 
 // Sharing → Scheduled emails: the form (copy deck §6.4; approved as shot B-4, drawn here in the kit). On the 1st,
@@ -63,6 +64,8 @@ export function ScheduleForm({ site, onCancel, onScheduled }: { site: Site; onCa
   const myId = user?.id
   // With the team-names beta on (design §7, R63): each teammate's name, role and id, and the page's line in the caption.
   const names = usePeopleNames()
+  // With the team-emails beta on, an owner's or admin's list shows each teammate's address beside the name (R74).
+  const emails = usePeopleEmails()
 
   const [name, setName] = useState('')
   const [every, setEvery] = useState<ReportEvery>('month')
@@ -180,23 +183,26 @@ export function ScheduleForm({ site, onCancel, onScheduled }: { site: Site; onCa
         >
           {roster ? (
             <div role="group" aria-label="Send to" className="flex flex-col gap-1.5">
-              {roster.map((m) => (
-                <Checkbox
-                  key={m.user_id}
-                  label={
-                    names.on ? (
-                      <RecipientLabel member={m} who={names.who(m.user_id, true)} />
-                    ) : (
-                      <span className="inline-flex items-center gap-2">
-                        <Avatar seed={personAvatarSeed({ userId: m.user_id, avatarSeed: m.avatar_seed })} size={20} />
-                        {memberLabel(m, myId)}
-                      </span>
-                    )
-                  }
-                  checked={recipients.has(m.user_id)}
-                  onChange={() => toggleRecipient(m.user_id)}
-                />
-              ))}
+              {roster.map((m) => {
+                const email = emails.of(m.user_id)
+                return (
+                  <Checkbox
+                    key={m.user_id}
+                    label={
+                      names.on ? (
+                        <RecipientLabel member={m} who={names.who(m.user_id, true)} email={email} />
+                      ) : (
+                        <span className="inline-flex items-center gap-2">
+                          <Avatar seed={personAvatarSeed({ userId: m.user_id, avatarSeed: m.avatar_seed })} size={20} />
+                          {email !== null ? <WithEmail email={email}>{memberLabel(m, myId)}</WithEmail> : memberLabel(m, myId)}
+                        </span>
+                      )
+                    }
+                    checked={recipients.has(m.user_id)}
+                    onChange={() => toggleRecipient(m.user_id)}
+                  />
+                )
+              })}
             </div>
           ) : membersError ? (
             <p className="text-sm text-muted-foreground">Couldn&apos;t load the team. Reload the page to try again.</p>

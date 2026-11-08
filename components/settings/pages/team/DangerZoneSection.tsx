@@ -17,6 +17,7 @@ import { useMembers } from '@/lib/swr/members'
 import { useOrganization } from '@/lib/swr/organizations'
 import { personName, roleWord } from './words'
 import { PickedPerson, transferOptions } from '@/components/settings/names/people'
+import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
 import { plainName } from '@/components/settings/names/words'
 
@@ -31,6 +32,9 @@ type DangerDialog = 'transfer' | 'leave' | 'delete' | null
  *
  * With the team-names beta on, the transfer picker names each person with their avatar, the role and the id, and the
  * line under it says the role and the id of the person picked, so the hold is always on the exact account (§14.3).
+ *
+ * With the team-emails beta on (design §16, R74 option A), each person in the list carries their address beside the
+ * label, muted (Facet's `detail`); the field, once someone is picked, shows the label alone.
  */
 export function DangerZoneSection({ alone }: { alone: boolean }) {
   const { user, refresh } = useAuth()
@@ -44,6 +48,7 @@ export function DangerZoneSection({ alone }: { alone: boolean }) {
   const [retrying, setRetrying] = useState(false)
   const { mutate } = useSWRConfig()
   const names = usePeopleNames()
+  const emails = usePeopleEmails()
 
   // A team action waiting behind the Undo bar keeps all three rows off: a second confirm would send the first at
   // once, past its Undo.
@@ -168,8 +173,11 @@ export function DangerZoneSection({ alone }: { alone: boolean }) {
         placeholder="Pick a person"
         options={
           names.on
-            ? transferOptions(candidates, (id) => names.who(id, true))
-            : candidates.map((m) => ({ value: m.user_id, label: personName(m.user_id, user?.id), description: roleWord(m.role) }))
+            ? transferOptions(candidates, (id) => names.who(id, true), emails.of)
+            : candidates.map((m) => {
+                const email = emails.of(m.user_id)
+                return { value: m.user_id, label: personName(m.user_id, user?.id), ...(email !== null ? { detail: email } : {}), description: roleWord(m.role) }
+              })
         }
         className="w-full"
         disabled={!members}

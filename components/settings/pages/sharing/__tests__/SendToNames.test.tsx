@@ -10,7 +10,7 @@ import { act, render, cleanup, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { TeamNamesContext, type TeamNamesContextValue } from '@/lib/team-names/provider'
 import type { TeamNamesSnapshot } from '@/lib/team-names/session'
-import { madeUpMembers, madeUpNames, madeUpSnapshot, type MadeUpState } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
+import { NO_EMAILS, madeUpMembers, madeUpNames, madeUpSnapshot, type MadeUpState } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
@@ -68,9 +68,9 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
   const snapshot: TeamNamesSnapshot = {
     status: 'ready',
     share: 'name',
-    teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
+    teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set(), ...NO_EMAILS }]]),
   }
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -125,6 +125,8 @@ function sessionFor(state: MadeUpState): TeamNamesContextValue {
     activeTeamId: TEAM,
     activeFlagged: true,
     anyFlagged: true,
+    activeEmailsFlagged: false,
+    anyEmailsFlagged: false,
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),

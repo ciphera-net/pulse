@@ -6,15 +6,23 @@
 // a kept row for the caller, and for each row the caller sent the SHA-256 of the row as stored; PUT
 // team-names upserts the caller's rows or answers 409; DELETE takes back every row the caller sent. Real
 // cryptography throughout.
+//
+// The team-emails routes keep pulse-backend's contract too (design §16.3, as built): the email directory
+// lists the owners and admins with a key, the caller left out, serves the rows sealed for the caller only
+// while they are an owner or admin, and the key of exactly the people it names; PUT team-emails refuses a
+// recipient who is not a member, not an owner or admin, or under a stale key (409, nothing written); a role
+// that stops being owner or admin deletes the rows sealed for it; DELETE takes back every address row the
+// caller sent. A session runs the email pass only in a team whose flags say so; every test above the email
+// block runs with team names alone, as before team emails.
 
 import { createHash } from 'node:crypto'
 import { describe, expect, it, vi, type Mock } from 'vitest'
 import { InvalidCredentialsError, vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
 import { createIdentity } from '@/lib/crypto/team-names'
 import type { Bytes } from '@/lib/crypto/hpke'
-import type { DirectoryAnswer, KeyRow, NameEntry, PublishKeyBody, Warn } from '../api'
+import type { DirectoryAnswer, EmailDirectoryAnswer, EmailEntry, KeyRow, NameEntry, PublishKeyBody, Warn } from '../api'
 import { TeamNamesError } from '../errors'
-import { TeamNamesSession, type SessionDeps, type TeamNamesApi } from '../session'
+import { TeamNamesSession, type SessionDeps, type TeamFlags, type TeamNamesApi } from '../session'
 
 const TEAM = '7e7e7e7e-0000-4000-8000-000000000001'
 const OTHER_TEAM = '7e7e7e7e-0000-4000-8000-0000000000f2'
@@ -24,6 +32,24 @@ const C = 'c3c3c3c3-0000-4000-8000-000000000003'
 
 const sha256 = (b: Uint8Array): Bytes => new Uint8Array(createHash('sha256').update(b).digest())
 const same = (a: Uint8Array, b: Uint8Array) => Buffer.from(a).equals(Buffer.from(b))
+
+/** A team with team names alone: what every session ran before team emails. */
+const NAMES_ONLY: TeamFlags = { names: true, emails: false }
+const BOTH: TeamFlags = { names: true, emails: true }
+const EMAILS_ONLY: TeamFlags = { names: false, emails: true }
+
+type Role = 'owner' | 'admin' | 'member'
+
+interface EmailRow {
+  team: string
+  sender: string
+  recipient: string
+  senderKeyId: Bytes
+  recipientKeyId: Bytes
+  emailTag: Bytes
+  sealed: Bytes
+  senderLeftAt: number | null
+}
 
 interface Row {
   team: string
@@ -43,6 +69,17 @@ class FakeServer {
   tokens = new Set<string>()
   events: string[] = []
   conflictsLeft = 0
+  /** Roles per team (team emails go to owners and admins only); anyone not listed is a member. */
+  roles = new Map<string, Map<string, Role>>([[TEAM, new Map<string, Role>([[A, 'owner'], [B, 'admin']])]])
+  emailRows: EmailRow[] = []
+  /** The next email PUTs answered 409, as when a key changed or a recipient was demoted since the read. */
+  emailConflictsLeft = 0
+  /** The next email directory read fails the way a 5xx or a dropped connection does. */
+  failNextEmailRead = false
+  /** The next email PUT fails the way a 5xx does. */
+  failNextEmailWrite = false
+  /** Directory reads per kind: a team without a kind's beta never reads its directory. */
+  reads = { names: 0, emails: 0 }
   /** Runs inside POST before the insert: lets a test make another device win the race. */
   beforeInsert: ((caller: string) => Promise<void>) | null = null
   /** The next key POST fails the way a 5xx or a dropped connection does. */
@@ -59,6 +96,25 @@ class FakeServer {
     this.members.get(team)?.delete(user)
     this.rows = this.rows.filter((r) => !(r.team === team && r.recipient === user))
     for (const r of this.rows) if (r.team === team && r.sender === user) r.senderLeftAt = Date.now()
+    // The same two rules for addresses (R75): rows sealed for the leaver go, rows they sent are kept.
+    this.emailRows = this.emailRows.filter((r) => !(r.team === team && r.recipient === user))
+    for (const r of this.emailRows) if (r.team === team && r.sender === user) r.senderLeftAt = Date.now()
+  }
+
+  role(team: string, user: string): Role {
+    return this.roles.get(team)?.get(user) ?? 'member'
+  }
+
+  /** A role change; migration 264's trigger deletes the rows sealed for someone who stops being an owner or admin. */
+  setRole(team: string, user: string, role: Role) {
+    if (!this.roles.has(team)) this.roles.set(team, new Map())
+    this.roles.get(team)?.set(user, role)
+    if (role === 'member') this.emailRows = this.emailRows.filter((r) => !(r.team === team && r.recipient === user))
+  }
+
+  private ownerOrAdmin(team: string, user: string): boolean {
+    const role = this.role(team, user)
+    return role === 'owner' || role === 'admin'
   }
 
   api(caller: string): TeamNamesApi {
@@ -90,11 +146,13 @@ class FakeServer {
       resetKey: async (body) => {
         spend(body.reauthToken)
         this.rows = this.rows.filter((r) => r.sender !== caller && r.recipient !== caller)
+        this.emailRows = this.emailRows.filter((r) => r.sender !== caller && r.recipient !== caller)
         this.events.push('reset')
         return insert(body)
       },
       fetchMemberIds: async (team) => [...(this.members.get(team) ?? [])],
       fetchDirectory: async (team): Promise<DirectoryAnswer> => {
+        this.reads.names++
         const members = this.members.get(team) ?? new Set<string>()
         if (!members.has(caller)) return { kind: 'unavailable' }
         const kept = this.rows.filter((r) => r.team === team && r.recipient === caller && !members.has(r.sender)).map((r) => r.sender)
@@ -136,6 +194,62 @@ class FakeServer {
         this.events.push('withdraw')
         this.rows = this.rows.filter((r) => r.sender !== caller)
       },
+      fetchEmailDirectory: async (team): Promise<EmailDirectoryAnswer> => {
+        this.reads.emails++
+        if (this.failNextEmailRead) {
+          this.failNextEmailRead = false
+          throw new TeamNamesError('team_names/request_failed')
+        }
+        const members = this.members.get(team) ?? new Set<string>()
+        if (!members.has(caller)) return { kind: 'unavailable' }
+        const recipients = [...members].filter((id) => id !== caller && this.ownerOrAdmin(team, id) && this.keys.has(id))
+        const forMe = this.ownerOrAdmin(team, caller) ? this.emailRows.filter((r) => r.team === team && r.recipient === caller) : []
+        const named = [...new Set([...recipients, ...forMe.map((r) => r.sender)])].filter((id) => this.keys.has(id))
+        return {
+          kind: 'directory',
+          directory: {
+            keys: named.map((id) => ({ userId: id, publicKey: (this.keys.get(id) as KeyRow).publicKey })),
+            recipients,
+            forMe: forMe.map((r) => ({ senderId: r.sender, senderKeyId: r.senderKeyId, recipientKeyId: r.recipientKeyId, sealed: r.sealed })),
+            mine: this.emailRows.filter((r) => r.team === team && r.sender === caller)
+              .map((r) => ({ recipientId: r.recipient, recipientKeyId: r.recipientKeyId, emailTag: r.emailTag, sealedHash: sha256(r.sealed) })),
+          },
+        }
+      },
+      writeEmails: async (team, entries: EmailEntry[]) => {
+        this.events.push('email-write')
+        if (this.failNextEmailWrite) {
+          this.failNextEmailWrite = false
+          throw new TeamNamesError('team_names/request_failed')
+        }
+        if (this.emailConflictsLeft > 0) {
+          this.emailConflictsLeft--
+          return { kind: 'conflict' }
+        }
+        const members = this.members.get(team) ?? new Set<string>()
+        const mine = this.keys.get(caller)
+        const seen = new Set<string>()
+        for (const e of entries) {
+          // A batch addressed to the caller, or naming a recipient twice, is a 400 for the whole batch.
+          if (e.recipientId === caller || seen.has(e.recipientId)) throw new TeamNamesError('team_names/request_failed')
+          seen.add(e.recipientId)
+          const theirs = this.keys.get(e.recipientId)
+          if (!members.has(e.recipientId) || !this.ownerOrAdmin(team, e.recipientId) || !theirs || !mine) return { kind: 'conflict' }
+          if (!same(e.recipientKeyId, theirs.keyId) || !same(e.senderKeyId, mine.keyId) || e.sealed.length !== 594) return { kind: 'conflict' }
+        }
+        for (const e of entries) {
+          this.emailRows = this.emailRows.filter((r) => !(r.team === team && r.sender === caller && r.recipient === e.recipientId))
+          this.emailRows.push({
+            team, sender: caller, recipient: e.recipientId, senderKeyId: new Uint8Array(e.senderKeyId),
+            recipientKeyId: new Uint8Array(e.recipientKeyId), emailTag: new Uint8Array(e.emailTag), sealed: new Uint8Array(e.sealed), senderLeftAt: null,
+          })
+        }
+        return { kind: 'written' }
+      },
+      withdrawEmails: async () => {
+        this.events.push('email-withdraw')
+        this.emailRows = this.emailRows.filter((r) => r.sender !== caller)
+      },
     }
   }
 }
@@ -148,22 +262,27 @@ interface Person {
   id: string
   vmk: VaultKey
   name: string | undefined
+  /** The address in the person's vault. */
+  email: string
+  /** Each team's betas, as the provider would read them from /me; a team not listed has team names alone. */
+  flags: Map<string, TeamFlags>
   vaultKeyHeld: boolean
   readFails: boolean
   warn: Mock<Warn>
   session: TeamNamesSession
 }
 
-async function person(server: FakeServer, id: string, name: string | undefined): Promise<Person> {
-  // Mutable on purpose: tests change the name or take the vault key away mid-session.
-  const p = { id, vmk: await newVmk(), name, vaultKeyHeld: true, readFails: false, warn: vi.fn<Warn>() }
+async function person(server: FakeServer, id: string, name: string | undefined, email = 'x@example.com'): Promise<Person> {
+  // Mutable on purpose: tests change the name, the address or the flags, or take the vault key away mid-session.
+  const p = { id, vmk: await newVmk(), name, email, flags: new Map<string, TeamFlags>(), vaultKeyHeld: true, readFails: false, warn: vi.fn<Warn>() }
   const deps: SessionDeps = {
     userId: id,
     api: server.api(id),
+    flagsFor: (team) => p.flags.get(team) ?? NAMES_ONLY,
     loadVaultKey: async () => (p.vaultKeyHeld ? p.vmk : null),
     readVault: async () => {
       if (p.readFails) throw new Error('network')
-      return { email: 'x@example.com', ...(p.name === undefined ? {} : { display_name: p.name }) }
+      return { email: p.email, ...(p.name === undefined ? {} : { display_name: p.name }) }
     },
     prove: async (password) => {
       if (password === 'unreachable') throw new Error('Network error, please try again.')
@@ -176,8 +295,8 @@ async function person(server: FakeServer, id: string, name: string | undefined):
 }
 
 /** A person whose first visit with the vault open published their key (R72). */
-async function keyed(server: FakeServer, id: string, name: string | undefined): Promise<Person> {
-  const p = await person(server, id, name)
+async function keyed(server: FakeServer, id: string, name: string | undefined, email?: string): Promise<Person> {
+  const p = await person(server, id, name, email)
   await p.session.start()
   expect(p.session.getSnapshot().status).toBe('ready')
   return p
@@ -277,6 +396,7 @@ describe('the first key (R72)', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, publishKey: async (body) => ({ ...(await api.publishKey(body)), keyId: sha256(new Uint8Array([1])) }) },
+      flagsFor: () => NAMES_ONLY,
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -571,7 +691,7 @@ describe('reconcile', () => {
     if (answer.kind !== 'directory') throw new Error('no directory')
     const swapped: DirectoryAnswer = { kind: 'directory', directory: { ...answer.directory, keys: answer.directory.keys.map((k) => (k.userId === A ? { ...k, publicKey: impostor } : k)) } }
     const s2 = new TeamNamesSession({
-      userId: A, api: { ...api, fetchDirectory: async () => swapped }, loadVaultKey: async () => a.vmk,
+      userId: A, api: { ...api, fetchDirectory: async () => swapped }, flagsFor: () => NAMES_ONLY, loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }), prove: async () => { throw new Error('unused') }, warn: vi.fn(),
     })
     await s2.start()
@@ -594,6 +714,7 @@ describe('dispose', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, fetchDirectory: async (team, warn) => { await gate; return api.fetchDirectory(team, warn) } },
+      flagsFor: () => NAMES_ONLY,
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -611,5 +732,279 @@ describe('dispose', () => {
     expect(server.events).not.toContain('write')
     expect(s.getSnapshot()).toEqual({ status: 'loading', share: null, teams: new Map() })
     await expect(s.reset('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
+  })
+})
+
+// ─── The email pass (design §16.4) ───────────────────────────────────────────────────────────────────────────────
+
+describe('the email pass (design §16.4)', () => {
+  /** The team: A the owner, B an admin, C a member, each keyed, each with the betas `flags`. */
+  async function team(flags: TeamFlags) {
+    const server = new FakeServer()
+    const a = await keyed(server, A, 'Ada', 'ada@example.com')
+    const b = await keyed(server, B, 'Bob', 'bob@example.com')
+    const c = await keyed(server, C, 'Cleo', 'cleo@example.com')
+    for (const p of [a, b, c]) p.flags.set(TEAM, flags)
+    return { server, a, b, c }
+  }
+  const teamOf = (p: Person) => p.session.getSnapshot().teams.get(TEAM)
+  const emailsOf = (p: Person) => Object.fromEntries([...(teamOf(p)?.emails ?? new Map())])
+  const sealedBy = (server: FakeServer, sender: string) => server.emailRows.filter((r) => r.sender === sender).map((r) => r.recipient).sort()
+  const emailEvents = (server: FakeServer) => server.events.filter((e) => e.startsWith('email-'))
+
+  it('seals my address for every owner and admin the server lists, never for a member or myself; an owner or admin opens it, a member opens none', async () => {
+    const { server, a, b, c } = await team(BOTH)
+    for (const p of [c, b, a]) await p.session.reconcile(TEAM)
+    expect(sealedBy(server, C)).toEqual([A, B].sort())
+    expect(sealedBy(server, B)).toEqual([A])
+    expect(sealedBy(server, A)).toEqual([B])
+    for (const p of [a, b, c]) await p.session.reconcile(TEAM)
+    expect(emailsOf(a)).toEqual({ [B]: { email: 'bob@example.com', former: false }, [C]: { email: 'cleo@example.com', former: false } })
+    expect(emailsOf(b)).toEqual({ [A]: { email: 'ada@example.com', former: false }, [C]: { email: 'cleo@example.com', former: false } })
+    expect(emailsOf(c)).toEqual({})
+    expect(teamOf(c)?.emailStatus).toBe('ready')
+    // The names went their own way, as before: every teammate's, to everyone.
+    expect(teamOf(c)?.names.get(A)?.name).toBe('Ada')
+    expect(teamOf(a)?.names.get(C)?.name).toBe('Cleo')
+  })
+
+  it('writes nothing on the next visit: every row is current', async () => {
+    const { server, a, b, c } = await team(BOTH)
+    for (const p of [a, b, c]) await p.session.reconcile(TEAM)
+    server.events.length = 0
+    for (const p of [a, b, c]) await p.session.reconcile(TEAM)
+    expect(emailEvents(server)).toEqual([])
+  })
+
+  it('in a team with only team emails: seals and opens addresses, and never reads the names directory', async () => {
+    const { server, a, c } = await team(EMAILS_ONLY)
+    server.reads = { names: 0, emails: 0 }
+    await c.session.reconcile(TEAM)
+    await a.session.reconcile(TEAM)
+    expect(server.reads).toEqual({ names: 0, emails: 2 })
+    expect(server.rows).toEqual([])
+    expect(server.events).not.toContain('write')
+    expect(emailsOf(a)).toEqual({ [C]: { email: 'cleo@example.com', former: false } })
+    expect(teamOf(a)).toMatchObject({ status: 'loading', emailStatus: 'ready' })
+    expect(teamOf(a)?.names.size).toBe(0)
+    expect(teamOf(a)?.memberIds).toEqual(new Set([A, B, C]))
+  })
+
+  it('in a team without team emails: no email route is called and nothing is opened', async () => {
+    const { server, a, b, c } = await team(NAMES_ONLY)
+    server.reads = { names: 0, emails: 0 }
+    for (const p of [a, b, c]) await p.session.reconcile(TEAM)
+    expect(server.reads).toEqual({ names: 3, emails: 0 })
+    expect(emailEvents(server)).toEqual([])
+    expect(server.emailRows).toEqual([])
+    expect(teamOf(a)).toMatchObject({ status: 'ready', emailStatus: 'off' })
+    expect(teamOf(a)?.emails.size).toBe(0)
+  })
+
+  it('marks the addresses, never the names, when the email pass fails; addresses read before a failed write stay shown', async () => {
+    const { server, a, b, c } = await team(BOTH)
+    for (const p of [b, c]) await p.session.reconcile(TEAM)
+    server.failNextEmailRead = true
+    await a.session.reconcile(TEAM)
+    expect(teamOf(a)).toMatchObject({ status: 'ready', emailStatus: 'error' })
+    expect(teamOf(a)?.names.get(B)?.name).toBe('Bob')
+    expect(a.warn).toHaveBeenCalledWith('team_names/request_failed')
+
+    // Nothing of A's left on the server, so the next pass writes; the write fails after the addresses were opened.
+    server.emailRows = server.emailRows.filter((r) => r.sender !== A)
+    server.failNextEmailWrite = true
+    await a.session.reconcile(TEAM)
+    expect(teamOf(a)).toMatchObject({ status: 'ready', emailStatus: 'error' })
+    expect(emailsOf(a)[B]).toEqual({ email: 'bob@example.com', former: false })
+    expect(teamOf(a)?.names.get(C)?.name).toBe('Cleo')
+  })
+
+  it('runs the email pass even when the names directory fails, and marks only the names', async () => {
+    const { server, a, c } = await team(BOTH)
+    await c.session.reconcile(TEAM)
+    const api = server.api(A)
+    const s = new TeamNamesSession({
+      userId: A,
+      api: { ...api, fetchDirectory: async () => { throw new TeamNamesError('team_names/request_failed') } },
+      flagsFor: () => BOTH,
+      loadVaultKey: async () => a.vmk,
+      readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
+      prove: async () => { throw new Error('unused') },
+      warn: vi.fn(),
+    })
+    await s.start()
+    await s.reconcile(TEAM)
+    expect(s.getSnapshot().teams.get(TEAM)).toMatchObject({ status: 'error', emailStatus: 'ready' })
+    expect(s.getSnapshot().teams.get(TEAM)?.emails.get(C)?.email).toBe('cleo@example.com')
+  })
+
+  it('reads again once after a 409, and stops there', async () => {
+    const { server, c } = await team(BOTH)
+    server.emailConflictsLeft = 1
+    server.events.length = 0
+    await c.session.reconcile(TEAM)
+    expect(server.events.filter((e) => e === 'email-write')).toHaveLength(2)
+    expect(sealedBy(server, C)).toEqual([A, B].sort())
+
+    server.emailRows = []
+    server.emailConflictsLeft = 10
+    server.events.length = 0
+    await c.session.reconcile(TEAM)
+    expect(server.events.filter((e) => e === 'email-write')).toHaveLength(2)
+    expect(c.warn).toHaveBeenCalledWith('team_names/stale_key')
+    expect(server.emailRows).toEqual([])
+    // A refusal is not a failure: the addresses' state stays readable.
+    expect(teamOf(c)?.emailStatus).toBe('ready')
+  })
+
+  it('re-seals for every owner and admin when the address changes: the tag binds it', async () => {
+    const { server, a, b, c } = await team(BOTH)
+    for (const p of [c, a]) await p.session.reconcile(TEAM)
+    c.email = 'cleo@new.example.com'
+    server.events.length = 0
+    await c.session.reconcile(TEAM)
+    expect(server.events.filter((e) => e === 'email-write')).toHaveLength(1)
+    await a.session.reconcile(TEAM)
+    await b.session.reconcile(TEAM)
+    expect(emailsOf(a)[C]?.email).toBe('cleo@new.example.com')
+    expect(emailsOf(b)[C]?.email).toBe('cleo@new.example.com')
+  })
+
+  it('takes every address row back when the vault\'s address cannot be shared, and asks nothing when none was sent', async () => {
+    const { server, c } = await team(BOTH)
+    await c.session.reconcile(TEAM)
+    expect(sealedBy(server, C)).toHaveLength(2)
+    c.email = 'not an address'
+    server.events.length = 0
+    await c.session.reconcile(TEAM)
+    expect(emailEvents(server)).toEqual(['email-withdraw'])
+    expect(sealedBy(server, C)).toEqual([])
+    server.events.length = 0
+    await c.session.reconcile(TEAM)
+    expect(emailEvents(server)).toEqual([])
+  })
+
+  it('never writes or withdraws an address when the vault cannot be read, and still opens what was sealed for me', async () => {
+    const { server, a, c } = await team(BOTH)
+    await c.session.reconcile(TEAM)
+    a.readFails = true
+    server.events.length = 0
+    await a.session.reconcile(TEAM)
+    expect(emailEvents(server)).toEqual([])
+    expect(emailsOf(a)[C]?.email).toBe('cleo@example.com')
+  })
+
+  it('opens a former member\'s kept address, marked former, and seals nothing for them', async () => {
+    const { server, a, c } = await team(BOTH)
+    await c.session.reconcile(TEAM)
+    server.leave(TEAM, C)
+    await a.session.reconcile(TEAM)
+    expect(emailsOf(a)[C]).toEqual({ email: 'cleo@example.com', former: true })
+    expect(server.emailRows.some((r) => r.recipient === C)).toBe(false)
+  })
+
+  it('a demoted admin is served no address, and their next reconcile drops the ones they held', async () => {
+    const { server, a, b, c } = await team(BOTH)
+    for (const p of [a, c, b]) await p.session.reconcile(TEAM)
+    expect(Object.keys(emailsOf(b)).sort()).toEqual([A, C].sort())
+    server.setRole(TEAM, B, 'member')
+    await b.session.reconcile(TEAM)
+    expect(emailsOf(b)).toEqual({})
+    // Nobody seals for the member any more: the rows for them went with the role.
+    server.events.length = 0
+    await c.session.reconcile(TEAM)
+    expect(emailEvents(server)).toEqual([])
+    expect(sealedBy(server, C)).toEqual([A])
+  })
+
+  it('flags two people showing one address, and a teammate showing mine, case-insensitively', async () => {
+    const { a, b, c } = await team(BOTH)
+    c.email = 'bob@example.com'
+    for (const p of [b, c]) await p.session.reconcile(TEAM)
+    await a.session.reconcile(TEAM)
+    expect([...(teamOf(a)?.emailDuplicates ?? [])].sort()).toEqual([B, C].sort())
+    c.email = 'ADA@EXAMPLE.com'
+    await c.session.reconcile(TEAM)
+    await a.session.reconcile(TEAM)
+    expect(teamOf(a)?.emailDuplicates.has(C)).toBe(true)
+    expect(teamOf(a)?.emailDuplicates.has(B)).toBe(false)
+  })
+
+  it('shows no address for a team too large to serve them', async () => {
+    const { server, a } = await team(BOTH)
+    const api = server.api(A)
+    const s = new TeamNamesSession({
+      userId: A,
+      api: { ...api, fetchEmailDirectory: async () => ({ kind: 'too_large' }) },
+      flagsFor: () => BOTH,
+      loadVaultKey: async () => a.vmk,
+      readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
+      prove: async () => { throw new Error('unused') },
+      warn: vi.fn(),
+    })
+    await s.start()
+    await s.reconcile(TEAM)
+    expect(s.getSnapshot().teams.get(TEAM)).toMatchObject({ status: 'ready', emailStatus: 'too_large' })
+    expect(s.getSnapshot().teams.get(TEAM)?.emails.size).toBe(0)
+  })
+
+  it('refuses to go on when the email directory serves another key for me', async () => {
+    const { server, a, c } = await team(EMAILS_ONLY)
+    await c.session.reconcile(TEAM)
+    const impostor = (await createIdentity(vaultOpsFor(await newVmk()))).identity.publicKey
+    const api = server.api(A)
+    const s = new TeamNamesSession({
+      userId: A,
+      api: {
+        ...api,
+        fetchEmailDirectory: async (team, warn) => {
+          const answer = await api.fetchEmailDirectory(team, warn)
+          if (answer.kind !== 'directory') return answer
+          return { kind: 'directory', directory: { ...answer.directory, keys: [...answer.directory.keys, { userId: A, publicKey: impostor }] } }
+        },
+      },
+      flagsFor: () => EMAILS_ONLY,
+      loadVaultKey: async () => a.vmk,
+      readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
+      prove: async () => { throw new Error('unused') },
+      warn: vi.fn(),
+    })
+    await s.start()
+    server.events.length = 0
+    await s.reconcile(TEAM)
+    expect(s.getSnapshot().status).toBe('key_mismatch')
+    expect(emailEvents(server)).toEqual([])
+  })
+
+  it('the first key seals the address too, in every team given (R72)', async () => {
+    const server = new FakeServer()
+    const a = await keyed(server, A, 'Ada', 'ada@example.com')
+    const c = await person(server, C, 'Cleo', 'cleo@example.com')
+    c.flags.set(TEAM, BOTH)
+    await c.session.start()
+    expect(c.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
+    await c.session.reconcileAll([TEAM])
+    // B has no key yet, so only the owner is listed.
+    expect(sealedBy(server, C)).toEqual([A])
+    a.flags.set(TEAM, BOTH)
+    await a.session.reconcile(TEAM)
+    expect(emailsOf(a)[C]?.email).toBe('cleo@example.com')
+  })
+
+  it('a reset seals the address again, under the new key', async () => {
+    const server = new FakeServer()
+    const a = await keyed(server, A, 'Ada', 'ada@example.com')
+    const c = await keyed(server, C, 'Cleo', 'cleo@example.com')
+    for (const p of [a, c]) p.flags.set(TEAM, BOTH)
+    await c.session.reconcile(TEAM)
+    const lost = await person(server, C, 'Cleo', 'cleo@example.com') // a device whose vault key does not open the envelope
+    lost.flags.set(TEAM, BOTH)
+    await lost.session.start()
+    expect(lost.session.getSnapshot().status).toBe('cannot_open')
+    await lost.session.reset('correct horse', [TEAM])
+    const row = server.emailRows.find((r) => r.sender === C && r.recipient === A)
+    expect(row && same(row.senderKeyId, (server.keys.get(C) as KeyRow).keyId)).toBe(true)
+    await a.session.reconcile(TEAM)
+    expect(emailsOf(a)[C]?.email).toBe('cleo@example.com')
   })
 })

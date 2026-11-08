@@ -203,6 +203,21 @@ describe('the team-names routes never reach Cache Storage', () => {
     }
   })
 
+  it('answers the team-emails directory NetworkOnly too (design §16.3), and nothing past it', async () => {
+    const EMAIL_DIRECTORY = 'https://pulse-api.ciphera.net/api/v1/organizations/7e7e7e7e-0000-4000-8000-000000000001/team-emails'
+    const all = await rules()
+    expect(workboxRouteFor(all, EMAIL_DIRECTORY)).toMatchObject({ handler: 'NetworkOnly', options: { cacheName: 'team-names' } })
+    expect(workboxRouteFor(all, `${EMAIL_DIRECTORY}/extra`)?.options?.cacheName).toBe('cross-origin')
+    // Control: with the defaults alone it would sit in Cache Storage for an hour.
+    expect(workboxRouteFor(defaultRuntimeCaching, EMAIL_DIRECTORY)).toMatchObject({ handler: 'NetworkFirst', options: { cacheName: 'cross-origin' } })
+    // And the rule still holds once serialised into the worker.
+    const { pwa } = await load()
+    const custom = ((pwa.workboxOptions as { runtimeCaching: RuntimeRule[] }).runtimeCaching).find((r) => r.options?.cacheName === 'team-names')
+    if (!custom || typeof custom.urlPattern !== 'function') throw new Error('no team-names rule')
+    const rebuilt = new Function(`return (${String(custom.urlPattern)})`)() as (ctx: { url: URL }) => boolean
+    expect(rebuilt({ url: new URL(EMAIL_DIRECTORY) })).toBe(true)
+  })
+
   it('control: a path RegExp would silently match nothing on the API origin', () => {
     const regExpRule: RuntimeRule = { urlPattern: /\/api\/v1\/me\/team-key$/, handler: 'NetworkOnly', options: { cacheName: 'x' } }
     expect(workboxRouteFor([regExpRule], KEY)).toBeNull()

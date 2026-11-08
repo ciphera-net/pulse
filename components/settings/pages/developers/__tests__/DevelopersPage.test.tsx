@@ -53,7 +53,7 @@ vi.mock('@/lib/api/client', () => {
 })
 
 let canManage = true
-vi.mock('@/lib/auth/permissions', () => ({ useCan: (p: string) => p === 'integrations.manage' && canManage }))
+vi.mock('@/lib/auth/permissions', () => ({ useCan: (p: string) => p === 'integrations.manage' && canManage, useIsAdminOrOwner: () => false }))
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { id: 'u_me', email: 'me@example.com', org_id: 'org_a' } }) }))
 let teamState: 'alone' | 'team' | null = 'team'
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => teamState }))

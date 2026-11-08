@@ -1,7 +1,9 @@
 // The provider and the hooks the surfaces will read: nothing runs or is fetched with the beta off,
 // names arrive with it on, and the names and the private key leave memory on every path that ends
 // the session without a reload (review L9): a sibling tab's sign-out or a definitive rejection (the
-// user goes null), a vault-state change, and the Lock button, which changes neither.
+// user goes null), a vault-state change, and the Lock button, which changes neither. With the
+// team-emails beta (design §16) the session runs for it too, and an owner's or admin's hooks answer
+// teammates' addresses; a member's, a demoted viewer's and the viewer's own never do.
 
 import React, { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,7 +20,7 @@ const OTHER_TEAM = '7e7e7e7e-0000-4000-8000-0000000000f2'
 const h = vi.hoisted(() => {
   const listeners = new Set<(c: 'saved' | 'forgotten') => void>()
   return {
-    auth: { user: null as { id: string; org_id?: string } | null, vaultState: 'unknown' as 'unknown' | 'open' | 'locked' },
+    auth: { user: null as { id: string; org_id?: string; role?: string } | null, vaultState: 'unknown' as 'unknown' | 'open' | 'locked' },
     path: { current: '/settings/team' },
     getMe: vi.fn(),
     loadVaultKey: vi.fn(),
@@ -31,6 +33,9 @@ const h = vi.hoisted(() => {
       fetchMemberIds: vi.fn(),
       writeNames: vi.fn(),
       withdrawNames: vi.fn(),
+      fetchEmailDirectory: vi.fn(),
+      writeEmails: vi.fn(),
+      withdrawEmails: vi.fn(),
     },
     custody: {
       listeners,
@@ -54,9 +59,9 @@ vi.mock('@/lib/auth/vault-store', () => ({
 vi.mock('@/lib/auth/vault-restore', () => ({ openVaultWithKey: h.openVaultWithKey }))
 vi.mock('@/lib/team-names/api', async (importActual) => ({ ...(await importActual<object>()), ...h.api }))
 
-import { createIdentity, keyIdOf, sealName, type TeamIdentity } from '@/lib/crypto/team-names'
-import { TeamNamesProvider } from '../provider'
-import { useTeamNames, useTeammateName, useTeamNamesActions } from '../hooks'
+import { createIdentity, keyIdOf, sealEmail, sealName, type TeamIdentity } from '@/lib/crypto/team-names'
+import { TeamNamesContext, TeamNamesProvider } from '../provider'
+import { useTeamEmails, useTeamNames, useTeammateEmail, useTeammateName, useTeamNamesActions } from '../hooks'
 
 const me = (features: Record<string, string[]>) => ({
   user_id: A,
@@ -69,6 +74,8 @@ let a: { identity: TeamIdentity; envelope: Uint8Array }
 let b: TeamIdentity
 let bEnvelope: Uint8Array
 let c: TeamIdentity
+/** The address rows B and C sealed for A, as the email directory serves them to an owner or admin. */
+let emailsForA: { senderId: string; senderKeyId: Uint8Array; recipientKeyId: Uint8Array; sealed: Uint8Array }[]
 
 beforeEach(async () => {
   vmk = (await crypto.subtle.importKey('raw', crypto.getRandomValues(new Uint8Array(32)), 'HKDF', false, ['deriveKey'])) as VaultKey
@@ -80,6 +87,11 @@ beforeEach(async () => {
     return { senderId, senderKeyId: sender.keyId, recipientKeyId: a.identity.keyId, sealed }
   }
   const forMe = [await rowFrom(B, b, 'Bob'), await rowFrom(C, c, 'Cleo')]
+  const emailFrom = async (senderId: string, sender: TeamIdentity, email: string) => {
+    const { sealed } = await sealEmail({ teamId: TEAM, senderId, recipientId: A, email, sender, recipientPublicKey: a.identity.publicKey, recipientKeyId: a.identity.keyId })
+    return { senderId, senderKeyId: sender.keyId, recipientKeyId: a.identity.keyId, sealed }
+  }
+  emailsForA = [await emailFrom(B, b, 'bob@example.com'), await emailFrom(C, c, 'cleo@example.com')]
 
   h.auth.user = { id: A, org_id: TEAM }
   h.auth.vaultState = 'open'
@@ -99,6 +111,13 @@ beforeEach(async () => {
   })
   h.api.writeNames.mockReset().mockResolvedValue({ kind: 'written' })
   h.api.withdrawNames.mockReset().mockResolvedValue(undefined)
+  // B is the team's other owner or admin; C has left, and their kept row is served (R75).
+  h.api.fetchEmailDirectory.mockReset().mockResolvedValue({
+    kind: 'directory',
+    directory: { keys: [{ userId: B, publicKey: b.publicKey }, { userId: C, publicKey: c.publicKey }], recipients: [B], forMe: emailsForA, mine: [] },
+  })
+  h.api.writeEmails.mockReset().mockResolvedValue({ kind: 'written' })
+  h.api.withdrawEmails.mockReset().mockResolvedValue(undefined)
   h.api.publishKey.mockReset()
   h.api.resetKey.mockReset()
   h.custody.listeners.clear()
@@ -127,17 +146,33 @@ function Probe() {
   )
 }
 
+/** What the address hooks answer, and the flags the provider says. */
+function EmailProbe() {
+  const ctx = React.useContext(TeamNamesContext)
+  const view = useTeamEmails()
+  const self = useTeammateEmail(A)
+  const bob = useTeammateEmail(B)
+  const cleo = useTeammateEmail(C)
+  return (
+    <pre data-testid="emails">
+      {JSON.stringify({ activeEmails: ctx?.activeEmailsFlagged ?? null, anyEmails: ctx?.anyEmailsFlagged ?? null, shown: view.shown, any: view.anyTeamHasBeta, self, bob, cleo })}
+    </pre>
+  )
+}
+
 function tree() {
   return (
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
       <TeamNamesProvider>
         <Probe />
+        <EmailProbe />
       </TeamNamesProvider>
     </SWRConfig>
   )
 }
 
 const read = () => JSON.parse(screen.getByTestId('probe').textContent ?? '{}')
+const readEmails = () => JSON.parse(screen.getByTestId('emails').textContent ?? '{}')
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 30)) })
 const apiCalls = () => Object.values(h.api).reduce((n, fn) => n + fn.mock.calls.length, 0)
 
@@ -301,5 +336,133 @@ describe('the names leave memory when the session ends', () => {
     await waitFor(() => expect(read().state).toBe('ready'))
     // B's session read the team, so it knows C left, but it holds no name for them.
     expect(read().cleo).toEqual({ kind: 'not_yet', former: true })
+  })
+})
+
+describe('team emails (design §16)', () => {
+  beforeEach(() => {
+    h.auth.user = { id: A, org_id: TEAM, role: 'owner' }
+  })
+
+  it('runs no session and calls nothing with both betas off everywhere', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: [], [OTHER_TEAM]: ['weekly-summary'] }))
+    render(tree())
+    await settle()
+    expect(readEmails()).toMatchObject({ activeEmails: false, anyEmails: false, shown: false, self: { kind: 'self' }, bob: { kind: 'off' } })
+    expect(apiCalls()).toBe(0)
+  })
+
+  it('runs a session for team emails alone, reads the email directory and never the names directory', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-emails'], [OTHER_TEAM]: [] }))
+    render(tree())
+    await waitFor(() => expect(readEmails().bob).toEqual({ kind: 'email', email: 'bob@example.com', former: false, duplicate: false }))
+    expect(readEmails()).toMatchObject({ activeEmails: true, anyEmails: true, shown: true })
+    expect(read()).toMatchObject({ state: 'ready', active: false, any: false, team: null })
+    expect(h.api.fetchEmailDirectory.mock.calls.map((call) => call[0])).toEqual([TEAM])
+    expect(h.api.fetchDirectory).not.toHaveBeenCalled()
+    expect(h.api.writeNames).not.toHaveBeenCalled()
+    // My address went to the team's other owner or admin.
+    await waitFor(() => expect(h.api.writeEmails).toHaveBeenCalledTimes(1))
+    expect(h.api.writeEmails.mock.calls[0][1].map((e: { recipientId: string }) => e.recipientId)).toEqual([B])
+    // A former member's kept address, marked former (R75).
+    expect(readEmails().cleo).toEqual({ kind: 'email', email: 'cleo@example.com', former: true, duplicate: false })
+  })
+
+  it('says "some team" when team emails are on in another team only: nothing is drawn for the active one', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: [], [OTHER_TEAM]: ['team-emails'] }))
+    render(tree())
+    await waitFor(() => expect(read().state).toBe('ready'))
+    expect(readEmails()).toMatchObject({ activeEmails: false, anyEmails: true, shown: false, any: true, bob: { kind: 'off' } })
+    expect(h.api.fetchEmailDirectory).not.toHaveBeenCalled()
+  })
+
+  it('reads names and addresses in one reconcile of a team with both, the vault and the members once', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-names', 'team-emails'] }))
+    render(tree())
+    await waitFor(() => expect(readEmails().bob.kind).toBe('email'))
+    expect(read().bob).toEqual({ kind: 'name', name: 'Bob', former: false, duplicate: false })
+    await settle()
+    expect(h.openVaultWithKey).toHaveBeenCalledTimes(1)
+    expect(h.api.fetchMemberIds).toHaveBeenCalledTimes(1)
+    expect(h.api.fetchDirectory).toHaveBeenCalledTimes(1)
+    expect(h.api.fetchEmailDirectory).toHaveBeenCalledTimes(1)
+  })
+
+  it('answers "self" for the viewer, "off" for a member, and "off" at once for an owner demoted while the addresses are in memory', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-names', 'team-emails'] }))
+    const view = render(tree())
+    await waitFor(() => expect(readEmails().bob.kind).toBe('email'))
+    expect(readEmails().self).toEqual({ kind: 'self' })
+    const reads = h.api.fetchEmailDirectory.mock.calls.length
+    h.auth.user = { id: A, org_id: TEAM, role: 'member' }
+    view.rerender(tree())
+    // Before any new reconcile: the role is read as it is now.
+    expect(readEmails()).toMatchObject({ shown: false, bob: { kind: 'off' }, cleo: { kind: 'off' }, self: { kind: 'self' } })
+    expect(h.api.fetchEmailDirectory.mock.calls.length).toBe(reads)
+    // An admin sees them again.
+    h.auth.user = { id: A, org_id: TEAM, role: 'admin' }
+    view.rerender(tree())
+    expect(readEmails().bob.kind).toBe('email')
+  })
+
+  it('answers "not_yet" for a teammate whose address has not reached this browser, once the team\'s addresses are read', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-emails'] }))
+    h.api.fetchEmailDirectory.mockResolvedValue({
+      kind: 'directory',
+      directory: { keys: [{ userId: B, publicKey: b.publicKey }], recipients: [B], forMe: [emailsForA[0]], mine: [] },
+    })
+    h.api.fetchMemberIds.mockResolvedValue([A, B, C])
+    render(tree())
+    await waitFor(() => expect(readEmails().bob.kind).toBe('email'))
+    expect(readEmails().cleo).toEqual({ kind: 'not_yet' })
+  })
+
+  it('answers "locked" when this browser holds no vault key', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-emails'] }))
+    h.auth.vaultState = 'locked'
+    h.loadVaultKey.mockResolvedValue(null)
+    render(tree())
+    await waitFor(() => expect(read().state).toBe('locked'))
+    expect(readEmails().bob).toEqual({ kind: 'locked' })
+    expect(h.api.fetchEmailDirectory).not.toHaveBeenCalled()
+  })
+
+  it('a first key seals the name and the address in every team with either beta, each with its own passes (R72)', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-emails'], [OTHER_TEAM]: ['team-names'] }))
+    h.api.fetchOwnKey.mockResolvedValue(null)
+    let published: Uint8Array | null = null
+    h.api.publishKey.mockImplementation(async (body: { publicKey: Uint8Array; sealedPrivateKey: Uint8Array }) => {
+      published = body.publicKey
+      return { keyId: await keyIdOf(body.publicKey), publicKey: body.publicKey, sealedPrivateKey: body.sealedPrivateKey }
+    })
+    h.api.fetchDirectory.mockImplementation(async () => ({
+      kind: 'directory',
+      directory: { keys: [{ userId: A, publicKey: published }, { userId: B, publicKey: b.publicKey }], forMe: [], mine: [] },
+    }))
+    h.api.fetchEmailDirectory.mockImplementation(async () => ({
+      kind: 'directory',
+      directory: { keys: [{ userId: B, publicKey: b.publicKey }], recipients: [B], forMe: [], mine: [] },
+    }))
+    render(tree())
+    await waitFor(() => expect(h.api.writeEmails).toHaveBeenCalled())
+    await waitFor(() => expect(h.api.writeNames).toHaveBeenCalled())
+    await settle()
+    // The active team is reconciled for itself as well as with the rest (the session's queue runs both), and this
+    // stand-in's `mine` never fills, so its writes are compared as sets.
+    expect(new Set(h.api.writeEmails.mock.calls.map((call) => call[0]))).toEqual(new Set([TEAM]))
+    expect(new Set(h.api.writeNames.mock.calls.map((call) => call[0]))).toEqual(new Set([OTHER_TEAM]))
+    expect(new Set(h.api.fetchEmailDirectory.mock.calls.map((call) => call[0]))).toEqual(new Set([TEAM]))
+    expect(new Set(h.api.fetchDirectory.mock.calls.map((call) => call[0]))).toEqual(new Set([OTHER_TEAM]))
+  })
+
+  it('writes no address to storage', async () => {
+    h.getMe.mockResolvedValue(me({ [TEAM]: ['team-emails'] }))
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    render(tree())
+    await waitFor(() => expect(readEmails().bob.kind).toBe('email'))
+    expect(setItem).not.toHaveBeenCalled()
+    for (const store of [localStorage, sessionStorage]) {
+      for (let i = 0; i < store.length; i++) expect(store.getItem(store.key(i) ?? '') ?? '').not.toMatch(/@example\.com/)
+    }
   })
 })

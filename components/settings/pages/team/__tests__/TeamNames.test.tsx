@@ -22,6 +22,7 @@ import {
   madeUpMembers,
   madeUpNames,
   madeUpSnapshot,
+  NO_EMAILS,
   type MadeUpState,
 } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
@@ -162,7 +163,7 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
   const snapshot: TeamNamesSnapshot = {
     status: 'ready',
     share: 'name',
-    teams: new Map([[TEAM, { status: 'ready', names, memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
+    teams: new Map([[TEAM, { status: 'ready', names, memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set(), ...NO_EMAILS }]]),
   }
   return {
     snapshot,
@@ -170,6 +171,8 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
     activeTeamId: TEAM,
     activeFlagged,
     anyFlagged: true,
+    activeEmailsFlagged: false,
+    anyEmailsFlagged: false,
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
@@ -292,7 +295,7 @@ const actions = { reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => undefined }
 
 function sessionFor(state: MadeUpState, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
-  return { snapshot: { ...madeUpSnapshot(state, TEAM, ME), ...over }, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, ...actions }
+  return { snapshot: { ...madeUpSnapshot(state, TEAM, ME), ...over }, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, ...actions }
 }
 
 /** The session as a value the test can change while the page stays mounted (a try that fails moves it to `error`). */
@@ -471,7 +474,7 @@ describe('the Team page with the team-names beta on', () => {
 
   it('owes no "not arrived" line for a team too large to serve names', async () => {
     await mountOn('partial', {
-      teams: new Map([[TEAM, { status: 'too_large', names: new Map(), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
+      teams: new Map([[TEAM, { status: 'too_large', names: new Map(), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set(), ...NO_EMAILS }]]),
     })
     expect(lines()).toEqual([])
     expect(text(row(MAREN).querySelector('[data-kit-row] .font-medium'))).toBe('Teammate 3f2a9c1b')
@@ -498,7 +501,7 @@ describe('the Team page with the team-names beta on', () => {
     for (const id of [MAREN, AMARA, JONAS, LENA]) expect(text(row(id).querySelector('[data-kit-row] .font-medium'))).toBe(`Teammate ${id.slice(0, 8)}`)
     // Published, and the team read before anyone sealed a name for the new key: People's line says names are coming.
     const memberIds = new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id))
-    act(() => holder.set(sessionFor('first', { status: 'ready', share: 'name', teams: new Map([[TEAM, { status: 'ready', names: new Map(), memberIds, duplicates: new Set() }]]) })))
+    act(() => holder.set(sessionFor('first', { status: 'ready', share: 'name', teams: new Map([[TEAM, { status: 'ready', names: new Map(), memberIds, duplicates: new Set(), ...NO_EMAILS }]]) })))
     expect(lines().map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])).toEqual([['notYet', 'section-line']])
   })
 

@@ -1,6 +1,7 @@
 /**
  * One browser session of team names: the identity, the names, and the work that keeps them current
- * (design §4.3, §5.1 to §5.6). No React here; lib/team-names/provider.tsx drives it.
+ * (design §4.3, §5.1 to §5.6), and with the team-emails beta the members' addresses too (§16.4). No
+ * React here; lib/team-names/provider.tsx drives it.
  *
  * 🔴 A SESSION BELONGS TO ONE PERSON AND ONE VAULT STATE, AND DIES WITH THEM (review L9). The
  * provider builds a new one whenever the user id, the vault state or the vault key's custody
@@ -9,8 +10,8 @@
  * sibling tab's sign-out, a definitive session rejection), and the Lock button changes neither the
  * user nor the vault state, which is why custody is part of the key.
  *
- * Nothing here persists: the private key is a non-extractable CryptoKey in memory, names live in the
- * snapshot, and no snapshot field is ever written to localStorage, IndexedDB or a cache.
+ * Nothing here persists: the private key is a non-extractable CryptoKey in memory, names and addresses
+ * live in the snapshot, and no snapshot field is ever written to localStorage, IndexedDB or a cache.
  *
  * Operations run one at a time, in order, so a key creation, a reset and a reconcile never interleave.
  */
@@ -21,6 +22,7 @@ import { isInvalidCredentials } from '@/lib/auth/tessera/errors'
 import type { VaultData } from '@/lib/crypto/vault'
 import {
   bytesEqual,
+  checkEmail,
   createIdentity,
   keyIdOf,
   openIdentityEnvelope,
@@ -28,9 +30,18 @@ import {
   type ShareableName,
   type TeamIdentity,
 } from '@/lib/crypto/team-names'
-import type { DirectoryAnswer, KeyRow, NameEntry, PublishKeyBody, Warn, WriteOutcome } from './api'
+import type { DirectoryAnswer, EmailDirectoryAnswer, EmailEntry, KeyRow, NameEntry, PublishKeyBody, Warn, WriteOutcome } from './api'
 import { TeamNamesError, isTeamNamesError } from './errors'
-import { duplicateIds, openNamesForMe, planSeals, type OpenedName } from './reconcile'
+import {
+  duplicateIds,
+  emailDuplicateIds,
+  openEmailsForMe,
+  openNamesForMe,
+  planEmailSeals,
+  planSeals,
+  type OpenedEmail,
+  type OpenedName,
+} from './reconcile'
 
 /**
  * Where this browser stands:
@@ -43,14 +54,33 @@ import { duplicateIds, openNamesForMe, planSeals, type OpenedName } from './reco
  */
 export type TeamNamesStatus = 'loading' | 'locked' | 'cannot_open' | 'key_mismatch' | 'ready' | 'error'
 
+/** How far one kind of a team's rows is read: `too_large` over 500 members, `unavailable` a 404, `error` until the next try. */
+export type TeamReadStatus = 'loading' | 'ready' | 'too_large' | 'unavailable' | 'error'
+
+/**
+ * The betas a team has, which decide the passes its reconcile runs (design §16.4): the name pass with `team-names`, the
+ * email pass with `team-emails`. A team with neither is not reconciled.
+ */
+export interface TeamFlags {
+  names: boolean
+  emails: boolean
+}
+
 export interface TeamState {
-  status: 'loading' | 'ready' | 'too_large' | 'unavailable' | 'error'
+  /** The names' (the email pass never touches it). In a team without `team-names` it stays `loading` and unread. */
+  status: TeamReadStatus
   /** Sender id to the name their browser sealed for this person. */
   names: ReadonlyMap<string, OpenedName>
   /** Current members, from the members route; null until read. */
   memberIds: ReadonlySet<string> | null
   /** User ids whose name equals another person's after cleaning and case folding. */
   duplicates: ReadonlySet<string>
+  /** The addresses' (design §16): `off` in a team without `team-emails`. A failure of the email pass marks only this. */
+  emailStatus: 'off' | TeamReadStatus
+  /** Sender id to the address their browser sealed for this person: served only while this person is an owner or admin. */
+  emails: ReadonlyMap<string, OpenedEmail>
+  /** User ids whose address equals another opened address, or this person's own, compared case-insensitively (§16.6). */
+  emailDuplicates: ReadonlySet<string>
 }
 
 export interface TeamNamesSnapshot {
@@ -73,21 +103,61 @@ export interface TeamNamesApi {
   fetchMemberIds(teamId: string): Promise<string[]>
   writeNames(teamId: string, entries: NameEntry[]): Promise<WriteOutcome>
   withdrawNames(): Promise<void>
+  fetchEmailDirectory(teamId: string, warn: Warn): Promise<EmailDirectoryAnswer>
+  writeEmails(teamId: string, entries: EmailEntry[]): Promise<WriteOutcome>
+  withdrawEmails(): Promise<void>
 }
 
 export interface SessionDeps {
   userId: string
   api: TeamNamesApi
+  /** A team's betas as they are now (read at the start of each of its reconciles): the passes it runs. */
+  flagsFor(teamId: string): TeamFlags
   /** The vault key this browser holds for the person, or null. */
   loadVaultKey(userId: string): Promise<VaultKey | null>
-  /** The person's own vault, read fresh from Ciphera ID: the one source of their current name. */
+  /** The person's own vault, read fresh from Ciphera ID: the one source of their current name and address. */
   readVault(key: VaultKey): Promise<VaultData>
   /** The reset's password: the OPAQUE re-auth ceremony with purpose `tmk`; resolves with its single-use token. */
   prove(password: string): Promise<string>
   warn: Warn
 }
 
-const EMPTY_TEAM: TeamState = { status: 'loading', names: new Map(), memberIds: null, duplicates: new Set() }
+function emptyTeam(flags: TeamFlags): TeamState {
+  return {
+    status: 'loading',
+    names: new Map(),
+    memberIds: null,
+    duplicates: new Set(),
+    emailStatus: flags.emails ? 'loading' : 'off',
+    emails: new Map(),
+    emailDuplicates: new Set(),
+  }
+}
+
+/** A read that may have failed, kept apart so one pass's failure is that pass's alone. */
+type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown }
+
+function settle<T>(promise: Promise<T>): Promise<Settled<T>> {
+  return promise.then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error }),
+  )
+}
+
+/** What one reconcile reads once for both of its passes (design §16.4): the person's vault and the team's members. */
+interface SharedRead {
+  me: TeamIdentity
+  flags: TeamFlags
+  /** Read fresh from Ciphera ID; null when that read failed, and then nothing is written or taken back. */
+  vault: VaultData | null
+  memberIds: ReadonlySet<string>
+}
+
+/** The shared read and, beside it, each pass's own directory: null for a pass the team does not have. */
+interface TeamRead extends SharedRead {
+  names: Settled<DirectoryAnswer> | null
+  emails: Settled<EmailDirectoryAnswer> | null
+}
 
 /**
  * The ceremony rejected the password: OPAQUE detects it in the browser and throws with no status, and
@@ -147,6 +217,11 @@ export class TeamNamesSession {
     const teams = new Map(this.snapshot.teams)
     teams.set(teamId, team)
     this.set({ teams })
+  }
+
+  /** Changes some of one team's fields and keeps the rest: each pass writes its own. */
+  private updateTeam(teamId: string, flags: TeamFlags, patch: Partial<TeamState>): void {
+    this.setTeam(teamId, { ...(this.snapshot.teams.get(teamId) ?? emptyTeam(flags)), ...patch })
   }
 
   private enqueue<T>(op: () => Promise<T>): Promise<T> {
@@ -367,55 +442,109 @@ export class TeamNamesSession {
   }
 
   private async reconcileOne(teamId: string): Promise<void> {
+    const flags = this.deps.flagsFor(teamId)
     try {
-      await this.reconcileTeam(teamId, 0)
+      await this.reconcileTeam(teamId, flags)
     } catch (err) {
+      // The shared read failed (the members), so neither pass could run.
       if (this.disposed) return
       this.deps.warn(this.codeOf(err))
-      const previous = this.snapshot.teams.get(teamId) ?? EMPTY_TEAM
-      this.setTeam(teamId, { ...previous, status: 'error' })
+      this.updateTeam(teamId, flags, { ...(flags.names ? { status: 'error' } : {}), ...(flags.emails ? { emailStatus: 'error' } : {}) })
     }
   }
 
-  private async reconcileTeam(teamId: string, attempt: number): Promise<void> {
+  /**
+   * One team, the passes it has (design §16.4): the name pass with `team-names`, exactly as before team emails, then
+   * the email pass with `team-emails`. They share this reconcile's vault read and members list, and a team with only
+   * `team-emails` never reads the names directory. Each pass's failure marks its own kind: the names keep showing
+   * whatever happens to the addresses, and the other way round.
+   */
+  private async reconcileTeam(teamId: string, flags: TeamFlags): Promise<void> {
+    if (!flags.names && !flags.emails) return
+    const read = await this.readTeam(teamId, flags)
+    if (!read) return
+    let shared: SharedRead = read
+    if (flags.names) {
+      try {
+        const after = await this.namePass(teamId, read, read.names, 0)
+        if (!after) return
+        shared = after
+      } catch (err) {
+        if (this.disposed) return
+        this.deps.warn(this.codeOf(err))
+        this.updateTeam(teamId, flags, { status: 'error' })
+      }
+    }
+    if (flags.emails && read.emails) await this.emailPass(teamId, shared, read.emails)
+  }
+
+  /**
+   * The vault key, then the vault, the members and the directories `read` asks for (by default every pass the team has),
+   * all at once. Null when the session stopped (disposed, or the vault key is gone: locked); throws when the members
+   * could not be read.
+   */
+  private async readTeam(teamId: string, flags: TeamFlags, read: TeamFlags = flags): Promise<TeamRead | null> {
     const me = this.identity
-    if (!me || this.disposed) return
-    if (!this.snapshot.teams.has(teamId)) this.setTeam(teamId, EMPTY_TEAM)
+    if (!me || this.disposed) return null
+    if (!this.snapshot.teams.has(teamId)) this.setTeam(teamId, emptyTeam(flags))
 
     // The key may have expired (30 days) or been forgotten in another tab since the session began.
     const vaultKey = await this.deps.loadVaultKey(this.deps.userId)
-    if (this.disposed) return
+    if (this.disposed) return null
     if (!vaultKey) {
       this.identity = null
       this.set({ status: 'locked', share: null, teams: new Map() })
-      return
+      return null
     }
 
-    const [vault, memberList, answer] = await Promise.all([
+    const [vault, members, names, emails] = await Promise.all([
       // Read fresh, never from the session's memory: another tab may have changed the name, and
       // re-sealing a stale copy would overwrite the new one.
       this.deps.readVault(vaultKey).catch((err: unknown) => {
         this.deps.warn(this.codeOf(err))
         return null
       }),
-      this.deps.api.fetchMemberIds(teamId),
-      this.deps.api.fetchDirectory(teamId, this.deps.warn),
+      settle(this.deps.api.fetchMemberIds(teamId)),
+      read.names ? settle(this.deps.api.fetchDirectory(teamId, this.deps.warn)) : null,
+      read.emails ? settle(this.deps.api.fetchEmailDirectory(teamId, this.deps.warn)) : null,
     ])
-    if (this.disposed || this.identity !== me) return
-    const memberIds: ReadonlySet<string> = new Set(memberList)
+    if (this.disposed || this.identity !== me) return null
+    // Without the members neither pass can tell a former member from a current one.
+    if (!members.ok) throw members.error
+    return { me, flags, vault, memberIds: new Set(members.value), names, emails }
+  }
+
+  /** The own-key check failed: nothing is sealed or opened any more in this session. */
+  private keyMismatch(): void {
+    this.deps.warn('team_names/own_key_mismatch', { userId: this.deps.userId })
+    this.identity = null
+    this.set({ status: 'key_mismatch', teams: new Map() })
+  }
+
+  /**
+   * The name pass (design §5.3, §5.4). Answers the read the email pass goes on with (the newer one after a read again),
+   * or null when the session stopped: disposed, locked, or a key mismatch. Throws when a write fails.
+   */
+  private async namePass(teamId: string, read: SharedRead, directoryRead: Settled<DirectoryAnswer> | null, attempt: number): Promise<SharedRead | null> {
+    const { me, flags, vault, memberIds } = read
+    if (!directoryRead) return read
+    if (!directoryRead.ok) {
+      this.deps.warn(this.codeOf(directoryRead.error))
+      this.updateTeam(teamId, flags, { status: 'error' })
+      return read
+    }
+    const answer = directoryRead.value
     if (answer.kind !== 'directory') {
-      this.setTeam(teamId, { status: answer.kind, names: new Map(), memberIds, duplicates: new Set() })
-      return
+      this.updateTeam(teamId, flags, { status: answer.kind, names: new Map(), memberIds, duplicates: new Set() })
+      return read
     }
     const { directory } = answer
 
     // The own-key check against the directory as well as against /me/team-key.
     const served = directory.keys.find((k) => k.userId === this.deps.userId)
     if (served && !bytesEqual(served.publicKey, me.publicKey)) {
-      this.deps.warn('team_names/own_key_mismatch', { userId: this.deps.userId })
-      this.identity = null
-      this.set({ status: 'key_mismatch', teams: new Map() })
-      return
+      this.keyMismatch()
+      return null
     }
 
     // Read first, so names appear even when the write below fails.
@@ -428,12 +557,12 @@ export class TeamNamesSession {
       memberIds,
       warn: this.deps.warn,
     })
-    if (this.disposed || this.identity !== me) return
+    if (this.disposed || this.identity !== me) return null
     const share = vault ? shareableName(vault.display_name) : null
     const own = share?.kind === 'name' ? { userId: this.deps.userId, name: share.name } : null
-    this.setTeam(teamId, { status: 'ready', names, memberIds, duplicates: duplicateIds(names, own) })
+    this.updateTeam(teamId, flags, { status: 'ready', names, memberIds, duplicates: duplicateIds(names, own) })
     // Without a fresh read of the name, never withdraw or overwrite on a guess.
-    if (!share) return
+    if (!share) return read
     this.set({ share: share.kind })
 
     const plan = await planSeals({
@@ -446,17 +575,101 @@ export class TeamNamesSession {
       memberIds,
       warn: this.deps.warn,
     })
-    if (this.disposed || this.identity !== me) return
+    if (this.disposed || this.identity !== me) return null
     if (plan.kind === 'withdraw') {
       await this.deps.api.withdrawNames()
-      return
+      return read
     }
-    if (plan.kind !== 'write') return
+    if (plan.kind !== 'write') return read
     const outcome = await this.deps.api.writeNames(teamId, plan.entries)
     if (outcome.kind === 'conflict') {
       // A key changed or a recipient left since the read: read again once; the next session catches the rest.
       this.deps.warn('team_names/stale_key')
-      if (attempt === 0) await this.reconcileTeam(teamId, 1)
+      if (attempt === 0) {
+        // The names again, with the vault and the members: the email pass goes on with this newer read.
+        const again = await this.readTeam(teamId, flags, { names: true, emails: false })
+        if (!again) return null
+        return this.namePass(teamId, again, again.names, 1)
+      }
+    }
+    return read
+  }
+
+  /**
+   * The email pass (design §16.4), the name pass's rules for this person's address: read fresh from the vault, sealed
+   * for each owner and admin the server lists, and what was sealed for this person opened, shown before anything is
+   * written. Never throws: a failure marks the team's addresses, never its names.
+   */
+  private async emailPass(teamId: string, read: SharedRead, directoryRead: Settled<EmailDirectoryAnswer>): Promise<void> {
+    try {
+      await this.emailAttempt(teamId, read, directoryRead, 0)
+    } catch (err) {
+      if (this.disposed) return
+      this.deps.warn(this.codeOf(err))
+      this.updateTeam(teamId, read.flags, { emailStatus: 'error' })
+    }
+  }
+
+  private async emailAttempt(teamId: string, read: SharedRead, directoryRead: Settled<EmailDirectoryAnswer>, attempt: number): Promise<void> {
+    const { me, flags, vault, memberIds } = read
+    if (!directoryRead.ok) throw directoryRead.error
+    const answer = directoryRead.value
+    if (answer.kind !== 'directory') {
+      // Too large, or refused (not a member, or the beta went off there): no addresses.
+      this.updateTeam(teamId, flags, { emailStatus: answer.kind, emails: new Map(), emailDuplicates: new Set(), memberIds })
+      return
+    }
+    const { directory } = answer
+
+    // The own-key check against this directory too: a key it serves for this person must be theirs.
+    const served = directory.keys.find((k) => k.userId === this.deps.userId)
+    if (served && !bytesEqual(served.publicKey, me.publicKey)) {
+      this.keyMismatch()
+      return
+    }
+
+    // Read first, so addresses appear even when the write below fails.
+    const emails = await openEmailsForMe({
+      teamId,
+      myId: this.deps.userId,
+      me,
+      keys: directory.keys,
+      forMe: directory.forMe,
+      memberIds,
+      warn: this.deps.warn,
+    })
+    if (this.disposed || this.identity !== me) return
+    const ownEmail = vault && typeof vault.email === 'string' ? { userId: this.deps.userId, email: vault.email } : null
+    this.updateTeam(teamId, flags, { emailStatus: 'ready', emails, emailDuplicates: emailDuplicateIds(emails, ownEmail), memberIds })
+    // Without a fresh read of the address, never withdraw or overwrite on a guess.
+    if (!vault) return
+
+    const plan = await planEmailSeals({
+      teamId,
+      myId: this.deps.userId,
+      me,
+      email: checkEmail(vault.email),
+      recipients: directory.recipients,
+      keys: directory.keys,
+      mine: directory.mine,
+      warn: this.deps.warn,
+    })
+    if (this.disposed || this.identity !== me) return
+    if (plan.kind === 'withdraw') {
+      await this.deps.api.withdrawEmails()
+      return
+    }
+    if (plan.kind !== 'write') return
+    const outcome = await this.deps.api.writeEmails(teamId, plan.entries)
+    if (outcome.kind === 'conflict') {
+      // A key changed, or a recipient left or stopped being an owner or admin, since the read: read again once; the
+      // next visit catches the rest.
+      this.deps.warn('team_names/stale_key')
+      if (attempt === 0) {
+        const again = await settle(this.deps.api.fetchEmailDirectory(teamId, this.deps.warn))
+        if (this.disposed || this.identity !== me) return
+        await this.emailAttempt(teamId, read, again, 1)
+      }
     }
   }
 }

@@ -2,12 +2,13 @@
  * The crypto vectors in Chromium, Firefox and WebKit (design §8.2, review L1). Run with
  * `npm run test:crypto-vectors` (playwright.vectors.config.ts); CI runs it in .woodpecker/test.yml.
  *
- * hpke.test.ts and team-names.test.ts check the two vector files on Node's WebCrypto only. Team
- * names seal and open in the browser, and an engine difference in JWK import, HKDF, ECDH
- * deriveBits or point validation would show there while Node stays green. So this spec bundles
- * harness.ts with the production modules (lib/crypto/hpke.ts, lib/crypto/team-names.ts and
- * Tessera's vault, as they are), runs it in each engine on the same two files, and compares every
- * value the engine computed with the files, here in Node.
+ * hpke.test.ts, team-names.test.ts and team-emails.test.ts check the three vector files on Node's
+ * WebCrypto only. Team names and members' addresses seal and open in the browser, and an engine
+ * difference in JWK import, HKDF, ECDH deriveBits, point validation or a Unicode property escape
+ * would show there while Node stays green. So this spec bundles harness.ts with the production
+ * modules (lib/crypto/hpke.ts, lib/crypto/team-names.ts and Tessera's vault, as they are), runs it
+ * in each engine on the same three files, and compares every value the engine computed with the
+ * files, here in Node.
  *
  * The page is served by page.route on an https origin and talks to no server: WebCrypto exists
  * only in a secure context. The files' pinned SHA-256 stays with the vitest tests.
@@ -18,7 +19,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { build, type Plugin } from 'esbuild'
 import { expect, test } from '@playwright/test'
-import type { HarnessInput, HarnessReport, Outcome, RfcFile, TeamNamesFile } from './harness'
+import type { HarnessInput, HarnessReport, Outcome, RfcFile, TeamEmailsFile, TeamNamesFile } from './harness'
 
 const ROOT = join(__dirname, '..', '..', '..', '..')
 const VECTORS = join(__dirname, '..', 'vectors')
@@ -26,6 +27,7 @@ const ORIGIN = 'https://team-names-vectors.test'
 
 const rfc: RfcFile = JSON.parse(readFileSync(join(VECTORS, 'rfc9180-subset.json'), 'utf8'))
 const tn: TeamNamesFile = JSON.parse(readFileSync(join(VECTORS, 'team-names-v1.json'), 'utf8'))
+const te: TeamEmailsFile = JSON.parse(readFileSync(join(VECTORS, 'team-emails-v1.json'), 'utf8'))
 
 /**
  * Tessera's index reaches its WASM loader, which imports the core's Node and web builds by dynamic
@@ -98,7 +100,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
       loaded: typeof Reflect.get(globalThis, 'runTeamNamesVectors') === 'function',
     }))
     if (!env.loaded) throw new Error(`the harness did not load: ${pageErrors.join('; ') || 'no page error'}`)
-    const input: HarnessInput = { rfc, teamNames: tn }
+    const input: HarnessInput = { rfc, teamNames: tn, teamEmails: te }
     const report: HarnessReport = await page.evaluate((arg) => Reflect.get(globalThis, 'runTeamNamesVectors')(arg), input)
     engine = { version: browser.version(), secureContext: env.secureContext, subtle: env.subtle, bundleInputs: bundle.inputs, report }
   } finally {
@@ -136,6 +138,12 @@ test('runs in a secure context, on WebCrypto, with the production modules bundle
   expect(new Set(tn.seals.map((s) => s.team_id)).size).toBe(2)
   expect(tn.identities.length).toBeGreaterThan(1)
   for (const list of [tn.open_negatives, tn.tag_negatives, tn.envelope_negatives]) expect(list.length).toBeGreaterThan(0)
+  expect(te.seals).toHaveLength(12)
+  expect(new Set(te.seals.map((s) => s.team_id)).size).toBe(2)
+  expect(te.identities.length).toBeGreaterThan(1)
+  expect(te.address_negatives).toHaveLength(14)
+  expect(te.cross_kind_negatives.map((n) => `${n.sealed_as}>${n.open_as}`).sort()).toEqual(['email>name', 'name>email'])
+  for (const list of [te.open_negatives, te.tag_negatives, te.envelope_negatives]) expect(list.length).toBeGreaterThan(0)
 })
 
 // ---------------------------------------------------------------------------------------------
@@ -346,4 +354,145 @@ test('creating a key seals a 219-byte envelope that opens to the same key, kept 
   expect(c.reopenedKeyId).toBe(c.keyIdOfCreated)
   // A created key seals to and opens from another created key.
   expect(c.opened).toBe('Ada')
+})
+
+// ---------------------------------------------------------------------------------------------
+// Team emails (team-emails.test.ts)
+// ---------------------------------------------------------------------------------------------
+
+const emailByLabel = (label: string) => {
+  const found = te.identities.find((x) => x.label === label)
+  if (!found) throw new Error(`no identity ${label}`)
+  return found
+}
+
+for (const [i, vi] of te.identities.entries()) {
+  test(`emails identity ${vi.label}: the envelope opens to 0x01 || d || pub || tag_secret, and the session key is non-extractable`, () => {
+    const r = run().report.emails.identities[i]
+    expect(r.label).toBe(vi.label)
+    expect(value(r.envelopePlaintext)).toBe(`01${vi.private_key}${vi.public_key}${vi.tag_secret}`)
+    expect(r.envelopeLength).toBe(219)
+    const id = value(r.session)
+    expect([id.publicKey, id.keyId, id.keyIdOfPublicKey]).toEqual([vi.public_key, vi.key_id, vi.key_id])
+    expect(id.extractable).toBe(false)
+    expect(id.usages).toEqual(['deriveBits'])
+  })
+}
+
+for (const [i, n] of te.envelope_negatives.entries()) {
+  test(`emails envelope negative ${i}: refuses ${n.description}`, () => {
+    const r = run().report.emails.envelopeNegatives[i]
+    expect(r.description).toBe(n.description)
+    expect(r.vaultOpen.ok).toBe(false)
+    if (n.context === te.identity_context) expect(r.identityOpen).toMatchObject({ ok: false, error: { code: 'team_names/identity_unopenable' } })
+    else expect(r.identityOpen).toBeNull()
+  })
+}
+
+for (const [i, s] of te.seals.entries()) {
+  test(`email seal ${i} (${s.description}): info, plaintext, tag and every byte of the row`, () => {
+    const r = run().report.emails.seals[i]
+    expect(r.description).toBe(s.description)
+    expect(value(r.info)).toBe(s.info)
+    expect(r.emailUtf8).toBe(s.email_utf8)
+    expect(value(r.check)).toBe(s.email)
+    expect(value(r.plaintext)).toBe(s.plaintext)
+    expect(value(r.senderKeyId)).toBe(s.sender_key_id)
+    expect(value(r.recipientKeyId)).toBe(s.recipient_key_id)
+    const out = value(r.seal)
+    expect(out.sharedSecret).toBe(s.shared_secret)
+    expect(out.key).toBe(s.key)
+    expect(out.baseNonce).toBe(s.base_nonce)
+    expect(out.enc).toBe(s.enc)
+    expect(out.sealed).toBe(s.sealed)
+    expect(out.sealedLength).toBe(te.sealed_size)
+    expect(out.emailTag).toBe(s.email_tag)
+    // The engine's SHA-256 of the row it built, and Node's of the row in the file.
+    expect(out.sealedHash).toBe(s.sealed_hash)
+    expect(sha256Hex(s.sealed)).toBe(s.sealed_hash)
+    expect(value(r.tagFromSecret)).toBe(s.email_tag)
+  })
+
+  test(`email seal ${i} opens for its recipient to the address exactly`, () => {
+    expect(value(run().report.emails.seals[i].open)).toBe(s.email)
+  })
+}
+
+const EMAIL_OPEN_NEGATIVE_CODES = {
+  open_fails: 'team_names/open_failed',
+  refused_version: 'team_names/unsupported_version',
+  refused_length: 'team_names/malformed',
+} as const
+
+for (const [i, n] of te.open_negatives.entries()) {
+  test(`email open negative ${i}: ${n.description}`, () => {
+    const r = run().report.emails.openNegatives[i]
+    expect(r.label).toBe(n.description)
+    if (n.outcome === 'no_email') expect(value(r.outcome)).toBeNull()
+    else refused(r.outcome, EMAIL_OPEN_NEGATIVE_CODES[n.outcome])
+  })
+}
+
+for (const [i, n] of te.address_negatives.entries()) {
+  test(`address negative ${i} (${n.description}): the sealer refuses it and the opener shows nothing`, () => {
+    const r = run().report.emails.addressNegatives[i]
+    expect(r.description).toBe(n.description)
+    expect(r.emailUtf8).toBe(n.email_utf8)
+    expect(value(r.check)).toBeNull()
+    refused(r.seal, 'team_names/email_unsealable')
+    expect(value(r.open)).toBeNull()
+  })
+}
+
+for (const [i, n] of te.cross_kind_negatives.entries()) {
+  test(`cross-kind negative ${i}: ${n.description}`, () => {
+    const r = run().report.emails.crossKind[i]
+    expect(r.description).toBe(n.description)
+    // Its own kind opens it to the value, so the refusal is the label's and not a broken row.
+    expect(value(r.asSealed)).toBe(n.value)
+    refused(r.asOpened, 'team_names/open_failed')
+  })
+}
+
+for (const [i, n] of te.tag_negatives.entries()) {
+  test(`email tag negative ${i}: the tag differs for ${n.description}`, () => {
+    const r = run().report.emails.tagNegatives[i]
+    expect(r.description).toBe(n.description)
+    expect(sha256Hex(n.sealed)).toBe(n.sealed_hash)
+    expect(value(r.tag)).toHaveLength(32)
+    expect(value(r.tag)).not.toBe(te.seals[n.row].email_tag)
+  })
+}
+
+test('email rows: both halves of the replay a stolen session can write (review M1)', () => {
+  const shapes = te.tag_negatives.map((n) => {
+    const row = te.seals[n.row]
+    const same = n.tag_secret === emailByLabel(row.sender).tag_secret && n.email === row.email && n.recipient_key_id === row.recipient_key_id
+    const prefix = (h: string) => h.slice(0, 2 * (1 + 65))
+    if (same && n.team_id === row.team_id && n.sealed.length === row.sealed.length && n.sealed !== row.sealed && prefix(n.sealed) === prefix(row.sealed)) return 'replaced'
+    if (same && n.team_id !== row.team_id && n.sealed === row.sealed) return 'carried'
+    return 'other'
+  })
+  expect(shapes).toContain('replaced')
+  expect(shapes).toContain('carried')
+  refused(run().report.emails.tagNegatives[shapes.indexOf('replaced')].openAsRow, 'team_names/open_failed')
+})
+
+test('the address check reads this engine’s Unicode tables as the design reads them', () => {
+  const { accepted, refused: refusedCases } = run().report.emails.checkCases
+  expect(accepted.length).toBeGreaterThan(0)
+  expect(refusedCases.length).toBeGreaterThan(0)
+  // Soft, so a failure lists every case the engine got wrong, not the first.
+  for (const c of accepted) expect.soft(c.outcome, `accepted: ${c.label}`).toEqual({ ok: true, value: true })
+  for (const c of refusedCases) expect.soft(c.outcome, `refused: ${c.label}`).toEqual({ ok: true, value: false })
+})
+
+test('sealEmail with a fresh ephemeral key round-trips, never repeats an enc, and no row opens as the other kind', () => {
+  const f = value(run().report.emails.fresh)
+  expect(f.encs[0]).not.toBe(f.encs[1])
+  expect(f.sealedLength).toBe(te.sealed_size)
+  expect(f.opened).toBe('Ada.Lovelace@Example.COM')
+  refused(f.asName, 'team_names/open_failed')
+  expect(f.nameRowAsName).toBe('Ada.Lovelace@Example.COM')
+  refused(f.nameRowAsEmail, 'team_names/open_failed')
 })
