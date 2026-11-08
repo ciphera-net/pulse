@@ -1,4 +1,12 @@
-# Continuous security scanning (OPS-7): gitleaks, trufflehog and Opengrep, all self-hosted.
+# Continuous security scanning (OPS-7): gitleaks, trufflehog and Opengrep, all self-hosted, from one image built and
+# self-tested in ciphera-net/ci-images (ci-security:v1). Each tool is a step running `ciphera-scan <tool>`.
+#
+# WHAT IS SCANNED (since 08-11-2026). A pull request scans only the files it changes (Woodpecker's CI_PIPELINE_FILES),
+# copied with their paths, so the allowlist and the finding paths read as in a whole-tree scan. Every push to main
+# scans the whole tree, so a finding in a file no pull request touched is still caught there (an admin can push to
+# main directly), and so does the `nightly` cron, which re-checks main with the image's current rules when nothing
+# was pushed. A pull request scans the whole tree too when it changes more than 500 files or a scanner's own
+# configuration (.gitleaks.toml, .gitleaksignore, .semgrepignore, this file).
 #
 # WHY A SEPARATE WORKFLOW FILE (not a step in test.yml / unit.yml): the k8s runner's per-pipeline
 # workspace PVC is ReadWriteOnce (Exoscale has no RWX filesystem), so steps of ONE workflow
@@ -7,15 +15,15 @@
 #
 # 🔒 ONLY gitleaks GATES. gitleaks (--exit-code 1, .gitleaks.toml allowlists test fixtures) is the
 # ONE step that can red the `security` check: a secret outside the allowlisted paths fails it.
-# trufflehog and Opengrep are `failure: ignore`, so a finding OR a transient github blip in them never
+# trufflehog and Opengrep are `failure: ignore`, so a finding OR a transient error in them never
 # blocks a merge; their results are in this workflow's log. That is what makes `security` safe to
 # REQUIRE in branch protection: merge is blocked iff a real secret is present.
 #
 # Nothing posts to the PR. The Aegis summary comment and the reviewdog review steps were removed on
 # 02-11-2026: every new comment or review emailed the PR's author, and the summary's counts covered
-# the whole repository, not the diff (Infra/docs/audits/02-11-2026-pr-bot-email-noise.md). All
-# versions PINNED. Secrets scanners make NO network calls (trufflehog verification OFF); Opengrep
-# egresses to github.com only (binary + rules). Tracked in Infra/docs/plans/08-10-2026-ci-security-scanning.md.
+# the whole repository, not the diff (Infra/docs/audits/02-11-2026-pr-bot-email-noise.md). Every
+# version is pinned in the image, and no scanner makes a network call (trufflehog verification OFF;
+# Opengrep's binary and rules are in the image). Tracked in Infra/docs/plans/08-10-2026-ci-security-scanning.md.
 labels:
   runner: k8s
 
@@ -28,27 +36,32 @@ when:
     branch: [main]
   - event: pull_request
     evaluate: 'CI_COMMIT_AUTHOR != "dependabot[bot]"'
+  # The whole tree every night (cron `nightly`), with the image's current rules.
+  - event: cron
+    cron: nightly
 
 steps:
-  # --- SECRETS, GATING: regex/entropy, no network. Scans the WORKING TREE (`dir`), not git history.
-  # --config .gitleaks.toml (default rules + test-path allowlist) --exit-code 1 => a secret in
-  # non-test code fails this step and reds the check. --redact keeps raw secrets out of the log.
+  # --- SECRETS, GATING: regex/entropy, no network. Scans the WORKING TREE (`dir`), not git history (on a pull
+  # request, the files it changes). The repo's .gitleaks.toml (default rules + test-path allowlist), --exit-code 1
+  # => a secret in non-test code fails this step and reds the check. --redact keeps raw secrets out of the log.
   gitleaks:
-    image: registry.ops.ciphera.net/mirror/ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb
+    image: registry.ops.ciphera.net/ciphera-net/ci-security:v1
+    pull: true
     backend_options:
       kubernetes:
         resources:
           requests: { memory: 256Mi, cpu: 100m }
           limits: { memory: 512Mi }
     commands:
-      - gitleaks dir . --config .gitleaks.toml --exit-code 1 --redact --verbose
+      - ciphera-scan gitleaks
 
   # --- SECRETS, ADVISORY: verified-credential detector run UNVERIFIED (--no-verification, no outbound
-  # calls). failure:ignore — a finding or a blip never blocks. Its own "finished scanning" log line
+  # calls). failure:ignore — a finding or an error never blocks. Its own "finished scanning" log line
   # carries the verified/unverified counts; the findings themselves (raw values) go to /dev/null, so
   # no candidate secret ever reaches the log.
   trufflehog:
-    image: registry.ops.ciphera.net/mirror/docker.io/trufflesecurity/trufflehog:3.99.0@sha256:0bf70c478475531a9b40edc2026561ccce6eb94e191880ff0e6979601c399d65
+    image: registry.ops.ciphera.net/ciphera-net/ci-security:v1
+    pull: true
     failure: ignore
     backend_options:
       kubernetes:
@@ -56,13 +69,14 @@ steps:
           requests: { memory: 256Mi, cpu: 100m }
           limits: { memory: 1Gi }
     commands:
-      - trufflehog filesystem . --no-verification --no-update --json > /dev/null
+      - ciphera-scan trufflehog
 
-  # --- SAST, ADVISORY: Opengrep (LGPL OSS fork of semgrep). PINNED signed static binary on Alpine;
-  # rules VENDORED at a pinned commit. failure:ignore — findings and download blips never block.
-  # Findings and the "Ran N rules on M files: K findings" summary print to this log.
+  # --- SAST, ADVISORY: Opengrep (LGPL OSS fork of semgrep), binary and rules pinned in the image.
+  # failure:ignore — findings never block. Findings and the "Ran N rules on M files: K findings"
+  # summary print to this log.
   opengrep:
-    image: alpine:3.20
+    image: registry.ops.ciphera.net/ciphera-net/ci-security:v1
+    pull: true
     failure: ignore
     backend_options:
       kubernetes:
@@ -70,9 +84,4 @@ steps:
           requests: { memory: 1Gi, cpu: 500m }
           limits: { memory: 2Gi }
     commands:
-      - apk add --no-cache git curl ca-certificates >/dev/null
-      - curl -fsSL -o /usr/local/bin/opengrep https://github.com/opengrep/opengrep/releases/download/v1.30.2/opengrep_musllinux_x86
-      - chmod +x /usr/local/bin/opengrep
-      - git clone --filter=blob:none -q https://github.com/opengrep/opengrep-rules /tmp/rules
-      - git -C /tmp/rules checkout -q f1d2b562b414783763fd02a6ed2736eaed622efa
-      - opengrep scan --config /tmp/rules/typescript --config /tmp/rules/javascript --config /tmp/rules/generic . || echo "opengrep exited nonzero (advisory; not blocking)"
+      - ciphera-scan opengrep typescript javascript generic
