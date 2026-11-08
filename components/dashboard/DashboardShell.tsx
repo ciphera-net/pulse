@@ -14,6 +14,7 @@ import { usePublicSiteIdentity } from '@/lib/swr/public-site-identity'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
+import WhatsNewButton from '@/components/whats-new/WhatsNewButton'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { pageFor } from '@/components/settings/nav'
 import {
@@ -408,6 +409,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
 
       <div className="flex items-center gap-1">
         {siteId && lastUpdatedAt != null && <UpdatedIndicator lastUpdatedAt={lastUpdatedAt} />}
+        <WhatsNewButton />
         <OnboardingChip />
         <UserMenu
           auth={auth}

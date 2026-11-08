@@ -22,4 +22,6 @@ export const BETAS: readonly Beta[] = [
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
   // The Monday email with each site's week (pulse-backend's weekly summary job). Its settings row reads useFeature.
   { flag: 'weekly-summary', name: 'Weekly summary email', revalidates: [] },
+  // The top bar's What's new button and panel (components/whats-new/WhatsNewButton.tsx). It reads useFeature.
+  { flag: 'whats-new', name: "What's new", revalidates: [] },
 ]

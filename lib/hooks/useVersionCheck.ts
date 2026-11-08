@@ -6,13 +6,20 @@ import { isChunkLoadError, isChunkLoadFailure, recoverFromChunkFailure } from '@
 const POLL_INTERVAL = 5 * 60 * 1000
 const CLIENT_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? 'dev'
 
-export function useVersionCheck(onNewVersion: () => void) {
+/**
+ * Why the notice fired: `poll` when /build-id.json names a newer build, `chunk` when this tab failed to load a chunk
+ * and the reload guard blocked the automatic recovery (the tab is broken right now, so its notice must show even
+ * where the What's new button has claimed the ordinary one, see lib/updateNotice.ts).
+ */
+export type NewVersionReason = 'poll' | 'chunk'
+
+export function useVersionCheck(onNewVersion: (reason: NewVersionReason) => void) {
   const notifiedRef = useRef(false)
 
   const notify = useCallback(() => {
     if (notifiedRef.current) return
     notifiedRef.current = true
-    onNewVersion()
+    onNewVersion('poll')
   }, [onNewVersion])
 
   // * Recover a dead click by reloading once to pick up the current build. A toast
@@ -26,7 +33,7 @@ export function useVersionCheck(onNewVersion: () => void) {
     // always (re-)show the toast, bypassing the once-per-mount latch the poll uses.
     // A user who dismissed an ordinary update toast earlier must still be warned.
     notifiedRef.current = true
-    onNewVersion()
+    onNewVersion('chunk')
   }, [onNewVersion])
 
   // Poll /build-id.json every 5 minutes — and immediately when the tab regains

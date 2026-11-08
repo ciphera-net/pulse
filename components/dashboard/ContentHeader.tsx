@@ -9,6 +9,7 @@ import { UnnamedSession } from '@/components/account/UnnamedSession'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { useSites } from '@/lib/swr/sites'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
+import WhatsNewButton from '@/components/whats-new/WhatsNewButton'
 import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
 import { DemoLabel, TryPulseFreeButton } from '@/components/public/chrome'
 import { usePublicSiteIdentity } from '@/lib/swr/public-site-identity'
@@ -95,6 +96,7 @@ function MemberContentHeader({ onMobileMenuOpen, siteId }: ContentHeaderProps) {
       )}
 
       <div className="flex shrink-0 items-center gap-1">
+        <WhatsNewButton />
         <OnboardingChip />
         {/* Prop parity with the desktop GlassTopBar instance: without the
             org props the Facet menu silently drops its whole team section,

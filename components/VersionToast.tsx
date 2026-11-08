@@ -3,14 +3,26 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowClockwise, X } from '@phosphor-icons/react'
-import { useVersionCheck } from '@/lib/hooks/useVersionCheck'
+import { useVersionCheck, type NewVersionReason } from '@/lib/hooks/useVersionCheck'
+import { markUpdateReady, useUpdateNoticeClaimed } from '@/lib/updateNotice'
 
+/**
+ * The "a new version is ready" notice, and the one poller behind it (useVersionCheck). It publishes the update to
+ * lib/updateNotice.ts and steps aside wherever the What's new button has claimed the notice (the whats-new beta, in
+ * the dashboard's top bar). A tab broken by a failed chunk load always shows it, claimed or not.
+ */
 export default function VersionToast() {
   const [visible, setVisible] = useState(false)
+  const [broken, setBroken] = useState(false)
+  const claimed = useUpdateNoticeClaimed()
 
-  useVersionCheck(() => setVisible(true))
+  useVersionCheck((reason: NewVersionReason) => {
+    markUpdateReady()
+    if (reason === 'chunk') setBroken(true)
+    setVisible(true)
+  })
 
-  if (!visible) return null
+  if (!visible || (claimed && !broken)) return null
 
   return createPortal(
     <div className="fixed top-4 right-4 z-50 max-w-sm animate-in fade-in slide-in-from-top-2" style={{ animationDuration: '300ms' }}>
@@ -27,7 +39,10 @@ export default function VersionToast() {
           Refresh
         </button>
         <button
-          onClick={() => setVisible(false)}
+          onClick={() => {
+            setVisible(false)
+            setBroken(false)
+          }}
           className="p-1 text-neutral-500 hover:text-white transition-colors ease-apple shrink-0"
         >
           <X className="w-4 h-4" />
