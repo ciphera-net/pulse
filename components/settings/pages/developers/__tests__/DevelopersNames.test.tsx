@@ -15,6 +15,7 @@ import {
   madeUpMembers,
   madeUpNames,
   madeUpSnapshot,
+  NO_EMAILS,
   type MadeUpState,
 } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
@@ -50,7 +51,7 @@ const getMe = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/me', () => ({ getMe }))
 
 const page = vi.hoisted(() => ({ canManage: true, teamState: 'team' as 'alone' | 'team' | null }))
-vi.mock('@/lib/auth/permissions', () => ({ useCan: (p: string) => p === 'integrations.manage' && page.canManage }))
+vi.mock('@/lib/auth/permissions', () => ({ useCan: (p: string) => p === 'integrations.manage' && page.canManage, useIsAdminOrOwner: () => false }))
 vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: { id: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', org_id: '2c1f74ec-0000-4000-8000-000000000001' } }),
 }))
@@ -112,9 +113,9 @@ function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
   const snapshot: TeamNamesSnapshot = {
     status: 'ready',
     share: 'name',
-    teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set() }]]),
+    teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set(), ...NO_EMAILS }]]),
   }
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -171,6 +172,8 @@ function sessionFor(state: MadeUpState): TeamNamesContextValue {
     activeTeamId: TEAM,
     activeFlagged: true,
     anyFlagged: true,
+    activeEmailsFlagged: false,
+    anyEmailsFlagged: false,
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),

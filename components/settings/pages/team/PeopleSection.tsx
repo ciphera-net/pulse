@@ -25,8 +25,9 @@ import { InviteDialog } from './InviteDialog'
 import { NameTeamDialog, suggestTeamName } from './NameTeamDialog'
 import { KitLoadError, KitLoadingRows, useTeamRemoval } from './states'
 import { isTeamRole, joinedWords, linkState, personName, ROLE_LINE, roleWord, shortDay } from './words'
-import { DialogPerson, PersonAvatar, PersonCaption, PersonLabel } from '@/components/settings/names/people'
+import { DialogPerson, PersonAvatar, PersonCaption, PersonLabel, WithEmail } from '@/components/settings/names/people'
 import { lineWithNotYet } from '@/components/settings/names/prompt'
+import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
 import { plainName, shortId, titleName } from '@/components/settings/names/words'
 
@@ -41,6 +42,9 @@ import { plainName, shortId, titleName } from '@/components/settings/names/words
  * With the team-names beta on (design §7, R63): each person with an avatar, their name and, under it, the role and the
  * id; the remove and change role dialogs carry the same person row over their button, and the Undo bar and toast say
  * the id in brackets. Off, every row is today's.
+ *
+ * With the team-emails beta on (design §16, R74 option A), an owner or admin sees each teammate's address beside the
+ * name, on the row and in the dialogs' person row; a member sees none. Off, every row is today's.
  */
 export function PeopleSection({ alone }: { alone: boolean }) {
   const { user } = useAuth()
@@ -60,6 +64,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
   const pendingKeys = usePendingKeys()
   const removeLater = useTeamRemoval()
   const names = usePeopleNames()
+  const emails = usePeopleEmails()
   // How the dialogs, the Undo bar and the toast name a person: the name alone in a title (the person row under it has
   // the id), the name and the id in brackets where Facet takes plain text (copy deck §14.3, §14.8).
   const titleFor = (userId: string) => (names.on ? titleName(names.who(userId, true), userId) : personName(userId, myId))
@@ -205,6 +210,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
               const isMe = m.user_id === myId
               const name = personName(m.user_id, myId)
               const who = names.on ? names.who(m.user_id, true) : null
+              const email = emails.of(m.user_id)
               const isOwnerRow = m.role === 'owner'
               const canRemove = canManage && !isMe && !isOwnerRow
               return (
@@ -215,7 +221,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
                   data-tn-person-row={who ? shortId(m.user_id) : undefined}
                 >
                   <KitRow
-                    label={who ? <PersonLabel member={m} who={who} /> : name}
+                    label={who ? <PersonLabel member={m} who={who} email={email} /> : email !== null ? <WithEmail email={email}>{name}</WithEmail> : name}
                     avatar={who ? <PersonAvatar id={m.user_id} seed={m.avatar_seed} /> : undefined}
                     caption={
                       <>
@@ -339,7 +345,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
             name={changeRoleFor ? titleFor(changeRoleFor.user_id) : ''}
             person={
               names.on && changeRoleFor ? (
-                <DialogPerson member={changeRoleFor} who={names.who(changeRoleFor.user_id, true)} zone={zone} now={now} />
+                <DialogPerson member={changeRoleFor} who={names.who(changeRoleFor.user_id, true)} email={emails.of(changeRoleFor.user_id)} zone={zone} now={now} />
               ) : undefined
             }
             onClose={() => setChangeRoleFor(null)}
@@ -364,7 +370,7 @@ export function PeopleSection({ alone }: { alone: boolean }) {
         onConfirm={doRemove}
       >
         {names.on && confirmRemove ? (
-          <DialogPerson member={confirmRemove} who={names.who(confirmRemove.user_id, true)} zone={zone} now={now} />
+          <DialogPerson member={confirmRemove} who={names.who(confirmRemove.user_id, true)} email={emails.of(confirmRemove.user_id)} zone={zone} now={now} />
         ) : null}
       </HoldDialog>
 

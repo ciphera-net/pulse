@@ -1,19 +1,20 @@
 /**
- * The team-names routes on pulse-backend (design §6.2), with every byte field decoded and checked.
+ * The team-names routes on pulse-backend (design §6.2), and the team-emails routes beside them (§16.3), with every
+ * byte field decoded and checked.
  *
  * Bytes travel as standard base64, the encoding Go gives a []byte in JSON. Sizes are checked here;
  * what a row's bytes mean is checked by lib/crypto/team-names.ts. A malformed entry in a list is
  * dropped with a coded warning rather than failing the whole answer, so one bad row hides one name.
  *
- * 🔴 BOTH GETS SEND `cache: 'no-store'`. That keeps the browser's HTTP cache from storing the
- * envelope and the directory, and it takes them out of the API client's 2-second GET micro-cache:
+ * 🔴 EVERY GET SENDS `cache: 'no-store'`. That keeps the browser's HTTP cache from storing the
+ * envelope and the directories, and it takes them out of the API client's 2-second GET micro-cache:
  * a re-read after a 409 must see the server's answer, not the one that just went stale. The service
- * worker is kept away from both by a NetworkOnly rule in next.config.ts (review L3).
+ * worker is kept away from them by a NetworkOnly rule in next.config.ts (review L3).
  */
 
 import apiRequest, { ApiError } from '@/lib/api/client'
 import type { Bytes } from '@/lib/crypto/hpke'
-import { IDENTITY_ENVELOPE_SIZE, KEY_ID_SIZE, NAME_TAG_SIZE, PUBLIC_KEY_SIZE, SEALED_HASH_SIZE, isUuid } from '@/lib/crypto/team-names'
+import { EMAIL_TAG_SIZE, IDENTITY_ENVELOPE_SIZE, KEY_ID_SIZE, NAME_TAG_SIZE, PUBLIC_KEY_SIZE, SEALED_HASH_SIZE, isUuid } from '@/lib/crypto/team-names'
 import { TeamNamesError } from './errors'
 
 export type Warn = (code: string, detail?: { userId?: string }) => void
@@ -174,29 +175,41 @@ function list(value: unknown): unknown[] | null {
   return Array.isArray(value) ? value : null
 }
 
+/** The public keys a directory serves. A malformed entry is dropped with a coded warning. */
+function decodeKeys(keys: unknown[], warn: Warn): DirectoryKey[] {
+  const out: DirectoryKey[] = []
+  for (const k of keys) {
+    const e = record(k)
+    const userId = uuidField(e?.user_id)
+    const publicKey = fromBase64(e?.public_key, PUBLIC_KEY_SIZE)
+    if (userId && publicKey) out.push({ userId, publicKey })
+    else warn('team_names/malformed', { userId: userId ?? undefined })
+  }
+  return out
+}
+
+/** The rows sealed for this person, of either kind. A malformed row is dropped with a coded warning. */
+function decodeRowsForMe(rows: unknown[], warn: Warn): RowForMe[] {
+  const out: RowForMe[] = []
+  for (const row of rows) {
+    const e = record(row)
+    const senderId = uuidField(e?.sender_id)
+    const senderKeyId = fromBase64(e?.sender_key_id, KEY_ID_SIZE)
+    const recipientKeyId = fromBase64(e?.recipient_key_id, KEY_ID_SIZE)
+    const sealed = fromBase64(e?.sealed, null)
+    if (senderId && senderKeyId && recipientKeyId && sealed) out.push({ senderId, senderKeyId, recipientKeyId, sealed })
+    else warn('team_names/malformed', { userId: senderId ?? undefined })
+  }
+  return out
+}
+
 function decodeDirectory(body: unknown, warn: Warn): Directory {
   const r = record(body)
   const keys = list(r?.keys)
   const forMe = list(r?.for_me)
   const mine = list(r?.mine)
   if (!keys || !forMe || !mine) throw new TeamNamesError('team_names/invalid_response')
-  const out: Directory = { keys: [], forMe: [], mine: [] }
-  for (const k of keys) {
-    const e = record(k)
-    const userId = uuidField(e?.user_id)
-    const publicKey = fromBase64(e?.public_key, PUBLIC_KEY_SIZE)
-    if (userId && publicKey) out.keys.push({ userId, publicKey })
-    else warn('team_names/malformed', { userId: userId ?? undefined })
-  }
-  for (const row of forMe) {
-    const e = record(row)
-    const senderId = uuidField(e?.sender_id)
-    const senderKeyId = fromBase64(e?.sender_key_id, KEY_ID_SIZE)
-    const recipientKeyId = fromBase64(e?.recipient_key_id, KEY_ID_SIZE)
-    const sealed = fromBase64(e?.sealed, null)
-    if (senderId && senderKeyId && recipientKeyId && sealed) out.forMe.push({ senderId, senderKeyId, recipientKeyId, sealed })
-    else warn('team_names/malformed', { userId: senderId ?? undefined })
-  }
+  const out: Directory = { keys: decodeKeys(keys, warn), forMe: decodeRowsForMe(forMe, warn), mine: [] }
   for (const row of mine) {
     const e = record(row)
     const recipientId = uuidField(e?.recipient_id)
@@ -215,9 +228,11 @@ function teamPath(teamId: string): string {
   return `/organizations/${teamId.toLowerCase()}/team-names`
 }
 
-/** GET /organizations/:id/team-names. `unavailable` is a 404: not a member, or the beta is off there. */
-export async function fetchDirectory(teamId: string, warn: Warn): Promise<DirectoryAnswer> {
-  const path = teamPath(teamId)
+/**
+ * Reads a directory (either kind) past every cache: `too_large` over 500 members (422), `unavailable` a 404 (not a
+ * member, or that beta is off there), and any other failure a failed request.
+ */
+async function readDirectory<T>(path: string, decode: (body: unknown) => T): Promise<{ kind: 'directory'; directory: T } | { kind: 'too_large' } | { kind: 'unavailable' }> {
   let body: unknown
   try {
     body = await apiRequest<unknown>(path, { cache: 'no-store' })
@@ -227,7 +242,12 @@ export async function fetchDirectory(teamId: string, warn: Warn): Promise<Direct
     throw requestFailed(err)
   }
   if (record(body)?.error === 'too_large') return { kind: 'too_large' }
-  return { kind: 'directory', directory: decodeDirectory(body, warn) }
+  return { kind: 'directory', directory: decode(body) }
+}
+
+/** GET /organizations/:id/team-names. `unavailable` is a 404: not a member, or the beta is off there. */
+export async function fetchDirectory(teamId: string, warn: Warn): Promise<DirectoryAnswer> {
+  return readDirectory(teamPath(teamId), (body) => decodeDirectory(body, warn))
 }
 
 /**
@@ -292,6 +312,115 @@ export async function writeNames(teamId: string, entries: NameEntry[]): Promise<
 export async function withdrawNames(): Promise<void> {
   try {
     await apiRequest<unknown>('/me/team-names', { method: 'DELETE' })
+  } catch (err) {
+    throw requestFailed(err)
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// A team's email directory (design §16.3): members' addresses, sealed for owners and admins only
+// ---------------------------------------------------------------------------------------------
+
+export interface MyEmailRow {
+  recipientId: string
+  recipientKeyId: Bytes
+  emailTag: Bytes
+  /** SHA-256 of the row as the server stores it, computed by the server: the tag binds it. */
+  sealedHash: Bytes
+}
+
+export interface EmailDirectory {
+  /** The public key of exactly the people `recipients` and `forMe` name, read in the same snapshot as them. */
+  keys: DirectoryKey[]
+  /** The team's current owners and admins with a key, this person left out: who their address is sealed for. */
+  recipients: string[]
+  /** Rows sealed for this person, kept rows of former members included; served only while they are an owner or admin. */
+  forMe: RowForMe[]
+  /** The metadata of the rows this person sealed in the team. */
+  mine: MyEmailRow[]
+}
+
+export type EmailDirectoryAnswer = { kind: 'directory'; directory: EmailDirectory } | { kind: 'too_large' } | { kind: 'unavailable' }
+
+function decodeEmailDirectory(body: unknown, warn: Warn): EmailDirectory {
+  const r = record(body)
+  const keys = list(r?.keys)
+  const recipients = list(r?.recipients)
+  const forMe = list(r?.for_me)
+  const mine = list(r?.mine)
+  if (!keys || !recipients || !forMe || !mine) throw new TeamNamesError('team_names/invalid_response')
+  const out: EmailDirectory = { keys: decodeKeys(keys, warn), recipients: [], forMe: decodeRowsForMe(forMe, warn), mine: [] }
+  for (const recipient of recipients) {
+    const userId = uuidField(record(recipient)?.user_id)
+    // A malformed recipient is skipped: nothing is sealed for it until the server names it properly.
+    if (userId) out.recipients.push(userId)
+    else warn('team_names/malformed')
+  }
+  for (const row of mine) {
+    const e = record(row)
+    const recipientId = uuidField(e?.recipient_id)
+    const recipientKeyId = fromBase64(e?.recipient_key_id, KEY_ID_SIZE)
+    const emailTag = fromBase64(e?.email_tag, EMAIL_TAG_SIZE)
+    const sealedHash = fromBase64(e?.sealed_hash, SEALED_HASH_SIZE)
+    // A malformed row of mine reads as missing, so the reconcile seals it afresh.
+    if (recipientId && recipientKeyId && emailTag && sealedHash) out.mine.push({ recipientId, recipientKeyId, emailTag, sealedHash })
+    else warn('team_names/malformed', { userId: recipientId ?? undefined })
+  }
+  return out
+}
+
+function teamEmailsPath(teamId: string): string {
+  if (!isUuid(teamId)) throw new TeamNamesError('team_names/invalid_id')
+  return `/organizations/${teamId.toLowerCase()}/team-emails`
+}
+
+/** GET /organizations/:id/team-emails. `unavailable` is a 404: not a member, or the team-emails beta is off there. */
+export async function fetchEmailDirectory(teamId: string, warn: Warn): Promise<EmailDirectoryAnswer> {
+  return readDirectory(teamEmailsPath(teamId), (body) => decodeEmailDirectory(body, warn))
+}
+
+export interface EmailEntry {
+  recipientId: string
+  recipientKeyId: Uint8Array
+  senderKeyId: Uint8Array
+  emailTag: Uint8Array
+  sealed: Uint8Array
+}
+
+/**
+ * PUT /organizations/:id/team-emails: this person's address rows for the team, all or nothing. A 409 (a key changed,
+ * or a recipient left or stopped being an owner or admin, since the read) is answered by reading again, never by
+ * guessing.
+ */
+export async function writeEmails(teamId: string, entries: EmailEntry[]): Promise<WriteOutcome> {
+  const path = teamEmailsPath(teamId)
+  try {
+    await apiRequest<unknown>(path, {
+      method: 'PUT',
+      body: JSON.stringify({
+        entries: entries.map((e) => ({
+          recipient_id: e.recipientId,
+          recipient_key_id: toBase64(e.recipientKeyId),
+          sender_key_id: toBase64(e.senderKeyId),
+          email_tag: toBase64(e.emailTag),
+          sealed: toBase64(e.sealed),
+        })),
+      }),
+    })
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) return { kind: 'conflict' }
+    throw requestFailed(err)
+  }
+  return { kind: 'written' }
+}
+
+/**
+ * DELETE /me/team-emails: every address row this person sent, in every team, current or left. Works with the beta off,
+ * as the names' DELETE does: the browser calls it when the vault's address stops passing the check (design §16.3).
+ */
+export async function withdrawEmails(): Promise<void> {
+  try {
+    await apiRequest<unknown>('/me/team-emails', { method: 'DELETE' })
   } catch (err) {
     throw requestFailed(err)
   }

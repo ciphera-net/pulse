@@ -145,14 +145,16 @@ const iso = (msAgo: number) => new Date(NOW.getTime() - msAgo).toISOString()
 /** The DOM as drawn, React's generated ids written as one token. */
 const dom = (markup: string) => markup.replace(/_r_[0-9a-z]+_/g, '_r_id_')
 
-/** The context the provider gives: team names on in a team of the person's, or no session at all. */
-function sessionIn(status: TeamNamesStatus | null, flags: { names: boolean }, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
+/** The context the provider gives: a beta on in a team of the person's (Account is the same in every team), or none. */
+function sessionIn(status: TeamNamesStatus | null, flags: { names: boolean; emails?: boolean }, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
   return {
     snapshot: status ? { status, share: 'name', teams: new Map(), ...over } : null,
     myId: ME,
     activeTeamId: TEAM,
     activeFlagged: false,
     anyFlagged: flags.names,
+    activeEmailsFlagged: false,
+    anyEmailsFlagged: flags.emails ?? false,
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
@@ -208,8 +210,14 @@ describe("Account with team emails off in every team: today's DOM, byte for byte
   it('team names off: the unlocked page', async () => {
     const view = mount(null)
     await unlocked()
+    const today = dom(view.container.innerHTML)
     expect(dom(profile().outerHTML)).toMatchSnapshot('profile')
-    expect(dom(view.container.innerHTML)).toMatchSnapshot('page')
+    expect(today).toMatchSnapshot('page')
+    cleanup()
+    // A session that runs for nothing of this page's (team emails off everywhere) draws the same page.
+    const again = mount(sessionIn('ready', { names: false }))
+    await unlocked()
+    expect(dom(again.container.innerHTML)).toBe(today)
   })
 
   it('team names on in a team of the person\'s: the unlocked page', async () => {
@@ -217,5 +225,39 @@ describe("Account with team emails off in every team: today's DOM, byte for byte
     await unlocked()
     expect(dom(profile().outerHTML)).toMatchSnapshot('profile')
     expect(dom(view.container.innerHTML)).toMatchSnapshot('page')
+  })
+})
+
+// ─── With team emails on in a team of the person's ───────────────────────────────────────────────────────────────
+
+const TODAY = 'Changing it needs your password, then a click on a link sent to the new address.'
+const E2 = "Changing it needs your password, then a click on a link sent to the new address. The owners and admins of your teams see it too. Pulse encrypts it for each of them and can't read it."
+const emailCaption = () => (screen.getByText('Email').closest('[data-kit-row]') as HTMLElement).querySelector('p')?.textContent ?? ''
+
+describe('Account with team emails on in a team of the person\'s', () => {
+  it('the Email caption is today\'s sentence, word for word, then the notice (E2 W1)', async () => {
+    mount(sessionIn('ready', { names: false, emails: true }))
+    await unlocked()
+    expect(emailCaption()).toBe(E2)
+    expect(E2.startsWith(`${TODAY} `)).toBe(true)
+  })
+
+  it('says it with team names on too, beside the names notice; and for a member, whose address is shared all the same', async () => {
+    h.user = { ...(h.user as NonNullable<typeof h.user>), role: 'member' }
+    mount(sessionIn('ready', { names: true, emails: true }))
+    await unlocked()
+    expect(emailCaption()).toBe(E2)
+    expect(profile().textContent).toContain("Shown in your account menu and to your teammates. Pulse encrypts it for each of them and can't read it.")
+  })
+
+  it('keeps today\'s caption with team emails off, and a waiting change\'s own caption with it on', async () => {
+    mount(sessionIn('ready', { names: true, emails: false }))
+    await unlocked()
+    expect(emailCaption()).toBe(TODAY)
+    cleanup()
+    api.getPendingEmailChange.mockResolvedValue({ expiresAt: new Date(NOW.getTime() + 3_600_000).toISOString() })
+    mount(sessionIn('ready', { names: false, emails: true }))
+    await unlocked()
+    await waitFor(() => expect(emailCaption()).toBe('Waiting for the link at the new address to be opened.'))
   })
 })

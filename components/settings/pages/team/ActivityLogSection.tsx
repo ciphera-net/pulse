@@ -14,7 +14,8 @@ import { cn } from '@/lib/utils'
 import { KitLoadError, KitLoadingRows } from './states'
 import { personName, shortDayTime } from './words'
 import { useMembers } from '@/lib/swr/members'
-import { PersonAvatar, PersonInline } from '@/components/settings/names/people'
+import { PersonAvatar, PersonInline, WithEmail } from '@/components/settings/names/people'
+import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
 
 const PAGE_SIZE = 20
@@ -80,6 +81,9 @@ const DATE_INPUT = cn(
  * With the team-names beta on (design §7, R63), Who takes the People row's device: the avatar, then the name, with the
  * id beside it only for a former member (the name they had when they left, marked "former"), a name another person
  * has, or a name equal to one of Pulse's words. Pulse's own words stay grey. The details stay ids, shown as code.
+ *
+ * With the team-emails beta on (design §16, R75), an owner's or admin's log shows a former member's kept address beside
+ * their name, as on the People row; a current member's address is on People, not here.
  */
 export function ActivityLogSection() {
   const { user } = useAuth()
@@ -109,13 +113,18 @@ export function ActivityLogSection() {
   const total = data?.total ?? 0
   const hasLoadedOnce = data !== undefined
   const names = usePeopleNames()
+  const emails = usePeopleEmails()
   const { list: members } = useMembers()
 
   const who = (actorId: string | undefined): ReactNode => {
-    if (!names.on) return actorId ? personName(actorId, user?.id) : 'Pulse'
+    const email = emails.formerOf(actorId)
+    if (!names.on) {
+      const label = actorId ? personName(actorId, user?.id) : 'Pulse'
+      return email !== null ? <WithEmail email={email}>{label}</WithEmail> : label
+    }
     // Not in the team any more: the members the page already read say so while the session cannot (locked).
     const current = actorId && members ? members.some((m) => m.user_id === actorId) : null
-    const inline = <PersonInline who={names.who(actorId, current)} id={actorId ?? ''} />
+    const inline = <PersonInline who={names.who(actorId, current)} id={actorId ?? ''} email={email} />
     if (!actorId) return inline
     // A block-level flex: an inline one sits on the text's baseline, and the rows with an avatar come out taller.
     return (

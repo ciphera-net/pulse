@@ -4,13 +4,15 @@
  * built by the production crypto (lib/crypto/team-names.ts, the Tessera vault). The browser check of the built pages
  * answers those GETs with these bodies and plants the vault key in IndexedDB, so the build runs unchanged from the
  * vault open to the names on screen; fixture-network.test.ts proves the bodies open as intended through the real
- * session.
+ * session. With an email state it also answers the team-emails route (design §16) as it answers me, the team's owner:
+ * every teammate's address and the former member's kept one sealed for me, and mine current for the two admins.
  */
 
 import { vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
-import { createIdentity, sealName, shareableName, type TeamIdentity } from '@/lib/crypto/team-names'
+import { checkEmail, createIdentity, sealEmail, sealName, shareableName, type TeamIdentity } from '@/lib/crypto/team-names'
 import { encryptVaultH } from '@/lib/crypto/vault-ops'
 import {
+  FORMER_EMAIL,
   MADE_UP_PEOPLE,
   MY_EMAIL,
   MY_LONG_NAME,
@@ -19,7 +21,9 @@ import {
   TOMAS,
   madeUpAudit,
   madeUpConnections,
+  madeUpEmailSenders,
   madeUpMembers,
+  type MadeUpEmailState,
   type MadeUpState,
 } from './madeUpTeam'
 
@@ -36,6 +40,8 @@ export interface MadeUpNetworkInput {
   now: Date
   /** The vault key the check plants in IndexedDB, as raw bytes (32). */
   vmk: Uint8Array
+  /** The team's addresses (team emails); without it the team-emails route is not answered, as before team emails. */
+  emails?: MadeUpEmailState
 }
 
 export interface MadeUpNetwork {
@@ -49,6 +55,13 @@ export interface MadeUpNetwork {
     for_me: { sender_id: string; sender_key_id: string; recipient_key_id: string; sealed: string }[]
     mine: { recipient_id: string; recipient_key_id: string; name_tag: string; sealed_hash: string }[]
   }
+  /** GET team-emails as it answers me, the owner; null without an email state (the route answers 404). */
+  emailDirectory: {
+    keys: { user_id: string; public_key: string }[]
+    recipients: { user_id: string }[]
+    for_me: { sender_id: string; sender_key_id: string; recipient_key_id: string; sealed: string }[]
+    mine: { recipient_id: string; recipient_key_id: string; email_tag: string; sealed_hash: string }[]
+  } | null
   vault: { encrypted_vault: string }
 }
 
@@ -122,12 +135,44 @@ export async function buildMadeUpNetwork(input: MadeUpNetworkInput): Promise<Mad
     }
   }
 
+  // The addresses (design §16), as the server answers me, the owner: the two admins are who I seal mine for, and the
+  // key of exactly the people the answer names. Nobody sealed for a key that does not exist, and an address that is
+  // not shared (a broken key here) has no rows of mine.
+  let emailDirectory: MadeUpNetwork['emailDirectory'] = null
+  if (input.emails) {
+    const admins = people.filter((p) => p.role === 'admin')
+    const emailForMe: NonNullable<MadeUpNetwork['emailDirectory']>['for_me'] = []
+    const sealEmailFor = async (senderId: string, sender: TeamIdentity, email: string) => {
+      const { sealed } = await sealEmail({ teamId, senderId, recipientId: myId, email, sender, recipientPublicKey: me.identity.publicKey, recipientKeyId: me.identity.keyId })
+      emailForMe.push({ sender_id: senderId, sender_key_id: b64(sender.keyId), recipient_key_id: b64(me.identity.keyId), sealed: b64(sealed) })
+    }
+    if (!keyless) {
+      for (const p of people) if (madeUpEmailSenders(input.emails).some((s) => s.id === p.id)) await sealEmailFor(p.id, p.identity, p.email)
+      await sealEmailFor(TOMAS, tomas.identity, FORMER_EMAIL)
+    }
+    const emailMine: NonNullable<MadeUpNetwork['emailDirectory']>['mine'] = []
+    if (checkEmail(MY_EMAIL) !== null && !broken && !keyless) {
+      for (const p of admins) {
+        const sealed = await sealEmail({ teamId, senderId: myId, recipientId: p.id, email: MY_EMAIL, sender: me.identity, recipientPublicKey: p.identity.publicKey, recipientKeyId: p.identity.keyId })
+        emailMine.push({ recipient_id: p.id, recipient_key_id: b64(p.identity.keyId), email_tag: b64(sealed.emailTag), sealed_hash: b64(await sha256(sealed.sealed)) })
+      }
+    }
+    const named = new Set([...admins.map((p) => p.id), ...emailForMe.map((r) => r.sender_id)])
+    emailDirectory = {
+      keys: keys.filter((k) => named.has(k.user_id)),
+      recipients: admins.map((p) => ({ user_id: p.id })),
+      for_me: emailForMe,
+      mine: emailMine,
+    }
+  }
+
   return {
     members: { members: madeUpMembers(teamId, myId), avatar_seeds: {} },
     audit: { entries: madeUpAudit(teamId, myId, now), total: 10, avatar_seeds: {} },
     connections: { connections: madeUpConnections(myId, now), avatar_seeds: {} },
     teamKey,
     directory: { keys, for_me: forMe, mine },
+    emailDirectory,
     vault,
   }
 }

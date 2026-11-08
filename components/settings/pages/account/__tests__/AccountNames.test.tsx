@@ -154,7 +154,7 @@ const iso = (msAgo: number) => new Date(NOW.getTime() - msAgo).toISOString()
 
 /** The context the provider gives with the beta off in every team: no session. */
 function noSession(): TeamNamesContextValue {
-  return { snapshot: null, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot: null, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: false, activeEmailsFlagged: false, anyEmailsFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 function mount(context: TeamNamesContextValue | null = null) {
@@ -236,7 +236,7 @@ const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => und
 
 function sessionIn(status: TeamNamesStatus, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
   // The beta is on in another team, not the active one: Account is the same in every team.
-  return { snapshot: { status, share: null, teams: new Map(), ...over }, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: true, ...actions }
+  return { snapshot: { status, share: null, teams: new Map(), ...over }, myId: ME, activeTeamId: TEAM, activeFlagged: false, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, ...actions }
 }
 
 function Holder({ initial, children }: { initial: TeamNamesContextValue; children: React.ReactNode }) {

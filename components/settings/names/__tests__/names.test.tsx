@@ -7,7 +7,7 @@ import { ApiError } from '@/lib/api/client'
 import { TeamNamesError } from '@/lib/team-names/errors'
 import { TeamNamesContext, type TeamNamesContextValue } from '@/lib/team-names/provider'
 import type { TeamNamesSnapshot } from '@/lib/team-names/session'
-import { AMARA, GONE, LENA, MAREN, TOMAS, madeUpMembers, madeUpSnapshot, type MadeUpState } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
+import { AMARA, GONE, LENA, MAREN, NO_EMAILS, TOMAS, madeUpMembers, madeUpSnapshot, type MadeUpState } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
@@ -21,7 +21,7 @@ import { plainName, titleName, type PersonWho } from '../words'
 import { asksForPassword, resetErrorMessage } from '../errors'
 
 function session(snapshot: TeamNamesSnapshot | null): TeamNamesContextValue {
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 const got: { names: PeopleNames | null } = { names: null }
@@ -102,7 +102,7 @@ describe('the line a page owes', () => {
 
   it('says nothing is on its way for a team that failed to load or is too large to serve names', () => {
     for (const status of ['too_large', 'error', 'unavailable'] as const) {
-      const snapshot: TeamNamesSnapshot = { ...of('partial'), teams: new Map([[TEAM, { status, names: new Map(), memberIds: new Set(everyone), duplicates: new Set() }]]) }
+      const snapshot: TeamNamesSnapshot = { ...of('partial'), teams: new Map([[TEAM, { status, names: new Map(), memberIds: new Set(everyone), duplicates: new Set(), ...NO_EMAILS }]]) }
       expect(resolve(snapshot).lineFor(everyone)).toBeNull()
       cleanup()
     }

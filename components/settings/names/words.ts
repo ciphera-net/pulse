@@ -1,6 +1,7 @@
 /**
- * Team names, the words (copy deck §14, decided 07-11-2026: R64, C1 W2, C2 W2, C3 W1, C4 W1) and how a person is
- * written where only text fits. Every string a team-names surface shows is here, word for word.
+ * Team names, the words (copy deck §14, decided 07-11-2026: R64, C1 W2, C2 W2, C3 W1, C4 W1), team emails' (copy deck
+ * §16, decided 08-11-2026: R77, E2 W1, E3 W1), and how a person is written where only text fits. Every string a
+ * team-names or team-emails surface shows is here, word for word.
  */
 
 export const NAMES_WORDS = {
@@ -40,6 +41,13 @@ export const NAMES_WORDS = {
   resetHold: 'Hold to reset',
   resetFailed: "Couldn't reset team names. Nothing changed. Try again.",
   resetDone: 'Team names reset',
+
+  // Team emails (§16.2, §16.3). Account's Email caption once the beta reaches a team of the person's: today's caption
+  // first, word for word, then the notice (E2 W1).
+  emailNotice:
+    "Changing it needs your password, then a click on a link sent to the new address. The owners and admins of your teams see it too. Pulse encrypts it for each of them and can't read it.",
+  // The not-yet line for an owner or admin in a team with both betas, in the names line's place (E3 W1).
+  notYetEmail: "After a teammate's next visit to Pulse, you see their email, and their name if they've set one.",
 } as const
 
 /**

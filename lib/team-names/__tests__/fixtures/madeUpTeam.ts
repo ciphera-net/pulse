@@ -9,8 +9,11 @@
 import type { AuditLogEntry } from '@/lib/api/audit'
 import type { Connection } from '@/lib/api/connect'
 import type { OrganizationMember } from '@/lib/api/organization'
-import { duplicateIds } from '@/lib/team-names/reconcile'
-import type { TeamNamesSnapshot, TeamNamesStatus } from '@/lib/team-names/session'
+import { duplicateIds, emailDuplicateIds, type OpenedEmail } from '@/lib/team-names/reconcile'
+import type { TeamNamesSnapshot, TeamNamesStatus, TeamState } from '@/lib/team-names/session'
+
+/** A team's address fields with team emails off (design §16): what a team without the beta carries. */
+export const NO_EMAILS: Pick<TeamState, 'emailStatus' | 'emails' | 'emailDuplicates'> = { emailStatus: 'off', emails: new Map(), emailDuplicates: new Set() }
 
 /** How one browser sees the team: no vault key here, no team key yet, some names, every name, copied names. */
 export type MadeUpState = 'locked' | 'first' | 'partial' | 'named' | 'copies'
@@ -21,7 +24,16 @@ export interface MadeUpPerson {
   joinedAt: string
   /** The name this person's browser sealed for me, per state; null when none has reached me. */
   names: Record<MadeUpState, string | null>
+  /** The address in this person's vault (team emails, design §16): an example, never a real person's. */
+  email: string
 }
+
+/**
+ * How the team's addresses look to me, its owner (team emails, design §16): `all`, every teammate's and the former
+ * member's kept one (R75); `partial`, one admin's has not arrived. An addition beside the names' states: every one of
+ * those is unchanged, and with no email state the team serves no address.
+ */
+export type MadeUpEmailState = 'all' | 'partial'
 
 export const MAREN = '3f2a9c1b-6d0e-4a57-9b1c-2e8f7a6d5c41'
 export const AMARA = '2f4e6d8a-1b3c-4d5e-8f7a-6c5b4a3d2e19'
@@ -38,6 +50,7 @@ export const MADE_UP_PEOPLE: readonly MadeUpPerson[] = [
     role: 'admin',
     joinedAt: '2026-03-12T09:20:00Z',
     names: { locked: null, first: null, partial: 'Maren Lindqvist', named: 'Maren Lindqvist', copies: 'Maren Lindqvist' },
+    email: 'maren.lindqvist@example.com',
   },
   {
     id: AMARA,
@@ -45,12 +58,14 @@ export const MADE_UP_PEOPLE: readonly MadeUpPerson[] = [
     joinedAt: '2026-08-21T10:40:00Z',
     // In `copies` this admin set their name to the other admin's.
     names: { locked: null, first: null, partial: null, named: 'Amara Okafor', copies: 'Maren Lindqvist' },
+    email: 'amara.okafor@example.com',
   },
   {
     id: JONAS,
     role: 'member',
     joinedAt: '2026-05-04T14:05:00Z',
     names: { locked: null, first: null, partial: 'Jonas Weber', named: 'Jonas Weber', copies: 'Jonas Weber' },
+    email: 'jonas.weber@example.com',
   },
   {
     id: LENA,
@@ -58,10 +73,25 @@ export const MADE_UP_PEOPLE: readonly MadeUpPerson[] = [
     joinedAt: '2026-10-30T16:15:00Z',
     // In `copies` this member set their name to the activity log's word for Pulse itself.
     names: { locked: null, first: null, partial: 'Lena Vogel', named: 'Lena Vogel', copies: 'Pulse' },
+    email: 'lena.vogel@example.com',
   },
 ]
 
 export const FORMER_NAME = 'Tomás Ortega'
+/** The former member's address, in the row they sealed for me before they left (kept twelve months, R75). */
+export const FORMER_EMAIL = 'tomas.ortega@example.com'
+
+/** The made-up people whose address has reached me, per email state: everyone in `all`, all but Amara in `partial`. */
+export function madeUpEmailSenders(state: MadeUpEmailState): MadeUpPerson[] {
+  return MADE_UP_PEOPLE.filter((p) => state === 'all' || p.id !== AMARA)
+}
+
+/** What this browser opens of the team's addresses, per email state: sender id to the address and whether they left. */
+export function madeUpEmails(state: MadeUpEmailState): Map<string, OpenedEmail> {
+  const out = new Map<string, OpenedEmail>(madeUpEmailSenders(state).map((p) => [p.id, { email: p.email, former: false }]))
+  out.set(TOMAS, { email: FORMER_EMAIL, former: true })
+  return out
+}
 
 /** My own name and address on Account, for the unlocked states: an example, never a real person's. */
 export const MY_NAME = 'Alex Morgan'
@@ -132,16 +162,28 @@ export function madeUpConnections(myId: string, now: Date): Connection[] {
 /**
  * The session's snapshot for one state, as lib/team-names/session.ts builds it: no team read while locked or while the
  * first key is being published (`first`: since R72 that happens on its own, under `loading`), and the duplicates
- * (Pulse's own words included) worked out by the real rule. `own` is my own name.
+ * (Pulse's own words included) worked out by the real rule. `own` is my own name. `emails`, when given, is the team's
+ * addresses as an owner's browser holds them, the duplicates by the real rule against my own address (team emails off
+ * without it, as before).
  */
-export function madeUpSnapshot(state: MadeUpState, teamId: string, myId: string, own: string | null = MY_NAME): TeamNamesSnapshot {
+export function madeUpSnapshot(
+  state: MadeUpState,
+  teamId: string,
+  myId: string,
+  own: string | null = MY_NAME,
+  emails: MadeUpEmailState | null = null,
+): TeamNamesSnapshot {
   const status: TeamNamesStatus = state === 'locked' ? 'locked' : state === 'first' ? 'loading' : 'ready'
   if (status !== 'ready') return { status, share: null, teams: new Map() }
   const names = madeUpNames(state)
   const memberIds = new Set(madeUpMembers(teamId, myId).map((m) => m.user_id))
+  const opened = emails ? madeUpEmails(emails) : null
+  const addresses: Pick<TeamState, 'emailStatus' | 'emails' | 'emailDuplicates'> = opened
+    ? { emailStatus: 'ready', emails: opened, emailDuplicates: emailDuplicateIds(opened, { userId: myId, email: MY_EMAIL }) }
+    : NO_EMAILS
   return {
     status,
     share: own ? 'name' : 'none',
-    teams: new Map([[teamId, { status: 'ready', names, memberIds, duplicates: duplicateIds(names, own ? { userId: myId, name: own } : null) }]]),
+    teams: new Map([[teamId, { status: 'ready', names, memberIds, duplicates: duplicateIds(names, own ? { userId: myId, name: own } : null), ...addresses }]]),
   }
 }
