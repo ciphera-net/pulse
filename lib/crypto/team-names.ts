@@ -18,6 +18,17 @@
  *
  * The opener refuses an unknown version byte before deriving anything and takes the aad from the
  * version it expects, never from the wire. Known-answer vectors: lib/crypto/__tests__/vectors/.
+ *
+ * Members' email addresses (design §16.2) are a second kind of row over the same keys, suite, mode,
+ * aad, padded layout and 594-byte wire format, with their own two labels:
+ *
+ *   info      "pulse/team-emails/v1" || 0x00 || team || sender || recipient: 69 bytes. The label is the
+ *             domain separation: a row of one kind presented as the other derives another key schedule
+ *             and does not open.
+ *   tag       HMAC-SHA256(tag_secret, "pulse/team-emails/v1/email-tag" || 0x00 || utf8(email) ||
+ *             team_id || recipient_key_id || SHA-256(sealed))[0:16], after the seal, as the name tag.
+ *   address   sealed and shown exactly as the vault holds it, and only if checkEmail passes it: the
+ *             sealer refuses (team_names/email_unsealable), the opener answers null.
  */
 
 import type { VaultOps } from '@ciphera-net/tessera'
@@ -41,14 +52,20 @@ export const TEAM_NAMES_SUITE = SUITE_P256_SHA256_AES256GCM
 export const WIRE_VERSION = 0x01
 export const INFO_LABEL = 'pulse/team-names/v1'
 export const TAG_LABEL = 'pulse/team-names/v1/name-tag'
+/** The email kind's labels (design §16.2); its identity, suite, aad and row layout are the names'. */
+export const EMAIL_INFO_LABEL = 'pulse/team-emails/v1'
+export const EMAIL_TAG_LABEL = 'pulse/team-emails/v1/email-tag'
 export const IDENTITY_CONTEXT = 'pulse/team-names/v1/identity'
 export const PADDED_SIZE = 512
 export const MAX_NAME_BYTES = 400
+/** The longest address, in UTF-8 bytes, that is sealed or shown (below MAX_NAME_BYTES, so the name's layout takes it). */
+export const MAX_EMAIL_BYTES = 254
 export const PUBLIC_KEY_SIZE = 65
 export const KEY_ID_SIZE = 32
 /** SHA-256 of a whole sealed row: what the directory serves for each row of mine, and what the tag binds. */
 export const SEALED_HASH_SIZE = 32
 export const NAME_TAG_SIZE = 16
+export const EMAIL_TAG_SIZE = 16
 export const SEALED_SIZE = 1 + PUBLIC_KEY_SIZE + PADDED_SIZE + 16 // 594
 export const IDENTITY_PLAINTEXT_SIZE = 1 + 32 + PUBLIC_KEY_SIZE + 32 // 130
 export const IDENTITY_ENVELOPE_SIZE = IDENTITY_PLAINTEXT_SIZE + 89 // 219
@@ -89,9 +106,19 @@ export function uuidBytes(id: string): Bytes {
   return out
 }
 
+/** label || 0x00 || team || sender || recipient: the info of a row of either kind. */
+function rowInfo(label: string, teamId: string, senderId: string, recipientId: string): Bytes {
+  return concatBytes(utf8(label), new Uint8Array([0x00]), uuidBytes(teamId), uuidBytes(senderId), uuidBytes(recipientId))
+}
+
 /** info = "pulse/team-names/v1" || 0x00 || team || sender || recipient: 68 bytes. */
 export function nameInfo(teamId: string, senderId: string, recipientId: string): Bytes {
-  return concatBytes(utf8(INFO_LABEL), new Uint8Array([0x00]), uuidBytes(teamId), uuidBytes(senderId), uuidBytes(recipientId))
+  return rowInfo(INFO_LABEL, teamId, senderId, recipientId)
+}
+
+/** info = "pulse/team-emails/v1" || 0x00 || team || sender || recipient: 69 bytes (design §16.2). */
+export function emailInfo(teamId: string, senderId: string, recipientId: string): Bytes {
+  return rowInfo(EMAIL_INFO_LABEL, teamId, senderId, recipientId)
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -163,6 +190,45 @@ export function unpadName(pt: Uint8Array): string | null {
 }
 
 // ---------------------------------------------------------------------------------------------
+// The address: one check, run by the sealer and by the opener
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What an address may not carry (design §16.2): whitespace (White_Space: every space separator, the line
+ * and paragraph separators, tab, line feed, vertical tab, form feed, carriage return, NEL), any separator
+ * (Z), a control (Cc) or a format character (Cf: the bidi controls, the zero-width characters, the BOM).
+ * White_Space less its controls is exactly Z, so the two name one set; both are written so that neither
+ * reading of the design's words is missing. A lone surrogate (Cs), which has no UTF-8 and so cannot be
+ * sealed as it is. And every default-ignorable code point (the Hangul fillers, the variation selectors, the
+ * combining grapheme joiner): invisible, so an address carrying one could pass for another on screen; it is
+ * refused rather than stripped, because what is shown is exactly what the vault holds. No `g` flag: `test`
+ * stays stateless.
+ */
+const NOT_IN_AN_EMAIL = /[\p{White_Space}\p{Z}\p{Cc}\p{Cf}\p{Cs}\p{Default_Ignorable_Code_Point}]/u
+
+/**
+ * The one check on an address, on both sides (design §16.2): at most 254 bytes of UTF-8, exactly one '@'
+ * (U+0040) with at least one character before it and one after it, and nothing NOT_IN_AN_EMAIL. Nothing
+ * is folded, normalised or trimmed: an address is sealed, and shown, exactly as the vault holds it.
+ * Returns the address unchanged, or null.
+ */
+export function checkEmail(raw: string): string | null {
+  if (typeof raw !== 'string' || NOT_IN_AN_EMAIL.test(raw)) return null
+  const at = raw.indexOf('@')
+  if (at < 1 || at !== raw.lastIndexOf('@') || at === raw.length - 1) return null
+  const bytes = utf8(raw)
+  const fits = bytes.length <= MAX_EMAIL_BYTES
+  wipe(bytes)
+  return fits ? raw : null
+}
+
+/** The address in the name's padded layout, after the check: the seal side. */
+function padEmail(email: string): Bytes {
+  if (checkEmail(email) === null) throw new TeamNamesError('team_names/email_unsealable')
+  return padName(email)
+}
+
+// ---------------------------------------------------------------------------------------------
 // Keys and the tag
 // ---------------------------------------------------------------------------------------------
 
@@ -173,6 +239,22 @@ export async function keyIdOf(publicKey: Uint8Array): Promise<Bytes> {
 
 export async function importTagKey(tagSecret: Uint8Array): Promise<CryptoKey> {
   return subtle().importKey('raw', asBytes(tagSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+}
+
+/** HMAC-SHA256(tag_secret, label || 0x00 || utf8(value) || team || recipient_key_id || sealed_hash)[0:16]. */
+async function rowTag(
+  label: string,
+  tagKey: CryptoKey,
+  value: string,
+  teamId: string,
+  recipientKeyId: Uint8Array,
+  sealedHash: Uint8Array,
+): Promise<Bytes> {
+  const team = uuidBytes(teamId)
+  if (recipientKeyId.length !== KEY_ID_SIZE || sealedHash.length !== SEALED_HASH_SIZE) throw new TeamNamesError('team_names/malformed')
+  const message = concatBytes(utf8(label), new Uint8Array([0x00]), utf8(value), team, recipientKeyId, sealedHash)
+  const mac = new Uint8Array(await subtle().sign('HMAC', tagKey, message))
+  return mac.slice(0, NAME_TAG_SIZE)
 }
 
 /**
@@ -187,11 +269,21 @@ export async function nameTag(
   recipientKeyId: Uint8Array,
   sealedHash: Uint8Array,
 ): Promise<Bytes> {
-  const team = uuidBytes(teamId)
-  if (recipientKeyId.length !== KEY_ID_SIZE || sealedHash.length !== SEALED_HASH_SIZE) throw new TeamNamesError('team_names/malformed')
-  const message = concatBytes(utf8(TAG_LABEL), new Uint8Array([0x00]), utf8(name), team, recipientKeyId, sealedHash)
-  const mac = new Uint8Array(await subtle().sign('HMAC', tagKey, message))
-  return mac.slice(0, NAME_TAG_SIZE)
+  return rowTag(TAG_LABEL, tagKey, name, teamId, recipientKeyId, sealedHash)
+}
+
+/**
+ * The email tag (design §16.2): nameTag's binding, over the address exactly as given (nothing folds its
+ * case), under the email kind's label, so the two kinds' tags never coincide. Same refusals as nameTag.
+ */
+export async function emailTag(
+  tagKey: CryptoKey,
+  email: string,
+  teamId: string,
+  recipientKeyId: Uint8Array,
+  sealedHash: Uint8Array,
+): Promise<Bytes> {
+  return rowTag(EMAIL_TAG_LABEL, tagKey, email, teamId, recipientKeyId, sealedHash)
 }
 
 /** A person's key for this session: the private half non-extractable, the tag secret as an HMAC key. */
@@ -223,29 +315,44 @@ export interface SealedName {
   nameTag: Bytes
 }
 
-function sealParams(p: SealNameParams, pt: Bytes): SealParams {
+/** Who a row is from and to, in which team, under whose keys: the same for a row of either kind. */
+interface RowParties {
+  teamId: string
+  senderId: string
+  recipientId: string
+  sender: TeamIdentity
+  recipientPublicKey: Uint8Array
+  recipientKeyId: Uint8Array
+}
+
+function sealParams(info: Bytes, p: RowParties, pt: Bytes): SealParams {
   return {
     suite: TEAM_NAMES_SUITE,
     recipientPublicKey: p.recipientPublicKey,
     sender: { privateKey: p.sender.privateKey, publicKey: p.sender.publicKey },
-    info: nameInfo(p.teamId, p.senderId, p.recipientId),
+    info,
     aad: AAD_V1,
     plaintext: pt,
   }
 }
 
-async function finishSeal(p: SealNameParams, enc: Bytes, ciphertext: Bytes): Promise<SealedName> {
+/** The row as the server will store it, and its SHA-256: a row of either kind. */
+async function finishRow(enc: Bytes, ciphertext: Bytes): Promise<{ sealed: Bytes; sealedHash: Bytes }> {
   const sealed = concatBytes(new Uint8Array([WIRE_VERSION]), enc, ciphertext)
   if (sealed.length !== SEALED_SIZE) throw new TeamNamesError('team_names/malformed')
+  return { sealed, sealedHash: new Uint8Array(await subtle().digest('SHA-256', sealed)) }
+}
+
+async function finishSeal(p: SealNameParams, enc: Bytes, ciphertext: Bytes): Promise<SealedName> {
   // The tag binds the row as the server will store it, so it comes after the seal, over the row's hash.
-  const sealedHash = new Uint8Array(await subtle().digest('SHA-256', sealed))
+  const { sealed, sealedHash } = await finishRow(enc, ciphertext)
   return { sealed, enc, nameTag: await nameTag(p.sender.tagKey, p.name, p.teamId, p.recipientKeyId, sealedHash) }
 }
 
 export async function sealName(p: SealNameParams): Promise<SealedName> {
   const pt = padName(p.name)
   try {
-    const { enc, ciphertext } = await seal(sealParams(p, pt))
+    const { enc, ciphertext } = await seal(sealParams(nameInfo(p.teamId, p.senderId, p.recipientId), p, pt))
     return await finishSeal(p, enc, ciphertext)
   } finally {
     wipe(pt)
@@ -258,7 +365,7 @@ export async function sealNameWithEphemeralKeyForTesting(
   ephemeral: KeyPair,
 ): Promise<SealedName & { trace: SealTrace }> {
   const pt = padName(p.name)
-  const trace = await sealWithEphemeralKeyForTesting(sealParams(p, pt), ephemeral)
+  const trace = await sealWithEphemeralKeyForTesting(sealParams(nameInfo(p.teamId, p.senderId, p.recipientId), p, pt), ephemeral)
   return { ...(await finishSeal(p, trace.sealed.enc, trace.sealed.ciphertext)), trace }
 }
 
@@ -272,19 +379,18 @@ export interface OpenNameParams {
 }
 
 /**
- * Opens a row sealed for this person. Throws a coded error when it cannot (unknown version, wrong
- * size, wrong keys or bindings); returns null when it opens but carries no usable name (the length
- * field, the padding or the UTF-8 is wrong, or nothing is left after cleaning).
+ * Opens a row of either kind, under that kind's info label, to its padded plaintext. An unknown version
+ * byte, then a wrong size, are refused before anything is derived; every cryptographic failure, a row of
+ * the other kind included, is `team_names/open_failed`.
  */
-export async function openName(p: OpenNameParams): Promise<string | null> {
+async function openRow(infoLabel: string, p: OpenNameParams | OpenEmailParams): Promise<Bytes> {
   if (p.sealed.length < 1 || p.sealed[0] !== WIRE_VERSION) {
     throw new TeamNamesError('team_names/unsupported_version', { userId: p.senderId })
   }
   if (p.sealed.length !== SEALED_SIZE) throw new TeamNamesError('team_names/malformed', { userId: p.senderId })
-  const info = nameInfo(p.teamId, p.senderId, p.recipientId)
-  let pt: Bytes
+  const info = rowInfo(infoLabel, p.teamId, p.senderId, p.recipientId)
   try {
-    pt = await open({
+    return await open({
       suite: TEAM_NAMES_SUITE,
       enc: p.sealed.subarray(1, 1 + PUBLIC_KEY_SIZE),
       recipient: { privateKey: p.recipient.privateKey, publicKey: p.recipient.publicKey },
@@ -296,9 +402,94 @@ export async function openName(p: OpenNameParams): Promise<string | null> {
   } catch (cause) {
     throw new TeamNamesError('team_names/open_failed', { userId: p.senderId, cause })
   }
+}
+
+/**
+ * Opens a row sealed for this person. Throws a coded error when it cannot (unknown version, wrong
+ * size, wrong keys or bindings); returns null when it opens but carries no usable name (the length
+ * field, the padding or the UTF-8 is wrong, or nothing is left after cleaning).
+ */
+export async function openName(p: OpenNameParams): Promise<string | null> {
+  const pt = await openRow(INFO_LABEL, p)
   try {
     const raw = unpadName(pt)
     return raw === null ? null : cleanName(raw)
+  } finally {
+    wipe(pt)
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sealing and opening an address (design §16.2)
+// ---------------------------------------------------------------------------------------------
+
+export interface SealEmailParams {
+  teamId: string
+  senderId: string
+  recipientId: string
+  /** The address exactly as the vault holds it: sealed as given, refused unless checkEmail passes it. */
+  email: string
+  sender: TeamIdentity
+  recipientPublicKey: Uint8Array
+  recipientKeyId: Uint8Array
+}
+
+export interface SealedEmail {
+  sealed: Bytes
+  enc: Bytes
+  emailTag: Bytes
+}
+
+async function finishEmailSeal(p: SealEmailParams, enc: Bytes, ciphertext: Bytes): Promise<SealedEmail> {
+  // The tag binds the row as the server will store it, so it comes after the seal, over the row's hash.
+  const { sealed, sealedHash } = await finishRow(enc, ciphertext)
+  return { sealed, enc, emailTag: await emailTag(p.sender.tagKey, p.email, p.teamId, p.recipientKeyId, sealedHash) }
+}
+
+/**
+ * Seals this person's address for one owner or admin of a team. An address checkEmail refuses throws
+ * `team_names/email_unsealable` before anything else is done.
+ */
+export async function sealEmail(p: SealEmailParams): Promise<SealedEmail> {
+  const pt = padEmail(p.email)
+  try {
+    const { enc, ciphertext } = await seal(sealParams(emailInfo(p.teamId, p.senderId, p.recipientId), p, pt))
+    return await finishEmailSeal(p, enc, ciphertext)
+  } finally {
+    wipe(pt)
+  }
+}
+
+/** 🔴 TEST SEAM for the vectors, as sealNameWithEphemeralKeyForTesting: only test files import it. */
+export async function sealEmailWithEphemeralKeyForTesting(
+  p: SealEmailParams,
+  ephemeral: KeyPair,
+): Promise<SealedEmail & { trace: SealTrace }> {
+  const pt = padEmail(p.email)
+  const trace = await sealWithEphemeralKeyForTesting(sealParams(emailInfo(p.teamId, p.senderId, p.recipientId), p, pt), ephemeral)
+  return { ...(await finishEmailSeal(p, trace.sealed.enc, trace.sealed.ciphertext)), trace }
+}
+
+export interface OpenEmailParams {
+  teamId: string
+  senderId: string
+  recipientId: string
+  sealed: Uint8Array
+  recipient: TeamIdentity
+  senderPublicKey: Uint8Array
+}
+
+/**
+ * Opens an address row sealed for this person, with openName's contract: throws a coded error when the
+ * row cannot be opened (unknown version, wrong size, wrong keys or bindings, a row of the names kind);
+ * returns null when it opens but carries no address to show (the length field, the padding or the UTF-8
+ * is wrong, or checkEmail refuses it). The address comes back exactly as sealed.
+ */
+export async function openEmail(p: OpenEmailParams): Promise<string | null> {
+  const pt = await openRow(EMAIL_INFO_LABEL, p)
+  try {
+    const raw = unpadName(pt)
+    return raw === null ? null : checkEmail(raw)
   } finally {
     wipe(pt)
   }

@@ -19,6 +19,11 @@ export type TeamNamesErrorCode =
   | 'team_names/invalid_id'
   /** The name cannot be sealed: empty after cleaning, or over 400 bytes of UTF-8. */
   | 'team_names/name_unsealable'
+  /**
+   * The address cannot be sealed: checkEmail refuses it (over 254 bytes of UTF-8, not exactly one '@' with
+   * something on each side, or whitespace, a control, a format character or a lone surrogate in it).
+   */
+  | 'team_names/email_unsealable'
   /** The identity envelope does not open with this browser's vault key. */
   | 'team_names/identity_unopenable'
   /** The server's public key for this person contradicts the envelope, or its key id. */

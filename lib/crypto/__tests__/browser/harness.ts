@@ -1,15 +1,17 @@
 /**
  * The browser half of the vector run in Chromium, Firefox and WebKit (vectors.spec.ts, design
  * §8.2, review L1). vectors.spec.ts bundles this file with the production modules it imports,
- * unchanged, loads it into a page and calls `runTeamNamesVectors` with the two vector files.
+ * unchanged, loads it into a page and calls `runTeamNamesVectors` with the three vector files.
  *
  * This side only computes: every value goes back as hex, and every failure as its error name and
  * code, one outcome per check, so an engine that refuses one operation fails the checks that use
  * it and no others. The spec compares each value with the files, in Node.
  *
- * It mirrors hpke.test.ts and team-names.test.ts, minus what runs no WebCrypto (the cleaning
- * table, the padding decode, the fold key, the UUID parse, the spies). It imports the
- * ephemeral-key seams, which only files under __tests__ may.
+ * It mirrors hpke.test.ts, team-names.test.ts and team-emails.test.ts, minus what runs no WebCrypto
+ * (the cleaning table, the padding decode, the fold key, the UUID parse, the spies). The address
+ * check is the exception: it runs no WebCrypto, but its Unicode property escapes read each engine's
+ * own Unicode tables, so it runs here too. It imports the ephemeral-key seams, which only files
+ * under __tests__ may.
  */
 
 import { vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
@@ -30,16 +32,23 @@ import {
 import {
   IDENTITY_CONTEXT,
   TEAM_NAMES_SUITE,
+  checkEmail,
   createIdentity,
+  emailInfo,
+  emailTag,
   importTagKey,
   keyIdOf,
   nameInfo,
   nameTag,
+  openEmail,
   openIdentityEnvelope,
   openName,
   padName,
+  sealEmail,
+  sealEmailWithEphemeralKeyForTesting,
   sealName,
   sealNameWithEphemeralKeyForTesting,
+  type OpenEmailParams,
   type TeamIdentity,
 } from '../../team-names'
 
@@ -152,9 +161,103 @@ export interface TeamNamesFile {
   envelope_negatives: VEnvelopeNegative[]
 }
 
+export interface VEmailSeal {
+  description: string
+  team_id: string
+  sender: string
+  recipient: string
+  sender_id: string
+  recipient_id: string
+  email: string
+  email_utf8: string
+  plaintext: string
+  info: string
+  aad: string
+  ephemeral_private_key: string
+  enc: string
+  shared_secret: string
+  key: string
+  base_nonce: string
+  sealed: string
+  sealed_hash: string
+  sender_key_id: string
+  recipient_key_id: string
+  email_tag: string
+}
+
+export interface VEmailOpenNegative {
+  description: string
+  team_id: string
+  sender_id: string
+  recipient_id: string
+  opener: string
+  sender_public_key: string
+  sealed: string
+  outcome: 'open_fails' | 'refused_version' | 'refused_length' | 'no_email'
+}
+
+export interface VAddressNegative {
+  description: string
+  team_id: string
+  sender_id: string
+  recipient_id: string
+  opener: string
+  sender_public_key: string
+  email: string
+  email_utf8: string
+  plaintext: string
+  sealed: string
+  outcome: 'no_email'
+}
+
+export interface VCrossKindNegative {
+  description: string
+  sealed_as: 'email' | 'name'
+  open_as: 'email' | 'name'
+  team_id: string
+  sender_id: string
+  recipient_id: string
+  opener: string
+  sender_public_key: string
+  value: string
+  sealed: string
+  outcome: 'open_fails'
+}
+
+export interface VEmailTagNegative {
+  description: string
+  row: number
+  tag_secret: string
+  email: string
+  team_id: string
+  recipient_key_id: string
+  sealed: string
+  sealed_hash: string
+}
+
+export interface TeamEmailsFile {
+  suite: { kem_id: number; kdf_id: number; aead_id: number }
+  info_label: string
+  tag_label: string
+  names_info_label: string
+  identity_context: string
+  wire_version: number
+  padded_size: number
+  max_email_bytes: number
+  sealed_size: number
+  identities: VIdentity[]
+  seals: VEmailSeal[]
+  open_negatives: VEmailOpenNegative[]
+  address_negatives: VAddressNegative[]
+  cross_kind_negatives: VCrossKindNegative[]
+  tag_negatives: VEmailTagNegative[]
+  envelope_negatives: VEnvelopeNegative[]
+}
+
 export interface HarnessInput {
   rfc: RfcFile
   teamNames: TeamNamesFile
+  teamEmails: TeamEmailsFile
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -257,6 +360,72 @@ export interface CreatedIdentityReport {
   opened: string | null
 }
 
+export interface EmailSealReport {
+  description: string
+  info: Outcome<string>
+  emailUtf8: string
+  /** checkEmail's answer: the address itself, or null. */
+  check: Outcome<string | null>
+  plaintext: Outcome<string>
+  senderKeyId: Outcome<string>
+  recipientKeyId: Outcome<string>
+  seal: Outcome<{
+    sharedSecret: string
+    key: string
+    baseNonce: string
+    enc: string
+    sealed: string
+    sealedLength: number
+    emailTag: string
+    /** This engine's SHA-256 of the row it built. */
+    sealedHash: string
+  }>
+  tagFromSecret: Outcome<string>
+  open: Outcome<string | null>
+}
+
+export interface AddressNegativeReport {
+  description: string
+  /** This engine's UTF-8 of the address. */
+  emailUtf8: string
+  check: Outcome<string | null>
+  /** sealEmail of the address: must refuse. */
+  seal: Outcome<string>
+  open: Outcome<string | null>
+}
+
+export interface CrossKindReport {
+  description: string
+  /** Opened as the kind it was sealed as. */
+  asSealed: Outcome<string | null>
+  /** Opened as the other kind. */
+  asOpened: Outcome<string | null>
+}
+
+export interface FreshEmailReport {
+  encs: [string, string]
+  sealedLength: number
+  opened: string | null
+  /** The email row opened as a name. */
+  asName: Outcome<string | null>
+  /** A name row of the same address, from the same people, opened as a name and as an email. */
+  nameRowAsName: string | null
+  nameRowAsEmail: Outcome<string | null>
+}
+
+export interface TeamEmailsReport {
+  identities: IdentityReport[]
+  envelopeNegatives: EnvelopeNegativeReport[]
+  seals: EmailSealReport[]
+  openNegatives: Labelled<string | null>[]
+  addressNegatives: AddressNegativeReport[]
+  crossKind: CrossKindReport[]
+  tagNegatives: TagNegativeReport[]
+  /** checkEmail over EMAIL_CHECK_CASES, in this engine: whether each was accepted. */
+  checkCases: { accepted: Labelled<boolean>[]; refused: Labelled<boolean>[] }
+  fresh: Outcome<FreshEmailReport>
+}
+
 export interface HarnessReport {
   rfc: RfcReport[]
   freshSeal: Outcome<FreshSealReport>
@@ -268,6 +437,7 @@ export interface HarnessReport {
   openNegatives: Labelled<string | null>[]
   tagNegatives: TagNegativeReport[]
   createdIdentity: Outcome<CreatedIdentityReport>
+  emails: TeamEmailsReport
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -638,6 +808,270 @@ async function teamNames(file: TeamNamesFile) {
   return { identities, dhAgreement, envelopeNegatives, seals, openNegatives, tagNegatives, createdIdentity }
 }
 
+// ---------------------------------------------------------------------------------------------
+// Team emails (team-emails.test.ts)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The address check's cases beyond the vector file, run in each engine because its property escapes
+ * (White_Space, Z, Cc, Cf, Cs) read the engine's own Unicode tables. Built here, in the page, so no
+ * lone surrogate has to cross the page boundary; only the labels and a boolean go back.
+ */
+const EMAIL_CHECK_CASES: { accepted: [string, string][]; refused: [string, string][] } = {
+  accepted: [
+    ['the shortest address', 'a@b'],
+    ['upper case', 'Ada.Lovelace@Example.COM'],
+    ['a combining acute after e (NFD, kept as it is)', 'zoé@example.com'],
+    ['three-byte UTF-8 on both sides', '用户@例子.广告'],
+    ['a surrogate pair', 'rocket\u{1F680}@example.com'],
+    ['every atext symbol', "!#$%&'*+-/=?^_`{|}~@example.com"],
+    ['254 bytes of two-byte UTF-8', `${'é'.repeat(121)}@exämple.se`],
+    ['254 bytes of four-byte UTF-8 (128 UTF-16 units)', `${'\u{1F680}'.repeat(63)}@x`],
+  ],
+  refused: [
+    ['255 bytes of two-byte UTF-8', `${'é'.repeat(121)}@exämples.se`],
+    ['255 bytes of four-byte UTF-8 (129 UTF-16 units)', `${'\u{1F680}'.repeat(63)}@xy`],
+    ['no @', 'ada.example.com'],
+    ['two @', 'ada@team@example.com'],
+    ['a fullwidth @', 'ada＠example.com'],
+    ['a small @', 'ada﹫example.com'],
+    ['a tab', 'ada\t@example.com'],
+    ['a carriage return', 'ada@example.com\r'],
+    ['NUL', 'ada\u0000@example.com'],
+    ['DEL', 'ada\u007f@example.com'],
+    ['NEL', 'ada\u0085@example.com'],
+    ['a C1 control', 'ada\u0090@example.com'],
+    ['a no-break space', 'ada @example.com'],
+    ['an ogham space', 'ada @example.com'],
+    ['a hair space', 'ada @example.com'],
+    ['a narrow no-break space', 'ada @example.com'],
+    ['an ideographic space', 'ada　@example.com'],
+    ['a line separator', 'ada @example.com'],
+    ['a paragraph separator', 'ada @example.com'],
+    ['a soft hyphen', 'ada­@example.com'],
+    ['an Arabic letter mark', 'ada؜@example.com'],
+    ['a Mongolian vowel separator', 'ada᠎@example.com'],
+    ['a zero-width space', 'ada​@example.com'],
+    ['a zero-width joiner', 'ada‍@example.com'],
+    ['a right-to-left mark', 'ada‏@example.com'],
+    ['a right-to-left override', 'ada@‮moc.elpmaxe'],
+    ['a first-strong isolate', 'ada⁨@example.com'],
+    ['a word joiner', 'ada⁠@example.com'],
+    ['a byte order mark', '﻿ada@example.com'],
+    ['an interlinear annotation anchor', 'ada￹@example.com'],
+    ['a language tag', 'ada\u{e0001}@example.com'],
+    ['a lone high surrogate', 'ada\ud800@example.com'],
+    ['a lone low surrogate', 'ada@example.com\udfff'],
+    ['a surrogate pair reversed', '\ude80\ud83d@example.com'],
+  ],
+}
+
+async function teamEmails(file: TeamEmailsFile): Promise<TeamEmailsReport> {
+  const byLabel = (label: string): VIdentity => {
+    const found = file.identities.find((i) => i.label === label)
+    if (!found) throw new Error(`no identity ${label}`)
+    return found
+  }
+  // This file's own cache: its identities are not team-names-v1.json's.
+  const cache = new Map<string, Promise<TeamIdentity>>()
+  const identity = (label: string): Promise<TeamIdentity> => {
+    const cached = cache.get(label)
+    if (cached) return cached
+    const vi = byLabel(label)
+    const made = (async () => openIdentityEnvelope(vaultOpsFor(await vaultKey(vi.vmk)), hex(vi.sealed_private_key)))()
+    cache.set(label, made)
+    return made
+  }
+  const labelOf = (userId: string): string => {
+    const found = file.identities.find((i) => i.user_id === userId)
+    if (!found) throw new Error(`no identity with id ${userId}`)
+    return found.label
+  }
+  const opener = async (n: { team_id: string; sender_id: string; recipient_id: string; opener: string; sender_public_key: string; sealed: string }): Promise<OpenEmailParams> => ({
+    teamId: n.team_id,
+    senderId: n.sender_id,
+    recipientId: n.recipient_id,
+    sealed: hex(n.sealed),
+    recipient: await identity(n.opener),
+    senderPublicKey: hex(n.sender_public_key),
+  })
+  const openAs = (kind: 'email' | 'name', p: OpenEmailParams) => (kind === 'email' ? openEmail(p) : openName(p))
+
+  const identities: IdentityReport[] = []
+  for (const vi of file.identities) {
+    identities.push({
+      label: vi.label,
+      envelopeLength: hex(vi.sealed_private_key).length,
+      envelopePlaintext: await attempt(async () =>
+        toHex(await vaultOpsFor(await vaultKey(vi.vmk)).open(IDENTITY_CONTEXT, hex(vi.sealed_private_key))),
+      ),
+      session: await attempt(async () => {
+        const id = await identity(vi.label)
+        return {
+          publicKey: toHex(id.publicKey),
+          keyId: toHex(id.keyId),
+          keyIdOfPublicKey: toHex(await keyIdOf(hex(vi.public_key))),
+          extractable: id.privateKey.extractable,
+          usages: [...id.privateKey.usages],
+        }
+      }),
+    })
+  }
+
+  const envelopeNegatives: EnvelopeNegativeReport[] = []
+  for (const n of file.envelope_negatives) {
+    const envelope = () => hex(byLabel(n.envelope_of).sealed_private_key)
+    envelopeNegatives.push({
+      description: n.description,
+      vaultOpen: await attempt(async () => toHex(await vaultOpsFor(await vaultKey(n.vmk)).open(n.context, envelope()))),
+      identityOpen:
+        n.context === IDENTITY_CONTEXT
+          ? await attempt(async () => toHex((await openIdentityEnvelope(vaultOpsFor(await vaultKey(n.vmk)), envelope())).publicKey))
+          : null,
+    })
+  }
+
+  const seals: EmailSealReport[] = []
+  for (const s of file.seals) {
+    const sender = byLabel(s.sender)
+    const recipient = byLabel(s.recipient)
+    seals.push({
+      description: s.description,
+      info: await attempt(() => toHex(emailInfo(s.team_id, s.sender_id, s.recipient_id))),
+      emailUtf8: toHex(new TextEncoder().encode(s.email)),
+      check: await attempt(() => checkEmail(s.email)),
+      plaintext: await attempt(() => toHex(padName(s.email))),
+      senderKeyId: await attempt(async () => toHex((await identity(s.sender)).keyId)),
+      recipientKeyId: await attempt(async () => toHex(await keyIdOf(hex(recipient.public_key)))),
+      seal: await attempt(async () => {
+        const ephemeral = {
+          privateKey: await importPrivateKey(TEAM_NAMES_SUITE, hex(s.ephemeral_private_key), hex(s.enc)),
+          publicKey: hex(s.enc),
+        }
+        const out = await sealEmailWithEphemeralKeyForTesting(
+          {
+            teamId: s.team_id,
+            senderId: s.sender_id,
+            recipientId: s.recipient_id,
+            email: s.email,
+            sender: await identity(s.sender),
+            recipientPublicKey: hex(recipient.public_key),
+            recipientKeyId: hex(s.recipient_key_id),
+          },
+          ephemeral,
+        )
+        return {
+          sharedSecret: toHex(out.trace.sharedSecret),
+          key: toHex(out.trace.key),
+          baseNonce: toHex(out.trace.baseNonce),
+          enc: toHex(out.enc),
+          sealed: toHex(out.sealed),
+          sealedLength: out.sealed.length,
+          emailTag: toHex(out.emailTag),
+          sealedHash: toHex(new Uint8Array(await crypto.subtle.digest('SHA-256', out.sealed))),
+        }
+      }),
+      tagFromSecret: await attempt(async () =>
+        toHex(await emailTag(await importTagKey(hex(sender.tag_secret)), s.email, s.team_id, hex(s.recipient_key_id), hex(s.sealed_hash))),
+      ),
+      open: await attempt(async () =>
+        openEmail({
+          teamId: s.team_id,
+          senderId: s.sender_id,
+          recipientId: s.recipient_id,
+          sealed: hex(s.sealed),
+          recipient: await identity(s.recipient),
+          senderPublicKey: hex(sender.public_key),
+        }),
+      ),
+    })
+  }
+
+  const openNegatives: Labelled<string | null>[] = []
+  for (const n of file.open_negatives) openNegatives.push(await labelled(n.description, async () => openEmail(await opener(n))))
+
+  const addressNegatives: AddressNegativeReport[] = []
+  for (const n of file.address_negatives) {
+    const recipient = byLabel(n.opener)
+    addressNegatives.push({
+      description: n.description,
+      emailUtf8: toHex(new TextEncoder().encode(n.email)),
+      check: await attempt(() => checkEmail(n.email)),
+      seal: await attempt(async () =>
+        toHex((await sealEmail({
+          teamId: n.team_id,
+          senderId: n.sender_id,
+          recipientId: n.recipient_id,
+          email: n.email,
+          sender: await identity(labelOf(n.sender_id)),
+          recipientPublicKey: hex(recipient.public_key),
+          recipientKeyId: hex(recipient.key_id),
+        })).sealed),
+      ),
+      open: await attempt(async () => openEmail(await opener(n))),
+    })
+  }
+
+  const crossKind: CrossKindReport[] = []
+  for (const n of file.cross_kind_negatives) {
+    crossKind.push({
+      description: n.description,
+      asSealed: await attempt(async () => openAs(n.sealed_as, await opener(n))),
+      asOpened: await attempt(async () => openAs(n.open_as, await opener(n))),
+    })
+  }
+
+  const tagNegatives: TagNegativeReport[] = []
+  for (const n of file.tag_negatives) {
+    const row = file.seals[n.row]
+    tagNegatives.push({
+      description: n.description,
+      tag: await attempt(async () =>
+        toHex(await emailTag(await importTagKey(hex(n.tag_secret)), n.email, n.team_id, hex(n.recipient_key_id), hex(n.sealed_hash))),
+      ),
+      openAsRow: await attempt(async () =>
+        openEmail({
+          teamId: row.team_id,
+          senderId: row.sender_id,
+          recipientId: row.recipient_id,
+          sealed: hex(n.sealed),
+          recipient: await identity(row.recipient),
+          senderPublicKey: hex(byLabel(row.sender).public_key),
+        }),
+      ),
+    })
+  }
+
+  const checkCases = {
+    accepted: await Promise.all(EMAIL_CHECK_CASES.accepted.map(([label, email]) => labelled(label, () => checkEmail(email) === email))),
+    refused: await Promise.all(EMAIL_CHECK_CASES.refused.map(([label, email]) => labelled(label, () => checkEmail(email) !== null))),
+  }
+
+  // sealEmail with its own ephemeral key, end to end, between two of the file's people, and a row of each
+  // kind opened as the other.
+  const fresh = await attempt(async (): Promise<FreshEmailReport> => {
+    const [d, e] = [file.identities[0], file.identities[1]]
+    const [sender, recipient] = [await identity(d.label), await identity(e.label)]
+    const team = file.seals[0].team_id
+    const email = 'Ada.Lovelace@Example.COM'
+    const params = { teamId: team, senderId: d.user_id, recipientId: e.user_id, sender, recipientPublicKey: recipient.publicKey, recipientKeyId: recipient.keyId }
+    const a = await sealEmail({ ...params, email })
+    const b = await sealEmail({ ...params, email })
+    const openParams = { teamId: team, senderId: d.user_id, recipientId: e.user_id, recipient, senderPublicKey: sender.publicKey }
+    const { sealed: nameRow } = await sealName({ ...params, name: email })
+    return {
+      encs: [toHex(a.enc), toHex(b.enc)],
+      sealedLength: a.sealed.length,
+      opened: await openEmail({ ...openParams, sealed: a.sealed }),
+      asName: await attempt(() => openName({ ...openParams, sealed: a.sealed })),
+      nameRowAsName: await openName({ ...openParams, sealed: nameRow }),
+      nameRowAsEmail: await attempt(() => openEmail({ ...openParams, sealed: nameRow })),
+    }
+  })
+
+  return { identities, envelopeNegatives, seals, openNegatives, addressNegatives, crossKind, tagNegatives, checkCases, fresh }
+}
+
 export async function runTeamNamesVectors(input: HarnessInput): Promise<HarnessReport> {
   const rfc: RfcReport[] = []
   for (const { section, vector } of input.rfc.vectors) rfc.push(await rfcSection(section, vector))
@@ -651,6 +1085,7 @@ export async function runTeamNamesVectors(input: HarnessInput): Promise<HarnessR
     freshSeal: await attempt(freshSeal),
     publicKeys: await publicKeys(vectorOf(SUITE_P256_SHA256_AES256GCM), vectorOf(SUITE_P521_SHA512_AES256GCM)),
     ...(await teamNames(input.teamNames)),
+    emails: await teamEmails(input.teamEmails),
   }
 }
 
