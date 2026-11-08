@@ -1,27 +1,15 @@
 // Team names on Developers (design Pulse/docs/plans/07-11-2026-team-names-e2e-design.md §7; R63 to R65; copy deck
 // §14.4, §14.6): who connected each assistant, and the page's once-per-page line. The made-up team of
 // lib/team-names/__tests__/fixtures; the API, the session and Facet's controls are stood in.
-//
-// 🔴 WITH THE BETA OFF THE PAGE IS TODAY'S, BYTE FOR BYTE: the snapshot was recorded on the commit before the surfaces
-// existed.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, cleanup, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { TeamNamesContext, type TeamNamesContextValue } from '@/lib/team-names/provider'
-import type { TeamNamesSnapshot } from '@/lib/team-names/session'
-import {
-  madeUpConnections,
-  madeUpMembers,
-  madeUpNames,
-  madeUpSnapshot,
-  NO_EMAILS,
-  type MadeUpState,
-} from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
+import { madeUpConnections, madeUpMembers, madeUpSnapshot, type MadeUpState } from '@/lib/team-names/__tests__/fixtures/madeUpTeam'
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
-const OTHER_TEAM = '2c1f74ec-0000-4000-8000-000000000002'
 const NOW = new Date('2026-11-07T12:00:00Z')
 
 const listApiKeys = vi.hoisted(() => vi.fn())
@@ -101,23 +89,6 @@ vi.mock('@ciphera-net/facet', () => ({
 
 import DevelopersPage from '../DevelopersPage'
 
-function me(features: Record<string, string[]>) {
-  return {
-    user_id: ME,
-    default_team_id: TEAM,
-    teams: Object.entries(features).map(([id, f]) => ({ id, name: id, slug: id, role: 'owner', onboarding_completed_at: null, last_active_at: null, joined_at: '2026-02-01T08:00:00Z', features: f })),
-  }
-}
-
-function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
-  const snapshot: TeamNamesSnapshot = {
-    status: 'ready',
-    share: 'name',
-    teams: new Map([[TEAM, { status: 'ready', names: madeUpNames('named'), memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set(), ...NO_EMAILS }]]),
-  }
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
-}
-
 function mount(context: TeamNamesContextValue | null = null) {
   const tree = (
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
@@ -140,40 +111,18 @@ beforeEach(() => {
   members.list = madeUpMembers(TEAM, ME)
   listApiKeys.mockReset().mockResolvedValue({ api_keys: [] })
   listConnectedApps.mockReset().mockResolvedValue({ connections: madeUpConnections(ME, NOW) })
-  getMe.mockReset().mockResolvedValue(me({ [TEAM]: [] }))
+  getMe.mockReset()
 })
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
 })
 
-describe("Developers with the team-names beta off: today's DOM, byte for byte", () => {
-  it('draws the page as today, and the same with the beta on in another team or a session holding names', async () => {
-    const first = mount()
-    await loaded()
-    const today = first.container.innerHTML
-    expect(today).toMatchSnapshot()
-    expect(screen.getByTestId('connection-row-tn-c2').textContent).toContain('Connected by teammate 3f2a9c1b')
-    cleanup()
-
-    getMe.mockResolvedValue(me({ [TEAM]: [], [OTHER_TEAM]: ['team-names'] }))
-    const second = mount(contextWithNames(false))
-    await loaded()
-    expect(second.container.innerHTML).toBe(today)
-  })
-})
-
-// ─── With the beta on ────────────────────────────────────────────────────────────────────────────────────────────
-
 function sessionFor(state: MadeUpState): TeamNamesContextValue {
   return {
     snapshot: madeUpSnapshot(state, TEAM, ME),
     myId: ME,
     activeTeamId: TEAM,
-    activeFlagged: true,
-    anyFlagged: true,
-    activeEmailsFlagged: false,
-    anyEmailsFlagged: false,
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
@@ -181,7 +130,6 @@ function sessionFor(state: MadeUpState): TeamNamesContextValue {
 }
 
 async function mountOn(state: MadeUpState) {
-  getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
   const view = mount(sessionFor(state))
   await loaded()
   await waitFor(() => expect(document.querySelectorAll('[data-tn-who]').length).toBe(3))
@@ -198,7 +146,7 @@ function text(el: Element | null): string {
 const connectedBy = (id: string) => text(screen.getByTestId(`connection-row-${id}`).querySelector('[data-tn-who]'))
 const lines = () => [...document.querySelectorAll('[data-tn-line]')].map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])
 
-describe('Developers with the team-names beta on', () => {
+describe('Developers with team names', () => {
   it('says who connected each assistant by name, the id only where a name alone could be someone else\'s', async () => {
     await mountOn('named')
     expect([connectedBy('tn-c1'), connectedBy('tn-c2'), connectedBy('tn-c3')]).toEqual(['you', 'Maren Lindqvist', 'Amara Okafor'])
@@ -237,7 +185,6 @@ describe('Developers with the team-names beta on', () => {
 
   it('draws no prompt for somebody alone, and nothing at all on a member\'s no-access page', async () => {
     page.teamState = 'alone'
-    getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
     mount(sessionFor('locked'))
     await loaded()
     expect(lines()).toEqual([])

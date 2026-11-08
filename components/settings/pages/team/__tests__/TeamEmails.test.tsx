@@ -3,11 +3,6 @@
 // dialogs, in the transfer list and, for a former member, in the activity log. The made-up team of
 // lib/team-names/__tests__/fixtures, against the real SWR, the real kit and the real sections; the API, the session,
 // Facet's controls and the save bar are stood in.
-//
-// 🔴 WITH TEAM EMAILS OFF IN EVERY TEAM THE PAGE IS TODAY'S, BYTE FOR BYTE. The snapshots in
-// __snapshots__/TeamEmails.test.tsx.snap were recorded on the commit before the surfaces existed, with team names off
-// and on, for the owner, an admin and a member; every later change must leave them equal. React's generated ids
-// (useId, which counts every mount in the file) are written as one token, so a mount added later cannot move them.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
@@ -33,7 +28,6 @@ import {
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
-const OTHER_TEAM = '2c1f74ec-0000-4000-8000-000000000002'
 const NOW = new Date('2026-11-07T12:00:00Z')
 const E3 = "After a teammate's next visit to Pulse, you see their email, and their name if they've set one."
 const NAMES_LINE = "A teammate's name shows after their next visit to Pulse, if they've set one."
@@ -61,8 +55,7 @@ vi.mock('@/lib/api/roles', () => ({ listRoles }))
 const getAuditLog = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/audit', () => ({ getAuditLog }))
 
-const getMe = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/api/me', () => ({ getMe, pickActiveTeam: () => null }))
+vi.mock('@/lib/api/me', () => ({ getMe: vi.fn(), pickActiveTeam: () => null }))
 vi.mock('@/lib/auth/switchOrganization', () => ({ activateTeam: vi.fn().mockResolvedValue(undefined) }))
 
 const session = vi.hoisted(() => ({ role: 'owner' as 'owner' | 'admin' | 'member' }))
@@ -157,98 +150,22 @@ import TeamPage from '../TeamPage'
 
 const ORG = { id: TEAM, name: 'Example', slug: 'example', created_at: '2026-01-01T00:00:00Z', onboarding_completed_at: null, beta_features_enabled: true }
 
-function me(features: Record<string, string[]>) {
-  return {
-    user_id: ME,
-    default_team_id: TEAM,
-    teams: Object.entries(features).map(([id, f]) => ({ id, name: id, slug: id, role: 'owner', onboarding_completed_at: null, last_active_at: null, joined_at: '2026-02-01T08:00:00Z', features: f })),
-  }
-}
-
-/** The DOM as drawn, React's generated ids written as one token. */
-const dom = (markup: string) => markup.replace(/_r_[0-9a-z]+_/g, '_r_id_')
-
 /**
- * The session as a context value; `null` mounts the page with no provider at all, as with both betas off everywhere.
- * `emails`: the team's addresses the session holds (the made-up team's, as its owner's browser opens them).
+ * The session as a context value. `emails`: the team's addresses the session holds (the made-up team's, as its owner's
+ * browser opens them).
  */
-function sessionFor(
-  state: MadeUpState,
-  flags: { names: boolean; activeEmails?: boolean; anyEmails?: boolean },
-  emails: MadeUpEmailState | null = null,
-  over: Partial<TeamNamesSnapshot> = {},
-): TeamNamesContextValue {
+function sessionFor(state: MadeUpState, emails: MadeUpEmailState | null = null, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
   return {
     snapshot: { ...madeUpSnapshot(state, TEAM, ME, MY_NAME, emails), ...over },
     myId: ME,
     activeTeamId: TEAM,
-    activeFlagged: flags.names,
-    anyFlagged: flags.names,
-    activeEmailsFlagged: flags.activeEmails ?? false,
-    anyEmailsFlagged: flags.anyEmails ?? flags.activeEmails ?? false,
     reset: vi.fn(),
     retry: vi.fn(),
     nameChanged: vi.fn(),
   }
 }
 
-/**
- * Every way team emails are off for this viewer on this team, each with the team's addresses in memory as a session
- * could hold them: the beta off here and everywhere, on in another team only, and (for a member) on here.
- */
-function emailsOff(state: MadeUpState, names: boolean, role: 'owner' | 'admin' | 'member') {
-  const features = names ? ['team-names'] : []
-  return [
-    { features, other: [] as string[], context: sessionFor(state, { names }, 'all') },
-    { features, other: ['team-emails'], context: sessionFor(state, { names, anyEmails: true }, 'all') },
-    ...(role === 'member' ? [{ features: [...features, 'team-emails'], other: [] as string[], context: sessionFor(state, { names, activeEmails: true }, 'all') }] : []),
-  ]
-}
-
-/** The page with the team's betas as /me lists them, and the session the provider would hold. */
-async function mountPage(features: string[], context: TeamNamesContextValue | null, other: string[] = []) {
-  getMe.mockResolvedValue(me({ [TEAM]: features, [OTHER_TEAM]: other }))
-  const tree = (
-    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-      <TeamPage />
-    </SWRConfig>
-  )
-  const view = render(context ? <TeamNamesContext.Provider value={context}>{tree}</TeamNamesContext.Provider> : tree)
-  await waitFor(() => {
-    expect(document.querySelectorAll('[data-team-person]').length).toBe(5)
-    if (session.role !== 'member') expect(document.querySelector('table[data-team-audit]')).not.toBeNull()
-  })
-  // Every read the page started (the /me the betas come from included) has answered.
-  await act(() => new Promise((r) => setTimeout(r, 50)))
-  if (features.includes('team-names')) await waitFor(() => expect(document.querySelectorAll('[data-tn-person-row]').length).toBe(5))
-  return view
-}
-
-/** A person's row, found by their Remove button, whose accessible name carries the start of their id in every state. */
-const personRow = (id: string) =>
-  [...document.querySelectorAll<HTMLElement>('[data-team-person]')].find((el) =>
-    el.querySelector('[data-team-slot="2"]')?.getAttribute('aria-label')?.includes(id.slice(0, 8)),
-  ) as HTMLElement
-
 const cancel = () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
-
-/** The dialogs the viewer can open on Maren: remove (owner and admins), change role and transfer (the owner). */
-function dialogs(): Record<string, string> {
-  const out: Record<string, string> = {}
-  fireEvent.click(personRow(MAREN).querySelector('[data-team-slot="2"]') as HTMLElement)
-  out.remove = dom(screen.getByRole('dialog').outerHTML)
-  cancel()
-  if (session.role !== 'owner') return out
-  fireEvent.click(within(personRow(MAREN)).getByRole('button', { name: 'Change role' }))
-  out.changeRole = dom(screen.getByRole('dialog').outerHTML)
-  cancel()
-  fireEvent.click(within(document.querySelector('[data-kit-section="Danger zone"]') as HTMLElement).getByRole('button', { name: 'Transfer' }))
-  out.transfer = dom(screen.getByRole('dialog').outerHTML)
-  fireEvent.change(within(screen.getByRole('dialog')).getByRole('combobox'), { target: { value: AMARA } })
-  out.transferPicked = dom(screen.getByRole('dialog').outerHTML)
-  cancel()
-  return out
-}
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
@@ -260,7 +177,6 @@ beforeEach(() => {
   api.getInviteLinks.mockResolvedValue([])
   listRoles.mockReset().mockResolvedValue({ roles: [] })
   getAuditLog.mockReset().mockResolvedValue({ entries: madeUpAudit(TEAM, ME, NOW), total: 10, avatar_seeds: {} })
-  getMe.mockReset().mockResolvedValue(me({ [TEAM]: [] }))
   toast.success.mockReset()
   toast.error.mockReset()
   session.role = 'owner'
@@ -277,65 +193,6 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("the Team page with team emails off in every team: today's DOM, byte for byte", () => {
-  it('team names off, the owner: the page, the remove and change role dialogs, and the transfer picker', async () => {
-    const view = await mountPage([], null)
-    const page = dom(view.container.innerHTML)
-    expect(page).toMatchSnapshot('page')
-    const today = dialogs()
-    expect(today).toMatchSnapshot('dialogs')
-    cleanup()
-
-    // The same with the team's addresses in memory, while team emails are off for this team.
-    for (const variant of emailsOff('named', false, 'owner')) {
-      const again = await mountPage(variant.features, variant.context, variant.other)
-      expect(dom(again.container.innerHTML)).toBe(page)
-      expect(dialogs()).toEqual(today)
-      expect(document.querySelector('[data-tn-email]')).toBeNull()
-      cleanup()
-    }
-  })
-
-  it.each([
-    ['owner', 'named'],
-    ['admin', 'named'],
-    ['member', 'named'],
-    ['owner', 'partial'],
-    ['owner', 'copies'],
-    ['owner', 'locked'],
-  ] as const)('team names on, %s, %s: the page and every dialog the viewer can open', async (role, state) => {
-    session.role = role
-    const view = await mountPage(['team-names'], sessionFor(state, { names: true }))
-    const page = dom(view.container.innerHTML)
-    expect(page).toMatchSnapshot('page')
-    const today = role !== 'member' ? dialogs() : null
-    if (today) expect(today).toMatchSnapshot('dialogs')
-    cleanup()
-
-    for (const variant of emailsOff(state, true, role)) {
-      const again = await mountPage(variant.features, variant.context, variant.other)
-      expect(dom(again.container.innerHTML)).toBe(page)
-      if (today) expect(dialogs()).toEqual(today)
-      expect(document.querySelector('[data-tn-email]')).toBeNull()
-      cleanup()
-    }
-  })
-
-  it('team names off, a member: no address with team emails on here', async () => {
-    session.role = 'member'
-    const view = await mountPage([], null)
-    const page = dom(view.container.innerHTML)
-    cleanup()
-    for (const variant of emailsOff('named', false, 'member')) {
-      const again = await mountPage(variant.features, variant.context, variant.other)
-      expect(dom(again.container.innerHTML)).toBe(page)
-      cleanup()
-    }
-  })
-})
-
-// ─── With team emails on ─────────────────────────────────────────────────────────────────────────────────────────
-
 const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => undefined }
 
 /** The session as a value the test can change while the page stays mounted. */
@@ -347,12 +204,10 @@ function Holder({ initial, children }: { initial: TeamNamesContextValue; childre
   return <TeamNamesContext.Provider value={value}>{children}</TeamNamesContext.Provider>
 }
 
-/** The page with team emails on here (and team names unless `names: false`), and the addresses the session holds. */
-async function mountOn(state: MadeUpState, emails: MadeUpEmailState | null, opts: { names?: boolean; over?: Partial<TeamNamesSnapshot> } = {}) {
-  const names = opts.names ?? true
-  getMe.mockResolvedValue(me({ [TEAM]: [...(names ? ['team-names'] : []), 'team-emails'] }))
+/** The page, and the addresses the session holds. */
+async function mountOn(state: MadeUpState, emails: MadeUpEmailState | null, opts: { over?: Partial<TeamNamesSnapshot> } = {}) {
   const view = render(
-    <Holder initial={sessionFor(state, { names, activeEmails: true }, emails, opts.over)}>
+    <Holder initial={sessionFor(state, emails, opts.over)}>
       <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
         <TeamPage />
       </SWRConfig>
@@ -363,7 +218,7 @@ async function mountOn(state: MadeUpState, emails: MadeUpEmailState | null, opts
     if (session.role !== 'member') expect(document.querySelector('table[data-team-audit]')).not.toBeNull()
   })
   await act(() => new Promise((r) => setTimeout(r, 50)))
-  if (names) await waitFor(() => expect(document.querySelectorAll('[data-tn-person-row]').length).toBe(5))
+  await waitFor(() => expect(document.querySelectorAll('[data-tn-person-row]').length).toBe(5))
   return view
 }
 
@@ -400,7 +255,7 @@ function expectAddressDevice(el: Element | null) {
   expect((el as HTMLElement).querySelector('a')).toBeNull()
 }
 
-describe('the Team page with team emails on, for an owner or admin', () => {
+describe('the Team page with team emails, for an owner or admin', () => {
   it("People: each teammate's address beside the name, in the name's line, after the name; none beside You", async () => {
     await mountOn('named', 'all')
     expect(addresses(peopleSection())).toEqual([MAREN, JONAS, AMARA, LENA].map(addressOf))
@@ -425,14 +280,6 @@ describe('the Team page with team emails on, for an owner or admin', () => {
     expect(row(ME).querySelector('[data-tn-email]')).toBeNull()
     expect(addresses()).not.toContain('own.address@example.com')
     expect(addresses(peopleSection())).toHaveLength(4)
-    cleanup()
-    // Without team names "You" is today's plain word, so only the address rule keeps it alone.
-    await mountOn('named', 'all', { names: false, over: withOwn })
-    const mine = document.querySelector('[data-team-person="me"]') as HTMLElement
-    expect(text(mine.querySelector('[data-kit-row] .font-medium'))).toBe('You')
-    expect(mine.querySelector('[data-tn-email]')).toBeNull()
-    expect(addresses()).not.toContain('own.address@example.com')
-    expect(addresses(peopleSection())).toHaveLength(4)
   })
 
   it('an admin sees the addresses too; a member sees none', async () => {
@@ -449,7 +296,7 @@ describe('the Team page with team emails on, for an owner or admin', () => {
     await mountOn('named', 'all')
     expect(addresses(peopleSection())).toHaveLength(4)
     session.role = 'member'
-    act(() => holder.set(sessionFor('named', { names: true, activeEmails: true }, 'all')))
+    act(() => holder.set(sessionFor('named', 'all')))
     expect(addresses()).toEqual([])
   })
 
@@ -557,20 +404,6 @@ describe('the Team page with team emails on, for an owner or admin', () => {
     session.role = 'member'
     await mountOn('partial', 'partial')
     expect(lines()).toEqual([['notYet', 'section-line', NAMES_LINE]])
-  })
-
-  it("team emails without team names: the address beside today's label, in the transfer list and in the log; no line", async () => {
-    await mountOn('partial', 'partial', { names: false })
-    const maren = personRow(MAREN)
-    expect(text(maren.querySelector('[data-kit-row] .font-medium'))).toBe('Teammate 3f2a9c1b maren.lindqvist@example.com')
-    expectAddressDevice(maren.querySelector('[data-tn-email]'))
-    expect(addresses(peopleSection())).toEqual([MAREN, JONAS, LENA].map(addressOf))
-    expect(lines()).toEqual([])
-    expect(text(whoCells()[7])).toBe(`Teammate 5a6b7c8d ${FORMER_EMAIL}`)
-    expect(text(whoCells()[1])).toBe('Teammate 3f2a9c1b')
-    fireEvent.click(within(document.querySelector('[data-kit-section="Danger zone"]') as HTMLElement).getByRole('button', { name: 'Transfer' }))
-    const options = [...screen.getByRole('dialog').querySelectorAll('option')].filter((o) => o.value)
-    expect(options.map((o) => o.getAttribute('data-detail'))).toEqual([addressOf(MAREN), null, addressOf(JONAS), addressOf(LENA)])
   })
 
   it('draws no address while this browser is locked, and keeps the locked prompt', async () => {

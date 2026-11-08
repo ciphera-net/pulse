@@ -1,9 +1,6 @@
 // Team names on the Team page (design Pulse/docs/plans/07-11-2026-team-names-e2e-design.md §7; rulings R63 to R65;
 // copy deck §14). The made-up team of lib/team-names/__tests__/fixtures, against the real SWR, the real kit and the
 // real sections; the API, the session, Facet's controls and the save bar are stood in.
-//
-// 🔴 WITH THE BETA OFF THE PAGE IS TODAY'S, BYTE FOR BYTE. The snapshots in __snapshots__/TeamNames.test.tsx.snap were
-// recorded on the commit before the surfaces existed; every later change must leave them equal.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
@@ -20,7 +17,6 @@ import {
   TOMAS,
   madeUpAudit,
   madeUpMembers,
-  madeUpNames,
   madeUpSnapshot,
   NO_EMAILS,
   type MadeUpState,
@@ -28,8 +24,9 @@ import {
 
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
-const OTHER_TEAM = '2c1f74ec-0000-4000-8000-000000000002'
 const NOW = new Date('2026-11-07T12:00:00Z')
+// The not-yet line an owner or admin reads, in the names line's place (E3 W1): they wait for addresses too.
+const E3 = "After a teammate's next visit to Pulse, you see their email, and their name if they've set one."
 
 const api = vi.hoisted(() => ({
   getOrganization: vi.fn(),
@@ -54,8 +51,7 @@ vi.mock('@/lib/api/roles', () => ({ listRoles }))
 const getAuditLog = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/audit', () => ({ getAuditLog }))
 
-const getMe = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/api/me', () => ({ getMe, pickActiveTeam: () => null }))
+vi.mock('@/lib/api/me', () => ({ getMe: vi.fn(), pickActiveTeam: () => null }))
 vi.mock('@/lib/auth/switchOrganization', () => ({ activateTeam: vi.fn().mockResolvedValue(undefined) }))
 
 const session = vi.hoisted(() => ({ role: 'owner' as 'owner' | 'admin' | 'member' }))
@@ -149,51 +145,7 @@ import TeamPage from '../TeamPage'
 
 const ORG = { id: TEAM, name: 'Example', slug: 'example', created_at: '2026-01-01T00:00:00Z', onboarding_completed_at: null, beta_features_enabled: true }
 
-function me(features: Record<string, string[]>) {
-  return {
-    user_id: ME,
-    default_team_id: TEAM,
-    teams: Object.entries(features).map(([id, f]) => ({ id, name: id, slug: id, role: 'owner', onboarding_completed_at: null, last_active_at: null, joined_at: '2026-02-01T08:00:00Z', features: f })),
-  }
-}
-
-/** A session that holds names for the active team, as the provider would draw them only with the beta on there. */
-function contextWithNames(activeFlagged: boolean): TeamNamesContextValue {
-  const names = madeUpNames('named')
-  const snapshot: TeamNamesSnapshot = {
-    status: 'ready',
-    share: 'name',
-    teams: new Map([[TEAM, { status: 'ready', names, memberIds: new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id)), duplicates: new Set(), ...NO_EMAILS }]]),
-  }
-  return {
-    snapshot,
-    myId: ME,
-    activeTeamId: TEAM,
-    activeFlagged,
-    anyFlagged: true,
-    activeEmailsFlagged: false,
-    anyEmailsFlagged: false,
-    reset: vi.fn(),
-    retry: vi.fn(),
-    nameChanged: vi.fn(),
-  }
-}
-
-function mount(context: TeamNamesContextValue | null = null) {
-  const page = (
-    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-      <TeamPage />
-    </SWRConfig>
-  )
-  return render(context ? <TeamNamesContext.Provider value={context}>{page}</TeamNamesContext.Provider> : page)
-}
-
-/** A person's row, found by their Remove button, whose accessible name carries the start of their id in every state. */
-const personRow = (id: string) =>
-  [...document.querySelectorAll<HTMLElement>('[data-team-person]')].find((el) =>
-    el.querySelector('[data-team-slot="2"]')?.getAttribute('aria-label')?.includes(id.slice(0, 8)),
-  )
-/** The people and the log are drawn, and every read the page started (the /me the beta comes from included) has answered. */
+/** The people and the log are drawn, and every read the page started has answered. */
 async function loaded() {
   await waitFor(() => {
     expect(document.querySelectorAll('[data-team-person]').length).toBe(5)
@@ -212,7 +164,6 @@ beforeEach(() => {
   api.getInviteLinks.mockResolvedValue([])
   listRoles.mockReset().mockResolvedValue({ roles: [] })
   getAuditLog.mockReset().mockResolvedValue({ entries: madeUpAudit(TEAM, ME, NOW), total: 10, avatar_seeds: {} })
-  getMe.mockReset().mockResolvedValue(me({ [TEAM]: [] }))
   toast.success.mockReset()
   toast.error.mockReset()
   session.role = 'owner'
@@ -229,73 +180,11 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('the Team page with the team-names beta off: today\'s DOM, byte for byte', () => {
-  it('draws the page as today, and the same with the beta on in another team or a session holding names', async () => {
-    const first = mount()
-    await loaded()
-    const today = first.container.innerHTML
-    expect(today).toMatchSnapshot()
-    cleanup()
-
-    getMe.mockResolvedValue(me({ [TEAM]: [], [OTHER_TEAM]: ['team-names'] }))
-    const second = mount(contextWithNames(false))
-    await loaded()
-    expect(second.container.innerHTML).toBe(today)
-  })
-
-  it('draws the remove dialog, its Undo bar and its failure words as today', async () => {
-    mount()
-    await loaded()
-    const row = personRow(MAREN) as HTMLElement
-    fireEvent.click(within(row).getByRole('button', { name: `Remove Teammate ${MAREN.slice(0, 8)}` }))
-    const dialog = screen.getByRole('dialog')
-    expect(dialog.outerHTML).toMatchSnapshot()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to remove' }))
-    expect(deferred.at(-1)?.message).toBe(`Teammate ${MAREN.slice(0, 8)} removed`)
-  })
-
-  it('draws the change role dialog as today', async () => {
-    mount()
-    await loaded()
-    const row = personRow(MAREN) as HTMLElement
-    fireEvent.click(within(row).getByRole('button', { name: 'Change role' }))
-    expect(screen.getByRole('dialog').outerHTML).toMatchSnapshot()
-  })
-
-  it('draws the transfer picker as today, before and after a person is picked, and its Undo bar', async () => {
-    mount()
-    await loaded()
-    fireEvent.click(within(document.querySelector('[data-kit-section="Danger zone"]') as HTMLElement).getByRole('button', { name: 'Transfer' }))
-    const dialog = screen.getByRole('dialog')
-    expect(dialog.outerHTML).toMatchSnapshot()
-    fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: AMARA } })
-    expect(screen.getByRole('dialog').outerHTML).toMatchSnapshot()
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Hold to transfer' }))
-    expect(deferred.at(-1)?.message).toBe(`Ownership transferred to Teammate ${AMARA.slice(0, 8)}`)
-  })
-
-  // Last in this block: React's useId counter runs across the file, and a test placed before the recorded snapshots
-  // would move the ids they hold.
-  it('stays today\'s while /me has not answered, so the beta never flashes on', async () => {
-    const first = mount()
-    await loaded()
-    const today = first.container.innerHTML
-    cleanup()
-
-    getMe.mockReturnValue(new Promise(() => undefined))
-    const pending = mount(contextWithNames(true))
-    await loaded()
-    expect(pending.container.innerHTML).toBe(today)
-  })
-})
-
-// ─── With the beta on ────────────────────────────────────────────────────────────────────────────────────────────
-
 const actions = { reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 const holder: { set: (value: TeamNamesContextValue) => void } = { set: () => undefined }
 
 function sessionFor(state: MadeUpState, over: Partial<TeamNamesSnapshot> = {}): TeamNamesContextValue {
-  return { snapshot: { ...madeUpSnapshot(state, TEAM, ME), ...over }, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, ...actions }
+  return { snapshot: { ...madeUpSnapshot(state, TEAM, ME), ...over }, myId: ME, activeTeamId: TEAM, ...actions }
 }
 
 /** The session as a value the test can change while the page stays mounted (a try that fails moves it to `error`). */
@@ -308,7 +197,6 @@ function Holder({ initial, children }: { initial: TeamNamesContextValue; childre
 }
 
 async function mountOn(state: MadeUpState, over: Partial<TeamNamesSnapshot> = {}) {
-  getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
   const view = render(
     <Holder initial={sessionFor(state, over)}>
       <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
@@ -317,7 +205,6 @@ async function mountOn(state: MadeUpState, over: Partial<TeamNamesSnapshot> = {}
     </Holder>,
   )
   await loaded()
-  // The beta is read from /me: the rows take their team-names shape once it answers.
   await waitFor(() => expect(document.querySelectorAll('[data-tn-person-row]').length).toBe(5))
   return view
 }
@@ -337,7 +224,7 @@ function text(el: Element | null): string {
 const whoCells = () => [...document.querySelectorAll('table[data-team-audit] tbody tr')].filter((tr) => tr.children.length === 3).map((tr) => tr.children[1] as HTMLElement)
 const lines = () => [...document.querySelectorAll('[data-tn-line]')]
 
-describe('the Team page with the team-names beta on', () => {
+describe('the Team page with team names', () => {
   beforeEach(() => {
     for (const fn of Object.values(actions)) fn.mockReset()
     actions.retry.mockResolvedValue(undefined)
@@ -453,11 +340,11 @@ describe('the Team page with the team-names beta on', () => {
     expect(text(row(LENA).querySelector('[data-kit-row] p'))).toContain('Member · 8d4e1f60')
   })
 
-  it('says once, in People\'s line, that a name has not arrived; the teammate stays Teammate and their id', async () => {
+  it('says once, in People\'s line, that a name has not arrived (the owner\'s words, E3 W1); the teammate stays Teammate and their id', async () => {
     await mountOn('partial')
-    expect(lines().map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])).toEqual([['notYet', 'section-line']])
+    expect(lines().map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])).toEqual([['notYetEmail', 'section-line']])
     const header = document.querySelector('[data-kit-section="People"] header') as HTMLElement
-    expect(text(header.querySelector('p'))).toBe("Everyone in this team, and the invite links you made. A teammate's name shows after their next visit to Pulse, if they've set one.")
+    expect(text(header.querySelector('p'))).toBe(`Everyone in this team, and the invite links you made. ${E3}`)
     const amara = row(AMARA)
     expect(text(amara.querySelector('[data-kit-row] .font-medium'))).toBe('Teammate 2f4e6d8a')
     expect(amara.querySelector('[data-kit-row] .font-medium [data-tn-system]')?.textContent).toBe('Teammate')
@@ -502,12 +389,11 @@ describe('the Team page with the team-names beta on', () => {
     // Published, and the team read before anyone sealed a name for the new key: People's line says names are coming.
     const memberIds = new Set(madeUpMembers(TEAM, ME).map((m) => m.user_id))
     act(() => holder.set(sessionFor('first', { status: 'ready', share: 'name', teams: new Map([[TEAM, { status: 'ready', names: new Map(), memberIds, duplicates: new Set(), ...NO_EMAILS }]]) })))
-    expect(lines().map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])).toEqual([['notYet', 'section-line']])
+    expect(lines().map((l) => [l.getAttribute('data-tn-line'), l.getAttribute('data-tn-line-place')])).toEqual([['notYetEmail', 'section-line']])
   })
 
   it('draws nothing for somebody alone, not even the locked prompt: nobody to name', async () => {
     teamState.value = 'alone'
-    getMe.mockResolvedValue(me({ [TEAM]: ['team-names'] }))
     api.getOrganizationMembers.mockResolvedValue(madeUpMembers(TEAM, ME).slice(0, 1))
     render(
       <Holder initial={sessionFor('locked')}>

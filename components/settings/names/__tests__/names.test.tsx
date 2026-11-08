@@ -12,8 +12,6 @@ import { AMARA, GONE, LENA, MAREN, NO_EMAILS, TOMAS, madeUpMembers, madeUpSnapsh
 const ME = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
 
-const flag = vi.hoisted(() => ({ value: true as boolean | null }))
-vi.mock('@/lib/features', () => ({ useFeature: (name: string) => (name === 'team-names' ? flag.value : false), ME_KEY: '/api/v1/me' }))
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { id: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', org_id: '2c1f74ec-0000-4000-8000-000000000001' } }) }))
 
 import { usePeopleNames, type PeopleNames } from '../useNames'
@@ -21,7 +19,7 @@ import { plainName, titleName, type PersonWho } from '../words'
 import { asksForPassword, resetErrorMessage } from '../errors'
 
 function session(snapshot: TeamNamesSnapshot | null): TeamNamesContextValue {
-  return { snapshot, myId: ME, activeTeamId: TEAM, activeFlagged: true, anyFlagged: true, activeEmailsFlagged: false, anyEmailsFlagged: false, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
+  return { snapshot, myId: ME, activeTeamId: TEAM, reset: vi.fn(), retry: vi.fn(), nameChanged: vi.fn() }
 }
 
 const got: { names: PeopleNames | null } = { names: null }
@@ -45,7 +43,6 @@ const of = (state: MadeUpState) => madeUpSnapshot(state, TEAM, ME)
 const everyone = madeUpMembers(TEAM, ME).map((m) => m.user_id)
 
 beforeEach(() => {
-  flag.value = true
   got.names = null
 })
 afterEach(() => cleanup())
@@ -90,14 +87,10 @@ describe('the line a page owes', () => {
     expect(resolve(of(state)).lineFor(everyone)).toBe(line)
   })
 
-  it('owes none with the beta off, or for a page that names nobody but the person', () => {
+  it('owes none for a page that names nobody but the person', () => {
     expect(resolve(of('locked')).lineFor([ME])).toBeNull()
     cleanup()
-    flag.value = null
-    expect(resolve(of('locked')).lineFor(everyone)).toBeNull()
-    cleanup()
-    flag.value = false
-    expect(resolve(of('partial')).lineFor(everyone)).toBeNull()
+    expect(resolve(of('partial')).lineFor([ME])).toBeNull()
   })
 
   it('says nothing is on its way for a team that failed to load or is too large to serve names', () => {

@@ -12,8 +12,8 @@ import type { OrganizationMember } from '@/lib/api/organization'
 import { duplicateIds, emailDuplicateIds, type OpenedEmail } from '@/lib/team-names/reconcile'
 import type { TeamNamesSnapshot, TeamNamesStatus, TeamState } from '@/lib/team-names/session'
 
-/** A team's address fields with team emails off (design §16): what a team without the beta carries. */
-export const NO_EMAILS: Pick<TeamState, 'emailStatus' | 'emails' | 'emailDuplicates'> = { emailStatus: 'off', emails: new Map(), emailDuplicates: new Set() }
+/** A team's address fields before its addresses are read (design §16): none to draw yet. */
+export const NO_EMAILS: Pick<TeamState, 'emailStatus' | 'emails' | 'emailDuplicates'> = { emailStatus: 'loading', emails: new Map(), emailDuplicates: new Set() }
 
 /** How one browser sees the team: no vault key here, no team key yet, some names, every name, copied names. */
 export type MadeUpState = 'locked' | 'first' | 'partial' | 'named' | 'copies'
@@ -163,8 +163,8 @@ export function madeUpConnections(myId: string, now: Date): Connection[] {
  * The session's snapshot for one state, as lib/team-names/session.ts builds it: no team read while locked or while the
  * first key is being published (`first`: since R72 that happens on its own, under `loading`), and the duplicates
  * (Pulse's own words included) worked out by the real rule. `own` is my own name. `emails`, when given, is the team's
- * addresses as an owner's browser holds them, the duplicates by the real rule against my own address (team emails off
- * without it, as before).
+ * addresses as an owner's browser holds them, the duplicates by the real rule against my own address (none read yet
+ * without it).
  */
 export function madeUpSnapshot(
   state: MadeUpState,

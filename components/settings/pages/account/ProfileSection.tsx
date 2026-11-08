@@ -18,16 +18,10 @@ import { KitRow, KitRows, KitSection } from '@/components/settings/kit/Kit'
 import { CannotOpenRow, ResetDialog, TooLongLine } from '@/components/settings/names/account'
 import { NAMES_WORDS } from '@/components/settings/names/words'
 import { shareableName } from '@/lib/crypto/team-names'
-import { useTeamEmails, useTeamNames, useTeamNamesActions } from '@/lib/team-names/hooks'
+import { useTeamNames, useTeamNamesActions } from '@/lib/team-names/hooks'
 import { emailChangeErrorMessage, saveNameErrorMessage, unlockErrorMessage } from './errors'
 import { expiryPhrase } from './format'
 import { DecryptingField, FieldError } from './parts'
-
-/**
- * Your name, true while the team-names beta is off in every team of yours (copy deck §12.2). With it on, the caption is
- * the notice R53 asks for (§14.7): teammates see the name, encrypted for each of them.
- */
-const NAME_CAPTION = 'Shown in your account menu. Your team doesn\'t see it: it stays in your encrypted profile.'
 
 /**
  * What the page knows about a live confirmation link.
@@ -85,12 +79,9 @@ export default function ProfileSection() {
   const [now, setNow] = useState(() => Date.now())
   // A cancel from THIS tab must not read as a confirmation elsewhere.
   const cancelledHere = useRef(false)
-  // Team names (design §5.6, §5.11, §7): with the beta on in any team of the person's, the name reaches teammates.
+  // Team names (design §5.6, §5.11, §7): the name reaches teammates.
   const teamNames = useTeamNames()
   const teamNamesActions = useTeamNamesActions()
-  const namesOn = teamNames.anyTeamHasBeta
-  // Team emails (design §16): with the beta on in any team of the person's, their address reaches its owners and admins.
-  const emailsOn = useTeamEmails().anyTeamHasBeta
   const [resetOpen, setResetOpen] = useState(false)
 
   useEffect(() => {
@@ -299,8 +290,8 @@ export default function ProfileSection() {
   // The name lives inside the encrypted vault, so saving it re-seals the vault with the key this browser holds.
   // Rejects on failure, so the save bar keeps the draft and never says "Saved".
   //
-  // Then team names follow it (design §5.6): sealed afresh for teammates in every team with the beta, or, when the name
-  // is cleared, every copy withdrawn, beta or not. A withdrawal that fails fails the save, so Save tries both again.
+  // Then team names follow it (design §5.6): sealed afresh for teammates in every team, or, when the name is cleared,
+  // every copy withdrawn. A withdrawal that fails fails the save, so Save tries both again.
   const handleSave = useCallback(async () => {
     const name = displayName.trim()
     try {
@@ -356,13 +347,13 @@ export default function ProfileSection() {
     ? 'Unlock your profile to change your name.'
     : emailChange.kind === 'pending'
       ? 'Saving your name now makes the waiting email change fail. You\'d need to ask for it again.'
-      : namesOn
-        ? baseline.trim() === '' ? NAMES_WORDS.noName : NAMES_WORDS.notice
-        : NAME_CAPTION
+      : baseline.trim() === ''
+        ? NAMES_WORDS.noName
+        : NAMES_WORDS.notice
   // The saved name is over what a team name can carry (set through another client): it is not shared (§14.7).
-  const nameTooLong = namesOn && !piiUnavailable && !valuesResolving && shareableName(baseline).kind === 'too_long'
+  const nameTooLong = !piiUnavailable && !valuesResolving && shareableName(baseline).kind === 'too_long'
   // This browser cannot open its team-names key, or the server's key contradicts it: the reset fixes both (§5.11).
-  const cannotOpen = namesOn && (teamNames.state === 'cannot_open' || teamNames.state === 'key_mismatch')
+  const cannotOpen = teamNames.state === 'cannot_open' || teamNames.state === 'key_mismatch'
 
   const emailCaption =
     emailChange.kind === 'unknown'
@@ -373,9 +364,7 @@ export default function ProfileSection() {
           ? 'Couldn\'t check for a waiting change. You can still send a link: it replaces any earlier one, and nothing changes until it\'s opened.'
           : emailResolvedNote
             ? 'That change was confirmed or it expired. Unlock to see your address.'
-            : emailsOn
-              ? NAMES_WORDS.emailNotice
-              : 'Changing it needs your password, then a click on a link sent to the new address.'
+            : NAMES_WORDS.emailNotice
 
   const emailControl = valuesResolving || emailEditing || !canEditEmail ? undefined : (
     <>
@@ -548,7 +537,7 @@ export default function ProfileSection() {
       </KitSection>
 
       <SettingsSaveBar isDirty={isDirty} onSave={handleSave} onDiscard={() => setDisplayName(baseline)} />
-      {namesOn && <ResetDialog open={resetOpen} onOpenChange={setResetOpen} />}
+      <ResetDialog open={resetOpen} onOpenChange={setResetOpen} />
     </>
   )
 }

@@ -14,9 +14,9 @@ import { NAMES_WORDS, shortId, type PersonWho } from './words'
  * the activity log takes the row's avatar. Pulse's own words (You, Pulse, Teammate, Former teammate, "former") are in
  * the grey ink, names in the page's ink, and the id is drawn as the code it is. A name is text, never markup.
  *
- * With team emails (design §16, R74 option A), an owner's or admin's screen shows a teammate's address beside the name,
- * in grey, on the name's line. Every part takes the address as `email`, null where there is none to draw, and null
- * draws exactly the DOM it drew before.
+ * An owner's or admin's screen shows a teammate's address beside the name (design §16, R74 option A), in grey, on the
+ * name's line. Every part takes the address as `email`, null where there is none to draw, and null draws the person
+ * without one.
  */
 
 /** The stable id, as the code it is: its first 8 characters, monospace, grey. */
@@ -52,9 +52,9 @@ export function PersonEmail({ email }: { email: string }) {
 
 /**
  * A label with the address beside it, on one line that wraps under it when the row is narrow: the name line's device
- * (NameLabel), for a label that is not a name ("Teammate" and the id, or a page's own words with team names off).
+ * (NameLabel), for a label that is not a name ("Teammate" and the id).
  */
-export function WithEmail({ email, children }: { email: string; children: React.ReactNode }) {
+function WithEmail({ email, children }: { email: string; children: React.ReactNode }) {
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-2">
       {children} <PersonEmail email={email} />

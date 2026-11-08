@@ -12,9 +12,9 @@ import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { formatPlanName } from '@/lib/plans'
 import { cn } from '@/lib/utils'
 import { KitLoadError, KitLoadingRows } from './states'
-import { personName, shortDayTime } from './words'
+import { shortDayTime } from './words'
 import { useMembers } from '@/lib/swr/members'
-import { PersonAvatar, PersonInline, WithEmail } from '@/components/settings/names/people'
+import { PersonAvatar, PersonInline } from '@/components/settings/names/people'
 import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
 
@@ -76,14 +76,15 @@ const DATE_INPUT = cn(
 /**
  * Activity log (copy deck §9.8): the team's changes, with the action and date filters, details and pages of today's
  * Audit log. Teams only, and only for the owner and admins (`audit.view`); the page decides whether it shows. Who
- * did it is "You", "Teammate" and the id, or "Pulse" when no person did.
+ * did it is "You", a teammate's name (or "Teammate" and the id until it reaches this browser), or "Pulse" when no person
+ * did.
  *
- * With the team-names beta on (design §7, R63), Who takes the People row's device: the avatar, then the name, with the
- * id beside it only for a former member (the name they had when they left, marked "former"), a name another person
- * has, or a name equal to one of Pulse's words. Pulse's own words stay grey. The details stay ids, shown as code.
+ * Who takes the People row's device (design §7, R63): the avatar, then the name, with the id beside it only for a
+ * former member (the name they had when they left, marked "former"), a name another person has, or a name equal to one
+ * of Pulse's words. Pulse's own words stay grey. The details stay ids, shown as code.
  *
- * With the team-emails beta on (design §16, R75), an owner's or admin's log shows a former member's kept address beside
- * their name, as on the People row; a current member's address is on People, not here.
+ * An owner's or admin's log shows a former member's kept address beside their name, as on the People row (design §16,
+ * R75); a current member's address is on People, not here.
  */
 export function ActivityLogSection() {
   const { user } = useAuth()
@@ -118,10 +119,6 @@ export function ActivityLogSection() {
 
   const who = (actorId: string | undefined): ReactNode => {
     const email = emails.formerOf(actorId)
-    if (!names.on) {
-      const label = actorId ? personName(actorId, user?.id) : 'Pulse'
-      return email !== null ? <WithEmail email={email}>{label}</WithEmail> : label
-    }
     // Not in the team any more: the members the page already read say so while the session cannot (locked).
     const current = actorId && members ? members.some((m) => m.user_id === actorId) : null
     const inline = <PersonInline who={names.who(actorId, current)} id={actorId ?? ''} email={email} />

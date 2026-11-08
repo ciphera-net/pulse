@@ -2,7 +2,8 @@
 // lib/team-names/api.ts: each state opens to what the browser check of the built pages expects to draw. None but
 // `first` leaves anything for the reconcile to write, so the check's read-only guard never sees a write attempted;
 // `first` (no key yet) publishes a key with no proof and then shares the name, as the browser does since R72. With an
-// email state the team-emails route answers too (design §16), and the same holds for addresses.
+// email state the team-emails route serves addresses too (design §16), and the same holds for them; without one it
+// answers 404, and no address is opened or written.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
@@ -56,7 +57,7 @@ vi.mock('@/lib/api/client', async (importActual) => {
       }
       if (path.endsWith('/members')) return b.members
       if (path.endsWith('/team-emails')) {
-        // Without an email state the beta is off there: the router's own 404.
+        // Without an email state there is no address to serve: a 404, which the session reads as `unavailable`.
         if (!b.emailDirectory) throw new actual.ApiError('Not found', 404)
         return b.emailDirectory
       }
@@ -78,7 +79,7 @@ import {
   writeEmails,
   writeNames,
 } from '../api'
-import { TeamNamesSession, type TeamFlags } from '../session'
+import { TeamNamesSession } from '../session'
 import { buildMadeUpNetwork, type MadeUpAccount } from './fixtures/network'
 import { AMARA, FORMER_EMAIL, GONE, JONAS, LENA, MADE_UP_PEOPLE, MAREN, TOMAS, type MadeUpEmailState, type MadeUpState } from './fixtures/madeUpTeam'
 
@@ -86,15 +87,13 @@ const ME = net.me
 const TEAM = '2c1f74ec-0000-4000-8000-000000000001'
 const VMK = new Uint8Array(32).fill(7)
 
-async function open(state: MadeUpState, account: MadeUpAccount = 'set', opts: { emails?: MadeUpEmailState; flags?: TeamFlags } = {}) {
+async function open(state: MadeUpState, account: MadeUpAccount = 'set', opts: { emails?: MadeUpEmailState } = {}) {
   const body = await buildMadeUpNetwork({ teamId: TEAM, myId: ME, state, account, now: new Date('2026-11-07T12:00:00Z'), vmk: VMK, emails: opts.emails })
   net.body = body as unknown as Record<string, unknown>
   const key = (await crypto.subtle.importKey('raw', VMK, 'HKDF', false, ['deriveKey'])) as VaultKey
   const session = new TeamNamesSession({
     userId: ME,
     api: { fetchOwnKey, publishKey, resetKey, fetchDirectory, fetchMemberIds, writeNames, withdrawNames, fetchEmailDirectory, writeEmails, withdrawEmails },
-    // Team names alone unless a test says otherwise, as before team emails: then no email route is ever asked for.
-    flagsFor: () => opts.flags ?? { names: true, emails: false },
     loadVaultKey: async () => key,
     readVault: (k) => decryptVaultH({ kind: 'opaque', vault: vaultOpsFor(k) }, body.vault.encrypted_vault),
     prove: async () => {
@@ -178,10 +177,8 @@ describe('the made-up team, through the real session', () => {
 })
 
 describe('the made-up team\'s addresses (team emails), through the real session', () => {
-  const BOTH = { names: true, emails: true }
-
   it('all: every teammate\'s address and the former member\'s kept one, beside every name, and nothing written', async () => {
-    const s = await open('named', 'set', { emails: 'all', flags: BOTH })
+    const s = await open('named', 'set', { emails: 'all' })
     expect(s.status).toBe('ready')
     expect(emails(s)).toEqual({
       [MAREN]: addressOf(MAREN),
@@ -196,21 +193,13 @@ describe('the made-up team\'s addresses (team emails), through the real session'
   })
 
   it('partial: one admin\'s address has not arrived', async () => {
-    const s = await open('named', 'set', { emails: 'partial', flags: BOTH })
+    const s = await open('named', 'set', { emails: 'partial' })
     expect(Object.keys(emails(s))).not.toContain(AMARA)
     expect(Object.keys(emails(s))).toHaveLength(4)
   })
 
-  it('team emails alone: the addresses arrive and the names directory is never asked for', async () => {
-    const s = await open('named', 'set', { emails: 'all', flags: { names: false, emails: true } })
-    expect(Object.keys(emails(s))).toHaveLength(5)
-    expect(net.calls.some((c) => c.endsWith('/team-names'))).toBe(false)
-    expect(names(s)).toEqual({})
-    expect(net.calls.filter((c) => !c.startsWith('GET'))).toEqual([])
-  })
-
   it('no key yet: published with no proof, then my name to every teammate and my address to the two admins (R72)', async () => {
-    const s = await open('first', 'set', { emails: 'all', flags: BOTH })
+    const s = await open('first', 'set', { emails: 'all' })
     expect(s).toMatchObject({ status: 'ready', firstKey: true })
     expect(net.calls.filter((c) => !c.startsWith('GET'))).toEqual([
       'POST /me/team-key',

@@ -39,21 +39,17 @@ export type TeammateName =
    */
   | { kind: 'name'; name: string; former: boolean; duplicate: boolean }
   /**
-   * No name has reached this browser: the beta is off, the vault is locked, the step is not done,
-   * they have not shared it yet, they have none, or their row could not be opened. `former` is true
-   * when the person is not a current member, false when they are, null when the list is not read.
+   * No name has reached this browser: the vault is locked, the step is not done, they have not
+   * shared it yet, they have none, or their row could not be opened. `former` is true when the
+   * person is not a current member, false when they are, null when the list is not read.
    */
   | { kind: 'not_yet'; former: boolean | null }
 
-/** `off` when no session runs (signed out, not an app route, the beta off in every team). */
+/** `off` when no session runs (signed out, or not an app route). */
 export type TeamNamesPageState = 'off' | TeamNamesStatus
 
 export interface TeamNamesView {
   state: TeamNamesPageState
-  /** The beta is on for the active team, so its surfaces should explain the states below. */
-  activeTeamHasBeta: boolean
-  /** The beta is on in at least one of the person's teams: Account explains what the name does. */
-  anyTeamHasBeta: boolean
   /** What the person's own name does: shared, none set, or too long to share (Account's line). */
   share: 'name' | 'none' | 'too_long' | null
   /** The active team's view: `too_large` over 500 members (ids only), `error` until the next try. */
@@ -61,7 +57,7 @@ export interface TeamNamesView {
 }
 
 function activeTeam(ctx: TeamNamesContextValue | null): TeamState | null {
-  if (!ctx?.snapshot || !ctx.activeTeamId || !ctx.activeFlagged) return null
+  if (!ctx?.snapshot || !ctx.activeTeamId) return null
   return ctx.snapshot.teams.get(ctx.activeTeamId) ?? null
 }
 
@@ -70,8 +66,6 @@ export function useTeamNames(): TeamNamesView {
   return useMemo(
     () => ({
       state: ctx?.snapshot ? ctx.snapshot.status : 'off',
-      activeTeamHasBeta: !!ctx?.activeFlagged,
-      anyTeamHasBeta: !!ctx?.anyFlagged,
       share: ctx?.snapshot?.share ?? null,
       team: activeTeam(ctx),
     }),
@@ -110,8 +104,8 @@ export type TeammateEmail =
   /** The signed-in person: their own address is never drawn beside them. */
   | { kind: 'self' }
   /**
-   * Nothing to draw, and nothing to explain: no session, the team-emails beta off for the active team, or the viewer is
-   * not an owner or admin of it now (their role as it is now, so a demotion hides every address at once).
+   * Nothing to draw, and nothing to explain: no session, no active team, or the viewer is not an owner or admin of it
+   * now (their role as it is now, so a demotion hides every address at once).
    */
   | { kind: 'off' }
   /** This browser holds no vault key, so it opens no address (the page's locked prompt says so). */
@@ -131,7 +125,7 @@ function teammateEmail(ctx: TeamNamesContextValue | null, ownerOrAdmin: boolean,
   if (userId && ctx?.myId === userId) return { kind: 'self' }
   // 🔴 Only an owner or admin of the active team sees addresses, on the role as it is now: the server stops serving the
   // rows after a demotion, but this browser may still hold them in memory until its next reconcile.
-  if (!userId || !ownerOrAdmin || !ctx?.snapshot || !ctx.activeTeamId || !ctx.activeEmailsFlagged) return { kind: 'off' }
+  if (!userId || !ownerOrAdmin || !ctx?.snapshot || !ctx.activeTeamId) return { kind: 'off' }
   const { snapshot } = ctx
   if (snapshot.status === 'locked') return { kind: 'locked' }
   if (snapshot.status !== 'ready') return { kind: 'unread' }
@@ -155,19 +149,14 @@ export function useTeammateEmailLookup(): (userId: string | null | undefined) =>
 }
 
 export interface TeamEmailsView {
-  /** The team-emails beta is on in at least one of the person's teams: Account's Email caption says who sees the address. */
-  anyTeamHasBeta: boolean
-  /** The viewer sees teammates' addresses here: a session, the beta on for the active team, and an owner or admin of it now. */
+  /** The viewer sees teammates' addresses here: a session, an active team, and an owner or admin of it now. */
   shown: boolean
 }
 
 export function useTeamEmails(): TeamEmailsView {
   const ctx = useContext(TeamNamesContext)
   const ownerOrAdmin = useIsAdminOrOwner()
-  return useMemo(
-    () => ({ anyTeamHasBeta: !!ctx?.anyEmailsFlagged, shown: ownerOrAdmin && !!ctx?.snapshot && !!ctx.activeEmailsFlagged }),
-    [ctx, ownerOrAdmin],
-  )
+  return useMemo(() => ({ shown: ownerOrAdmin && !!ctx?.snapshot && !!ctx.activeTeamId }), [ctx, ownerOrAdmin])
 }
 
 export function useTeamNamesActions(): Pick<TeamNamesContextValue, 'reset' | 'retry' | 'nameChanged'> | null {

@@ -131,8 +131,8 @@ export default function RootLayout({
                 so a delete that navigates (a site) keeps its Undo; inside the
                 auth provider, whose session the deferred request needs. */}
             <UndoProvider>
-              {/* Encrypted team names (beta `team-names`): draws nothing, runs only with
-                  the beta on, and needs the session above it. */}
+              {/* Encrypted team names and members' addresses: draws nothing, runs for a
+                  signed-in person on an app route, and needs the session above it. */}
               <TeamNamesProvider>
                 <LayoutContent>{children}</LayoutContent>
               </TeamNamesProvider>

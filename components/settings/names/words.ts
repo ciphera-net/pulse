@@ -42,11 +42,11 @@ export const NAMES_WORDS = {
   resetFailed: "Couldn't reset team names. Nothing changed. Try again.",
   resetDone: 'Team names reset',
 
-  // Team emails (§16.2, §16.3). Account's Email caption once the beta reaches a team of the person's: today's caption
-  // first, word for word, then the notice (E2 W1).
+  // Team emails (§16.2, §16.3). Account's Email caption: the caption it had before team emails first, word for word,
+  // then the notice (E2 W1).
   emailNotice:
     "Changing it needs your password, then a click on a link sent to the new address. The owners and admins of your teams see it too. Pulse encrypts it for each of them and can't read it.",
-  // The not-yet line for an owner or admin in a team with both betas, in the names line's place (E3 W1).
+  // The not-yet line for an owner or admin, in the names line's place (E3 W1).
   notYetEmail: "After a teammate's next visit to Pulse, you see their email, and their name if they've set one.",
 } as const
 

@@ -2,25 +2,18 @@
 
 import { useCallback, useMemo } from 'react'
 import { useAuth } from '@/lib/auth/context'
-import { useFeature } from '@/lib/features'
-import { TEAM_NAMES_FLAG } from '@/lib/team-names/provider'
 import { useTeamEmails, useTeammateEmailLookup, useTeamNames, useTeammateNameLookup, type TeamNamesPageState } from '@/lib/team-names/hooks'
 import type { PersonWho } from './words'
 
 /**
  * The once-per-page line a page owes (copy deck §14.6, P3 B): `locked` needs the person, so it is the page's prompt;
  * `notYet` needs nothing, so it is the section's line. At most one, never per row. (The one-time step's line went
- * with the step, R72.) `notYetEmail` is `notYet` for an owner or admin in a team with team emails too, who waits for
- * addresses as well as names (copy deck §16.3, E3 W1): it takes the names line's place.
+ * with the step, R72.) `notYetEmail` is `notYet` for an owner or admin, who waits for addresses as well as names
+ * (copy deck §16.3, E3 W1): it takes the names line's place.
  */
 export type NamesLine = 'locked' | 'notYet' | 'notYetEmail' | null
 
 export interface PeopleNames {
-  /**
-   * The team-names beta is on for the active team (`useFeature`, as every beta is read): the page draws names, ids and
-   * its line. Off, the page is today's, and nothing here is read.
-   */
-  on: boolean
   state: TeamNamesPageState
   /** Who a person is, as this browser can say it; `current` is the caller's own answer to "still in the team?". */
   who: (userId: string | null | undefined, current?: boolean | null) => PersonWho
@@ -32,10 +25,9 @@ export interface PeopleNames {
 export function usePeopleNames(): PeopleNames {
   const { user } = useAuth()
   const myId = user?.id ?? null
-  const on = useFeature(TEAM_NAMES_FLAG) === true
   const view = useTeamNames()
   const lookup = useTeammateNameLookup()
-  // Addresses, for an owner or admin of a team with team emails (design §16); `off` for everyone else.
+  // Addresses, for an owner or admin of the active team (design §16); `off` for everyone else.
   const emails = useTeamEmails()
   const emailOf = useTeammateEmailLookup()
 
@@ -61,7 +53,7 @@ export function usePeopleNames(): PeopleNames {
   const lineFor = useCallback(
     (teammateIds: readonly string[]): NamesLine => {
       // A page that names nobody but the person owes no line.
-      if (!on || !teammateIds.some((id) => id !== myId)) return null
+      if (!teammateIds.some((id) => id !== myId)) return null
       if (view.state === 'locked') return 'locked'
       // Only when the team's names were read: a team too large to serve them, or one that failed to load, is not a
       // name on its way.
@@ -75,8 +67,8 @@ export function usePeopleNames(): PeopleNames {
       }
       return nameOnItsWay ? 'notYet' : null
     },
-    [on, view.state, view.team, myId, who, emails.shown, emailOf],
+    [view.state, view.team, myId, who, emails.shown, emailOf],
   )
 
-  return useMemo(() => ({ on, state: view.state, who, lineFor }), [on, view.state, who, lineFor])
+  return useMemo(() => ({ state: view.state, who, lineFor }), [view.state, who, lineFor])
 }
