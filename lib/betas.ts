@@ -22,4 +22,7 @@ export const BETAS: readonly Beta[] = [
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
   // The Monday email with each site's week (pulse-backend's weekly summary job). Its settings row reads useFeature.
   { flag: 'weekly-summary', name: 'Weekly summary email', revalidates: [] },
+  // End-to-end encrypted team names (lib/team-names/). Its surfaces read useFeature and its provider reads /me's
+  // teams[].features under the same key, so the switch's write to /me is all a team needs.
+  { flag: 'team-names', name: 'Team names', revalidates: [] },
 ]
