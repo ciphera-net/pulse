@@ -71,6 +71,8 @@
     --takeover-rule: 34 34 38; /* session takeover rules and progress track (#222226) */
     --takeover-button: 22 22 24; /* session takeover secondary button (#161618) */
     --takeover-button-hover: 29 29 32; /* its hover (#1d1d20) */
+    --whats-new-shot-line: rgb(255 255 255 / 0.1); /* What's new: the docs screenshot's hairline */
+    --whats-new-shot-shadow: 0 18px 40px rgb(0 0 0 / 0.45); /* and its shadow */
 
     /* * Motion tokens (Phase 1 — premium UI pass) */
     --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
@@ -111,6 +113,8 @@
     --takeover-rule: 226 226 226;
     --takeover-button: 240 240 240;
     --takeover-button-hover: 232 232 232;
+    --whats-new-shot-line: rgb(0 0 0 / 0.14);
+    --whats-new-shot-shadow: 0 14px 32px rgb(0 0 0 / 0.22);
   }
   @media (prefers-color-scheme: light) {
     :root.theme-system {
@@ -137,6 +141,8 @@
       --takeover-rule: 226 226 226;
       --takeover-button: 240 240 240;
       --takeover-button-hover: 232 232 232;
+      --whats-new-shot-line: rgb(0 0 0 / 0.14);
+      --whats-new-shot-shadow: 0 14px 32px rgb(0 0 0 / 0.22);
     }
   }
 
@@ -180,6 +186,17 @@
    * (Phase 5 — premium UI pass) */
   .interactive-row {
     @apply hover:bg-white/[0.03] active:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset transition-colors duration-fast ease-apple;
+  }
+
+  /* * What's new (components/whats-new/WhatsNewButton.tsx): the docs screenshot's hairline and shadow follow the
+   * theme (a light line on dark, a dark one on light, or its edge disappears); the button's dot keeps a soft ring of
+   * brand orange in both. */
+  .whats-new-shot {
+    outline: 1px solid var(--whats-new-shot-line);
+    box-shadow: var(--whats-new-shot-shadow);
+  }
+  .whats-new-halo {
+    box-shadow: 0 0 0 3px rgb(253 94 15 / 0.18);
   }
 }
 
