@@ -12,8 +12,13 @@ import { getWhatsNew, markWhatsNewSeen, type WhatsNewResponse } from '@/lib/api/
 export function useWhatsNew() {
   const { user } = useAuth()
   const keyId = user ? user.id : null
+  // A new post reaches an open dashboard on its own (09-11-2026: a tab opened before a post went out kept the old list
+  // until it was reloaded). The feed is read again when the tab is shown and every 15 minutes while it is visible;
+  // `dedupingInterval` keeps any two reads at least 5 minutes apart. The server caches the docs feed for 10 minutes per
+  // replica, so asking more often finds nothing new.
   const { data, error, isLoading, mutate } = useSWR<WhatsNewResponse>(keyId ? ['whats-new', keyId] : null, () => getWhatsNew(), {
-    revalidateOnFocus: false,
+    revalidateOnFocus: true,
+    refreshInterval: 900_000,
     dedupingInterval: 300_000,
   })
 
