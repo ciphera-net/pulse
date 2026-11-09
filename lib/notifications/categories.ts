@@ -42,6 +42,6 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   { id: 'lifecycle', label: 'Getting started', critical: false },
   // summary joined with iris migration 045 (05-11-2026): the Monday weekly summary, in its own category and
   // opt-out class so switching it off silences nothing else. Last, for the same reason as lifecycle. Its row
-  // shows only while the weekly-summary beta is on for the team (MyPreferencesTab).
+  // shows for every team since 09-11-2026, when the weekly summary left beta.
   { id: 'summary', label: 'Weekly summary', critical: false },
 ]
