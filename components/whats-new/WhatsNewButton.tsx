@@ -27,8 +27,8 @@ export const WHATS_NEW_FLAG = 'whats-new'
 
 /** The panel's width on a computer; on a phone it is the screen width less 8 px on each side. */
 const PANEL_MAX_WIDTH = 400
-/** Rows under the card. */
-const ROW_LIMIT = 8
+/** Rows under the card: four keep the panel short, and the changelog link leads to the rest. */
+const ROW_LIMIT = 4
 
 const KIND_LABEL: Record<Exclude<WhatsNewKind, ''>, string> = {
   new: 'New',
