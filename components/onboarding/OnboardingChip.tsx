@@ -15,45 +15,13 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+import { ProgressRing } from '@/components/ui/ProgressRing'
 import { useOnboarding } from '@/lib/hooks/useOnboarding'
 import { trackOnboardingChipOpened, trackOnboardingItemClicked, trackOnboardingDismissed } from '@/lib/welcomeAnalytics'
 import { XIcon, CheckCircleIcon } from '@ciphera-net/facet'
 import { Circle as CircleIcon, LockSimple as LockSimpleIcon } from '@phosphor-icons/react'
 
 const PANEL_WIDTH = 288 // w-72
-
-function ProgressRing({ progress, size = 20 }: { progress: number; size?: number }) {
-  const strokeWidth = 2.5
-  const radius = (size - strokeWidth) / 2
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (progress / 100) * circumference
-
-  return (
-    <svg width={size} height={size} className="rotate-[-90deg]" aria-hidden="true">
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
-        className="text-neutral-800"
-      />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        className="text-brand-ink transition-all duration-700 ease-apple"
-      />
-    </svg>
-  )
-}
 
 export default function OnboardingChip() {
   const { items, completedCount, total, visible, dismiss } = useOnboarding()
