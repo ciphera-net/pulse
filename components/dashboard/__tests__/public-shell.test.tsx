@@ -76,6 +76,8 @@ let funnel: { name: string } | undefined
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: (id: string) => ({ data: id ? site : undefined }),
   useFunnelDetail: (_siteId: string, funnelId: string) => ({ data: funnelId ? funnel : undefined }),
+  // The member sidebar's events card (billing.view): no subscription loaded, so no card.
+  useSubscription: () => ({ data: undefined }),
 }))
 // The real hook names a share link from the dashboard payload (lib/swr/__tests__/site-read.behavior.test.tsx).
 vi.mock('@/lib/swr/public-site-identity', () => ({

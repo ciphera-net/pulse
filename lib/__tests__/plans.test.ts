@@ -9,6 +9,8 @@ import {
   getSitesLimitForPlan,
   getMaxRetentionMonthsForPlan,
   getRetentionOptionsForPlan,
+  eventMeterView,
+  formatEventTier,
 } from '@/lib/plans'
 
 // Two tiers of the catalog as GET /api/billing/catalog sends them (list A+, 07-11-2026): prices with VAT, the business
@@ -100,5 +102,61 @@ describe('business plan limits (inherits the former team tier)', () => {
   it('resolves startups like team: 5 sites, 24 months max retention', () => {
     expect(getSitesLimitForPlan('startups')).toBe(5)
     expect(getMaxRetentionMonthsForPlan('startups')).toBe(24)
+  })
+})
+
+describe('formatEventTier (plan sizes as the pricing page names them)', () => {
+  it('uses the tier labels, and the same form for a size that is no tier', () => {
+    expect(formatEventTier(50000)).toBe('50k')
+    expect(formatEventTier(2500000)).toBe('2.5M')
+    expect(formatEventTier(100000)).toBe('100k')
+    expect(formatEventTier(20000000)).toBe('20M')
+    expect(formatEventTier(75000)).toBe('75k')
+    expect(formatEventTier(12500)).toBe('12.5k')
+    expect(formatEventTier(900)).toBe('900')
+  })
+})
+
+describe('eventMeterView (the sidebar events card, 09-11-2026)', () => {
+  const meter = (usage: number | null, ceiling: number | null = 100000) => ({ limit: 50000, usage, ceiling })
+
+  it('says the count, the plan in its tier form and the share', () => {
+    expect(eventMeterView(meter(31200))).toEqual({
+      progress: 62.4,
+      share: '62%',
+      level: 'normal',
+      line: '31,200 of 50k this month',
+      label: 'Events this month: 31,200 of 50k (62%)',
+    })
+  })
+
+  it('shows "<1%" once anything is counted, and 0% for nothing yet', () => {
+    expect(eventMeterView(meter(41))).toMatchObject({ share: '<1%', level: 'normal', line: '41 of 50k this month' })
+    expect(eventMeterView(meter(0))).toMatchObject({ share: '0%', progress: 0, level: 'normal' })
+  })
+
+  it('turns high from 80% of the plan as shown, so "80%" is never grey', () => {
+    expect(eventMeterView(meter(39700))?.level).toBe('normal') // 79%
+    expect(eventMeterView(meter(39800))).toMatchObject({ share: '80%', level: 'high' }) // 79.6% shows as 80%
+    expect(eventMeterView(meter(43600))).toMatchObject({ share: '87%', level: 'high' })
+  })
+
+  it('stays high over the plan, with the ring full and the share past 100%', () => {
+    expect(eventMeterView(meter(52340))).toMatchObject({ share: '105%', level: 'high', progress: 100, line: '52,340 of 50k this month' })
+  })
+
+  it('says Pulse stopped counting at the ceiling', () => {
+    const view = eventMeterView(meter(100000))
+    expect(view).toMatchObject({ share: '200%', level: 'stopped', progress: 100, line: 'Pulse stopped counting at 100k' })
+    expect(view?.label).toBe('Pulse stopped counting at 100k')
+  })
+
+  it('never calls a month stopped without a ceiling from the server', () => {
+    expect(eventMeterView(meter(150000, null))?.level).toBe('high')
+  })
+
+  it('shows nothing when there is no count or no plan limit (unknown is never 0)', () => {
+    expect(eventMeterView(meter(null))).toBeNull()
+    expect(eventMeterView({ limit: 0, usage: 10, ceiling: null })).toBeNull()
   })
 })
