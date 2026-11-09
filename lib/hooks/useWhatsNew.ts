@@ -6,15 +6,12 @@ import { useAuth } from '@/lib/auth/context'
 import { getWhatsNew, markWhatsNewSeen, type WhatsNewResponse } from '@/lib/api/whatsNew'
 
 /**
- * What's new for the signed-in person in the active team. Keyed by person AND team: the beta is evaluated per team,
- * the seen set belongs to the person. The two mounts of the button (desktop and mobile) share one fetch.
- *
- * Pass enabled = (useFeature('whats-new') === true): nothing is fetched otherwise, so a team without the beta never
- * asks the route, which answers the router's 404 for it.
+ * What's new for the signed-in person. Keyed by person: the posts are the same for everyone and the seen set (and so
+ * every unread mark) is the person's own. The two mounts of the button (desktop and mobile) share one fetch.
  */
-export function useWhatsNew(enabled: boolean) {
+export function useWhatsNew() {
   const { user } = useAuth()
-  const keyId = enabled && user ? `${user.id}|${user.org_id}` : null
+  const keyId = user ? user.id : null
   const { data, error, isLoading, mutate } = useSWR<WhatsNewResponse>(keyId ? ['whats-new', keyId] : null, () => getWhatsNew(), {
     revalidateOnFocus: false,
     dedupingInterval: 300_000,

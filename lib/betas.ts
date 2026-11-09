@@ -20,6 +20,4 @@ export const BETAS: readonly Beta[] = [
   // The server lists GA4 among a site's import sources only while this flag is on for the team
   // (lib/import/useImportSources.ts).
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
-  // The top bar's What's new button and panel (components/whats-new/WhatsNewButton.tsx). It reads useFeature.
-  { flag: 'whats-new', name: "What's new", revalidates: [] },
 ]
