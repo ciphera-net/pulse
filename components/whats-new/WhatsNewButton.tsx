@@ -100,12 +100,13 @@ function LeadCard({ row }: { row: Row }) {
       className="group mx-3 mb-2 block border border-neutral-800 bg-neutral-900 transition-colors hover:border-neutral-700"
     >
       {entry.image && (
-        // The docs screenshot's top left corner, inset over a 64 px strip of orange and the card's grey. Its hairline
-        // and shadow are theme tokens (styles/globals.css, --whats-new-shot-*).
+        // The docs screenshot at the card's width, inset over a 64 px strip of orange and the card's grey, so the card
+        // shows the whole picture as the docs post does (a fixed 696 px zoomed a section capture in and cut it off,
+        // 09-11-2026). Its hairline and shadow are theme tokens (styles/globals.css, --whats-new-shot-*).
         <span className="relative block h-[210px] overflow-hidden border-b border-neutral-800">
           <span className="absolute inset-x-0 top-0 h-16 bg-brand-orange" />
-          {/* eslint-disable-next-line @next/next/no-img-element -- a docs screenshot from the CDN at a fixed crop */}
-          <img src={entry.image} alt="" loading="lazy" className="whats-new-shot absolute left-[26px] top-[26px] w-[696px] max-w-none" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- a docs screenshot from the CDN, drawn at the card's width */}
+          <img src={entry.image} alt="" loading="lazy" className="whats-new-shot absolute left-[26px] top-[26px] w-[calc(100%-26px)] max-w-none" />
         </span>
       )}
       <span className="block px-3.5 pt-3 pb-3">
