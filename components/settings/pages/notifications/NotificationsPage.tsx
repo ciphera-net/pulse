@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Toggle, toast } from '@ciphera-net/facet'
 import { EnvelopeSimple, WarningCircle } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
-import { useFeature } from '@/lib/features'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
   getPrefsDocument,
@@ -49,21 +48,6 @@ const CAPTIONS: Record<string, string> = {
   summary: "Every Monday: last week's visitors, top pages and top sources for each site that had visits.",
 }
 
-// The weekly summary is a beta (lib/betas.ts): its row shows only once /me says the beta is on for the team, so
-// nobody is offered a switch for an email their team does not get. null (not known yet) hides it.
-const WEEKLY_SUMMARY_BETA = 'weekly-summary'
-
-/**
- * The registry's list is the page's order AND its filter: the document also carries groups this page never shows
- * (Ciphera ID's own, and internal ones for staff), so a group is drawn only when this list names it (§12.11.1).
- * Team is drawn for everyone, somebody alone in this team included: the switches are the person's across every team
- * (one document per person), so they may have teammates elsewhere (§13.3).
- */
-function shown(id: string, summaryBeta: boolean): boolean {
-  if (id === 'summary') return summaryBeta
-  return true
-}
-
 /** Iris's preferences document: null until the first answer; `failed` when the read failed with nothing to show. */
 function usePrefsDocument() {
   const [doc, setDoc] = useState<PreferencesDocument | null>(null)
@@ -97,7 +81,6 @@ function usePrefsDocument() {
 export default function NotificationsPage() {
   const { user } = useAuth()
   const alone = useTeamState() === 'alone'
-  const summaryBeta = useFeature(WEEKLY_SUMMARY_BETA) === true
   const { doc, setDoc, failed, retry, retrying } = usePrefsDocument()
   const [saving, setSaving] = useState(false)
 
@@ -119,12 +102,15 @@ export default function NotificationsPage() {
     [saving, setDoc],
   )
 
+  // The registry's list is the page's order AND its filter: the document also carries groups this page never shows
+  // (Ciphera ID's own, and internal ones for staff), so a group is drawn only when this list names it (§12.11.1).
+  // Team is drawn for everyone, somebody alone in this team included: the switches are the person's across every team
+  // (one document per person), so they may have teammates elsewhere (§13.3). The weekly summary is drawn for everyone
+  // too since 09-11-2026, when it left beta.
   const groups = useMemo(() => {
     const byId = new Map((doc?.categories ?? []).map((c) => [c.category_id, c]))
-    return NOTIFICATION_CATEGORIES.filter((k) => shown(k.id, summaryBeta))
-      .map((k) => byId.get(k.id))
-      .filter((c): c is CategoryPreferenceDoc => c !== undefined)
-  }, [doc, summaryBeta])
+    return NOTIFICATION_CATEGORIES.map((k) => byId.get(k.id)).filter((c): c is CategoryPreferenceDoc => c !== undefined)
+  }, [doc])
 
   if (!user || (!doc && !failed)) return <SettingsLoadingState rows={6} />
 

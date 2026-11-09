@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { useSites, FaviconPreloader } from '@/lib/swr/sites'
+import { useSubscription } from '@/lib/swr/dashboard'
+import { eventMeter, eventMeterView, type EventMeterView } from '@/lib/plans'
 import { cdnUrl } from '@/lib/cdn'
 import { DOCS_ORIGIN } from '@/lib/docs'
 import { useSidebar } from '@/lib/sidebar-context'
@@ -20,6 +22,7 @@ import {
   Tooltip,
 } from '@ciphera-net/facet'
 import { HelpSupportButton } from '@/components/support/HelpSupportButton'
+import { ProgressRing } from '@/components/ui/ProgressRing'
 import { PULSE_HOME_URL } from '@/components/public/links'
 import { scopeHref, useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 import { NAV_GROUPS, SETTINGS_ITEM, publicNavGroups, type IconWeight, type NavGroup, type NavItem } from './siteNav'
@@ -471,20 +474,103 @@ function SidebarContent({
         </SidebarNav>
       )}
 
-      {/* Help & Support — sidebar bottom */}
-      <div className="shrink-0 px-2 pb-3 pt-2 border-t border-neutral-800/60">
-        {c ? (
-          <SidebarTooltip label="Help & Support">
-            <div className="flex justify-center">
-              <HelpSupportButton collapsed />
-            </div>
-          </SidebarTooltip>
-        ) : (
-          <HelpSupportButton />
-        )}
-      </div>
+      {/* This month's events (billing.view only) above Help & Support */}
+      <SidebarFoot collapsed={c} canBillingView={canBillingView} onNavigate={isMobile ? onMobileClose : undefined} />
 
     </div>
+  )
+}
+
+// ─── Sidebar foot: this month's events, then Help & Support ─────────────────
+// Owner pick 09-11-2026 (Pulse/docs/plans/08-11-2026-sidebar-events-meter.md):
+// for anyone who may see billing, an outlined card with the ring above Help &
+// Support when the sidebar is open, the ring alone when it is collapsed. Only
+// that branch reads the subscription, so nobody else sends the request; it is
+// the billing page's own cached read.
+
+const BILLING_HREF = '/settings/organization/billing'
+
+/** The share's colour: the ring stays orange, the share turns orange from 80% and destructive once counting stops. */
+const METER_SHARE_TONE: Record<EventMeterView['level'], string> = {
+  normal: 'text-neutral-400',
+  high: 'text-brand-ink',
+  stopped: 'text-destructive',
+}
+
+function SidebarFoot({ collapsed, canBillingView, onNavigate }: {
+  collapsed: boolean; canBillingView: boolean; onNavigate?: () => void
+}) {
+  return canBillingView
+    ? <SidebarFootWithMeter collapsed={collapsed} onNavigate={onNavigate} />
+    : <SidebarFootFrame collapsed={collapsed} meter={null} onNavigate={onNavigate} />
+}
+
+function SidebarFootWithMeter({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  const { data: sub } = useSubscription()
+  return <SidebarFootFrame collapsed={collapsed} meter={sub ? eventMeterView(eventMeter(sub)) : null} onNavigate={onNavigate} />
+}
+
+function SidebarFootFrame({ collapsed, meter, onNavigate }: {
+  collapsed: boolean; meter: EventMeterView | null; onNavigate?: () => void
+}) {
+  // The open card takes the place of the hairline: a line right above a box reads doubled.
+  const card = meter !== null && !collapsed
+  return (
+    <div className={`shrink-0 px-2 pb-3 pt-2${card ? '' : ' border-t border-neutral-800/60'}`}>
+      {meter && <EventsMeter meter={meter} collapsed={collapsed} onNavigate={onNavigate} />}
+      {collapsed ? (
+        <SidebarTooltip label="Help & Support">
+          <div className="flex justify-center">
+            <HelpSupportButton collapsed />
+          </div>
+        </SidebarTooltip>
+      ) : (
+        <HelpSupportButton />
+      )}
+    </div>
+  )
+}
+
+function EventsMeter({ meter, collapsed, onNavigate }: {
+  meter: EventMeterView; collapsed: boolean; onNavigate?: () => void
+}) {
+  const arc = meter.level === 'stopped' ? 'text-destructive' : 'text-brand-ink'
+  if (collapsed) {
+    return (
+      <SidebarTooltip label={meter.label}>
+        <div className="mb-0.5 flex justify-center">
+          <Link
+            href={BILLING_HREF}
+            onClick={onNavigate}
+            aria-label={meter.label}
+            className="w-9 h-9 flex items-center justify-center rounded-none hover:bg-white/[0.06] transition-colors ease-apple"
+          >
+            <ProgressRing progress={meter.progress} size={16} arcClassName={arc} />
+          </Link>
+        </div>
+      </SidebarTooltip>
+    )
+  }
+  return (
+    <Link
+      href={BILLING_HREF}
+      onClick={onNavigate}
+      data-sidebar-events=""
+      // 9 px sides: with the 1 px border the content box is Help & Support's,
+      // so the ring sits on its icon column and the share ends on its edge.
+      className="mb-2 flex items-center gap-2.5 border border-neutral-800 px-[9px] py-3 transition-colors duration-fast ease-apple hover:border-neutral-700"
+    >
+      <span className="w-7 h-7 flex items-center justify-center shrink-0">
+        <ProgressRing progress={meter.progress} size={28} arcClassName={arc} />
+      </span>
+      <span className="block flex-1 overflow-hidden">
+        <span className="flex items-center justify-between gap-2 text-sm whitespace-nowrap">
+          <span className="text-neutral-400">Events</span>
+          <span className={`tabular-nums ${METER_SHARE_TONE[meter.level]}`}>{meter.share}</span>
+        </span>
+        <span className="mt-0.5 block text-caption tabular-nums text-neutral-500 whitespace-nowrap">{meter.line}</span>
+      </span>
+    </Link>
   )
 }
 
@@ -604,8 +690,11 @@ function SidebarFrame({
             } ease-apple`}
             onClick={handleMobileClose}
           />
+          {/* A flex column: the content (h-full, overflow-hidden) shrinks to the
+              room under the title row. As a block, it was the title row taller
+              than the screen and pushed Help & Support off the bottom. */}
           <aside
-            className={`fixed inset-y-0 left-0 z-50 w-72 bg-popover border-r md:hidden ${
+            className={`fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-popover border-r md:hidden ${
               mobileClosing
                 ? 'animate-out slide-out-to-left duration-base fill-mode-forwards'
                 : 'animate-in slide-in-from-left duration-base'

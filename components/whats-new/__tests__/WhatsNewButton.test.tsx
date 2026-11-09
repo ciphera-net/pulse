@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 //
-// What's new (the whats-new beta). What these pin, in order of how badly each would hurt if it broke:
+// What's new (for every team since 09-11-2026). What these pin, in order of how badly each would hurt if it broke:
 //
-//  1. Nothing renders, and nothing claims the update notice, unless the flag is TRUE: a team without the beta keeps
-//     today's toast, and an unloaded /me (null) never flashes the button.
+//  1. The button claims the update notice while it is mounted, so the toast steps aside in the dashboard only.
 //  2. Opening records the posts as seen once, and the open panel keeps showing what was unread while it is read.
 //  3. "Could not load" never reads as "nothing new".
 //  4. The newest post leads as the card, with its screenshot; the rest are rows.
@@ -25,9 +24,6 @@ vi.mock('framer-motion', () => {
   }
 })
 vi.mock('@ciphera-net/facet', () => ({ XIcon: () => null }))
-
-let flag: boolean | null = true
-vi.mock('@/lib/features', () => ({ useFeature: () => flag }))
 
 const hook = {
   data: undefined as WhatsNewResponse | undefined,
@@ -74,7 +70,6 @@ function ClaimProbe() {
 }
 
 beforeEach(() => {
-  flag = true
   hook.data = answer([week, older])
   hook.error = undefined
   hook.reload = vi.fn()
@@ -84,16 +79,6 @@ beforeEach(() => {
 afterEach(() => cleanup())
 
 describe('WhatsNewButton', () => {
-  it('renders nothing and claims nothing unless the flag is true', () => {
-    for (const value of [false, null]) {
-      flag = value
-      const { container, unmount } = render(<><WhatsNewButton /><ClaimProbe /></>)
-      expect(container.querySelector('button')).toBeNull()
-      expect(screen.getByTestId('claimed').textContent).toBe('false')
-      unmount()
-    }
-  })
-
   it('claims the update notice while it is shown, so the toast steps aside', () => {
     const { unmount } = render(<><WhatsNewButton /><ClaimProbe /></>)
     expect(screen.getByTestId('claimed').textContent).toBe('true')

@@ -267,6 +267,50 @@ export function getLimitForTierIndex(index: number): number {
   return TRAFFIC_TIERS[index].value
 }
 
+/** An event count as the pricing page names plan sizes ("50k", "2.5M"); a size that is no tier keeps the same form. */
+export function formatEventTier(n: number): string {
+  const tier = TRAFFIC_TIERS.find((t) => t.value === n)
+  if (tier) return tier.label
+  if (n >= 1_000_000) return `${Number((n / 1_000_000).toFixed(1))}M`
+  if (n >= 1_000) return `${Number((n / 1_000).toFixed(1))}k`
+  return String(n)
+}
+
+/** What the sidebar's events card shows (owner pick 09-11-2026, Pulse/docs/plans/08-11-2026-sidebar-events-meter.md). */
+export interface EventMeterView {
+  /** The ring's fill, 0 to 100; a month over the plan fills it. */
+  progress: number
+  /** The share of the plan as people read it: "62%", "<1%" once anything is counted, "105%" over the plan. */
+  share: string
+  /** `high` from 80% of the plan and over it (Pulse keeps counting up to the ceiling); `stopped` once it stops. */
+  level: 'normal' | 'high' | 'stopped'
+  /** "31,200 of 50k this month", or "Pulse stopped counting at 100k". */
+  line: string
+  /** The collapsed sidebar's tooltip and the ring's accessible name. */
+  label: string
+}
+
+/**
+ * The sidebar card's words and colours from a subscription's meter. Null when there is nothing true to show: no count
+ * from the server (unknown is never 0) or no plan limit. The share is rounded once and the level follows the rounded
+ * figure, so "80%" is never grey.
+ */
+export function eventMeterView({ usage, limit, ceiling }: EventMeter): EventMeterView | null {
+  if (usage === null || !(limit > 0)) return null
+  const percent = Math.round((usage / limit) * 100)
+  const share = usage > 0 && percent < 1 ? '<1%' : `${percent}%`
+  const stopped = ceiling !== null && usage >= ceiling
+  const count = `${usage.toLocaleString('en-GB')} of ${formatEventTier(limit)}`
+  const line = stopped ? `Pulse stopped counting at ${formatEventTier(ceiling)}` : `${count} this month`
+  return {
+    progress: Math.min(100, (usage / limit) * 100),
+    share,
+    level: stopped ? 'stopped' : percent >= 80 ? 'high' : 'normal',
+    line,
+    label: stopped ? line : `Events this month: ${count} (${share})`,
+  }
+}
+
 /** Maximum data retention (months) allowed per plan. */
 export function getMaxRetentionMonthsForPlan(planId: string | null | undefined): number {
   switch (planId) {

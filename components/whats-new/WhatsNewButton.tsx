@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * @file What's new (the whats-new beta): a top-bar button and its panel. The panel says when a new version of Pulse is
+ * @file What's new: a top-bar button and its panel, for every team (it left its beta on 09-11-2026). The panel says when a new version of Pulse is
  * ready (taking over from VersionToast, see lib/updateNotice.ts) and lists the changelog's latest Pulse posts, the
  * week's main change first as a card led by its docs screenshot. Design: "a strip of orange", picked in the options
  * rounds of 08-11-2026.
@@ -18,12 +18,9 @@ import { XIcon } from '@ciphera-net/facet'
 import { ArrowClockwise, ArrowUpRight, Sparkle } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { cdnUrl } from '@/lib/cdn'
-import { useFeature } from '@/lib/features'
 import { useWhatsNew } from '@/lib/hooks/useWhatsNew'
 import { useClaimUpdateNotice, useUpdateReady } from '@/lib/updateNotice'
 import type { WhatsNewEntry, WhatsNewKind, WhatsNewPost, WhatsNewResponse } from '@/lib/api/whatsNew'
-
-export const WHATS_NEW_FLAG = 'whats-new'
 
 /** The panel's width on a computer; on a phone it is the screen width less 8 px on each side. */
 const PANEL_MAX_WIDTH = 400
@@ -176,10 +173,9 @@ function Body({ shown, error, onRetry }: { shown: WhatsNewResponse | undefined; 
 }
 
 export default function WhatsNewButton() {
-  const enabled = useFeature(WHATS_NEW_FLAG) === true
-  useClaimUpdateNotice(enabled)
+  useClaimUpdateNotice(true)
   const updateReady = useUpdateReady()
-  const { data, error, reload, markSeen } = useWhatsNew(enabled)
+  const { data, error, reload, markSeen } = useWhatsNew()
   const [open, setOpen] = useState(false)
   // What the open panel shows: the answer as it was when the panel opened, so the dots stay while it is read even
   // though opening it records everything as seen.
@@ -247,7 +243,6 @@ export default function WhatsNewButton() {
     }
   }, [open, closePanel])
 
-  if (!enabled) return null
 
   const shown = snapshot ?? data
   const unreadNow = (data?.unread_count ?? 0) > 0
