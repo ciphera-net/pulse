@@ -1,20 +1,25 @@
 // Analyst's page against assistant-ui's real local runtime (PUL-78): a question goes to pulse-backend through the
 // adapter, the answer and its figures come back as one turn, a follow-up carries the conversation, New chat starts
-// over, and a refused question shows a sentence a person can act on. Only the API functions and the site are stubbed.
+// over, and a refused question shows a sentence a person can act on. Round 6: the recent chats under the suggestions
+// reopen a chat to carry on, and the horizon sits behind the welcome, then in the footer, lit while Analyst answers.
+// Only the API functions, the site and the display zone are stubbed.
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { ApiError } from '@/lib/api/client'
-import type { AnalystAnswer, AnalystUsage } from '@/lib/api/analyst'
+import type { AnalystAnswer, AnalystConversation, AnalystUsage } from '@/lib/api/analyst'
 
 const askAnalyst = vi.hoisted(() => vi.fn())
 const getAnalystUsage = vi.hoisted(() => vi.fn())
+const getAnalystConversations = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/analyst', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/analyst')>()),
   askAnalyst,
   getAnalystUsage,
+  getAnalystConversations,
 }))
-vi.mock('@/lib/swr/dashboard', () => ({ useSite: () => ({ data: { id: 's1', domain: 'example.com' } }) }))
+vi.mock('@/lib/swr/dashboard', () => ({ useSite: () => ({ data: { id: 's1', domain: 'example.com', timezone: 'UTC' } }) }))
+vi.mock('@/lib/hooks/useDisplayZone', () => ({ useDisplayZone: () => ({ mode: 'local', zone: 'UTC', label: 'UTC' }) }))
 vi.mock('@/lib/utils/icons', () => ({ getReferrerIcon: () => null }))
 vi.mock('@/components/funnels/FunnelRail', () => ({
   RailDelta: ({ change }: { change: number | null }) => <span data-testid="delta">{String(change)}</span>,
@@ -78,10 +83,29 @@ const ask = (text: string) => {
   fireEvent.click(screen.getByLabelText('Ask'))
 }
 
+/** A past chat of one turn, asked `minutesAgo` minutes ago. */
+const chat = (id: string, question: string, text: string, minutesAgo: number): AnalystConversation => {
+  const at = new Date(Date.now() - minutesAgo * 60_000).toISOString()
+  return {
+    id,
+    started_at: at,
+    turns: [
+      { id: `${id}-t1`, conversation_id: id, site_id: 's1', question, answer: text, outcome: 'answered', steps: [], created_at: at },
+    ],
+  }
+}
+const chats = (...conversations: AnalystConversation[]) => ({ conversations, kept_days: 30 })
+
+/** The horizon in the footer, if there is one. */
+const footerHorizon = (container: HTMLElement) =>
+  container.querySelector('[data-analyst="footer"] [data-analyst="horizon"]')
+
 beforeEach(() => {
   askAnalyst.mockReset()
   getAnalystUsage.mockReset()
   getAnalystUsage.mockResolvedValue(usage(3))
+  getAnalystConversations.mockReset()
+  getAnalystConversations.mockResolvedValue(chats())
 })
 afterEach(() => cleanup())
 
@@ -177,5 +201,94 @@ describe('the Analyst page', () => {
       await screen.findByText('Your team has used all its questions for this month. They come back on 1 December.'),
     ).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('50 of 50 questions this month')).toBeInTheDocument())
+  })
+
+  it('lists the three newest chats under the suggestions, and every one on Show all', async () => {
+    getAnalystConversations.mockResolvedValue(
+      chats(chat('c1', 'Q one', 'A one', 1), chat('c2', 'Q two', 'A two', 2), chat('c3', 'Q three', 'A three', 3), chat('c4', 'Q four', 'A four', 4)),
+    )
+    mount()
+    expect(await screen.findByText('Recent chats')).toBeInTheDocument()
+    expect(getAnalystConversations).toHaveBeenCalledWith('s1')
+    expect(screen.getByText('Q one')).toBeInTheDocument()
+    expect(screen.getByText('Q three')).toBeInTheDocument()
+    expect(screen.queryByText('Q four')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 4' }))
+    expect(screen.getByText('Q four')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show fewer' }))
+    expect(screen.queryByText('Q four')).toBeNull()
+  })
+
+  it('shows no list, and no Show all, for someone with no chats', async () => {
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    await waitFor(() => expect(getAnalystConversations).toHaveBeenCalled())
+    expect(screen.queryByText('Recent chats')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Show all/ })).toBeNull()
+  })
+
+  it('reopens a past chat with its answer, and a question asked there carries on that chat', async () => {
+    getAnalystConversations.mockResolvedValue(chats(chat('c7', 'Which countries read the blog?', 'Mostly Belgium and France.', 5)))
+    askAnalyst.mockResolvedValue(answer('c7', 'Germany grew most.', 4))
+    mount()
+    fireEvent.click(await screen.findByText('Which countries read the blog?'))
+
+    expect(await screen.findByText('Mostly Belgium and France.')).toBeInTheDocument()
+    expect(screen.queryByText('What would you like to know about example.com?')).toBeNull()
+    ask('And last month?')
+    await screen.findByText('Germany grew most.')
+    expect(askAnalyst.mock.calls[0].slice(1, 3)).toEqual(['And last month?', 'c7'])
+
+    // * New chat leaves the reopened chat: the next question starts a conversation of its own.
+    fireEvent.click(screen.getByRole('button', { name: /New chat/ }))
+    expect(await screen.findByText('What would you like to know about example.com?')).toBeInTheDocument()
+    askAnalyst.mockResolvedValue(answer('c8', 'A fresh answer.', 5))
+    ask('Which pages are growing?')
+    await screen.findByText('A fresh answer.')
+    expect(askAnalyst.mock.calls[1].slice(1, 3)).toEqual(['Which pages are growing?', null])
+  })
+
+  it('lists a new chat once its answer is in, back on the welcome', async () => {
+    askAnalyst.mockResolvedValue(answer('c1', 'First answer.', 4))
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    getAnalystConversations.mockResolvedValue(chats(chat('c1', 'Which pages grew?', 'First answer.', 0)))
+    ask('Which pages grew?')
+    await screen.findByText('First answer.')
+
+    fireEvent.click(screen.getByRole('button', { name: /New chat/ }))
+    expect(await screen.findByText('Recent chats')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Which pages grew\?/ })).toBeInTheDocument()
+  })
+
+  it('says in one line when the past chats did not load, and Try again reads them again', async () => {
+    getAnalystConversations
+      .mockRejectedValueOnce(new ApiError('Server error', 500, { error: 'Could not read your history' }))
+      .mockResolvedValue(chats(chat('c1', 'Q one', 'A one', 1)))
+    mount()
+    expect(await screen.findByText('Your recent chats did not load.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('Q one')).toBeInTheDocument()
+    expect(screen.queryByText('Your recent chats did not load.')).toBeNull()
+  })
+
+  it('draws the horizon behind the welcome, then in the footer, lit while Analyst answers', async () => {
+    let reply!: (a: AnalystAnswer) => void
+    askAnalyst.mockImplementation(() => new Promise<AnalystAnswer>((r) => (reply = r)))
+    const { container } = mount()
+    await screen.findByText('3 of 50 questions this month')
+    const welcome = container.querySelectorAll('[data-analyst="horizon"]')
+    expect(welcome).toHaveLength(1)
+    expect(footerHorizon(container)).toBeNull()
+
+    ask('Why did visitors change this week?')
+    await waitFor(() => expect(footerHorizon(container)?.getAttribute('data-lit')).toBe('true'))
+    // * One horizon at a time: the welcome's went with the welcome.
+    expect(container.querySelectorAll('[data-analyst="horizon"]')).toHaveLength(1)
+
+    reply(answer('c1', 'First answer.', 4))
+    await screen.findByText('First answer.')
+    await waitFor(() => expect(footerHorizon(container)?.getAttribute('data-lit')).toBe('false'))
   })
 })

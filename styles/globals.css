@@ -465,3 +465,33 @@
   pointer-events: none;
   z-index: 10001;
 }
+
+/* Analyst's horizon (components/analyst/AnalystHorizon.tsx, PUL-78 round 6): the Pulse home hero's motion (pulse-website
+   styles/globals.css, `hz-*`). On the welcome the rim draws once and the glow rises, then breathes; in a conversation
+   the footer's horizon fades in, and its lit half fades with the answer (a transition in the component). The breathing
+   and fading layers are HTML elements of their own, so the browser animates their opacity without repainting the
+   blurs. Nothing moves under reduced motion. Dark-theme art: the light theme draws none of it and keeps the plain page. */
+.an-hz-rim { stroke-dasharray: 1; stroke-dashoffset: 1; animation: an-hz-draw 2.2s cubic-bezier(0.32, 0.72, 0, 1) 0.15s both; }
+.an-hz-glow {
+  opacity: 0;
+  animation: an-hz-rise 2.8s cubic-bezier(0.32, 0.72, 0, 1) 0.45s both, an-hz-breathe 9s ease-in-out 3.3s infinite alternate;
+}
+.an-hz-in { animation: an-hz-in 700ms ease-out backwards; }
+/* The footer's haze fades out as it climbs instead of ending in a straight line (seen in the options round). */
+.an-hz-footer {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 165px);
+  mask-image: linear-gradient(to bottom, transparent, black 165px);
+}
+@keyframes an-hz-draw { to { stroke-dashoffset: 0; } }
+@keyframes an-hz-rise { to { opacity: 1; } }
+@keyframes an-hz-breathe { from { opacity: 1; } to { opacity: 0.78; } }
+@keyframes an-hz-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .an-hz-rim, .an-hz-glow, .an-hz-in { animation: none !important; }
+  .an-hz-rim { stroke-dashoffset: 0; }
+  .an-hz-glow { opacity: 1; }
+}
+:root.light .an-hz { display: none; }
+@media (prefers-color-scheme: light) {
+  :root.theme-system .an-hz { display: none; }
+}

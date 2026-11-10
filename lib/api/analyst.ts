@@ -6,6 +6,7 @@ import apiRequest from './client'
  * configured, so a 404 here means "not available", never "no data".
  *
  * A question is answered in one response with the whole turn: the answer and every lookup behind it. Nothing streams.
+ * Each person's turns are kept for 30 days, grouped into conversations (the past chats under the suggestions).
  */
 
 /** One lookup the analyst made: a tool, its arguments, and what it returned (or why it failed). */
@@ -62,4 +63,21 @@ export function askAnalyst(siteId: string, question: string, conversationId: str
 
 export function getAnalystUsage() {
   return apiRequest<AnalystUsage>('/barry/usage')
+}
+
+/** One of a person's conversations about a site: its turns oldest first. started_at is its first turn's time. */
+export interface AnalystConversation {
+  id: string
+  started_at: string
+  turns: AnalystTurn[]
+}
+
+/** A person's own conversations about one site, the most recently active first, kept for kept_days. */
+export interface AnalystConversations {
+  conversations: AnalystConversation[]
+  kept_days: number
+}
+
+export function getAnalystConversations(siteId: string) {
+  return apiRequest<AnalystConversations>(`/sites/${siteId}/barry/conversations`)
 }
