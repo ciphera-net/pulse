@@ -2,6 +2,7 @@
   "app/layout.tsx": 1,
   "app/sites/[id]/visitors/[key]/page.tsx": 1,
   "app/sites/[id]/visitors/page.tsx": 1,
+  "components/analyst/AnalystHorizon.tsx": 22,
   "components/cdn/CdnLiveCard.tsx": 1,
   "components/cdn/CdnSplitInstrument.tsx": 2,
   "components/dashboard/CardPager.tsx": 1,

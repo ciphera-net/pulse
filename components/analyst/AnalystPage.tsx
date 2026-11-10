@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import {
   ActionBarPrimitive,
   AssistantRuntimeProvider,
@@ -22,6 +22,7 @@ import {
   CaretDown,
   Check,
   CheckCircle,
+  ClockCounterClockwise,
   Compass,
   Copy,
   DeviceMobile,
@@ -33,12 +34,22 @@ import {
   Warning,
 } from '@phosphor-icons/react'
 import { RailDelta } from '@/components/funnels/FunnelRail'
-import { askAnalyst, getAnalystUsage, type AnalystStep, type AnalystUsage } from '@/lib/api/analyst'
+import {
+  askAnalyst,
+  getAnalystConversations,
+  getAnalystUsage,
+  type AnalystConversation,
+  type AnalystStep,
+  type AnalystUsage,
+} from '@/lib/api/analyst'
 import { ApiError } from '@/lib/api/client'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useSite } from '@/lib/swr/dashboard'
 import { cn } from '@/lib/utils'
 import { getReferrerIcon } from '@/lib/utils/icons'
 import { pctChange } from '@/lib/utils/pctChange'
+import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
+import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
 import { describeStep } from './steps'
 import { analystErrorMessage, turnParts } from './turn'
 
@@ -50,6 +61,9 @@ import { analystErrorMessage, turnParts } from './turn'
  *
  * pulse-backend answers a question in one response with the whole turn, so the page runs assistant-ui's local runtime
  * with an adapter that returns that turn: every lookup as a tool call ("Figures behind this answer"), then the answer.
+ *
+ * Round 6 (ruled 10-11-2026): the Pulse hero's horizon behind the welcome and in the footer while a conversation runs
+ * (./AnalystHorizon), and the person's recent chats under the suggestions, each reopened by picking it (./history).
  */
 
 const RAISED = 'bg-gradient-to-b from-white/[0.035] to-white/[0.01] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
@@ -63,32 +77,45 @@ const SUGGESTIONS = [
 
 const groupBy = groupPartByType({ 'tool-call': ['group-tool'] })
 
+/** The past chats' key: read by the list, refreshed after each answer. */
+const chatsKey = (siteId: string) => ['analyst-conversations', siteId] as const
+
 export default function AnalystPage({ siteId }: { siteId: string }) {
   const { data: site } = useSite(siteId)
   const ref = useRef<HTMLDivElement>(null)
-  const [height, setHeight] = useState<number | null>(null)
-  // * A new conversation is a new runtime: the key remounts the thread with nothing in it.
-  const [threadKey, setThreadKey] = useState(0)
+  const [box, setBox] = useState<{ height: number; reach: number } | null>(null)
+  // * A new chat, or a past one reopened, is a new runtime: the key remounts the thread with that chat's turns in it.
+  const [thread, setThread] = useState<{ key: number; chat: AnalystConversation | null }>({ key: 0, chat: null })
+  const openChat = useCallback((chat: AnalystConversation | null) => setThread((t) => ({ key: t.key + 1, chat })), [])
 
   // * The shell's <main> scrolls and gives a page no height of its own; a chat needs one, so its viewport scrolls and
-  // * the question box stays at the bottom. The page fills <main> from where it starts down to main's bottom edge.
+  // * the question box stays at the bottom. The page fills <main> from where it starts down to main's bottom edge, and
+  // * `reach` is how far main's top edge is above the page (where the welcome's glow starts). Layout boxes, never
+  // * bounding boxes: the shell slides each page in with a 16 px translate, and measured mid-slide the page came out
+  // * 11 px short of main's bottom (production, 10-11-2026).
   useLayoutEffect(() => {
+    const main = document.getElementById('main-content')
+    if (!main) return
     const fit = () => {
-      const main = document.getElementById('main-content')
-      if (!main || !ref.current) return
-      setHeight(Math.floor(main.getBoundingClientRect().bottom - ref.current.getBoundingClientRect().top))
+      if (!ref.current) return
+      let top = 0
+      for (let el: HTMLElement | null = ref.current; el && el !== main; el = el.offsetParent as HTMLElement | null) {
+        top += el.offsetTop
+      }
+      setBox({ height: main.clientHeight - top, reach: top })
     }
     fit()
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
+    const ro = new ResizeObserver(fit)
+    ro.observe(main)
+    return () => ro.disconnect()
   }, [])
 
   return (
-    <div ref={ref} className="relative" style={{ height: height ?? undefined }}>
+    <div ref={ref} className="relative" style={{ height: box?.height }}>
       <div className="absolute right-6 top-0 z-10">
         <button
           type="button"
-          onClick={() => setThreadKey((k) => k + 1)}
+          onClick={() => openChat(null)}
           className={cn(
             'inline-flex h-9 items-center gap-2 border border-white/[0.08] px-3.5 text-sm text-neutral-300 transition-colors hover:border-white/[0.16] hover:text-white',
             RAISED,
@@ -98,17 +125,39 @@ export default function AnalystPage({ siteId }: { siteId: string }) {
           New chat
         </button>
       </div>
-      {site && <AnalystThread key={threadKey} siteId={siteId} siteName={site.domain} />}
+      {site && (
+        <AnalystThread
+          key={thread.key}
+          siteId={siteId}
+          siteName={site.domain}
+          siteTimezone={site.timezone ?? null}
+          chat={thread.chat}
+          reach={box?.reach ?? 0}
+          onOpenChat={openChat}
+        />
+      )}
     </div>
   )
 }
 
-const AnalystThread: FC<{ siteId: string; siteName: string }> = ({ siteId, siteName }) => {
+interface ThreadProps {
+  siteId: string
+  siteName: string
+  siteTimezone: string | null
+  /** A past chat to carry on with, or null for a new one. */
+  chat: AnalystConversation | null
+  reach: number
+  onOpenChat: (chat: AnalystConversation) => void
+}
+
+const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, reach, onOpenChat }) => {
+  const { mutate } = useSWRConfig()
   const { data: usage, mutate: setUsage } = useSWR(['analyst-usage', siteId], () => getAnalystUsage(), {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
-  const conversation = useRef<string | null>(null)
+  // * A reopened chat's follow-ups go to that conversation, so its earlier turns go with them.
+  const conversation = useRef<string | null>(chat?.id ?? null)
   const keepUsage = useCallback((u: AnalystUsage | undefined) => {
     if (u) void setUsage(u, { revalidate: false })
   }, [setUsage])
@@ -125,6 +174,8 @@ const AnalystThread: FC<{ siteId: string; siteName: string }> = ({ siteId, siteN
           const res = await askAnalyst(siteId, question, conversation.current, abortSignal)
           conversation.current = res.conversation_id
           keepUsage(res.usage)
+          // * The past chats list this one now (seen after New chat).
+          void mutate(chatsKey(siteId))
           return { content: turnParts(res.turn) }
         } catch (err) {
           if (abortSignal.aborted) throw err
@@ -133,27 +184,51 @@ const AnalystThread: FC<{ siteId: string; siteName: string }> = ({ siteId, siteN
         }
       },
     }),
-    [siteId, keepUsage],
+    [siteId, keepUsage, mutate],
   )
-  const runtime = useLocalRuntime(adapter)
+  const options = useMemo(() => ({ initialMessages: chat ? chatMessages(chat) : undefined }), [chat])
+  const runtime = useLocalRuntime(adapter, options)
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <PageThread siteName={siteName} usage={usage ?? null} />
+      <ThreadHorizon reach={reach} />
+      <PageThread
+        siteId={siteId}
+        siteName={siteName}
+        siteTimezone={siteTimezone}
+        usage={usage ?? null}
+        onOpenChat={onOpenChat}
+      />
     </AssistantRuntimeProvider>
   )
 }
 
-const PageThread: FC<{ siteName: string; usage: AnalystUsage | null }> = ({ siteName, usage }) => {
+/** The welcome's glow, behind the thread while it has no messages; once a conversation starts, the footer has its own. */
+const ThreadHorizon: FC<{ reach: number }> = ({ reach }) => {
   const empty = useAuiState((s) => s.thread.messages.length === 0)
+  return empty ? <WelcomeHorizon reach={reach} /> : null
+}
+
+const PageThread: FC<Omit<ThreadProps, 'chat' | 'reach'> & { usage: AnalystUsage | null }> = ({
+  siteId,
+  siteName,
+  siteTimezone,
+  usage,
+  onOpenChat,
+}) => {
+  const empty = useAuiState((s) => s.thread.messages.length === 0)
+  const running = useAuiState((s) => s.thread.isRunning)
   return (
-    <ThreadPrimitive.Root className="flex h-full flex-col">
+    // * Above the welcome's glow, which is drawn behind it in the page's root.
+    <ThreadPrimitive.Root className="relative z-[1] flex h-full flex-col">
       {/* * The welcome opens at its top: on a phone it is taller than the screen, and the viewport's scroll to the
-          * bottom hid the mark. Once there is a conversation, new answers scroll into view as usual. */}
+          * bottom hid the mark. Once there is a conversation, new answers scroll into view as usual, and a reopened
+          * chat opens at its latest answer. */}
       <ThreadPrimitive.Viewport
+        data-analyst="viewport"
         autoScroll={!empty}
-        scrollToBottomOnInitialize={false}
-        className="flex h-full flex-col overflow-y-auto [scrollbar-gutter:stable]"
+        scrollToBottomOnInitialize={!empty}
+        className="flex h-full flex-col overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]"
       >
         {/* * The welcome is centred with auto margins (its own mt-auto, the footer's mb-auto), never justify-center:
             * on a phone it is taller than the screen, and centring overflow pushed its top out of reach. Auto margins
@@ -166,18 +241,21 @@ const PageThread: FC<{ siteName: string; usage: AnalystUsage | null }> = ({ site
             <ThreadPrimitive.Messages>{() => <PageMessage />}</ThreadPrimitive.Messages>
           </div>
           <ThreadPrimitive.ViewportFooter
+            data-analyst="footer"
             className={cn(
               'flex flex-col gap-4 pb-8',
               empty
                 ? 'mb-auto'
                 : // * Solid behind the question box, with the fade ABOVE it: a gradient behind it let the answer's last
-                  // * line show through (seen in the options round).
+                  // * line show through (seen in the options round). The horizon draws over the band.
                   "sticky bottom-0 mt-auto bg-neutral-950 pt-4 before:pointer-events-none before:absolute before:inset-x-0 before:-top-10 before:h-10 before:bg-gradient-to-t before:from-neutral-950 before:to-transparent before:content-['']",
             )}
           >
+            {!empty && <FooterHorizon lit={running} />}
             <PageComposer siteName={siteName} usage={usage} />
             <AuiIf condition={(s) => s.thread.messages.length === 0}>
               <PageSuggestions />
+              <PageRecent siteId={siteId} siteTimezone={siteTimezone} onOpen={onOpenChat} />
             </AuiIf>
           </ThreadPrimitive.ViewportFooter>
         </div>
@@ -200,7 +278,7 @@ const AnalystMark: FC<{ size: 'sm' | 'lg' }> = ({ size }) => (
 
 // * pt-16 below sm clears the New chat button, which sits over the top of a phone's narrow column.
 const PageWelcome: FC<{ siteName: string }> = ({ siteName }) => (
-  <div className="mb-9 mt-auto flex flex-col items-center gap-6 pt-16 text-center sm:pt-0">
+  <div data-analyst="welcome" className="mb-9 mt-auto flex flex-col items-center gap-6 pt-16 text-center sm:pt-0">
     <AnalystMark size="lg" />
     <div className="flex flex-col gap-2.5">
       <h1 className="text-[30px] font-semibold leading-tight tracking-[-0.02em] text-white">
@@ -235,6 +313,70 @@ const PageSuggestions: FC = () => (
     ))}
   </div>
 )
+
+// * Past chats (round 6, pick 3): the newest under the suggestions, all of them a click away. Picking one reopens it,
+// * and a question asked there carries on that chat. Times follow Account › Profile › Show times in.
+const PageRecent: FC<{ siteId: string; siteTimezone: string | null; onOpen: (chat: AnalystConversation) => void }> = ({
+  siteId,
+  siteTimezone,
+  onOpen,
+}) => {
+  const { data, error, mutate } = useSWR(chatsKey(siteId), () => getAnalystConversations(siteId), {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  })
+  const { zone } = useDisplayZone(siteTimezone)
+  const [all, setAll] = useState(false)
+  const rows = useMemo(() => recentChats(data?.conversations ?? []), [data])
+
+  if (error && !data) {
+    return (
+      <p className="flex flex-wrap items-baseline gap-x-3 px-2.5 text-[13px] text-neutral-500">
+        Your recent chats did not load.
+        <button type="button" onClick={() => void mutate()} className="text-neutral-300 transition-colors hover:text-white">
+          Try again
+        </button>
+      </p>
+    )
+  }
+  if (!rows.length) return null
+  const shown = all ? rows : rows.slice(0, RECENT_SHOWN)
+  return (
+    <section aria-labelledby="analyst-recent" className="mt-2 flex flex-col">
+      <div className="flex items-baseline justify-between gap-4 px-2.5 pb-1.5">
+        <h2 id="analyst-recent" className="text-[13px] text-neutral-400">
+          Recent chats
+        </h2>
+        {rows.length > RECENT_SHOWN && (
+          <button
+            type="button"
+            onClick={() => setAll((a) => !a)}
+            aria-expanded={all}
+            className="text-[13px] text-neutral-500 transition-colors hover:text-white"
+          >
+            {all ? 'Show fewer' : `Show all ${rows.length}`}
+          </button>
+        )}
+      </div>
+      <ul className="flex flex-col border-t border-white/[0.06]">
+        {shown.map(({ chat, title, lastAt }) => (
+          <li key={chat.id} className="border-b border-white/[0.06]">
+            <button
+              type="button"
+              onClick={() => onOpen(chat)}
+              title={title}
+              className="group flex w-full items-center gap-3 p-2.5 text-left text-sm text-neutral-400 transition-colors hover:bg-white/[0.03] hover:text-white"
+            >
+              <ClockCounterClockwise className="h-[15px] w-[15px] shrink-0 text-neutral-600 transition-colors group-hover:text-brand-orange" />
+              <span className="min-w-0 flex-1 truncate">{title}</span>
+              <span className="shrink-0 text-xs tabular-nums text-neutral-500">{chatWhenLabel(lastAt, zone)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 const PageMessage: FC = () => {
   const role = useAuiState((s) => s.message.role)
@@ -395,9 +537,13 @@ const PageMarkdown: FC = () => (
 )
 
 // * The question box is the page's one elevated object: lit from the top, a deep soft shadow under it, a hairline
-// * between the question and its toolbar, and the send button the only orange that is not the mark.
+// * between the question and its toolbar, and the send button the only orange that is not the mark. It sits above
+// * the horizon, which measures where the box is to put the rim over it.
 const PageComposer: FC<{ siteName: string; usage: AnalystUsage | null }> = ({ siteName, usage }) => (
-  <ComposerPrimitive.Root className="flex flex-col border border-white/[0.12] bg-neutral-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_24px_60px_-24px_rgba(0,0,0,0.9)] transition-colors focus-within:border-white/[0.24]">
+  <ComposerPrimitive.Root
+    data-analyst="composer"
+    className="relative z-[1] flex flex-col border border-white/[0.12] bg-neutral-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_24px_60px_-24px_rgba(0,0,0,0.9)] transition-colors focus-within:border-white/[0.24]"
+  >
     <ComposerPrimitive.Input
       placeholder={`Ask about ${siteName}`}
       rows={1}
