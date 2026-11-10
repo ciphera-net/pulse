@@ -26,6 +26,8 @@ import { ProgressRing } from '@/components/ui/ProgressRing'
 import { PULSE_HOME_URL } from '@/components/public/links'
 import { scopeHref, useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 import { NAV_GROUPS, SETTINGS_ITEM, publicNavGroups, type IconWeight, type NavGroup, type NavItem } from './siteNav'
+import { Badge } from '@ciphera-net/facet'
+import { useFeature } from '@/lib/features'
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -191,6 +193,11 @@ function NavLink({
         <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
       </span>
       <Label collapsed={collapsed}>{item.label}</Label>
+      {item.badge && !collapsed && (
+        <Badge variant="brand" size="sm" className="ml-auto">
+          {item.badge}
+        </Badge>
+      )}
       {shortcuts && !collapsed && NAV_SHORTCUTS[item.label] && (
         <span className="ml-auto flex items-center gap-0.5 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-fast ease-apple">
           {NAV_SHORTCUTS[item.label].split(' ').map((key) => (
@@ -347,6 +354,9 @@ function SidebarContent({
   // the links already use to paint themselves active.
   const pathname = usePathname()
   const activeKey = pendingHref ?? pathname
+  // * A row with a beta flag shows only while the team's flag is on (siteNav's `flag`): Analyst, behind barry.
+  const barryOn = useFeature('barry') === true
+  const shown = (item: NavItem) => !item.flag || (item.flag === 'barry' && barryOn)
   // The home group's heading follows the team-state signal (PULSE-59): it
   // never says team to somebody who works alone.
   const teamState = useTeamState()
@@ -396,7 +406,7 @@ function SidebarContent({
             <div key={group.label}>
               <NavGroupHeading label={group.label} collapsed={c} />
               <div className="space-y-0.5">
-                {group.items.map((item) => (
+                {group.items.filter(shown).map((item) => (
                   <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
                 ))}
                 {group.label === 'Infrastructure' && canEdit && siteId && (

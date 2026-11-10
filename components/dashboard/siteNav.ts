@@ -1,4 +1,4 @@
-import { CardsThree as CardsThreeIcon, Gauge as GaugeIcon, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
+import { CardsThree as CardsThreeIcon, Gauge as GaugeIcon, StarFour as StarFourIcon, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
 import { CloudUploadIcon, FunnelIcon, HeartbeatIcon, LayoutDashboardIcon, PathIcon, SearchIcon, SettingsIcon } from '@ciphera-net/facet'
 import type { SitePage } from '@/lib/scope/SiteScope'
 
@@ -27,6 +27,13 @@ export interface NavItem {
   matchHref?: (siteId: string) => string
   /** The shareable page this item opens. Absent for Visitors and Site Settings, which are never public. */
   page?: SitePage
+  /**
+   * A beta flag (OPS-27): the row shows only while the team's flag is on. The member sidebar reads it with useFeature;
+   * an item with a flag has no page, so the public sidebar never lists it.
+   */
+  flag?: string
+  /** A short label drawn after the name, as Facet's brand Badge ("Beta"). */
+  badge?: string
 }
 
 export interface NavGroup { label: string; items: NavItem[] }
@@ -41,6 +48,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Visitors', href: (id) => `/sites/${id}/visitors`, icon: UsersThreeIcon, matchPrefix: true },
       { label: 'Funnels', href: (id) => `/sites/${id}/funnels`, icon: FunnelIcon, matchPrefix: true, page: 'funnels' },
       { label: 'Search', href: (id) => `/sites/${id}/search`, icon: SearchIcon, matchPrefix: true, page: 'search' },
+      { label: 'Analyst', href: (id) => `/sites/${id}/analyst`, icon: StarFourIcon, matchPrefix: true, flag: 'barry', badge: 'Beta' },
     ],
   },
   {

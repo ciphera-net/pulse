@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
 import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
+import { StarFour as StarFourIcon } from '@phosphor-icons/react'
 import { formatUpdatedLabel } from '@/lib/utils/format'
 import { useFunnelDetail, useSite } from '@/lib/swr/dashboard'
 import { usePublicSiteIdentity } from '@/lib/swr/public-site-identity'
@@ -50,6 +51,7 @@ const PAGE_META: Record<string, PageMeta> = {
   funnels:    { title: 'Funnels',       icon: FunnelIcon },
   behavior:   { title: 'Behavior',      icon: CursorClickIcon },
   search:     { title: 'Search',        icon: SearchIcon },
+  analyst:    { title: 'Analyst',       icon: StarFourIcon },
   cdn:        { title: 'CDN',           icon: CloudUploadIcon },
   uptime:     { title: 'Uptime',        icon: HeartbeatIcon },
   pagespeed:  { title: 'Performance',     icon: GaugeIcon },
