@@ -1,5 +1,5 @@
 /** The registry's category ids (immutable there; only display names move). */
-export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle' | 'summary'
+export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle' | 'summary' | 'summary_monthly'
 
 /**
  * Category ORDER and fallback vocabulary, for Account → Notifications: the
@@ -44,4 +44,7 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   // opt-out class so switching it off silences nothing else. Last, for the same reason as lifecycle. Its row
   // shows for every team since 09-11-2026, when the weekly summary left beta.
   { id: 'summary', label: 'Weekly summary', critical: false },
+  // summary_monthly joined with iris migration 052 (09-11-2026): the email on the 1st with each site's last month, in its
+  // own category so a person keeps one summary and drops the other. Its row shows while the monthly-summary beta is on.
+  { id: 'summary_monthly', label: 'Monthly summary', critical: false },
 ]
