@@ -1,0 +1,51 @@
+import type { ThreadAssistantMessagePart } from '@assistant-ui/react'
+import { ANALYST_ALLOWANCE_REACHED, type AnalystTurn, type AnalystUsage } from '@/lib/api/analyst'
+import { ApiError } from '@/lib/api/client'
+
+/**
+ * What the page makes of pulse-backend's answers: a turn becomes assistant-ui message parts, and a failed question
+ * becomes the sentence a person reads. Pure, so the tests can feed it the shapes the server sends.
+ */
+
+const RESET_DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+
+/** What a person reads when a question gets no answer. The server's own wording is used only for a 400. */
+export function analystErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const data = err.data ?? {}
+    if (err.status === 429 && data.code === ANALYST_ALLOWANCE_REACHED) {
+      const resets = (data.usage as AnalystUsage | undefined)?.resets_at
+      const day = resets ? new Date(resets) : null
+      return day && !Number.isNaN(day.getTime())
+        ? `Your team has used all its questions for this month. They come back on ${RESET_DAY.format(day)}.`
+        : 'Your team has used all its questions for this month.'
+    }
+    if (err.status === 429) return 'That was a lot of questions at once. Wait a moment, then ask again.'
+    if (err.status === 503) return 'Analyst could not answer this time, so the question was not counted. Try again in a moment.'
+    if (err.status === 404) return 'Analyst is not available for this site yet.'
+    if (err.status === 400 && typeof data.error === 'string') return data.error
+  }
+  return 'Something went wrong, so there is no answer. Try again in a moment.'
+}
+
+/** What a turn without an answer says in the answer's place. */
+export const OUTCOME_TEXT: Record<string, string> = {
+  limit: 'This question needed more lookups than one answer allows. Try asking about one thing at a time.',
+  cut_off: 'Analyst ran out of room before it could answer. Try a narrower question.',
+  error: 'Analyst could not answer this time.',
+}
+
+/** The turn as assistant-ui message parts: each lookup as a tool call, then the answer. */
+export function turnParts(turn: AnalystTurn): ThreadAssistantMessagePart[] {
+  const parts: ThreadAssistantMessagePart[] = (turn.steps ?? []).map((step, i) => ({
+    type: 'tool-call' as const,
+    toolCallId: `${turn.id}-${i}`,
+    toolName: step.tool,
+    args: (step.args ?? {}) as Record<string, never>,
+    argsText: JSON.stringify(step.args ?? {}),
+    result: step,
+  }))
+  const text = turn.outcome === 'answered' && turn.answer ? turn.answer : (OUTCOME_TEXT[turn.outcome] ?? OUTCOME_TEXT.error)
+  parts.push({ type: 'text' as const, text })
+  return parts
+}

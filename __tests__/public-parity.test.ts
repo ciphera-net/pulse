@@ -30,6 +30,7 @@ const PRIVATE_MEMBER_ROUTES: Record<string, string> = {
   settings: 'A redirect into the member settings screens, which configure the site.',
   'funnels/new': 'Creating a funnel is a write. It redirects to the list, where the create modal lives, and public mode renders no write control.',
   'funnels/[funnelId]/edit': 'Editing a funnel is a write. It redirects to the detail page, where the edit modal lives, and public mode renders no write control.',
+  analyst: "Analyst (PUL-78) is a beta behind the barry flag, and every question spends the team's monthly allowance and goes to the model, so a share link must never ask one. It comes to /demo, with its own daily cap, only when it leaves beta.",
 }
 
 /** Every page.tsx under the member tree, as its route below app/sites/[id] ('' is the dashboard). */
