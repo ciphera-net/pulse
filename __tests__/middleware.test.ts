@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
 import { NextRequest } from 'next/server'
-import { middleware } from '../middleware'
+import { APP_SECTIONS, isPublicRoute, middleware } from '../middleware'
 
 function createRequest(path: string, cookies: Record<string, string> = {}, host?: string): NextRequest {
   const url = new URL(path, 'http://localhost:3000')
@@ -70,10 +72,12 @@ describe('middleware', () => {
       }
     })
 
+    // * Since 10-11-2026 an address outside this app's sections reaches the not-found page rather than the sign-in
+    // * page, so the property is read from the public list itself: the prefix opens nothing it does not name.
     it('does not open anything else that merely starts with /demo', () => {
       for (const path of ['/demonstration', '/demos', '/demo-site']) {
-        const res = middleware(createRequest(path))
-        expect(res.headers.get('Location'), path).toContain('/login')
+        expect(isPublicRoute(path), path).toBe(false)
+        expect(middleware(createRequest(path)).headers.get('Location'), path).toBeNull()
       }
     })
 
@@ -108,8 +112,8 @@ describe('middleware', () => {
     })
 
     it('does not open anything else that merely starts with /r', () => {
-      const res = middleware(createRequest('/reports'))
-      expect(res.headers.get('Location')).toContain('/login')
+      expect(isPublicRoute('/reports')).toBe(false)
+      expect(middleware(createRequest('/reports')).headers.get('Location')).toBeNull()
     })
   })
 
@@ -117,7 +121,9 @@ describe('middleware', () => {
   // * Ingress sends their paths there, so on THIS app they are ordinary unlisted
   // * paths. Re-adding one to PUBLIC_ROUTES would make the dashboard answer for a
   // * page it no longer has.
-  describe('marketing paths are not public here (B7)', () => {
+  // * B7: the marketing pages render in the marketing app, never here. Since 10-11-2026 a path outside this app's
+  // * sections that reaches it (a mistyped or retired link) goes to the not-found page instead of the sign-in page.
+  describe('marketing paths are not pages here (B7)', () => {
     const marketingPaths = [
       '/pricing',
       '/features',
@@ -126,8 +132,6 @@ describe('middleware', () => {
       '/changelog',
       '/installation',
       '/contact',
-      '/open-source',
-      '/startups',
       '/cookieless-analytics',
       '/integrations',
       '/integrations/nextjs',
@@ -137,10 +141,16 @@ describe('middleware', () => {
     ]
 
     marketingPaths.forEach((path) => {
-      it(`sends an anonymous ${path} to /login`, () => {
+      it(`sends an anonymous ${path} to the not-found page, not the sign-in page`, () => {
         const res = middleware(createRequest(path))
-        expect(res.headers.get('Location')).toContain('/login')
+        expect(res.headers.get('Location')).toBeNull()
       })
+    })
+
+    // * Both share their first segment with a claim page of this app, so they stay behind the gate here; the
+    // * Ingress sends the bare paths to the marketing app before this app sees them.
+    it.each(['/open-source', '/startups'])('sends an anonymous %s to /login (a section of this app)', (path) => {
+      expect(middleware(createRequest(path)).headers.get('Location')).toContain('/login')
     })
 
     it('sends an anonymous / to /login without a returnTo', () => {
@@ -380,3 +390,41 @@ describe('middleware — staging hosts are noindex, and only staging hosts', () 
     expect(NOT_STAGING.filter((h) => STAGING_HOSTS.includes(h))).toEqual([])
   })
 })
+
+describe('middleware — an address that is no page of this app (10-11-2026)', () => {
+  it.each(['/analytics-without-the-cookie-banner', '/privacy', '/no-such-page', '/Pricing', '/script.unknown.js'])(
+    'sends an anonymous %s to the not-found page, not the sign-in page',
+    (path) => {
+      expect(middleware(createRequest(path)).headers.get('Location')).toBeNull()
+    },
+  )
+
+  it('does the same for a signed-in visitor', () => {
+    expect(middleware(createRequest('/no-such-page', { pulse_access: 'tok' })).headers.get('Location')).toBeNull()
+  })
+
+  it.each(['/sites', '/sites/abc/pages', '/settings/account', '/setup', '/switch', '/connect', '/auth/elsewhere'])(
+    'keeps the sign-in gate on %s, a page of this app',
+    (path) => {
+      expect(middleware(createRequest(path)).headers.get('Location')).toContain('/login')
+    },
+  )
+
+  it("lists every section of app/ (a page or route under it), so a new one cannot lose its sign-in gate", () => {
+    const appDir = path.join(__dirname, '..', 'app')
+    const hasRoute = (dir: string): boolean =>
+      fs.readdirSync(dir, { withFileTypes: true }).some((e) =>
+        e.isDirectory()
+          ? e.name !== '__tests__' && hasRoute(path.join(dir, e.name))
+          : /^(page|route)\.tsx?$/.test(e.name),
+      )
+    const sections = (dir: string): string[] =>
+      fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        if (!e.isDirectory() || e.name.startsWith('_') || e.name === 'api') return []
+        if (/^\(.*\)$/.test(e.name)) return sections(path.join(dir, e.name))
+        return hasRoute(path.join(dir, e.name)) ? [e.name] : []
+      })
+    expect([...APP_SECTIONS].sort()).toEqual([...new Set(sections(appDir))].sort())
+  })
+})
+

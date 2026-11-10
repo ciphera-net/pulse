@@ -74,12 +74,41 @@ const PUBLIC_PREFIXES = [
   '/r/',
 ]
 
-function isPublicRoute(pathname: string): boolean {
+export function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
 const AUTH_ONLY_ROUTES = new Set(['/login', '/signup'])
+
+// * THIS APP'S OWN SECTIONS: the first segment of every page or route under app/ (route groups unwrapped, api/ left to
+// * the matcher). __tests__/middleware.test.ts reads app/ and fails when a section is missing here.
+// *
+// * 🔑 An address outside them is no page of this app. The Ingress sends every path the marketing app does not own
+// * here, so a mistyped or retired link (a shared link to the cookie banner guide with an extra word, 10-11-2026) got
+// * the sign-in redirect below: a visitor was asked to sign in to see a page that does not exist. Such a request now
+// * goes through to the not-found page (404) for everyone, signed in or not. Pages inside a section keep the gate.
+export const APP_SECTIONS: ReadonlySet<string> = new Set([
+  'auth',
+  'connect',
+  'demo',
+  'join',
+  'login',
+  'open-source',
+  'r',
+  'settings',
+  'setup',
+  'share',
+  'signup',
+  'sites',
+  'start',
+  'startups',
+  'switch',
+])
+
+function isAppSection(pathname: string): boolean {
+  return APP_SECTIONS.has(pathname.split('/')[1] ?? '')
+}
 
 // * The authenticated home. `/` belongs to the marketing app (the Ingress routes it
 // * there), so on this app `/` only ever redirects: a signed-in visitor to here (the
@@ -160,6 +189,11 @@ export function middleware(request: NextRequest) {
 
   // * Public route → allow through
   if (isPublicRoute(pathname)) {
+    return withStagingHeader(NextResponse.next(), isStaging)
+  }
+
+  // * Not a page of this app → the not-found page (see APP_SECTIONS). `/` stays below: on this app it only redirects.
+  if (pathname !== '/' && !isAppSection(pathname)) {
     return withStagingHeader(NextResponse.next(), isStaging)
   }
 
