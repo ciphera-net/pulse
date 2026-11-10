@@ -23,4 +23,6 @@ export const BETAS: readonly Beta[] = [
   // The email on the 1st with each site's last month (pulse-backend's monthly summary job). Its settings row reads
   // useFeature.
   { flag: 'monthly-summary', name: 'Monthly summary email', revalidates: [] },
+  // Analyst, the AI analyst (PUL-78): its menu row and page read useFeature.
+  { flag: 'barry', name: 'Analyst', revalidates: [] },
 ]
