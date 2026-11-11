@@ -1,5 +1,5 @@
 import type { ThreadAssistantMessagePart } from '@assistant-ui/react'
-import { ANALYST_ALLOWANCE_REACHED, type AnalystTurn, type AnalystUsage } from '@/lib/api/analyst'
+import { ANALYST_ALLOWANCE_REACHED, type AnalystStep, type AnalystTurn, type AnalystUsage } from '@/lib/api/analyst'
 import { ApiError } from '@/lib/api/client'
 
 /**
@@ -47,5 +47,34 @@ export function turnParts(turn: AnalystTurn): ThreadAssistantMessagePart[] {
   }))
   const text = turn.outcome === 'answered' && turn.answer ? turn.answer : (OUTCOME_TEXT[turn.outcome] ?? OUTCOME_TEXT.error)
   parts.push({ type: 'text' as const, text })
+  return parts
+}
+
+/** A lookup while an answer streams: what the model asked for, and the finished step once it has answered. */
+export interface LiveStep {
+  tool: string
+  args: Record<string, unknown>
+  done?: AnalystStep
+}
+
+/**
+ * The message so far while an answer streams (live answers, round 6): each lookup as a tool call, without a result
+ * while it runs and with its step once it has answered, then the words written so far. The finished turn replaces
+ * these parts (turnParts), so the message always ends exactly as a whole answer would.
+ */
+export function liveParts(steps: readonly (LiveStep | undefined)[], text: string): ThreadAssistantMessagePart[] {
+  const parts: ThreadAssistantMessagePart[] = []
+  steps.forEach((step, i) => {
+    if (!step) return
+    parts.push({
+      type: 'tool-call' as const,
+      toolCallId: `live-${i}`,
+      toolName: step.tool,
+      args: step.args as Record<string, never>,
+      argsText: JSON.stringify(step.args),
+      ...(step.done ? { result: step.done } : {}),
+    })
+  })
+  if (text) parts.push({ type: 'text' as const, text })
   return parts
 }

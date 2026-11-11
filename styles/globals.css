@@ -495,3 +495,18 @@
 @media (prefers-color-scheme: light) {
   :root.theme-system .an-hz { display: none; }
 }
+
+/* Analyst's answer while its words come (components/analyst/AnalystPage.tsx, live answers, round 6): a caret after the
+   last word. assistant-ui's markdown root carries data-status="running" until the answer is in. The caret is the text's
+   own colour, so it reads in both themes, and it does not blink. */
+.an-md[data-status='running'] > p:last-child::after,
+.an-md[data-status='running'] > :is(ul, ol):last-child > li:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  opacity: 0.75;
+}

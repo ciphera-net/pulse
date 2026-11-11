@@ -35,7 +35,7 @@ import {
 } from '@phosphor-icons/react'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import {
-  askAnalyst,
+  askAnalystStream,
   getAnalystConversations,
   getAnalystUsage,
   type AnalystConversation,
@@ -50,8 +50,8 @@ import { getReferrerIcon } from '@/lib/utils/icons'
 import { pctChange } from '@/lib/utils/pctChange'
 import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
 import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
-import { describeStep } from './steps'
-import { analystErrorMessage, turnParts } from './turn'
+import { describeStep, finishedLookup, runningLookup } from './steps'
+import { analystErrorMessage, liveParts, turnParts, type LiveStep } from './turn'
 
 /**
  * Analyst: a page of its own for asking about one site (PUL-78, Pulse/docs/plans/09-11-2026-barry-ai-analyst-plan.md
@@ -59,8 +59,8 @@ import { analystErrorMessage, turnParts } from './turn'
  * square corners, depth from light (a faint top-lit gradient and a 1px highlight, the content panel's own device), and
  * orange only in the mark, hovers and the send button.
  *
- * pulse-backend answers a question in one response with the whole turn, so the page runs assistant-ui's local runtime
- * with an adapter that returns that turn: every lookup as a tool call ("Figures behind this answer"), then the answer.
+ * The page runs assistant-ui's local runtime with an adapter that streams pulse-backend's answer: each lookup as a
+ * tool call while it runs, then the words as they are written, then the whole turn ("Figures behind this answer").
  *
  * Round 6 (ruled 10-11-2026): the Pulse hero's horizon behind the welcome and in the footer while a conversation runs
  * (./AnalystHorizon), and the person's recent chats under the suggestions, each reopened by picking it (./history).
@@ -164,22 +164,59 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
 
   const adapter = useMemo<ChatModelAdapter>(
     () => ({
-      async run({ messages, abortSignal }) {
+      // * The answer streams (round 6, live answers): each lookup shows as it starts and ticks off as it ends, then
+      // * the words come as they are written. The finished turn replaces what streamed, so the message ends exactly
+      // * as a whole answer would, figures included.
+      async *run({ messages, abortSignal }) {
         const last = messages[messages.length - 1]
         const question =
           last?.role === 'user'
             ? last.content.map((p) => (p.type === 'text' ? p.text : '')).join('\n').trim()
             : ''
+        const steps: LiveStep[] = []
+        let text = ''
         try {
-          const res = await askAnalyst(siteId, question, conversation.current, abortSignal)
-          conversation.current = res.conversation_id
-          keepUsage(res.usage)
-          // * The past chats list this one now (seen after New chat).
-          void mutate(chatsKey(siteId))
-          return { content: turnParts(res.turn) }
+          for await (const ev of askAnalystStream(siteId, question, conversation.current, abortSignal)) {
+            switch (ev.type) {
+              case 'start':
+                // * Known from the first event, so a question stopped halfway still carries on its conversation.
+                conversation.current = ev.conversation_id
+                continue
+              case 'step':
+                steps[ev.index] = { tool: ev.tool, args: ev.args ?? {} }
+                break
+              case 'step_done': {
+                const step = steps[ev.index] ?? { tool: '', args: {} }
+                steps[ev.index] = {
+                  ...step,
+                  done: { tool: step.tool, args: step.args, result: ev.result, ...(ev.error ? { error: ev.error } : {}), ms: ev.ms },
+                }
+                break
+              }
+              case 'text':
+                text += ev.delta
+                break
+              case 'discard':
+                text = ''
+                break
+              case 'done':
+                conversation.current = ev.answer.conversation_id
+                keepUsage(ev.answer.usage)
+                // * The past chats list this one now (seen after New chat).
+                void mutate(chatsKey(siteId))
+                yield { content: turnParts(ev.answer.turn) }
+                return
+              case 'error':
+                throw new ApiError(ev.error, 503, { error: ev.error, usage: ev.usage })
+            }
+            yield { content: liveParts(steps, text) }
+          }
+          throw new Error('The answer stopped before it was finished.')
         } catch (err) {
           if (abortSignal.aborted) throw err
           if (err instanceof ApiError) keepUsage(err.data?.usage as AnalystUsage | undefined)
+          // * A failed question shows only its sentence, never lookups for an answer that did not come.
+          yield { content: [] }
           throw new Error(analystErrorMessage(err))
         }
       },
@@ -399,7 +436,7 @@ const PageMessage: FC = () => {
               case 'group-tool':
                 return <PageChecks count={'indices' in part ? part.indices.length : 0}>{children}</PageChecks>
               case 'tool-call':
-                return <PageCheck step={(part as { result?: AnalystStep }).result} />
+                return <PageCheck part={part as LookupPart} />
               case 'text':
                 return <PageMarkdown />
               case 'indicator':
@@ -454,8 +491,22 @@ const PageMessage: FC = () => {
   )
 }
 
+/** A lookup as the message holds it: what the model asked for, and its step once it has answered. */
+type LookupPart = { toolName: string; args: Record<string, unknown>; result?: AnalystStep }
+
+/** True while Analyst looks things up and has not written a word: the lookups then show as a list (round 6, S2). */
+function useLookingUp(): boolean {
+  return useAuiState(
+    (s) => s.message.status?.type === 'running' && !s.message.content.some((p) => p.type === 'text' && p.text.length > 0),
+  )
+}
+
 const PageChecks: FC<{ count: number; children: ReactNode }> = ({ count, children }) => {
   const [open, setOpen] = useState(false)
+  // * Each lookup shows as it starts and ticks off as it ends; at the first word the list folds into the button.
+  if (useLookingUp()) {
+    return <div className={cn('mb-5 flex flex-col divide-y divide-white/[0.06] border border-white/[0.08]', RAISED)}>{children}</div>
+  }
   return (
     <div className="mb-5 flex flex-col">
       <button
@@ -479,7 +530,27 @@ const PageChecks: FC<{ count: number; children: ReactNode }> = ({ count, childre
   )
 }
 
-const PageCheck: FC<{ step?: AnalystStep }> = ({ step }) => {
+const PageCheck: FC<{ part: LookupPart }> = ({ part }) => {
+  const lookingUp = useLookingUp()
+  const step = part.result
+  if (lookingUp) {
+    const done = step ? finishedLookup(step) : null
+    return (
+      <div className={cn('flex items-center gap-2.5 px-4 py-[11px] text-sm', done ? 'text-neutral-400' : 'text-neutral-200')}>
+        {!done ? (
+          <span
+            aria-hidden="true"
+            className="h-[13px] w-[13px] shrink-0 animate-spin rounded-full border-[1.5px] border-white/[0.18] border-t-brand-orange motion-reduce:animate-none"
+          />
+        ) : done.failed ? (
+          <Warning className="h-[15px] w-[15px] shrink-0" />
+        ) : (
+          <Check className="h-[15px] w-[15px] shrink-0 text-neutral-500" />
+        )}
+        {done ? done.text : runningLookup(part.toolName, part.args)}
+      </div>
+    )
+  }
   if (!step) return null
   const view = describeStep(step)
   if (view.kind === 'line') {
@@ -520,9 +591,10 @@ const PageCheck: FC<{ step?: AnalystStep }> = ({ step }) => {
 }
 
 // * Each element takes only what it draws; a link opens in a new tab, so following one never loses the conversation.
+// * While the words come, a caret follows the last one (an-md in styles/globals.css, off once the answer is in).
 const PageMarkdown: FC = () => (
   <MarkdownTextPrimitive
-    className="flex flex-col gap-4"
+    className="an-md flex flex-col gap-4"
     components={{
       p: ({ children }) => <p className="text-[15px] leading-7 text-neutral-200">{children}</p>,
       strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
