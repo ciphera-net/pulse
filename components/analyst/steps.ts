@@ -38,6 +38,21 @@ const DIMENSION_TITLES: Record<string, string> = {
   utm_campaign: 'Campaigns',
 }
 
+/** What one row of an engagement lookup is, as its name says it: "Engagement by source". */
+const ENGAGEMENT_ROWS: Record<string, string> = {
+  page: 'page',
+  referrer: 'source',
+  channel: 'channel',
+  country: 'country',
+  utm_source: 'campaign source',
+  utm_medium: 'campaign medium',
+  utm_campaign: 'campaign',
+}
+
+function engagementBy(dimension: unknown): string {
+  return typeof dimension === 'string' ? (ENGAGEMENT_ROWS[dimension] ?? dimension.replace(/_/g, ' ')) : 'row'
+}
+
 const DAY_MONTH = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
 const DAY_ONLY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: 'UTC' })
 const DAY_MONTH_YEAR = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -140,7 +155,7 @@ export function narrowedTo(filters: readonly string[]): string {
 }
 
 /** The tools that take filters; a filter written to another one is ignored by the server, so it is not named. */
-const FILTERED_TOOLS = new Set(['get_stats', 'get_breakdown', 'compare_periods'])
+const FILTERED_TOOLS = new Set(['get_stats', 'get_breakdown', 'compare_periods', 'get_daily_series', 'get_engagement'])
 
 function narrowing(tool: string, args: Record<string, unknown>, result: Record<string, unknown> = {}): string {
   return FILTERED_TOOLS.has(tool) ? narrowedTo(filtersOf(args, result)) : ''
@@ -211,9 +226,13 @@ function failedLookup(tool: string, args: Record<string, unknown>): string {
     case 'get_stats':
       return 'Analyst could not read the totals'
     case 'get_daily_series':
-      return 'Analyst could not read the figures for each day'
+      return "Analyst could not read each day's figures"
     case 'get_breakdown':
       return `Analyst could not read the ${titleOf(args.dimension).toLowerCase()}`
+    case 'get_engagement':
+      return `Analyst could not read engagement by ${engagementBy(args.dimension)}`
+    case 'get_excluded_traffic':
+      return 'Analyst could not read the traffic Pulse kept out'
     case 'get_realtime':
       return 'Analyst could not read who is on the site right now'
     case 'compare_periods':
@@ -233,6 +252,10 @@ function lookupName(tool: string, args: Record<string, unknown>): string {
       return titleOf(args.dimension)
     case 'get_realtime':
       return 'Visitors right now'
+    case 'get_engagement':
+      return `Engagement by ${engagementBy(args.dimension)}`
+    case 'get_excluded_traffic':
+      return 'Traffic kept out of your stats'
     default:
       return 'Another lookup'
   }
@@ -266,9 +289,13 @@ export function runningLookup(tool: string, args: Record<string, unknown> | null
     case 'get_stats':
       return `Reading the totals${narrowed}`
     case 'get_daily_series':
-      return 'Reading the figures for each day'
+      return `Reading each day's figures${narrowed}`
     case 'get_breakdown':
       return `Reading the ${titleOf(a.dimension).toLowerCase()}${narrowed}`
+    case 'get_engagement':
+      return `Reading engagement by ${engagementBy(a.dimension)}${narrowed}`
+    case 'get_excluded_traffic':
+      return 'Reading the traffic Pulse kept out'
     case 'get_realtime':
       return 'Reading who is on the site right now'
     default:

@@ -159,7 +159,7 @@ describe('describeStep', () => {
     const failed = (tool: string, args: Record<string, unknown> = {}) => describeStep(step(tool, args, undefined, 'boom'))
     expect(failed('get_breakdown', { dimension: 'utm_campaign' })).toMatchObject({ text: 'Analyst could not read the campaigns' })
     expect(failed('get_stats')).toMatchObject({ text: 'Analyst could not read the totals' })
-    expect(failed('get_daily_series')).toMatchObject({ text: 'Analyst could not read the figures for each day' })
+    expect(failed('get_daily_series')).toMatchObject({ text: "Analyst could not read each day's figures" })
     expect(failed('get_realtime')).toMatchObject({ text: 'Analyst could not read who is on the site right now' })
     expect(failed('compare_periods')).toMatchObject({ text: 'Analyst could not compare the two periods', failed: true })
     expect(failed('get_goals')).toMatchObject({ text: 'One of the lookups failed', failed: true })
@@ -236,9 +236,49 @@ describe('lookups that name what they were narrowed to', () => {
   })
 
   it('never names a filter on a lookup that takes none, since the server ignored it', () => {
-    expect(describeStep(step('get_daily_series', { filters: ['referrer==google.com'] }, { range: THIS_WEEK, days: [] }))).toMatchObject({
-      text: 'Day by day, 4 to 10 November',
-    })
     expect(runningLookup('get_realtime', { filters: ['referrer==google.com'] })).toBe('Reading who is on the site right now')
+    expect(describeStep(step('get_excluded_traffic', { filters: ['referrer==google.com'] }, { events_last_7_days: 30 }))).toMatchObject({
+      text: 'Traffic kept out of your stats',
+    })
+  })
+})
+
+describe('the data lookups', () => {
+  it("names a page's day series by its filter, the drop rule's lookup", () => {
+    const filters = ['page==/pricing']
+    expect(describeStep(step('get_daily_series', { filters }, { range: THIS_WEEK, filters, days: [] }))).toMatchObject({
+      text: 'Day by day for /pricing, 4 to 10 November',
+    })
+    expect(runningLookup('get_daily_series', { filters })).toBe("Reading each day's figures for /pricing")
+    expect(runningLookup('get_daily_series', {})).toBe("Reading each day's figures")
+  })
+
+  it('names an engagement lookup by what its rows are, with its filter and dates', () => {
+    expect(describeStep(step('get_engagement', { dimension: 'referrer' }, { range: THIS_WEEK, dimension: 'referrer', filters: [], rows: [] }))).toMatchObject({
+      text: 'Engagement by source, 4 to 10 November',
+    })
+    const filters = ['referrer==google.com']
+    expect(describeStep(step('get_engagement', { dimension: 'page', filters }, { range: THIS_WEEK, dimension: 'page', filters, rows: [] }))).toMatchObject({
+      text: 'Engagement by page for google.com, 4 to 10 November',
+    })
+    expect(runningLookup('get_engagement', { dimension: 'utm_campaign' })).toBe('Reading engagement by campaign')
+    expect(describeStep(step('get_engagement', { dimension: 'country' }, undefined, 'boom'))).toEqual({
+      kind: 'line',
+      text: 'Analyst could not read engagement by country',
+      failed: true,
+    })
+  })
+
+  it('names the traffic kept out as the settings page does', () => {
+    expect(describeStep(step('get_excluded_traffic', {}, { events_last_7_days: 30, by_kind: [] }))).toEqual({
+      kind: 'line',
+      text: 'Traffic kept out of your stats',
+      failed: false,
+    })
+    expect(runningLookup('get_excluded_traffic', {})).toBe('Reading the traffic Pulse kept out')
+    expect(describeStep(step('get_excluded_traffic', {}, undefined, 'boom'))).toMatchObject({
+      text: 'Analyst could not read the traffic Pulse kept out',
+      failed: true,
+    })
   })
 })
