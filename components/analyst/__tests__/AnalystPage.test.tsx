@@ -198,6 +198,18 @@ describe('the Analyst page', () => {
     expect(askAnalyst.mock.calls[2].slice(1, 3)).toEqual(['Which pages are growing?', null])
   })
 
+  it('shows a question without the blank lines typed after it, as a reopened chat shows it', async () => {
+    askAnalyst.mockResolvedValue(answer('c1', 'About two minutes.', 4))
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+
+    ask('How long do people stay?\n\n')
+    await screen.findByText('About two minutes.')
+    // The server gets the question trimmed, and its bubble shows the same: no blank line under it.
+    expect(askAnalyst.mock.calls[0][1]).toBe('How long do people stay?')
+    expect(screen.getByText('How long do people stay?').textContent).toBe('How long do people stay?')
+  })
+
   it('renders the answer as markdown, and a link opens in a new tab so the conversation stays', async () => {
     askAnalyst.mockResolvedValue(
       answer('c1', 'Visitors rose. **google.com** grew most.\n\n- LinkedIn doubled\n- Direct fell\n\nSee [the Pages view](https://pulse.ciphera.net/sites/s1/pages).', 4),
