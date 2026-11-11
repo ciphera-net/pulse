@@ -21,9 +21,9 @@ const SITE_URL = 'https://pulse.ciphera.net'
 // * Brand-led title (owner decision, 21-09-2026: "Pulse Analytics"). Used as the default
 // * <title> and as the OG/Twitter title; child routes set a bare page name and
 // * the template appends the brand — see `title` below.
-const SITE_TITLE = 'Pulse Analytics — Privacy-First Web Analytics'
+const SITE_TITLE = 'Pulse Analytics: privacy-first web analytics'
 const SITE_DESCRIPTION =
-  'Privacy-first web analytics. Sets no cookies and does no fingerprinting. Script under 3 KB, hosted in Switzerland.'
+  'Pulse is privacy-first web analytics. It sets no cookies and does no fingerprinting. The script is about 3 KB, and your data is stored in Switzerland.'
 
 const geist = Geist({
   subsets: ['latin'],
