@@ -740,5 +740,65 @@ export async function apiRequestBlob(
   return { blob: await response.blob(), filename: match?.[1] ?? null }
 }
 
+/**
+ * A JSON request whose answer is read as it arrives (server-sent events: Analyst's streamed answers). It shares
+ * `apiRequestBlob`'s rules: the same base URL, the same Bearer and team headers, the same ONE refresh-and-retry on a
+ * 401, and no dedupe or cache. The caller reads the returned response's body; a failure before the stream starts
+ * (any non-2xx) is read as JSON and thrown as an ApiError, so the caller's error sentences stay the same.
+ */
+export async function apiRequestStream(endpoint: string, options: ApiRequestOptions = {}): Promise<Response> {
+  if (!isTeamGateExempt(endpoint)) {
+    await waitForTeamGate()
+  }
+
+  const isAuthRequest = endpoint.startsWith('/auth')
+  const baseUrl = isAuthRequest ? ID_API_URL : API_URL
+  const url = endpoint.startsWith('/api/') ? `${baseUrl}${endpoint}` : `${baseUrl}/api/v1${endpoint}`
+  const method = options.method || 'GET'
+
+  const send = () => {
+    const base: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      [getRequestIdHeader()]: generateRequestId(),
+    }
+    if (options.headers) {
+      Object.entries(options.headers as Record<string, string>).forEach(([k, v]) => { base[k] = v })
+    }
+    // * buildSessionHeaders reads getAccessToken() itself, so the SECOND call
+    // * (after a refresh) picks up the renewed token automatically.
+    const headers = buildSessionHeaders(endpoint, method, base)
+    return fetch(url, { ...options, headers, credentials: 'include' })
+  }
+
+  let response: Response
+  try {
+    response = await send()
+  } catch (e) {
+    if (options.signal?.aborted) throw e
+    throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+  }
+
+  if (response.status === 401 && typeof window !== 'undefined' && !options.skipAuthRetry && refreshHandler) {
+    const outcome = await refreshHandler()
+    if (outcome.ok) {
+      try {
+        response = await send()
+      } catch (e) {
+        if (options.signal?.aborted) throw e
+        throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+      }
+    }
+  }
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    maybeTriggerTeamRecovery(isAuthRequest, response.status, data)
+    const message = typeof data?.error === 'string' ? data.error : `Request failed (${response.status})`
+    throw new ApiError(message, response.status, data)
+  }
+  return response
+}
+
 export const authFetch = apiRequest
 export default apiRequest

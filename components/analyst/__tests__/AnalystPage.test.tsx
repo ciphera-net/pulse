@@ -7,14 +7,16 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { ApiError } from '@/lib/api/client'
-import type { AnalystAnswer, AnalystConversation, AnalystUsage } from '@/lib/api/analyst'
+import type { AnalystAnswer, AnalystConversation, AnalystStreamEvent, AnalystUsage } from '@/lib/api/analyst'
 
 const askAnalyst = vi.hoisted(() => vi.fn())
+const askAnalystStream = vi.hoisted(() => vi.fn())
 const getAnalystUsage = vi.hoisted(() => vi.fn())
 const getAnalystConversations = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/analyst', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/analyst')>()),
   askAnalyst,
+  askAnalystStream,
   getAnalystUsage,
   getAnalystConversations,
 }))
@@ -100,8 +102,40 @@ const chats = (...conversations: AnalystConversation[]) => ({ conversations, kep
 const footerHorizon = (container: HTMLElement) =>
   container.querySelector('[data-analyst="footer"] [data-analyst="horizon"]')
 
+/** A gate the test opens step by step, so a streamed answer can be looked at between its events. */
+function gate() {
+  let credits = 0
+  const waiting: Array<() => void> = []
+  return {
+    wait: (signal?: AbortSignal) =>
+      new Promise<void>((resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new DOMException('Stopped', 'AbortError')))
+        if (credits > 0) {
+          credits--
+          resolve()
+        } else waiting.push(resolve)
+      }),
+    open: () => {
+      const next = waiting.shift()
+      if (next) next()
+      else credits++
+    },
+  }
+}
+
 beforeEach(() => {
   askAnalyst.mockReset()
+  askAnalystStream.mockReset()
+  // * By default the stream is one done event with whatever askAnalyst answers, so every test written for whole
+  // * answers still drives the page through askAnalyst.
+  askAnalystStream.mockImplementation(async function* (
+    siteId: string,
+    question: string,
+    conversationId: string | null,
+    signal?: AbortSignal,
+  ): AsyncGenerator<AnalystStreamEvent> {
+    yield { type: 'done', answer: await askAnalyst(siteId, question, conversationId, signal) }
+  })
   getAnalystUsage.mockReset()
   getAnalystUsage.mockResolvedValue(usage(3))
   getAnalystConversations.mockReset()
@@ -314,5 +348,88 @@ describe('the Analyst page', () => {
     expect(floating?.closest('[data-floating]')).not.toBeNull()
     fireEvent.mouseLeave(first)
     await waitFor(() => expect(copies()).toHaveLength(1))
+  })
+
+  it('lists each lookup while it runs, ticks it off, folds the list at the first word, then shows the whole answer', async () => {
+    const g = gate()
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c9' }
+      yield { type: 'step', index: 0, tool: 'compare_periods', args: { period: '7d', dimension: 'referrer' } }
+      await g.wait()
+      const done = answer('c9', 'Visitors rose from 48 to 56.', 4)
+      yield { type: 'step_done', index: 0, ms: 210, error: '', result: done.turn.steps![0].result }
+      yield { type: 'step', index: 1, tool: 'get_stats', args: {} }
+      await g.wait()
+      yield { type: 'step_done', index: 1, ms: 80, error: '', result: done.turn.steps![1].result }
+      await g.wait()
+      yield { type: 'text', delta: 'Visitors rose' }
+      await g.wait()
+      yield { type: 'done', answer: done }
+    })
+    const { container } = mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+
+    expect(await screen.findByText('Comparing sources with the week before')).toBeInTheDocument()
+    g.open()
+    expect(await screen.findByText('Sources, 4 to 10 November against 28 October to 3 November')).toBeInTheDocument()
+    expect(await screen.findByText('Reading the totals')).toBeInTheDocument()
+    g.open()
+    expect(await screen.findByText('Totals, 4 to 10 November')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Figures behind this answer/ })).toBeNull()
+
+    // * At the first word the list folds into the button, and the words carry the running mark the caret hangs on.
+    g.open()
+    expect(await screen.findByRole('button', { name: /Figures behind this answer/ })).toBeInTheDocument()
+    expect(screen.queryByText('Totals, 4 to 10 November')).toBeNull()
+    await waitFor(() => expect(container.querySelector('.an-md')?.getAttribute('data-status')).toBe('running'))
+
+    g.open()
+    expect(await screen.findByText('Visitors rose from 48 to 56.')).toBeInTheDocument()
+    expect(await screen.findByText('4 of 50 questions this month')).toBeInTheDocument()
+    await waitFor(() => expect(container.querySelector('.an-md')?.getAttribute('data-status')).not.toBe('running'))
+    expect(screen.getByLabelText('Copy the answer')).toBeInTheDocument()
+  })
+
+  it('shows only the sentence when an answer fails halfway, never lookups for an answer that did not come', async () => {
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c1' }
+      yield { type: 'step', index: 0, tool: 'get_stats', args: {} }
+      yield { type: 'step_done', index: 0, ms: 80, error: '', result: { range: { from: '2026-11-04', to: '2026-11-10' }, visitors: 56 } }
+      yield { type: 'error', error: 'Analyst could not answer this time, so the question was not counted.', conversation_id: 'c1', usage: usage(3) }
+    })
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+    expect(
+      await screen.findByText('Analyst could not answer this time, so the question was not counted. Try again in a moment.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Figures behind this answer/)).toBeNull()
+    expect(screen.queryByText('Totals, 4 to 10 November')).toBeNull()
+    expect(screen.queryByLabelText('Copy the answer')).toBeNull()
+  })
+
+  it('keeps the conversation of a question stopped halfway, so the next question carries on', async () => {
+    const g = gate()
+    askAnalystStream.mockImplementationOnce(async function* (
+      _s: string,
+      _q: string,
+      _c: string | null,
+      signal?: AbortSignal,
+    ): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c5' }
+      yield { type: 'step', index: 0, tool: 'get_stats', args: {} }
+      await g.wait(signal)
+    })
+    askAnalyst.mockResolvedValue(answer('c5', 'Second answer.', 4))
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+    await screen.findByText('Reading the totals')
+    fireEvent.click(screen.getByLabelText('Stop'))
+    await waitFor(() => expect(screen.getByLabelText('Ask')).toBeInTheDocument())
+    ask('And last month?')
+    await screen.findByText('Second answer.')
+    expect(askAnalystStream.mock.calls[1].slice(1, 3)).toEqual(['And last month?', 'c5'])
   })
 })

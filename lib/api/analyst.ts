@@ -1,12 +1,13 @@
-import apiRequest from './client'
+import apiRequest, { apiRequestStream } from './client'
 
 /**
  * Analyst, the AI analyst for one site (PUL-78). pulse-backend serves it under /barry (the internal name stays barry:
  * routes, tables, flags). Every route answers 404 to a team without the barry beta, and while the model is not
  * configured, so a 404 here means "not available", never "no data".
  *
- * A question is answered in one response with the whole turn: the answer and every lookup behind it. Nothing streams.
- * Each person's turns are kept for 30 days, grouped into conversations (the past chats under the suggestions).
+ * A question is answered as a stream (askAnalystStream): each lookup as it starts and ends, the answer's words as they
+ * are written, then the whole turn. askAnalyst asks for the turn in one response. Each person's turns are kept for 30
+ * days, grouped into conversations (the past chats under the suggestions).
  */
 
 /** One lookup the analyst made: a tool, its arguments, and what it returned (or why it failed). */
@@ -59,6 +60,113 @@ export function askAnalyst(siteId: string, question: string, conversationId: str
     body: JSON.stringify(conversationId ? { question, conversation_id: conversationId } : { question }),
     signal,
   })
+}
+
+/**
+ * One event of a streamed answer, in the order pulse-backend sends them: `start` (the conversation), then for each
+ * lookup `step` and `step_done` (with its result), the answer's `text` in pieces (`discard` drops text that turned out
+ * not to be the answer), and last `done` (the same body as askAnalyst's) or `error` (a failure, the question given
+ * back).
+ */
+export type AnalystStreamEvent =
+  | { type: 'start'; conversation_id: string }
+  | { type: 'step'; index: number; tool: string; args: Record<string, unknown> | null }
+  | { type: 'step_done'; index: number; ms: number; error: string; result: unknown }
+  | { type: 'text'; delta: string }
+  | { type: 'discard' }
+  | { type: 'done'; answer: AnalystAnswer }
+  | { type: 'error'; error: string; conversation_id: string; usage?: AnalystUsage }
+
+/** Server-sent events from a response body: blocks split by a blank line, each an `event:` and its `data:` lines. */
+export async function* readServerEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<{ event: string; data: string }> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      // * CRLF is legal in an event stream; a \r left at a chunk's end joins its \n on the next read.
+      buffer = (buffer + decoder.decode(value, { stream: !done })).replace(/\r\n/g, '\n')
+      let end: number
+      while ((end = buffer.indexOf('\n\n')) >= 0) {
+        const block = buffer.slice(0, end)
+        buffer = buffer.slice(end + 2)
+        let event = 'message'
+        const data: string[] = []
+        for (const line of block.split('\n')) {
+          if (line === '' || line.startsWith(':')) continue
+          const colon = line.indexOf(':')
+          const field = colon < 0 ? line : line.slice(0, colon)
+          const text = colon < 0 ? '' : line.slice(colon + 1).replace(/^ /, '')
+          if (field === 'event') event = text
+          else if (field === 'data') data.push(text)
+        }
+        if (data.length) yield { event, data: data.join('\n') }
+      }
+      if (done) return
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+/**
+ * Asks one question and hands on its answer as it comes. A follow-up passes the conversation id, as with askAnalyst.
+ * A refused question (the allowance, a bad question, Analyst off) throws an ApiError before the first event; a
+ * failure after it arrives as an `error` event.
+ */
+export async function* askAnalystStream(
+  siteId: string,
+  question: string,
+  conversationId: string | null,
+  signal?: AbortSignal,
+): AsyncGenerator<AnalystStreamEvent> {
+  const res = await apiRequestStream(`/sites/${siteId}/barry/questions`, {
+    method: 'POST',
+    body: JSON.stringify(conversationId ? { question, conversation_id: conversationId } : { question }),
+    signal,
+  })
+  // * A server that answers with the whole turn at once (one that does not stream) still gives a done.
+  if (!(res.headers.get('content-type') ?? '').startsWith('text/event-stream') || !res.body) {
+    yield { type: 'done', answer: (await res.json()) as AnalystAnswer }
+    return
+  }
+  for await (const { event, data } of readServerEvents(res.body)) {
+    let p: Record<string, unknown>
+    try {
+      p = JSON.parse(data)
+    } catch {
+      continue
+    }
+    switch (event) {
+      case 'start':
+        yield { type: 'start', conversation_id: String(p.conversation_id ?? '') }
+        break
+      case 'step':
+        yield { type: 'step', index: Number(p.index), tool: String(p.tool ?? ''), args: (p.args as Record<string, unknown> | null) ?? null }
+        break
+      case 'step_done':
+        yield { type: 'step_done', index: Number(p.index), ms: Number(p.ms ?? 0), error: String(p.error ?? ''), result: p.result ?? null }
+        break
+      case 'text':
+        yield { type: 'text', delta: String(p.delta ?? '') }
+        break
+      case 'discard':
+        yield { type: 'discard' }
+        break
+      case 'done':
+        yield { type: 'done', answer: p as unknown as AnalystAnswer }
+        return
+      case 'error':
+        yield {
+          type: 'error',
+          error: String(p.error ?? ''),
+          conversation_id: String(p.conversation_id ?? ''),
+          usage: p.usage as AnalystUsage | undefined,
+        }
+        return
+    }
+  }
 }
 
 export function getAnalystUsage() {

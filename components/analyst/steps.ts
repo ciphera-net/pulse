@@ -154,3 +154,47 @@ function lookupName(tool: string, args: Record<string, unknown>): string {
       return 'Another lookup'
   }
 }
+
+/** The period a comparison is made against, as the running lookup names it ("with the week before"). */
+function periodBefore(args: Record<string, unknown>): string {
+  if (typeof args.from === 'string' || typeof args.to === 'string') return 'the period before'
+  switch (args.period) {
+    case undefined:
+    case '7d':
+      return 'the week before'
+    case '30d':
+      return 'the 30 days before'
+    case 'month':
+      return 'last month'
+    case 'year':
+      return 'last year'
+    default:
+      return 'the period before'
+  }
+}
+
+/** What a lookup is doing while it runs (live answers, round 6): named from its arguments, before any result. */
+export function runningLookup(tool: string, args: Record<string, unknown> | null): string {
+  const a = obj(args)
+  switch (tool) {
+    case 'compare_periods':
+      return `Comparing ${titleOf(a.dimension).toLowerCase()} with ${periodBefore(a)}`
+    case 'get_stats':
+      return 'Reading the totals'
+    case 'get_daily_series':
+      return 'Reading the figures for each day'
+    case 'get_breakdown':
+      return `Reading the ${titleOf(a.dimension).toLowerCase()}`
+    case 'get_realtime':
+      return 'Reading who is on the site right now'
+    default:
+      return "Reading this site's figures"
+  }
+}
+
+/** A finished lookup as one line of the live list: named as "Figures behind this answer" names it, with its dates. */
+export function finishedLookup(step: AnalystStep): { text: string; failed: boolean } {
+  const view = describeStep(step)
+  if (view.kind === 'line') return { text: view.text, failed: view.failed }
+  return { text: view.range ? `${view.title}, ${view.range}` : view.title, failed: false }
+}
