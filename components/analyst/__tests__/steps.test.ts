@@ -162,11 +162,11 @@ describe('describeStep', () => {
     expect(failed('get_daily_series')).toMatchObject({ text: "Analyst could not read each day's figures" })
     expect(failed('get_realtime')).toMatchObject({ text: 'Analyst could not read who is on the site right now' })
     expect(failed('compare_periods')).toMatchObject({ text: 'Analyst could not compare the two periods', failed: true })
-    expect(failed('get_goals')).toMatchObject({ text: 'One of the lookups failed', failed: true })
+    expect(failed('get_weather')).toMatchObject({ text: 'One of the lookups failed', failed: true })
   })
 
   it('names a lookup it does not know without guessing what it read', () => {
-    expect(describeStep(step('get_goals', {}, { range: THIS_WEEK }))).toEqual({
+    expect(describeStep(step('get_weather', {}, { range: THIS_WEEK }))).toEqual({
       kind: 'line',
       text: 'Another lookup, 4 to 10 November',
       failed: false,
@@ -280,5 +280,39 @@ describe('the data lookups', () => {
       text: 'Analyst could not read the traffic Pulse kept out',
       failed: true,
     })
+  })
+})
+
+describe('the lookups of the other dashboard sections', () => {
+  const finished = (tool: string, args: Record<string, unknown>, result: unknown) => describeStep(step(tool, args, result))
+
+  it('names each one with its dates where the result has them', () => {
+    expect(finished('get_search', {}, { range: THIS_WEEK, previous_range: LAST_WEEK, google: null, bing: null })).toMatchObject({
+      text: 'Search figures, 4 to 10 November',
+    })
+    expect(finished('get_funnels', {}, { range: THIS_WEEK, filters: [], funnels: [] })).toMatchObject({ text: 'Funnels, 4 to 10 November' })
+    expect(finished('get_uptime', {}, { range: THIS_WEEK, monitors: [], incidents: [] })).toMatchObject({ text: 'Uptime, 4 to 10 November' })
+    expect(finished('get_performance', {}, { page: 'https://example.com/', checks: [] })).toMatchObject({ text: 'Performance checks' })
+  })
+
+  it('names goals and funnels by their filter', () => {
+    const filters = ['referrer==google.com']
+    expect(finished('get_goals', { filters }, { range: THIS_WEEK, filters, events: [] })).toMatchObject({
+      text: 'Goals and events for google.com, 4 to 10 November',
+    })
+    expect(runningLookup('get_goals', { filters })).toBe('Reading the goals and events for google.com')
+    expect(runningLookup('get_funnels', { filters: ['device==mobile'] })).toBe('Reading the funnels for mobile')
+  })
+
+  it('says what is missing when one fails, and what it is reading while it runs', () => {
+    const failed = (tool: string) => describeStep(step(tool, {}, undefined, 'boom'))
+    expect(failed('get_search')).toMatchObject({ text: 'Analyst could not read the search figures', failed: true })
+    expect(failed('get_goals')).toMatchObject({ text: 'Analyst could not read the goals and events', failed: true })
+    expect(failed('get_funnels')).toMatchObject({ text: 'Analyst could not read the funnels', failed: true })
+    expect(failed('get_performance')).toMatchObject({ text: 'Analyst could not read the performance checks', failed: true })
+    expect(failed('get_uptime')).toMatchObject({ text: 'Analyst could not read the uptime checks', failed: true })
+    expect(runningLookup('get_search', {})).toBe('Reading the search figures')
+    expect(runningLookup('get_performance', {})).toBe('Reading the performance checks')
+    expect(runningLookup('get_uptime', {})).toBe('Reading the uptime checks')
   })
 })

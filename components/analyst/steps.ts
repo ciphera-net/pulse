@@ -155,7 +155,15 @@ export function narrowedTo(filters: readonly string[]): string {
 }
 
 /** The tools that take filters; a filter written to another one is ignored by the server, so it is not named. */
-const FILTERED_TOOLS = new Set(['get_stats', 'get_breakdown', 'compare_periods', 'get_daily_series', 'get_engagement'])
+const FILTERED_TOOLS = new Set([
+  'get_stats',
+  'get_breakdown',
+  'compare_periods',
+  'get_daily_series',
+  'get_engagement',
+  'get_goals',
+  'get_funnels',
+])
 
 function narrowing(tool: string, args: Record<string, unknown>, result: Record<string, unknown> = {}): string {
   return FILTERED_TOOLS.has(tool) ? narrowedTo(filtersOf(args, result)) : ''
@@ -233,6 +241,16 @@ function failedLookup(tool: string, args: Record<string, unknown>): string {
       return `Analyst could not read engagement by ${engagementBy(args.dimension)}`
     case 'get_excluded_traffic':
       return 'Analyst could not read the traffic Pulse kept out'
+    case 'get_search':
+      return 'Analyst could not read the search figures'
+    case 'get_goals':
+      return 'Analyst could not read the goals and events'
+    case 'get_funnels':
+      return 'Analyst could not read the funnels'
+    case 'get_performance':
+      return 'Analyst could not read the performance checks'
+    case 'get_uptime':
+      return 'Analyst could not read the uptime checks'
     case 'get_realtime':
       return 'Analyst could not read who is on the site right now'
     case 'compare_periods':
@@ -256,6 +274,16 @@ function lookupName(tool: string, args: Record<string, unknown>): string {
       return `Engagement by ${engagementBy(args.dimension)}`
     case 'get_excluded_traffic':
       return 'Traffic kept out of your stats'
+    case 'get_search':
+      return 'Search figures'
+    case 'get_goals':
+      return 'Goals and events'
+    case 'get_funnels':
+      return 'Funnels'
+    case 'get_performance':
+      return 'Performance checks'
+    case 'get_uptime':
+      return 'Uptime'
     default:
       return 'Another lookup'
   }
@@ -296,6 +324,16 @@ export function runningLookup(tool: string, args: Record<string, unknown> | null
       return `Reading engagement by ${engagementBy(a.dimension)}${narrowed}`
     case 'get_excluded_traffic':
       return 'Reading the traffic Pulse kept out'
+    case 'get_search':
+      return 'Reading the search figures'
+    case 'get_goals':
+      return `Reading the goals and events${narrowed}`
+    case 'get_funnels':
+      return `Reading the funnels${narrowed}`
+    case 'get_performance':
+      return 'Reading the performance checks'
+    case 'get_uptime':
+      return 'Reading the uptime checks'
     case 'get_realtime':
       return 'Reading who is on the site right now'
     default:
