@@ -14,6 +14,7 @@ import {
   useAuiState,
   useLocalRuntime,
   type ChatModelAdapter,
+  type TextMessagePartComponent,
 } from '@assistant-ui/react'
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown'
 import {
@@ -415,13 +416,17 @@ const PageRecent: FC<{ siteId: string; siteTimezone: string | null; onOpen: (cha
   )
 }
 
+// * The question as the server stores it (trimmed, as a reopened chat shows it), so a newline typed after the question
+// * adds no blank line to its bubble. pre-line as assistant-ui's own text part has it.
+const QuestionText: TextMessagePartComponent = ({ text }) => <p className="whitespace-pre-line">{text.trim()}</p>
+
 const PageMessage: FC = () => {
   const role = useAuiState((s) => s.message.role)
   if (role === 'user') {
     return (
       <MessagePrimitive.Root className="flex justify-end">
         <div className="max-w-[80%] whitespace-pre-wrap border border-white/[0.08] bg-neutral-800/70 px-4 py-2.5 text-[15px] leading-6 text-neutral-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-          <MessagePrimitive.Parts />
+          <MessagePrimitive.Parts components={{ Text: QuestionText }} />
         </div>
       </MessagePrimitive.Root>
     )
