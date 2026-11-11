@@ -390,7 +390,7 @@ const PageMessage: FC = () => {
     )
   }
   return (
-    <MessagePrimitive.Root className="flex gap-4">
+    <MessagePrimitive.Root className="relative flex gap-4">
       <AnalystMark size="sm" />
       <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
         <MessagePrimitive.GroupedParts groupBy={groupBy} indicator="empty">
@@ -420,9 +420,19 @@ const PageMessage: FC = () => {
             <ErrorPrimitive.Message />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
-        {/* A question that failed or was stopped has no answer to copy. */}
+        {/* A question that failed or was stopped has no answer to copy. The newest answer keeps its bar in the
+            * flow; on an earlier one it shows on hover and floats (data-floating) in the gap under the answer, so
+            * showing it never changes the thread's height. In the flow, every answer the pointer crossed grew and
+            * shrank by the bar, and the thread, pinned to its newest answer, jumped under the pointer (reported
+            * 11-11-2026). Its box starts at the answer's bottom edge (padding, not margin), so the pointer can move
+            * down onto it without leaving the answer. */}
         <AuiIf condition={(s) => s.message.status?.type !== 'incomplete'}>
-          <ActionBarPrimitive.Root hideWhenRunning autohide="not-last" className="-ml-2 mt-2 flex items-center gap-0.5 text-neutral-500">
+          <ActionBarPrimitive.Root
+            hideWhenRunning
+            autohide="not-last"
+            autohideFloat="always"
+            className="-ml-2 mt-2 flex items-center gap-0.5 text-neutral-500 data-[floating]:absolute data-[floating]:left-12 data-[floating]:top-full data-[floating]:mt-0 data-[floating]:pt-3"
+          >
             <ActionBarPrimitive.Copy asChild>
               <button
                 type="button"
