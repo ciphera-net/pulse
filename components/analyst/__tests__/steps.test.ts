@@ -3,7 +3,7 @@
 // print the same in every timezone: this file also runs in the UTC+14 lane (npm run test:tz-positive).
 import { describe, it, expect } from 'vitest'
 import type { AnalystStep } from '@/lib/api/analyst'
-import { COMPARE_ROWS_SHOWN, describeStep, formatRange } from '../steps'
+import { COMPARE_ROWS_SHOWN, describeStep, formatRange, runningLookup } from '../steps'
 
 const THIS_WEEK = { from: '2026-11-04', to: '2026-11-10' }
 const LAST_WEEK = { from: '2026-10-28', to: '2026-11-03' }
@@ -171,5 +171,74 @@ describe('describeStep', () => {
       text: 'Another lookup, 4 to 10 November',
       failed: false,
     })
+  })
+})
+
+describe('lookups that name what they were narrowed to', () => {
+  it('names a total by its filter, from the filters the server says it applied', () => {
+    // * The result's echo is the server's cleaned copy, so it wins over what the model wrote.
+    const view = describeStep(
+      step('get_stats', { period: '7d', filters: ['referrer==google.com\u0007'] }, { range: THIS_WEEK, filters: ['referrer==google.com'], visitors: 48 }),
+    )
+    expect(view).toEqual({ kind: 'line', text: 'Totals for google.com, 4 to 10 November', failed: false })
+  })
+
+  it('reads a country as its name, adds dimensions up and names an exclusion', () => {
+    const filters = ['country==DE', 'device==mobile', 'referrer!=Direct']
+    expect(describeStep(step('get_breakdown', { dimension: 'page', filters }, { range: THIS_WEEK, filters, rows: [] }))).toMatchObject({
+      text: 'Pages for Germany and mobile, excluding Direct, 4 to 10 November',
+    })
+  })
+
+  it('reads the values of one dimension as either one, as the server does', () => {
+    const filters = ['referrer==google.com', 'referrer==bing.com']
+    expect(describeStep(step('get_stats', { filters }, { range: THIS_WEEK, filters }))).toMatchObject({
+      text: 'Totals for google.com or bing.com, 4 to 10 November',
+    })
+  })
+
+  it('names a comparison by its filter, from the filters of the periods it compared', () => {
+    const filters = ['page==/products/pulse']
+    const view = describeStep(
+      step('compare_periods', { dimension: 'referrer', filters }, {
+        current: { range: THIS_WEEK, filters },
+        previous: { range: LAST_WEEK, filters },
+        dimension: 'referrer',
+        rows: [row('Shared Link', 22, 4)],
+      }),
+    )
+    expect(view.kind === 'compare' && view.title).toBe('Sources for /products/pulse')
+  })
+
+  it('names a running lookup by its filter, from what the model asked for', () => {
+    expect(runningLookup('get_stats', { filters: ['referrer==google.com'] })).toBe('Reading the totals for google.com')
+    expect(runningLookup('get_breakdown', { dimension: 'channel', filters: ['page==/pricing'] })).toBe('Reading the channels for /pricing')
+    expect(runningLookup('compare_periods', { dimension: 'referrer', period: '30d', filters: ['page==/products/pulse'] })).toBe(
+      'Comparing sources for /products/pulse with the 30 days before',
+    )
+    expect(runningLookup('get_stats', {})).toBe('Reading the totals')
+  })
+
+  it('names the filter of a lookup that failed', () => {
+    expect(describeStep(step('get_stats', { filters: ['country==BE'] }, undefined, 'boom'))).toEqual({
+      kind: 'line',
+      text: 'Analyst could not read the totals for Belgium',
+      failed: true,
+    })
+  })
+
+  it('cuts a long value, shows a code it cannot name as written, and skips what is not a filter', () => {
+    const long = `/blog/${'a'.repeat(60)}`
+    const filters = [`page==${long}`, 'language==xx-??', 'nonsense', 7]
+    expect(describeStep(step('get_stats', { filters }, { range: THIS_WEEK }))).toMatchObject({
+      text: `Totals for ${long.slice(0, 47)}… and xx-??, 4 to 10 November`,
+    })
+  })
+
+  it('never names a filter on a lookup that takes none, since the server ignored it', () => {
+    expect(describeStep(step('get_daily_series', { filters: ['referrer==google.com'] }, { range: THIS_WEEK, days: [] }))).toMatchObject({
+      text: 'Day by day, 4 to 10 November',
+    })
+    expect(runningLookup('get_realtime', { filters: ['referrer==google.com'] })).toBe('Reading who is on the site right now')
   })
 })

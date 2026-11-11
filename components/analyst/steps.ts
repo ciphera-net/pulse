@@ -70,6 +70,82 @@ export function formatRange(range: Range): string {
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {})
 
+/** A filter as pulse-backend reads one (splitFilterExpr): "!=" is looked for first, then "==". */
+interface Filter {
+  dimension: string
+  exclude: boolean
+  value: string
+}
+
+function parseFilter(expr: string): Filter | null {
+  for (const [token, exclude] of [['!=', true], ['==', false]] as const) {
+    const i = expr.indexOf(token)
+    if (i > 0) return { dimension: expr.slice(0, i).trim(), exclude, value: expr.slice(i + token.length).trim() }
+  }
+  return null
+}
+
+/** How long a filter's value may be in a lookup's name before it is cut (a page path can be long). */
+const FILTER_VALUE_MAX = 48
+
+const COUNTRY_NAMES = new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' })
+const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language', fallback: 'none' })
+
+/** A filter's value as a person reads it: a country's or a language's name for its code, the rest as written. */
+function filterValue(f: Filter): string {
+  try {
+    if (f.dimension === 'country' && /^[A-Za-z]{2}$/.test(f.value)) {
+      return COUNTRY_NAMES.of(f.value.toUpperCase()) ?? f.value
+    }
+    if (f.dimension === 'language' && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(f.value)) {
+      return LANGUAGE_NAMES.of(f.value) ?? f.value
+    }
+  } catch {
+    // * A code Intl does not accept is shown as written.
+  }
+  return f.value.length > FILTER_VALUE_MAX ? `${f.value.slice(0, FILTER_VALUE_MAX - 1)}…` : f.value
+}
+
+/**
+ * The filters a lookup was narrowed to (round 7, ruled 11-11-2026): the ones the server says it applied (each result
+ * echoes them, cleaned) once there is a result, else the ones the model asked for.
+ */
+function filtersOf(args: Record<string, unknown>, result: Record<string, unknown>): string[] {
+  for (const list of [result.filters, obj(result.current).filters, args.filters]) {
+    if (Array.isArray(list)) return list.filter((f): f is string => typeof f === 'string')
+  }
+  return []
+}
+
+/**
+ * What a lookup was narrowed to, as the words after its name: " for google.com", " for Germany and mobile",
+ * " excluding Direct". Values of one dimension are either-or, as the server reads them; dimensions add up.
+ */
+export function narrowedTo(filters: readonly string[]): string {
+  const include = new Map<string, string[]>()
+  const exclude: string[] = []
+  for (const expr of filters) {
+    const f = parseFilter(expr)
+    if (!f || f.value === '') continue
+    if (f.exclude) {
+      exclude.push(filterValue(f))
+      continue
+    }
+    include.set(f.dimension, [...(include.get(f.dimension) ?? []), filterValue(f)])
+  }
+  const parts: string[] = []
+  if (include.size > 0) parts.push(`for ${[...include.values()].map((values) => values.join(' or ')).join(' and ')}`)
+  if (exclude.length > 0) parts.push(`excluding ${exclude.join(' and ')}`)
+  return parts.length > 0 ? ` ${parts.join(', ')}` : ''
+}
+
+/** The tools that take filters; a filter written to another one is ignored by the server, so it is not named. */
+const FILTERED_TOOLS = new Set(['get_stats', 'get_breakdown', 'compare_periods'])
+
+function narrowing(tool: string, args: Record<string, unknown>, result: Record<string, unknown> = {}): string {
+  return FILTERED_TOOLS.has(tool) ? narrowedTo(filtersOf(args, result)) : ''
+}
+
 function titleOf(dimension: unknown): string {
   if (typeof dimension !== 'string' || dimension === '') return 'Visitors and pageviews'
   return DIMENSION_TITLES[dimension] ?? dimension.replace(/_/g, ' ')
@@ -80,7 +156,7 @@ function withRange(text: string, result: Record<string, unknown>): string {
   return range ? `${text}, ${formatRange(range)}` : text
 }
 
-function describeCompare(result: Record<string, unknown>): StepView {
+function describeCompare(result: Record<string, unknown>, args: Record<string, unknown>): StepView {
   const current = obj(result.current)
   const previous = obj(result.previous)
   const cr = asRange(current.range)
@@ -99,7 +175,7 @@ function describeCompare(result: Record<string, unknown>): StepView {
       const n = num(now)
       if (b !== null && n !== null) rows.push({ name, before: b, now: n, logo: false })
     }
-    return { kind: 'compare', title: titleOf(''), range, rows, more: 0 }
+    return { kind: 'compare', title: titleOf('') + narrowing('compare_periods', args, result), range, rows, more: 0 }
   }
 
   const all = Array.isArray(result.rows) ? result.rows.map(obj) : []
@@ -110,16 +186,23 @@ function describeCompare(result: Record<string, unknown>): StepView {
     if (typeof r.value !== 'string' || b === null || n === null) continue
     rows.push({ name: r.value === '' ? '(none)' : r.value, before: b, now: n, logo: dimension === 'referrer' })
   }
-  return { kind: 'compare', title: titleOf(dimension), range, rows, more: Math.max(0, all.length - COMPARE_ROWS_SHOWN) }
+  return {
+    kind: 'compare',
+    title: titleOf(dimension) + narrowing('compare_periods', args, result),
+    range,
+    rows,
+    more: Math.max(0, all.length - COMPARE_ROWS_SHOWN),
+  }
 }
 
 /** What one lookup shows. A lookup that failed says so, so a missing figure is never silent. */
 export function describeStep(step: AnalystStep): StepView {
   const result = obj(step.result)
   const args = obj(step.args)
-  if (step.error) return { kind: 'line', text: failedLookup(step.tool, args), failed: true }
-  if (step.tool === 'compare_periods') return describeCompare(result)
-  return { kind: 'line', text: withRange(lookupName(step.tool, { ...args, ...result }), result), failed: false }
+  if (step.error) return { kind: 'line', text: failedLookup(step.tool, args) + narrowing(step.tool, args), failed: true }
+  if (step.tool === 'compare_periods') return describeCompare(result, args)
+  const name = lookupName(step.tool, { ...args, ...result }) + narrowing(step.tool, args, result)
+  return { kind: 'line', text: withRange(name, result), failed: false }
 }
 
 /** A lookup that failed, as a sentence that names what is missing. */
@@ -176,15 +259,16 @@ function periodBefore(args: Record<string, unknown>): string {
 /** What a lookup is doing while it runs (live answers, round 6): named from its arguments, before any result. */
 export function runningLookup(tool: string, args: Record<string, unknown> | null): string {
   const a = obj(args)
+  const narrowed = narrowing(tool, a)
   switch (tool) {
     case 'compare_periods':
-      return `Comparing ${titleOf(a.dimension).toLowerCase()} with ${periodBefore(a)}`
+      return `Comparing ${titleOf(a.dimension).toLowerCase()}${narrowed} with ${periodBefore(a)}`
     case 'get_stats':
-      return 'Reading the totals'
+      return `Reading the totals${narrowed}`
     case 'get_daily_series':
       return 'Reading the figures for each day'
     case 'get_breakdown':
-      return `Reading the ${titleOf(a.dimension).toLowerCase()}`
+      return `Reading the ${titleOf(a.dimension).toLowerCase()}${narrowed}`
     case 'get_realtime':
       return 'Reading who is on the site right now'
     default:
