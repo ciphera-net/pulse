@@ -291,4 +291,28 @@ describe('the Analyst page', () => {
     await screen.findByText('First answer.')
     await waitFor(() => expect(footerHorizon(container)?.getAttribute('data-lit')).toBe('false'))
   })
+
+  it("floats an earlier answer's copy button, so showing it on hover never changes the thread's height", async () => {
+    askAnalyst.mockResolvedValueOnce(answer('c1', 'First answer.', 4)).mockResolvedValueOnce(answer('c1', 'Second answer.', 5))
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Where do visitors come from?')
+    await screen.findByText('First answer.')
+    ask('And last month?')
+    await screen.findByText('Second answer.')
+
+    // * The newest answer's button is in the flow, shown without a hover.
+    const copies = () => screen.queryAllByLabelText('Copy the answer')
+    expect(copies()).toHaveLength(1)
+    expect(copies()[0].closest('[data-floating]')).toBeNull()
+
+    // * An earlier answer's button shows on hover, floating, and goes when the pointer leaves.
+    const first = screen.getByText('First answer.').closest('[data-message-id]') as HTMLElement
+    fireEvent.mouseEnter(first)
+    await waitFor(() => expect(copies()).toHaveLength(2))
+    const floating = copies().find((b) => first.contains(b))
+    expect(floating?.closest('[data-floating]')).not.toBeNull()
+    fireEvent.mouseLeave(first)
+    await waitFor(() => expect(copies()).toHaveLength(1))
+  })
 })
