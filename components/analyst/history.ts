@@ -1,7 +1,7 @@
 import type { ThreadMessageLike } from '@assistant-ui/react'
 import type { AnalystConversation } from '@/lib/api/analyst'
 import { formatSiteTime, shiftDayKey, zoneDayKey, zoneParts } from '@/lib/utils/siteTime'
-import { turnParts } from './turn'
+import { turnMetadata, turnParts } from './turn'
 
 /**
  * Past chats (round 6, pick 3: the newest under the suggestions, ruled 10-11-2026). What the page makes of
@@ -47,15 +47,15 @@ export function chatWhenLabel(iso: string, zone: string, now: Date = new Date())
 }
 
 /**
- * A past chat as the thread's starting messages: each turn's question, then its answer with the figures behind it,
- * drawn exactly as when it was first answered.
+ * A past chat as the thread's starting messages: each turn's question, then its answer with the figures behind it
+ * and the questions offered after it, drawn exactly as when it was first answered.
  */
 export function chatMessages(conversation: AnalystConversation): ThreadMessageLike[] {
   return conversation.turns.flatMap((turn): ThreadMessageLike[] => {
     const createdAt = new Date(turn.created_at)
     return [
       { id: `${turn.id}-question`, role: 'user', content: [{ type: 'text', text: turn.question }], createdAt },
-      { id: `${turn.id}-answer`, role: 'assistant', content: turnParts(turn), createdAt },
+      { id: `${turn.id}-answer`, role: 'assistant', content: turnParts(turn), createdAt, metadata: turnMetadata(turn) },
     ]
   })
 }

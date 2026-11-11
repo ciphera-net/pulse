@@ -94,4 +94,11 @@ describe('chatMessages', () => {
     ])
     expect(messages[2].createdAt).toEqual(new Date('2026-11-10T21:05:00Z'))
   })
+
+  it("keeps each answer's follow-up questions with it, so a reopened chat offers them again", () => {
+    const messages = chatMessages(
+      conversation('c1', [turn('t1', 'Why did visitors change?', '2026-11-10T21:00:00Z', { follow_ups: ['Which pages grew most?'] })]),
+    )
+    expect(messages[1].metadata).toEqual({ custom: { followUps: ['Which pages grew most?'] } })
+  })
 })

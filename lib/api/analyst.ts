@@ -30,6 +30,8 @@ export interface AnalystTurn {
   answer: string | null
   outcome: AnalystOutcome
   steps: AnalystStep[] | null
+  /** The questions written for a person to ask next (round 7, "Ask next"); absent when none were written. */
+  follow_ups?: string[] | null
   created_at: string
 }
 

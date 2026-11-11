@@ -11,6 +11,7 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
   groupPartByType,
+  useAui,
   useAuiState,
   useLocalRuntime,
   type ChatModelAdapter,
@@ -52,7 +53,7 @@ import { pctChange } from '@/lib/utils/pctChange'
 import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
 import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
 import { describeStep, finishedLookup, runningLookup } from './steps'
-import { analystErrorMessage, liveParts, turnParts, type LiveStep } from './turn'
+import { analystErrorMessage, followUpsOf, liveParts, turnMetadata, turnParts, type LiveStep } from './turn'
 
 /**
  * Analyst: a page of its own for asking about one site (PUL-78, Pulse/docs/plans/09-11-2026-barry-ai-analyst-plan.md
@@ -65,6 +66,9 @@ import { analystErrorMessage, liveParts, turnParts, type LiveStep } from './turn
  *
  * Round 6 (ruled 10-11-2026): the Pulse hero's horizon behind the welcome and in the footer while a conversation runs
  * (./AnalystHorizon), and the person's recent chats under the suggestions, each reopened by picking it (./history).
+ *
+ * Round 7 (picked 11-11-2026): a last row in the lookup list while Analyst works out its answer, lookups named with
+ * what they were narrowed to (./steps), and "Ask next" under the newest answer: the questions written for it.
  */
 
 const RAISED = 'bg-gradient-to-b from-white/[0.035] to-white/[0.01] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
@@ -205,7 +209,7 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
                 keepUsage(ev.answer.usage)
                 // * The past chats list this one now (seen after New chat).
                 void mutate(chatsKey(siteId))
-                yield { content: turnParts(ev.answer.turn) }
+                yield { content: turnParts(ev.answer.turn), metadata: turnMetadata(ev.answer.turn) }
                 return
               case 'error':
                 throw new ApiError(ev.error, 503, { error: ev.error, usage: ev.usage })
@@ -491,8 +495,47 @@ const PageMessage: FC = () => {
             </ActionBarPrimitive.Copy>
           </ActionBarPrimitive.Root>
         </AuiIf>
+        <PageAskNext />
       </div>
     </MessagePrimitive.Root>
+  )
+}
+
+// * Ask next (round 7, pick B): the questions written for this answer, in the recent chats' rows, under the newest
+// * answer once it is in. Picking one asks it in this conversation; asking anything moves the list to the next answer.
+// * The thread takes the question itself: inside a message, assistant-ui's suggestion primitive reaches the message's
+// * own edit box instead of the question box ("Composer is not available"), and a draft in the box stays as it is.
+const PageAskNext: FC = () => {
+  const aui = useAui()
+  const questions = useAuiState((s) =>
+    s.message.isLast && !s.thread.isRunning ? followUpsOf(s.message.metadata) : followUpsOf(undefined),
+  )
+  if (!questions.length) return null
+  const askNext = (question: string) => {
+    const thread = aui.thread.getState()
+    if (thread.isRunning || thread.isDisabled || thread.isSendDisabled) return
+    aui.thread.append({ content: [{ type: 'text', text: question }] })
+  }
+  return (
+    <section aria-labelledby="analyst-ask-next" data-analyst="ask-next" className="mt-5 flex flex-col">
+      <h2 id="analyst-ask-next" className="px-2.5 pb-1.5 text-[13px] text-neutral-400">
+        Ask next
+      </h2>
+      <ul className="flex flex-col border-t border-white/[0.06]">
+        {questions.map((question) => (
+          <li key={question} className="border-b border-white/[0.06]">
+            <button
+              type="button"
+              onClick={() => askNext(question)}
+              className="group flex w-full items-center gap-3 p-2.5 text-left text-sm text-neutral-400 transition-colors hover:bg-white/[0.03] hover:text-white"
+            >
+              <TrendUp className="h-[15px] w-[15px] shrink-0 text-neutral-600 transition-colors group-hover:text-brand-orange" />
+              <span className="min-w-0 flex-1">{question}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -508,9 +551,15 @@ function useLookingUp(): boolean {
 
 const PageChecks: FC<{ count: number; children: ReactNode }> = ({ count, children }) => {
   const [open, setOpen] = useState(false)
+  const allDone = useAuiState((s) => s.message.content.every((p) => p.type !== 'tool-call' || p.result !== undefined))
   // * Each lookup shows as it starts and ticks off as it ends; at the first word the list folds into the button.
   if (useLookingUp()) {
-    return <div className={cn('mb-5 flex flex-col divide-y divide-white/[0.06] border border-white/[0.08]', RAISED)}>{children}</div>
+    return (
+      <div className={cn('mb-5 flex flex-col divide-y divide-white/[0.06] border border-white/[0.08]', RAISED)}>
+        {children}
+        {allDone && <PageWorking />}
+      </div>
+    )
   }
   return (
     <div className="mb-5 flex flex-col">
@@ -534,6 +583,19 @@ const PageChecks: FC<{ count: number; children: ReactNode }> = ({ count, childre
     </div>
   )
 }
+
+// * While Analyst works out what the figures say after its lookups (round 7, pick B): a last row with the running
+// * spinner, so the list reads as work still going. Measured 11-11-2026: questions of 33 to 36 s, with nothing on the
+// * page after the last tick while the model thought.
+const PageWorking: FC = () => (
+  <div data-analyst="working" className="flex items-center gap-2.5 px-4 py-[11px] text-sm text-neutral-400">
+    <span
+      aria-hidden="true"
+      className="h-[13px] w-[13px] shrink-0 animate-spin rounded-full border-[1.5px] border-white/[0.18] border-t-brand-orange motion-reduce:animate-none"
+    />
+    Working out what the figures say
+  </div>
+)
 
 const PageCheck: FC<{ part: LookupPart }> = ({ part }) => {
   const lookingUp = useLookingUp()

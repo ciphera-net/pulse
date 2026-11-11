@@ -2,6 +2,7 @@
 // adapter, the answer and its figures come back as one turn, a follow-up carries the conversation, New chat starts
 // over, and a refused question shows a sentence a person can act on. Round 6: the recent chats under the suggestions
 // reopen a chat to carry on, and the horizon sits behind the welcome, then in the footer, lit while Analyst answers.
+// Round 7: a last row while Analyst works after its lookups, and "Ask next" under the newest answer.
 // Only the API functions, the site and the display zone are stubbed.
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
@@ -173,6 +174,8 @@ describe('the Analyst page', () => {
     expect(screen.getByText('4 to 10 November against 28 October to 3 November')).toBeInTheDocument()
     expect(screen.getByText('google.com')).toBeInTheDocument()
     expect(screen.getByText('Totals, 4 to 10 November')).toBeInTheDocument()
+    // * An answer with no follow-up questions offers none.
+    expect(screen.queryByRole('heading', { name: 'Ask next' })).toBeNull()
   })
 
   it('carries the conversation into a follow-up, and New chat starts a new one', async () => {
@@ -401,6 +404,76 @@ describe('the Analyst page', () => {
     expect(await screen.findByText('4 of 50 questions this month')).toBeInTheDocument()
     await waitFor(() => expect(container.querySelector('.an-md')?.getAttribute('data-status')).not.toBe('running'))
     expect(screen.getByLabelText('Copy the answer')).toBeInTheDocument()
+  })
+
+  it('shows a last row while Analyst works after its lookups, until the next lookup or the first word', async () => {
+    const g = gate()
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      const done = answer('c9', 'Visitors rose from 48 to 56.', 4)
+      yield { type: 'start', conversation_id: 'c9' }
+      yield { type: 'step', index: 0, tool: 'compare_periods', args: { period: '7d', dimension: 'referrer' } }
+      yield { type: 'step_done', index: 0, ms: 210, error: '', result: done.turn.steps![0].result }
+      await g.wait()
+      yield { type: 'step', index: 1, tool: 'get_stats', args: {} }
+      await g.wait()
+      yield { type: 'step_done', index: 1, ms: 80, error: '', result: done.turn.steps![1].result }
+      await g.wait()
+      yield { type: 'text', delta: 'Visitors rose' }
+      await g.wait()
+      yield { type: 'done', answer: done }
+    })
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+
+    // * Every lookup has ticked and no word is written yet: the model is working out what the figures say.
+    expect(await screen.findByText('Working out what the figures say')).toBeInTheDocument()
+    g.open()
+    // * Another lookup starts, and its own running row takes the working row's place.
+    expect(await screen.findByText('Reading the totals')).toBeInTheDocument()
+    expect(screen.queryByText('Working out what the figures say')).toBeNull()
+    g.open()
+    expect(await screen.findByText('Totals, 4 to 10 November')).toBeInTheDocument()
+    expect(await screen.findByText('Working out what the figures say')).toBeInTheDocument()
+    // * At the first word the list folds into its button, and the row goes with it.
+    g.open()
+    expect(await screen.findByRole('button', { name: /Figures behind this answer/ })).toBeInTheDocument()
+    expect(screen.queryByText('Working out what the figures say')).toBeNull()
+    g.open()
+    expect(await screen.findByText('Visitors rose from 48 to 56.')).toBeInTheDocument()
+    expect(screen.queryByText('Working out what the figures say')).toBeNull()
+  })
+
+  it('offers the questions written for the newest answer under it, and picking one asks it in the conversation', async () => {
+    const first = answer('c1', 'First answer.', 4)
+    first.turn.follow_ups = ['Which pages do google.com visitors read?', 'How did LinkedIn change?']
+    askAnalyst.mockResolvedValueOnce(first).mockResolvedValueOnce(answer('c1', 'Second answer.', 5))
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Where do visitors come from?')
+    await screen.findByText('First answer.')
+    expect(await screen.findByRole('heading', { name: 'Ask next' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'How did LinkedIn change?' })).toBeInTheDocument()
+
+    // * A draft in the question box stays where it is.
+    fireEvent.change(screen.getByLabelText('Your question'), { target: { value: 'A draft' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Which pages do google.com visitors read?' }))
+    await screen.findByText('Second answer.')
+    expect(askAnalyst.mock.calls[1].slice(1, 3)).toEqual(['Which pages do google.com visitors read?', 'c1'])
+    expect(screen.getByLabelText('Your question')).toHaveValue('A draft')
+    // * The list belongs to the newest answer, which has no questions of its own: none is left on the page.
+    expect(screen.queryByRole('heading', { name: 'Ask next' })).toBeNull()
+    expect(screen.queryByText('How did LinkedIn change?')).toBeNull()
+  })
+
+  it("offers a reopened chat's questions under its newest answer", async () => {
+    const past = chat('c7', 'Which countries read the blog?', 'Mostly Belgium and France.', 5)
+    past.turns[0].follow_ups = ['How did Belgium change last month?']
+    getAnalystConversations.mockResolvedValue(chats(past))
+    mount()
+    fireEvent.click(await screen.findByText('Which countries read the blog?'))
+    expect(await screen.findByText('Mostly Belgium and France.')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'How did Belgium change last month?' })).toBeInTheDocument()
   })
 
   it('shows only the sentence when an answer fails halfway, never lookups for an answer that did not come', async () => {

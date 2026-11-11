@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest'
 import { ApiError } from '@/lib/api/client'
 import type { AnalystTurn } from '@/lib/api/analyst'
-import { OUTCOME_TEXT, analystErrorMessage, turnParts } from '../turn'
+import { OUTCOME_TEXT, analystErrorMessage, followUpsOf, turnMetadata, turnParts } from '../turn'
 
 const usage = { used: 50, limit: 50, resets_at: '2026-12-01T00:00:00Z' }
 
@@ -103,5 +103,32 @@ describe('turnParts', () => {
     expect(turnParts(turn({ outcome: 'paused' as AnalystTurn['outcome'], answer: null }))).toEqual([
       { type: 'text', text: OUTCOME_TEXT.error },
     ])
+  })
+})
+
+describe('follow-up questions on a message', () => {
+  const base: AnalystTurn = {
+    id: 't1',
+    conversation_id: 'c1',
+    site_id: 's1',
+    question: 'Where do visitors come from?',
+    answer: 'Mostly google.com.',
+    outcome: 'answered',
+    steps: [],
+    created_at: '2026-11-11T22:00:00Z',
+  }
+
+  it('keeps the questions written for a turn, and reads them back', () => {
+    const metadata = turnMetadata({ ...base, follow_ups: ['Which pages do they read?', 'How did google.com change?'] })
+    expect(followUpsOf(metadata)).toEqual(['Which pages do they read?', 'How did google.com change?'])
+  })
+
+  it('reads a turn without any, an old turn included, as none, and the same none every time', () => {
+    const none = followUpsOf(turnMetadata(base))
+    expect(none).toEqual([])
+    expect(followUpsOf(turnMetadata({ ...base, follow_ups: null }))).toBe(none)
+    expect(followUpsOf(turnMetadata({ ...base, follow_ups: ['  '] }))).toBe(none)
+    expect(followUpsOf(undefined)).toBe(none)
+    expect(followUpsOf({ custom: { followUps: [1, 2] } })).toBe(none)
   })
 })
