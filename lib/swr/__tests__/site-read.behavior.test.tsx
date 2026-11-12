@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, waitFor, cleanup } from '@testing-library/react'
+import { render, renderHook, waitFor, cleanup } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
 import { isLiveListKey, LIVE_LIST_KEY, useDashboard, useInstallStatus, usePagePreview, usePerformanceLatest, useSite, useVisitors, useFunnels } from '@/lib/swr/dashboard'
@@ -276,15 +276,12 @@ describe('the public headers name the site (usePublicSiteIdentity)', () => {
 describe('a member records no public identity', () => {
   it('the recorder writes nothing without a public scope', async () => {
     const id = nextId()
-    let seen: unknown = 'unset'
-    function Probe() {
+    const { result } = renderHook(() => {
       useRecordPublicSiteIdentity(id, { name: 'Mine', domain: 'mine.example' })
-      seen = usePublicSiteIdentity(id)
-      return null
-    }
-    render(under(null, <Probe />))
+      return usePublicSiteIdentity(id)
+    }, { wrapper: ({ children }) => under(null, children) })
     await new Promise((r) => setTimeout(r, 50))
     // A member's useSite answers from the (stubbed) record, which names nothing; the recorder wrote nothing.
-    expect(seen).toBeUndefined()
+    expect(result.current).toBeUndefined()
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act, waitFor } from '@testing-library/react'
+import { renderHook, screen, act, waitFor } from '@testing-library/react'
 
 /**
  * The decrypted email and display name live in memory only.
@@ -57,11 +57,13 @@ vi.mock('@/lib/utils/clientEvents', () => ({ reportClientEvent: vi.fn() }))
 
 import { AuthProvider, useAuth, persistUser, scrubStoredUserPii } from '@/lib/auth/context'
 
-let api: ReturnType<typeof useAuth>
-function Probe() {
-  api = useAuth()
-  return <span data-testid="email">{api.user?.email ?? 'none'}</span>
+function Email() {
+  const { user } = useAuth()
+  return <span data-testid="email">{user?.email ?? 'none'}</span>
 }
+const withEmail = ({ children }: { children: React.ReactNode }) => (
+  <AuthProvider><Email />{children}</AuthProvider>
+)
 
 beforeEach(() => {
   localStorage.clear()
@@ -69,15 +71,15 @@ beforeEach(() => {
 
 describe('the stored user carries no decrypted PII', () => {
   it('login keeps email and display_name in memory and out of localStorage', async () => {
-    render(<AuthProvider><Probe /></AuthProvider>)
-    await waitFor(() => expect(api.loading).toBe(false))
+    const { result } = renderHook(() => useAuth(), { wrapper: withEmail })
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     act(() => {
-      api.login({ id: 'u1', email: 'ada@example.com', display_name: 'Ada', totp_enabled: false })
+      result.current.login({ id: 'u1', email: 'ada@example.com', display_name: 'Ada', totp_enabled: false })
     })
 
     await waitFor(() => expect(screen.getByTestId('email').textContent).toBe('ada@example.com'))
-    expect(api.user?.display_name).toBe('Ada')
+    expect(result.current.user?.display_name).toBe('Ada')
 
     const stored = JSON.parse(localStorage.getItem('user') as string)
     expect(stored.id).toBe('u1')
@@ -86,7 +88,7 @@ describe('the stored user carries no decrypted PII', () => {
     expect(localStorage.getItem('user')).not.toContain('ada@example.com')
 
     // The profile fetch that follows must not bring them back either.
-    await waitFor(() => expect(api.user?.email).toBe('ada@example.com'))
+    await waitFor(() => expect(result.current.user?.email).toBe('ada@example.com'))
     expect(localStorage.getItem('user')).not.toContain('ada@example.com')
     expect(localStorage.getItem('user')).not.toContain('Ada')
   })
