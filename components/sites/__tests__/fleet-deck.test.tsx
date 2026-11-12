@@ -117,6 +117,19 @@ describe('FleetCard', () => {
     expect(screen.getByText('stalled')).toBeTruthy()
   })
 
+  it('says "1 day" for a site stalled after a day, as a busy site can be', () => {
+    const lastEvent = new Date(Date.now() - 1.5 * 86_400_000).toISOString()
+    render(
+      <FleetCard
+        site={makeSite()}
+        overview={makeOverview({ install_status: 'stalled', last_event_at: lastEvent, uptime_status: null })}
+        overviewError={false}
+      />
+    )
+    expect(screen.getByText(/No events for 1 day\b/)).toBeTruthy()
+    expect(screen.queryByText(/1 days/)).toBeNull()
+  })
+
   it('renders a never-installed site as its own setup card, without stats', () => {
     const { container } = render(
       <FleetCard
