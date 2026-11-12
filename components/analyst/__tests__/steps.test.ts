@@ -316,3 +316,32 @@ describe('the lookups of the other dashboard sections', () => {
     expect(runningLookup('get_uptime', {})).toBe('Reading the uptime checks')
   })
 })
+
+describe('journeys, hours and the CDN', () => {
+  const finished = (tool: string, args: Record<string, unknown>, result: unknown) => describeStep(step(tool, args, result))
+
+  it('names each one with its dates, a journey by the page it starts from and its filter', () => {
+    expect(finished('get_journeys', {}, { range: THIS_WEEK, visits: 120, first_pages: [], steps: [] })).toMatchObject({
+      text: 'Journeys, 4 to 10 November',
+    })
+    const filters = ['country==BE']
+    expect(finished('get_journeys', { entry_page: '/pricing', filters }, { range: THIS_WEEK, entry_page: '/pricing', filters, visits: 9 })).toMatchObject({
+      text: 'Journeys from /pricing for Belgium, 4 to 10 November',
+    })
+    expect(finished('get_hours', {}, { range: THIS_WEEK, days: 7, by_hour: [], by_weekday: [] })).toMatchObject({
+      text: 'Hours and weekdays, 4 to 10 November',
+    })
+    expect(finished('get_cdn', {}, { range: THIS_WEEK, connection: 'active', days: [] })).toMatchObject({ text: 'CDN figures, 4 to 10 November' })
+  })
+
+  it('says what it is reading while it runs, and what is missing when one fails', () => {
+    expect(runningLookup('get_journeys', {})).toBe('Reading the journeys')
+    expect(runningLookup('get_journeys', { entry_page: '/pricing' })).toBe('Reading the journeys from /pricing')
+    expect(runningLookup('get_hours', { filters: ['device==mobile'] })).toBe('Reading when visitors come for mobile')
+    expect(runningLookup('get_cdn', {})).toBe('Reading the CDN figures')
+    const failed = (tool: string) => describeStep(step(tool, {}, undefined, 'boom'))
+    expect(failed('get_journeys')).toMatchObject({ text: 'Analyst could not read the journeys', failed: true })
+    expect(failed('get_hours')).toMatchObject({ text: 'Analyst could not read when visitors come', failed: true })
+    expect(failed('get_cdn')).toMatchObject({ text: 'Analyst could not read the CDN figures', failed: true })
+  })
+})
