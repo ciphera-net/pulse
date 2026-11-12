@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act, waitFor } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 
 /**
  * Sign-out empties Cache Storage.
@@ -57,11 +57,7 @@ vi.mock('@/lib/utils/clientEvents', () => ({ reportClientEvent: vi.fn() }))
 import { AuthProvider, useAuth } from '@/lib/auth/context'
 import { logoutAction } from '@/app/actions/auth'
 
-let api: ReturnType<typeof useAuth>
-function Probe() {
-  api = useAuth()
-  return null
-}
+const renderAuth = () => renderHook(() => useAuth(), { wrapper: AuthProvider })
 
 function stubCaches(keys: string[]) {
   const del = vi.fn(async () => true)
@@ -80,10 +76,10 @@ afterEach(() => {
 describe('logout clears Cache Storage', () => {
   it('deletes every cache by name', async () => {
     const del = stubCaches(['pages-v1', 'api-v1', 'workbox-precache'])
-    render(<AuthProvider><Probe /></AuthProvider>)
-    await waitFor(() => expect(api.loading).toBe(false))
+    const { result } = renderAuth()
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
-    await act(async () => { await api.logout() })
+    await act(async () => { await result.current.logout() })
 
     expect(logoutAction).toHaveBeenCalledTimes(1)
     expect(del).toHaveBeenCalledTimes(3)
@@ -93,10 +89,10 @@ describe('logout clears Cache Storage', () => {
   it('still signs out where Cache Storage does not exist', async () => {
     vi.stubGlobal('caches', undefined)
     localStorage.setItem('user', '{"id":"u1"}')
-    render(<AuthProvider><Probe /></AuthProvider>)
-    await waitFor(() => expect(api.loading).toBe(false))
+    const { result } = renderAuth()
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
-    await act(async () => { await api.logout() })
+    await act(async () => { await result.current.logout() })
 
     expect(localStorage.getItem('user')).toBeNull()
   })

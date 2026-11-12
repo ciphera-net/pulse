@@ -13,7 +13,7 @@ import { render } from '@testing-library/react'
 let mockPath = '/'
 vi.mock('next/navigation', () => ({ usePathname: () => mockPath }))
 vi.mock('next/script', () => ({
-  default: ({ src }: { src: string }) => <script src={src} />,
+  default: ({ src, defer }: { src: string; defer?: boolean }) => <script src={src} defer={defer} />,
 }))
 
 import InteractionScript from '@/components/InteractionScript'
