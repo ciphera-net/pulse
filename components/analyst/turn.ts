@@ -41,9 +41,31 @@ export const OUTCOME_TEXT: Record<string, string> = {
   error: 'Analyst could not answer this time.',
 }
 
-/** The turn as assistant-ui message parts: each lookup as a tool call, then the answer. */
+/** How pulse-backend answers a lookup past the question's limit (internal/barry/loop.go, errNotRun): it never ran. */
+const NOT_RUN = 'not run:'
+
+/** A lookup the question had no room left for (round 8, pick B): it leaves the list, and one line under it counts it. */
+export function skippedLookup(step: Pick<AnalystStep, 'error'> | undefined): boolean {
+  return typeof step?.error === 'string' && step.error.startsWith(NOT_RUN)
+}
+
+/** A message's lookups as the line under them counts them: those skipped at the limit, and those that ran. */
+export function lookupCounts(steps: readonly (Pick<AnalystStep, 'error'> | undefined)[]): { skippedLookups: number; lookupsRan: number } {
+  const skipped = steps.filter((s) => skippedLookup(s)).length
+  return { skippedLookups: skipped, lookupsRan: steps.filter((s) => s !== undefined).length - skipped }
+}
+
+/** The line under a message's lookups when some were skipped at the limit (round 8, pick B); null when none was. */
+export function skippedLine(metadata: { readonly custom?: Record<string, unknown> } | undefined): string | null {
+  const skipped = metadata?.custom?.skippedLookups
+  const ran = metadata?.custom?.lookupsRan
+  if (typeof skipped !== 'number' || skipped <= 0 || typeof ran !== 'number') return null
+  return `Analyst skipped ${skipped} more ${skipped === 1 ? 'lookup' : 'lookups'} because this question used all ${ran}.`
+}
+
+/** The turn as assistant-ui message parts: each lookup that ran as a tool call, then the answer. */
 export function turnParts(turn: AnalystTurn): ThreadAssistantMessagePart[] {
-  const parts: ThreadAssistantMessagePart[] = (turn.steps ?? []).map((step, i) => ({
+  const parts: ThreadAssistantMessagePart[] = (turn.steps ?? []).filter((step) => !skippedLookup(step)).map((step, i) => ({
     type: 'tool-call' as const,
     toolCallId: `${turn.id}-${i}`,
     toolName: step.tool,
@@ -62,11 +84,13 @@ const NO_FOLLOW_UPS: readonly string[] = []
  * What a finished turn's message carries besides its parts: the questions written for the person to ask next (round
  * 7, "Ask next" under the newest answer), kept in the message so a reopened chat shows them as they were offered.
  */
-export function turnMetadata(turn: AnalystTurn): { custom: { followUps: readonly string[] } } {
+export function turnMetadata(turn: AnalystTurn): {
+  custom: { followUps: readonly string[]; skippedLookups: number; lookupsRan: number }
+} {
   const followUps = Array.isArray(turn.follow_ups)
     ? turn.follow_ups.filter((q) => typeof q === 'string' && q.trim() !== '')
     : []
-  return { custom: { followUps: followUps.length > 0 ? followUps : NO_FOLLOW_UPS } }
+  return { custom: { followUps: followUps.length > 0 ? followUps : NO_FOLLOW_UPS, ...lookupCounts(turn.steps ?? []) } }
 }
 
 /** A message's follow-up questions, as turnMetadata keeps them; the same empty list when it has none. */
@@ -92,7 +116,7 @@ export interface LiveStep {
 export function liveParts(steps: readonly (LiveStep | undefined)[], text: string): ThreadAssistantMessagePart[] {
   const parts: ThreadAssistantMessagePart[] = []
   steps.forEach((step, i) => {
-    if (!step) return
+    if (!step || skippedLookup(step.done)) return
     parts.push({
       type: 'tool-call' as const,
       toolCallId: `live-${i}`,

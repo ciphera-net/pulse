@@ -99,6 +99,6 @@ describe('chatMessages', () => {
     const messages = chatMessages(
       conversation('c1', [turn('t1', 'Why did visitors change?', '2026-11-10T21:00:00Z', { follow_ups: ['Which pages grew most?'] })]),
     )
-    expect(messages[1].metadata).toEqual({ custom: { followUps: ['Which pages grew most?'] } })
+    expect(messages[1].metadata).toEqual({ custom: { followUps: ['Which pages grew most?'], skippedLookups: 0, lookupsRan: 0 } })
   })
 })

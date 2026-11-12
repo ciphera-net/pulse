@@ -61,6 +61,8 @@ import {
   analystErrorMessage,
   followUpsOf,
   liveParts,
+  lookupCounts,
+  skippedLine,
   turnMetadata,
   turnParts,
   type LiveStep,
@@ -239,7 +241,8 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
               case 'error':
                 throw new ApiError(ev.error, 503, { error: ev.error, usage: ev.usage })
             }
-            yield { content: liveParts(steps, text) }
+            // * The counts go with every yield: a yield's custom metadata replaces the one before it.
+            yield { content: liveParts(steps, text), metadata: { custom: lookupCounts(steps.map((s) => s?.done)) } }
           }
           throw new Error('The answer stopped before it was finished.')
         } catch (err) {
@@ -249,7 +252,10 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
           // * the server: a line under what had come in says so while the page reads the turn back, which then shows
           // * as any answer. An ApiError is the server's own answer (a refusal, or its `error` event), not a break.
           if (turnId && !(err instanceof ApiError)) {
-            yield { content: liveParts(steps, text), metadata: { custom: { connectionDropped: true } } }
+            yield {
+              content: liveParts(steps, text),
+              metadata: { custom: { ...lookupCounts(steps.map((s) => s?.done)), connectionDropped: true } },
+            }
             const id = turnId
             const turn = await waitForTurn((signal) => getAnalystTurn(siteId, id, signal), askedAt + RECOVERY_LIMIT_MS, abortSignal)
             if (abortSignal.aborted) throw stoppedError()
@@ -614,13 +620,18 @@ function useLookingUp(): boolean {
 const PageChecks: FC<{ count: number; children: ReactNode }> = ({ count, children }) => {
   const [open, setOpen] = useState(false)
   const allDone = useAuiState((s) => s.message.content.every((p) => p.type !== 'tool-call' || p.result !== undefined))
+  // * Lookups skipped at the question's limit are not in the list (round 8, pick B): one line under it counts them.
+  const skipped = useAuiState((s) => skippedLine(s.message.metadata))
   // * Each lookup shows as it starts and ticks off as it ends; at the first word the list folds into the button.
   if (useLookingUp()) {
     return (
-      <div className={cn('mb-5 flex flex-col divide-y divide-white/[0.06] border border-white/[0.08]', RAISED)}>
-        {children}
-        {allDone && <PageWorking />}
-      </div>
+      <>
+        <div className={cn('flex flex-col divide-y divide-white/[0.06] border border-white/[0.08]', skipped ? 'mb-2' : 'mb-5', RAISED)}>
+          {children}
+          {allDone && <PageWorking />}
+        </div>
+        {skipped && <p className="mb-5 text-sm text-neutral-500">{skipped}</p>}
+      </>
     )
   }
   return (
@@ -642,6 +653,7 @@ const PageChecks: FC<{ count: number; children: ReactNode }> = ({ count, childre
       {open && (
         <div className={cn('mt-3 flex flex-col divide-y divide-white/[0.06] border border-white/[0.08]', RAISED)}>{children}</div>
       )}
+      {open && skipped && <p className="mt-2 text-sm text-neutral-500">{skipped}</p>}
     </div>
   )
 }

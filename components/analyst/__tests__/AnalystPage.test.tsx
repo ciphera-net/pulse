@@ -630,6 +630,41 @@ describe('the Analyst page', () => {
     expect(screen.queryByText('The connection dropped. Analyst is still writing the answer.')).toBeNull()
   })
 
+  it('leaves lookups skipped at the limit out of the list, and counts them in one line under it', async () => {
+    const NOT_RUN = 'not run: this question has used all its tool calls; answer with what you already have'
+    const done = answer('c9', 'Visitors rose from 48 to 56.', 4)
+    done.turn.steps = [
+      ...done.turn.steps!,
+      { tool: 'get_stats', args: { filters: ['referrer==Direct'] }, error: NOT_RUN, ms: 0 },
+      { tool: 'get_stats', args: { filters: ['referrer==LinkedIn'] }, error: NOT_RUN, ms: 0 },
+    ]
+    const g = gate()
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c9', turn_id: null }
+      for (const [i, step] of done.turn.steps!.entries()) {
+        yield { type: 'step', index: i, tool: step.tool, args: step.args }
+        yield { type: 'step_done', index: i, ms: step.ms, error: step.error ?? '', result: step.result ?? null }
+      }
+      await g.wait()
+      yield { type: 'done', answer: done }
+    })
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+
+    // * While Analyst works: the two lookups that ran, and the line, never "could not read" for one that never ran.
+    expect(await screen.findByText('Analyst skipped 2 more lookups because this question used all 2.')).toBeInTheDocument()
+    expect(screen.queryByText(/could not read the totals/)).toBeNull()
+    g.open()
+    await screen.findByText('Visitors rose from 48 to 56.')
+    const figures = screen.getByRole('button', { name: /Figures behind this answer/ })
+    expect(figures.textContent).toContain('2')
+    expect(screen.queryByText(/Analyst skipped/)).toBeNull()
+    fireEvent.click(figures)
+    expect(screen.getByText('Analyst skipped 2 more lookups because this question used all 2.')).toBeInTheDocument()
+    expect(screen.queryByText(/could not read the totals/)).toBeNull()
+  })
+
   it('keeps the conversation of a question stopped halfway, so the next question carries on', async () => {
     const g = gate()
     askAnalystStream.mockImplementationOnce(async function* (
