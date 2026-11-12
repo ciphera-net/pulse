@@ -66,7 +66,8 @@ steps:
   # 27-07-2026 — which would pin a Deployment to something that is not the image
   # that was built, with every gate still green.
   digest:
-    image: alpine:3.20
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
     # Resources declared 29-07-2026 — without them the step pod is QoS BestEffort, first
     # evicted under node memory pressure. Estate-wide sweep after two pulse-backend steps
     # were SIGKILLed (exit 137) mid-download, presenting as a test failure (see
@@ -91,7 +92,6 @@ steps:
       REGISTRY_PASSWORD:
         from_secret: registry_password
     commands:
-      - apk add --no-cache curl jq >/dev/null
       - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
       - |
         DIGEST=$(curl -sfI --max-time 60 -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
@@ -199,7 +199,8 @@ steps:
         '
 
   deploy-k8s:
-    image: alpine:3.20
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
     backend_options:
       kubernetes:
         resources:
@@ -234,7 +235,6 @@ steps:
     environment:
       KUBE_API: https://kubernetes.default.svc
     commands:
-      - apk add --no-cache curl jq >/dev/null
       - |
         DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
         DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
@@ -294,7 +294,8 @@ steps:
                echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
       - echo "Deployed pulse-frontend to SKS ($DEPLOY_SHA)"
   digest-staging:
-    image: alpine:3.20
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
     backend_options:
       kubernetes:
         resources:
@@ -315,7 +316,6 @@ steps:
       REGISTRY_PASSWORD:
         from_secret: registry_password
     commands:
-      - apk add --no-cache curl jq >/dev/null
       - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
       - |
         DIGEST=$(curl -sfI --max-time 60 -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
@@ -499,7 +499,8 @@ steps:
         '
 
   deploy-k8s-staging:
-    image: alpine:3.20
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
     backend_options:
       kubernetes:
         resources:
@@ -534,7 +535,6 @@ steps:
     environment:
       KUBE_API: https://kubernetes.default.svc
     commands:
-      - apk add --no-cache curl jq >/dev/null
       - |
         DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
         DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
@@ -597,7 +597,8 @@ steps:
   # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
   # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
   purge-cdn:
-    image: alpine:3.20
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
     backend_options:
       kubernetes:
         resources:
@@ -611,7 +612,6 @@ steps:
       BUNNY_API_KEY:
         from_secret: bunny_api_key
     commands:
-      - apk add --no-cache curl >/dev/null
       # ⚠️ `/_next/static/*` IS NO LONGER PURGED (18-08-2026). Since assetPrefix those
       # chunks are not served from this hostname at all — they live in their own zone
       # (ciphera-app-static), and RETAINING EVERY BUILD'S OUTPUT IS THE ENTIRE POINT.
@@ -694,7 +694,8 @@ steps:
   # it now runs beside purge-cdn. A failed upload fails the pipeline after the dashboard has shipped, which
   # CiDefaultBranchPipelineFailed reports, instead of holding the dashboard back.
   cdn-scripts:
-    image: alpine:3.20
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
     depends_on: [deploy-k8s]
     backend_options:
       kubernetes:
@@ -719,7 +720,6 @@ steps:
       BUNNY_STORAGE_PASSWORD:
         from_secret: bunny_storage_scripts_password
     commands:
-      - apk add --no-cache aws-cli curl openssl >/dev/null
       # Primary origin: Bunny Edge Storage (js.ciphera.net reads from the ciphera-cdn-scripts zone).
       - |
       # Backup copy: Infomaniak object storage since 29-10-2026 (write-through durability copy; Exoscale SOS before).
@@ -792,7 +792,6 @@ steps:
       # A mismatch waits 30 s, purges that file again and re-checks, up to ten checks (about
       # four and a half minutes); every purge is followed by a check. A refused purge (401,
       # 403: a wrong BUNNY_API_KEY) fails at once instead of waiting out the retries.
-      - apk add --no-cache brotli zstd >/dev/null
       - |
         for file in script.js script.debug.js script.interactions.js script.interactions.debug.js \
             script.note.js script.note.debug.js; do
