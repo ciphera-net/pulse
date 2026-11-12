@@ -68,6 +68,12 @@ steps:
       # The reasoning is unchanged — push.yml is still push-only, so this step is
       # still the ONLY type gate a pull request gets.)
       - npm run type-check
+      # 🔴 12-11-2026 — LINT WAS NEVER A GATE. eslint.config.mjs was written as one,
+      # but no pipeline ran `npm run lint`, so four errors sat on main unseen.
+      # Errors only: `--quiet` skips the rules eslint.config.mjs sets to "warn" (its
+      # adoption backlog, tightened back to "error" rule by rule). Before `npm test`
+      # for the same reason as type-check: the cheaper signal (~30 s, 0.7 GiB).
+      - npm run lint -- --quiet
       - npm test
       # 🔴 The date-sensitive suites, a SECOND time, under a maximal POSITIVE
       # offset (Pacific/Kiritimati, UTC+14). vitest.setup.ts pins
