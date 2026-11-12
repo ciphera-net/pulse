@@ -26,6 +26,11 @@ export type TeamNamesErrorCode =
   | 'team_names/email_unsealable'
   /** The identity envelope does not open with this browser's vault key. */
   | 'team_names/identity_unopenable'
+  /**
+   * The vault-proof key Ciphera ID serves for a first key does not open with this browser's vault key, or is not the
+   * key sealed in it (design §17.7): the session waits in `cannot_open` for the reset. Reported, never thrown.
+   */
+  | 'team_names/proof_unopenable'
   /** The server's public key for this person contradicts the envelope, or its key id. */
   | 'team_names/own_key_mismatch'
   /** A row for me is sealed to a key that is not mine. */
@@ -38,8 +43,9 @@ export type TeamNamesErrorCode =
   | 'team_names/password_failed'
   /**
    * The password ceremony failed for another reason (a rate limit, Ciphera ID unreachable, no token
-   * minted); `cause` holds its error. Nothing was published. Apart from `request_failed` so the step
-   * can say which side failed: Ciphera ID's words for this one, Pulse's for a refused key.
+   * minted), or so did the vault-key proof a first key carries (design §17.6); `cause` holds its error.
+   * Nothing was published. Apart from `request_failed` so the step can say which side failed: Ciphera
+   * ID's words for this one, Pulse's for a refused key.
    */
   | 'team_names/proof_failed'
   /** The server answered something this code cannot read. */

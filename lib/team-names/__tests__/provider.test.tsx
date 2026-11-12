@@ -38,6 +38,7 @@ const h = vi.hoisted(() => {
       writeEmails: vi.fn(),
       withdrawEmails: vi.fn(),
     },
+    vaultProof: { start: vi.fn(), finish: vi.fn(), register: vi.fn() },
     custody: {
       listeners,
       emit: (c: 'saved' | 'forgotten') => {
@@ -59,7 +60,15 @@ vi.mock('@/lib/auth/vault-store', () => ({
 }))
 vi.mock('@/lib/auth/vault-restore', () => ({ openVaultWithKey: h.openVaultWithKey }))
 vi.mock('@/lib/team-names/api', async (importActual) => ({ ...(await importActual<object>()), ...h.api }))
+vi.mock('@/lib/auth/tessera/vault-proof', async (importActual) => ({
+  ...(await importActual<object>()),
+  startVaultProof: h.vaultProof.start,
+  finishVaultProof: h.vaultProof.finish,
+  registerProofKey: h.vaultProof.register,
+}))
 
+import { createProofKey, proofMessage } from '@ciphera-net/auth/vault-proof'
+import { asBytes } from '@/lib/crypto/hpke'
 import { createIdentity, keyIdOf, sealEmail, sealName, type TeamIdentity } from '@/lib/crypto/team-names'
 import { TeamNamesProvider } from '../provider'
 import { useTeamEmails, useTeamNames, useTeammateEmail, useTeammateName, useTeamNamesActions } from '../hooks'
@@ -122,6 +131,10 @@ beforeEach(async () => {
   h.api.withdrawEmails.mockReset().mockResolvedValue(undefined)
   h.api.publishKey.mockReset()
   h.api.resetKey.mockReset()
+  // An account with no vault-proof key yet (R81): the first key goes with no token.
+  h.vaultProof.start.mockReset().mockResolvedValue(null)
+  h.vaultProof.finish.mockReset()
+  h.vaultProof.register.mockReset()
   h.custody.listeners.clear()
 })
 
@@ -254,6 +267,8 @@ describe('names', () => {
     }))
     const view = render(tree())
     await waitFor(() => expect(read().state).toBe('ready'))
+    // Ciphera ID was asked for the proof first, and holds no proof key for this account (R81).
+    expect(h.vaultProof.start).toHaveBeenCalledWith('tkp')
     expect(h.api.publishKey).toHaveBeenCalledTimes(1)
     expect(h.api.publishKey.mock.calls[0][0]).not.toHaveProperty('reauthToken')
     // My name reaches B in both teams, the open one and the other, with no step.
@@ -265,6 +280,38 @@ describe('names', () => {
     await settle()
     expect(otherReads()).toBe(1)
     expect(h.api.publishKey).toHaveBeenCalledTimes(1)
+  })
+
+  it('proves a first key with the vault it holds, and the POST carries the token Ciphera ID answers (design §17.6)', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    h.api.fetchOwnKey.mockResolvedValue(null)
+    const proofKey = await createProofKey(vaultOpsFor(vmk))
+    const challengeBytes = crypto.getRandomValues(new Uint8Array(32))
+    h.vaultProof.start.mockResolvedValue({ challenge: 'the-challenge', challengeBytes, ...proofKey })
+    h.vaultProof.finish.mockImplementation(async ({ signature }: { signature: string }) => {
+      // The signature is over this person's message for the challenge, under the proof key Ciphera ID served.
+      const pub = await crypto.subtle.importKey('raw', asBytes(proofKey.publicKey), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'])
+      const ok = await crypto.subtle.verify(
+        { name: 'ECDSA', hash: 'SHA-256' },
+        pub,
+        Uint8Array.from(atob(signature), (ch) => ch.charCodeAt(0)),
+        asBytes(proofMessage(challengeBytes, A, 'tkp')),
+      )
+      if (!ok) throw new Error('the signature does not verify')
+      return 'tkp-token'
+    })
+    h.api.publishKey.mockImplementation(async (body: { publicKey: Uint8Array; sealedPrivateKey: Uint8Array }) => ({
+      keyId: await keyIdOf(body.publicKey),
+      publicKey: body.publicKey,
+      sealedPrivateKey: body.sealedPrivateKey,
+    }))
+    render(tree())
+    await waitFor(() => expect(read().state).toBe('ready'))
+    expect(h.vaultProof.finish).toHaveBeenCalledWith(expect.objectContaining({ challenge: 'the-challenge', purpose: 'tkp' }))
+    expect(h.api.publishKey).toHaveBeenCalledTimes(1)
+    expect(h.api.publishKey.mock.calls[0][0]).toMatchObject({ reauthToken: 'tkp-token' })
+    // Nothing of the proof is kept on this origin.
+    expect(setItem).not.toHaveBeenCalled()
   })
 
   it('reads and shares team by team when the key already exists', async () => {

@@ -1,0 +1,28 @@
+{
+  "_about": "vault-proof v1 known-answer vectors (design Pulse/docs/plans/07-11-2026-team-names-e2e-design.md §17.12), written once by ciphera-id's cmd/vault-proof-vectors from the inputs below. Byte fields are lowercase hex. plaintext is 0x01 || proof_d || proof_pub; envelope is Tessera's record envelope of the plaintext under the VMK and the context; message is sign_prefix || 0x00 || challenge || the user id's 16 bytes || purpose; signature_go is r || s, ECDSA P-256 with SHA-256 over the message. The envelope's data key and nonces and the signature's nonce are random and recorded as they came, so open the envelopes and verify the signatures, and never compare either byte for byte. envelope_browser and signature_browser stay empty until a browser fills them once: an envelope it sealed under the same VMK and context, and a signature it made over the message.",
+  "version": "vault-proof-v1",
+  "inputs": {
+    "_about": "Fixed inputs for vault-proof-v1 known-answer vectors (design §17, Pulse/docs/plans/07-11-2026-team-names-e2e-design.md). Every implementation computes the derived values from these and they must agree byte for byte.",
+    "vmk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "context": "ciphera/vault-proof/v1/key",
+    "proof_d_hex": "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+    "proof_pub_hex": "0460fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb67903fe1008b8bc99a41ae9e95628bc64f2f1b20c2d7e9f5177a3c294d4462299",
+    "_proof_key_source": "RFC 6979 A.2.5 (P-256). Assert proof_pub = proof_d * G before relying on it.",
+    "user_id": "00112233-4455-6677-8899-aabbccddeeff",
+    "challenge_hex": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+    "purpose": "tkp",
+    "sign_prefix": "ciphera/vault-proof/v1/sign",
+    "_rfc6979_control": {
+      "about": "RFC 6979 A.2.5, SHA-256, message 'sample': a positive control for the verify path. If it does not verify, drop it and report; do not invent values.",
+      "message_utf8": "sample",
+      "r_hex": "efd48b2aacb6a8fd1140dd9cd45e81d69d2c877b56aaf991c34d0ea84eaf3716",
+      "s_hex": "f7cb1c942d657c41d436c7a1b6e29f65f3e900dbb9aff4064dc4ab2f843acda8"
+    }
+  },
+  "plaintext_hex": "01c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f67210460fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb67903fe1008b8bc99a41ae9e95628bc64f2f1b20c2d7e9f5177a3c294d4462299",
+  "envelope_hex": "016c9a4cf420512e0c7a2336c3ba44e9efa1e2dbab22f93c8ace0c28c3beea186506fc401cebaf6a9fd404e7926fe21e7d23ea332bf61bb4a3075cf8d0b516ddc8d8f1becba2c436a5f31c2bd202dfad3eac05d822dac17ee52c074c1575c07f591cdf833420c3eeb2fe672e22d85a67a24d273b942c817ffce52fbf965853e3b5f46bbc1e0300a41b0a6f7a93f19046d1c55fb107e06a93bed033e3662d369c2d1cca310ea478b9cb95afdf1ae5e7c4e7f224662bbf95c114d933",
+  "message_hex": "636970686572612f7661756c742d70726f6f662f76312f7369676e00606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f00112233445566778899aabbccddeeff746b70",
+  "signature_go_hex": "6d97785ecff64887493af12b42b8c4a7e520adc901a5316eddfaa559ffc72455bab2ad1f7aa4398dcc21c9ae8ea4fd3f7421a93e94da233fa748704ddb6db627",
+  "envelope_browser_hex": "",
+  "signature_browser_hex": ""
+}

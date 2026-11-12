@@ -1,6 +1,7 @@
 import { Tessera } from '@ciphera-net/tessera'
 import { ensureTessera } from './init'
 import { makeOpaqueTransport } from './transport'
+import { proofKeyStatusOf, registerProofKey } from './vault-proof'
 import { decryptVaultH } from '@/lib/crypto/vault-ops'
 import type { VaultData } from '@/lib/crypto/vault'
 import type { VaultKeyHandle } from '@/lib/auth/vault-key'
@@ -36,6 +37,10 @@ interface VaultResponse {
  *      body carries no wrap of its own). purpose:'ulk' mints a token that is
  *      spendable NOWHERE (id #61) — we never read it.
  *   3. decrypt encrypted_vault with the live handle, then drop the handle.
+ *   4. when the finish answer says Ciphera ID holds no vault-proof key for the
+ *      person, register one with the ticket it carries, sealed under the vault
+ *      just opened (team names design §17.6). Bounded and never thrown: the
+ *      unlock has already succeeded, and the next ceremony tries again.
  *
  * 🔑 It takes a PASSWORD AND NOTHING ELSE. It used to ask for the sign-in email
  * as well, which on this screen meant typing the address in order to be shown
@@ -105,5 +110,10 @@ export async function unlockVaultPII(opts: { password: string }): Promise<Unlock
   })
 
   const handle: VaultKeyHandle = { kind: 'opaque', vault: session.vault }
-  return { pii: await decryptVaultH(handle, vault.encrypted_vault), vaultKey: session.vaultKey }
+  const pii = await decryptVaultH(handle, vault.encrypted_vault)
+
+  const proofKey = proofKeyStatusOf(transport.lastFinish())
+  if (proofKey.registered === false && proofKey.ticket) await registerProofKey(session.vault, proofKey.ticket)
+
+  return { pii, vaultKey: session.vaultKey }
 }

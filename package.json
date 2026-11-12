@@ -23,7 +23,7 @@
   "dependencies": {
     "@assistant-ui/react": "0.15.31",
     "@assistant-ui/react-markdown": "0.14.24",
-    "@ciphera-net/auth": "0.4.0",
+    "@ciphera-net/auth": "0.5.0",
     "@ciphera-net/facet": "^0.25.5",
     "@ciphera-net/facet-avatar": "^0.1.0",
     "@ciphera-net/facet-hold": "^0.1.2",

@@ -1,6 +1,7 @@
 import { Tessera } from '@ciphera-net/tessera'
 import { ensureTessera } from './init'
-import { makeOpaqueTransport } from './transport'
+import { makeOpaqueTransport, type OpaqueFinishBody } from './transport'
+import { proofKeyStatusOf, type ProofKeyStatus } from './vault-proof'
 
 export interface OpaqueReauthOptions {
   email: string
@@ -105,6 +106,30 @@ export async function performSessionOpaqueReauth(opts: {
   password: string
   purpose: OpaqueReauthOptions['purpose']
 }): Promise<string> {
+  return (await sessionReauthFinish(opts)).reauth_token
+}
+
+/** The reset's proof: the `tmk` token, and what Ciphera ID's answer said about the person's vault-proof key. */
+export interface TeamKeyReauth {
+  reauthToken: string
+  proofKey: ProofKeyStatus
+}
+
+/**
+ * performSessionOpaqueReauth with purpose `tmk`, the team-names reset's proof (design §6.3). Its finish answer also
+ * says whether Ciphera ID holds a vault-proof key for the person, with a ticket to register one (design §17.5), so the
+ * reset registers a missing or unopenable proof key on its way (§17.7).
+ */
+export async function performTeamKeyReauth(opts: { password: string }): Promise<TeamKeyReauth> {
+  const finish = await sessionReauthFinish({ password: opts.password, purpose: 'tmk' })
+  return { reauthToken: finish.reauth_token, proofKey: proofKeyStatusOf(finish) }
+}
+
+/** The session ceremony, answering its whole finish body once a token is in it. */
+async function sessionReauthFinish(opts: {
+  password: string
+  purpose: OpaqueReauthOptions['purpose']
+}): Promise<OpaqueFinishBody & { reauth_token: string }> {
   await ensureTessera()
   const transport = makeOpaqueTransport({
     // Empty on purpose: the server reads this as "the session's own account".
@@ -122,10 +147,11 @@ export async function performSessionOpaqueReauth(opts: {
   } catch (err) {
     if (!transport.lastFinish()?.reauth_token) throw err
   }
-  const token = transport.lastFinish()?.reauth_token
-  if (!token) {
+  const finish = transport.lastFinish()
+  const token = finish?.reauth_token
+  if (!finish || !token) {
     // Loud-fail, same contract as above: never resolve with an empty token.
     throw new Error('Re-authentication did not return a token')
   }
-  return token
+  return { ...finish, reauth_token: token }
 }

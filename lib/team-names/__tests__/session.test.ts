@@ -1,7 +1,9 @@
 // @vitest-environment node
 //
 // The session engine against a fake pulse-backend that keeps the routes' contract (design §6.2):
-// POST /me/team-key takes a first key with no proof (R72) and never overwrites; PUT, the reset, spends
+// POST /me/team-key answers an existing key before anything else, spends a first key's `tkp` token, and takes one
+// with no token only while Ciphera ID holds no vault-proof key for the person (design §17.6, R81), and never
+// overwrites; PUT, the reset, spends
 // its token and deletes every row in both directions; the directory serves current members' keys plus former senders with
 // a kept row for the caller, and for each row the caller sent the SHA-256 of the row as stored; PUT
 // team-names upserts the caller's rows or answers 409; DELETE takes back every row the caller sent. Real
@@ -13,15 +15,22 @@
 // recipient who is not a member, not an owner or admin, or under a stale key (409, nothing written); a role
 // that stops being owner or admin deletes the rows sealed for it; DELETE takes back every address row the
 // caller sent. Every reconcile runs both passes, the names' and the addresses'.
+//
+// Ciphera ID's vault-proof half keeps its contract too (design §17.5): each person's proof key, served with a
+// challenge that is spent on its first presentation, a signature verified against the stored public key over the
+// message rebuilt from the challenge's own record, a `tkp` token spendable once by the POST, and a registration that
+// spends a ceremony's ticket and replaces the key.
 
 import { createHash } from 'node:crypto'
 import { describe, expect, it, vi, type Mock } from 'vitest'
 import { InvalidCredentialsError, vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
+import { createProofKey, proofMessage, signProof, type ProofKey } from '@ciphera-net/auth/vault-proof'
+import { ApiError } from '@/lib/api/client'
 import { createIdentity } from '@/lib/crypto/team-names'
-import type { Bytes } from '@/lib/crypto/hpke'
+import { asBytes, type Bytes } from '@/lib/crypto/hpke'
 import type { DirectoryAnswer, EmailDirectoryAnswer, EmailEntry, KeyRow, NameEntry, PublishKeyBody, Warn } from '../api'
 import { TeamNamesError } from '../errors'
-import { TeamNamesSession, type SessionDeps, type TeamNamesApi } from '../session'
+import { TeamNamesSession, type SessionDeps, type TeamNamesApi, type VaultProofApi } from '../session'
 
 const TEAM = '7e7e7e7e-0000-4000-8000-000000000001'
 const OTHER_TEAM = '7e7e7e7e-0000-4000-8000-0000000000f2'
@@ -78,12 +87,86 @@ class FakeServer {
   beforeInsert: ((caller: string) => Promise<void>) | null = null
   /** The next key POST fails the way a 5xx or a dropped connection does. */
   failNextPublish = false
+  /** What each first-key POST carried. */
+  publishes: { caller: string; reauthToken: string | undefined }[] = []
+  /** Runs inside POST before the proof is checked: lets a test register a proof key after `start` answered none. */
+  beforeProofCheck: ((caller: string) => Promise<void>) | null = null
+  /** The next `tkp` tokens the POST refuses, as when one expired in a tab that slept before the POST. */
+  expireNextProofs = 0
+
+  // Ciphera ID's half (design §17.5)
+  /** Each person's vault-proof key, as Ciphera ID stores it. */
+  proofKeys = new Map<string, ProofKey>()
+  /** Live challenges, by their base64url form: whose, for what, and the bytes. */
+  challenges = new Map<string, { userId: string; purpose: string; bytes: Bytes }>()
+  /** Live `tkp` tokens: token to whose. */
+  proofTokens = new Map<string, string>()
+  /** Live registration tickets: ticket to whose. */
+  tickets = new Map<string, string>()
+  /** A public key `start` serves in place of the stored one. */
+  servedPublicKey: Uint8Array | null = null
+  /** The next registration is refused, as a spent ticket or an unreachable Ciphera ID would make it. */
+  failNextRegister = false
   private minted = 0
 
   mint(): string {
     const token = `tmk-token-${++this.minted}-do-not-log`
     this.tokens.add(token)
     return token
+  }
+
+  /** A credential ceremony's registration ticket for this person. */
+  ticket(user: string): string {
+    const ticket = `ticket-${++this.minted}-do-not-log`
+    this.tickets.set(ticket, user)
+    return ticket
+  }
+
+  /** A proof key for this person, registered at Ciphera ID as a sign-in would register it. */
+  async registerProofKey(user: string, vmk: VaultKey): Promise<ProofKey> {
+    const key = await createProofKey(vaultOpsFor(vmk))
+    this.proofKeys.set(user, key)
+    return key
+  }
+
+  vaultProof(caller: string): VaultProofApi {
+    return {
+      start: async (purpose) => {
+        this.events.push('proof:start')
+        const key = this.proofKeys.get(caller)
+        if (!key) return null
+        const bytes = crypto.getRandomValues(new Uint8Array(32))
+        const challenge = Buffer.from(bytes).toString('base64url')
+        this.challenges.set(challenge, { userId: caller, purpose, bytes })
+        return { challenge, challengeBytes: bytes, publicKey: this.servedPublicKey ?? key.publicKey, sealedPrivateKey: key.sealedPrivateKey }
+      },
+      finish: async ({ challenge, signature, purpose }) => {
+        this.events.push('proof:finish')
+        // Spent on its first presentation, valid or not; the message is rebuilt from the challenge's own record.
+        const live = this.challenges.get(challenge)
+        this.challenges.delete(challenge)
+        const key = this.proofKeys.get(caller)
+        const refused = new ApiError('Forbidden', 403, { error: 'proof refused' })
+        if (!live || live.userId !== caller || live.purpose !== purpose || !key) throw refused
+        const publicKey = await crypto.subtle.importKey('raw', asBytes(key.publicKey), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'])
+        const message = asBytes(proofMessage(live.bytes, live.userId, 'tkp'))
+        if (!(await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, asBytes(Buffer.from(signature, 'base64')), message))) throw refused
+        const token = `tkp-token-${++this.minted}-do-not-log`
+        this.proofTokens.set(token, caller)
+        return token
+      },
+      register: async (vault, ticket) => {
+        this.events.push('proof:register')
+        const owner = this.tickets.get(ticket)
+        this.tickets.delete(ticket)
+        if (this.failNextRegister || owner !== caller) {
+          this.failNextRegister = false
+          return false
+        }
+        this.proofKeys.set(caller, await createProofKey(vault))
+        return true
+      },
+    }
   }
 
   leave(team: string, user: string) {
@@ -124,14 +207,26 @@ class FakeServer {
       fetchOwnKey: async () => this.keys.get(caller) ?? null,
       publishKey: async (body) => {
         this.events.push('publish:start')
+        this.publishes.push({ caller, reauthToken: body.reauthToken })
         if (this.failNextPublish) {
           this.failNextPublish = false
           throw new TeamNamesError('team_names/request_failed')
         }
-        // R72: a first key carries no proof, and the browser sends none.
-        if ('reauthToken' in body) throw new Error('a first key was sent with a re-auth token')
+        // The existing key is answered before any proof is spent or asked for.
         const existing = this.keys.get(caller)
         if (existing) return existing
+        await this.beforeProofCheck?.(caller)
+        if (body.reauthToken !== undefined) {
+          // A `tkp` token is spent here, and only one minted for this person is accepted (a `tmk` one never is).
+          const owner = this.proofTokens.get(body.reauthToken)
+          this.proofTokens.delete(body.reauthToken)
+          const expired = this.expireNextProofs > 0
+          if (expired) this.expireNextProofs--
+          if (owner !== caller || expired) throw new TeamNamesError('team_names/reauth_required')
+        } else if (this.proofKeys.has(caller)) {
+          // R81: with no token, only while Ciphera ID holds no proof key for the person.
+          throw new TeamNamesError('team_names/reauth_required')
+        }
         await this.beforeInsert?.(caller)
         const winner = this.keys.get(caller)
         this.events.push('publish:end')
@@ -270,6 +365,7 @@ async function person(server: FakeServer, id: string, name: string | undefined, 
   const deps: SessionDeps = {
     userId: id,
     api: server.api(id),
+    vaultProof: server.vaultProof(id),
     loadVaultKey: async () => (p.vaultKeyHeld ? p.vmk : null),
     readVault: async () => {
       if (p.readFails) throw new Error('network')
@@ -278,7 +374,8 @@ async function person(server: FakeServer, id: string, name: string | undefined, 
     prove: async (password) => {
       if (password === 'unreachable') throw new Error('Network error, please try again.')
       if (password !== 'correct horse') throw new InvalidCredentialsError()
-      return server.mint()
+      // The `tmk` answer says whether Ciphera ID holds a proof key, and carries a ticket to register one (design §17.5).
+      return { reauthToken: server.mint(), proofKey: { registered: server.proofKeys.has(id), ticket: server.ticket(id) } }
     },
     warn: p.warn,
   }
@@ -387,6 +484,7 @@ describe('the first key (R72)', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, publishKey: async (body) => ({ ...(await api.publishKey(body)), keyId: sha256(new Uint8Array([1])) }) },
+      vaultProof: server.vaultProof(A),
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -450,6 +548,138 @@ describe('the first key (R72)', () => {
     expect(a.session.getSnapshot().status).toBe('cannot_open')
     await a.session.reconcile(TEAM)
     expect(server.rows.filter((r) => r.sender === A)).toHaveLength(0)
+  })
+})
+
+describe('the vault-key proof a first key carries (design §17.6)', () => {
+  /** A person with no key yet, whose account registered a proof key at a sign-in, sealed under their vault. */
+  async function registered(server: FakeServer): Promise<Person> {
+    const p = await person(server, A, 'Ada')
+    await server.registerProofKey(A, p.vmk)
+    return p
+  }
+
+  const flow = (server: FakeServer) => server.events.filter((e) => e.startsWith('proof:') || e.startsWith('publish:'))
+
+  it('signs Ciphera ID\'s challenge with the vault, with no prompt, and the POST carries the token it answers', async () => {
+    const server = new FakeServer()
+    const a = await registered(server)
+    const mint = vi.spyOn(server, 'mint')
+    await a.session.start()
+    expect(a.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
+    expect(mint).not.toHaveBeenCalled() // no password ceremony
+    expect(flow(server)).toEqual(['proof:start', 'proof:finish', 'publish:start', 'publish:end'])
+    expect(server.publishes).toHaveLength(1)
+    expect(server.publishes[0].reauthToken).toMatch(/^tkp-token-/)
+    // Spent, both: nothing is left to replay.
+    expect(server.challenges.size).toBe(0)
+    expect(server.proofTokens.size).toBe(0)
+    expect(server.keys.has(A)).toBe(true)
+  })
+
+  it('posts with no token while Ciphera ID holds no proof key for the person (R81)', async () => {
+    const server = new FakeServer()
+    const a = await person(server, A, 'Ada')
+    await a.session.start()
+    expect(a.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
+    expect(flow(server)).toEqual(['proof:start', 'publish:start', 'publish:end'])
+    expect(server.publishes).toEqual([{ caller: A, reauthToken: undefined }])
+  })
+
+  it('makes a new proof once when the token is refused, as after a tab slept between the two', async () => {
+    const server = new FakeServer()
+    const a = await registered(server)
+    server.expireNextProofs = 1
+    await a.session.start()
+    expect(a.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
+    expect(flow(server)).toEqual(['proof:start', 'proof:finish', 'publish:start', 'proof:start', 'proof:finish', 'publish:start', 'publish:end'])
+    const [first, second] = server.publishes.map((p) => p.reauthToken)
+    expect(first).toMatch(/^tkp-token-/)
+    expect(second).toMatch(/^tkp-token-/)
+    expect(second).not.toBe(first)
+  })
+
+  it('makes the proof when the account registered a proof key after `start` answered that it had none', async () => {
+    const server = new FakeServer()
+    const a = await person(server, A, 'Ada')
+    server.beforeProofCheck = async (caller) => {
+      server.beforeProofCheck = null
+      await server.registerProofKey(caller, a.vmk)
+    }
+    await a.session.start()
+    expect(a.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
+    expect(server.publishes.map((p) => p.reauthToken?.replace(/-\d+-do-not-log$/, ''))).toEqual([undefined, 'tkp-token'])
+  })
+
+  it('ends in the error state on a second refusal, publishes nothing, and the next try starts over', async () => {
+    const server = new FakeServer()
+    const a = await registered(server)
+    server.expireNextProofs = 2
+    await a.session.start()
+    expect(a.session.getSnapshot().status).toBe('error')
+    expect(a.warn).toHaveBeenCalledWith('team_names/reauth_required')
+    expect(server.publishes).toHaveLength(2)
+    expect(server.keys.size).toBe(0)
+    await a.session.retry()
+    expect(a.session.getSnapshot()).toMatchObject({ status: 'ready', firstKey: true })
+    expect(server.publishes).toHaveLength(3)
+  })
+
+  it('waits for the reset, and posts nothing, when the proof key does not open with this vault', async () => {
+    const server = new FakeServer()
+    const a = await person(server, A, 'Ada')
+    await server.registerProofKey(A, await newVmk()) // sealed under a vault that is not this person's
+    await a.session.start()
+    expect(a.session.getSnapshot().status).toBe('cannot_open')
+    expect(a.warn).toHaveBeenCalledWith('team_names/proof_unopenable')
+    expect(flow(server)).toEqual(['proof:start'])
+    expect(server.publishes).toEqual([])
+    expect(server.keys.size).toBe(0)
+  })
+
+  it('waits for the reset, and posts nothing, when Ciphera ID serves a public key that is not the one sealed', async () => {
+    const server = new FakeServer()
+    const a = await registered(server)
+    server.servedPublicKey = (await createProofKey(vaultOpsFor(await newVmk()))).publicKey
+    await a.session.start()
+    expect(a.session.getSnapshot().status).toBe('cannot_open')
+    expect(a.warn).toHaveBeenCalledWith('team_names/proof_unopenable')
+    expect(flow(server)).toEqual(['proof:start'])
+    expect(server.keys.size).toBe(0)
+  })
+
+  it('leaves the error state, and posts nothing, when Ciphera ID refuses the proof or cannot be reached', async () => {
+    for (const fail of ['start', 'finish'] as const) {
+      const server = new FakeServer()
+      const a = await registered(server)
+      const proof = server.vaultProof(A)
+      const unreachable = new ApiError('Network error', 0)
+      const s = new TeamNamesSession({
+        userId: A,
+        api: server.api(A),
+        vaultProof: fail === 'start' ? { ...proof, start: async () => { throw unreachable } } : { ...proof, finish: async () => { throw unreachable } },
+        loadVaultKey: async () => a.vmk,
+        readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
+        prove: async () => { throw new Error('unused') },
+        warn: a.warn,
+      })
+      await s.start()
+      expect(s.getSnapshot().status).toBe('error')
+      expect(a.warn).toHaveBeenCalledWith('team_names/proof_failed')
+      expect(server.publishes).toEqual([])
+    }
+  })
+
+  it('reports codes only: no token or key material reaches the warnings', async () => {
+    const server = new FakeServer()
+    const a = await registered(server)
+    server.expireNextProofs = 2
+    await a.session.start()
+    expect(a.warn.mock.calls.length).toBeGreaterThan(0)
+    for (const [code, detail] of a.warn.mock.calls) {
+      expect(code).toMatch(/^team_names\/[a-z_]+$/)
+      expect(detail).toBeUndefined()
+    }
   })
 })
 
@@ -544,6 +774,81 @@ describe('the reset', () => {
     await b.session.start()
     expect(b.session.getSnapshot().status).toBe('error')
     await expect(b.session.reset('correct horse', [TEAM])).rejects.toMatchObject({ code: 'team_names/not_ready' })
+  })
+})
+
+describe('the reset registers the vault-proof key on its way (design §17.7)', () => {
+  const resetFlow = (server: FakeServer) => server.events.filter((e) => e === 'proof:register' || e === 'reset')
+
+  /** The proof key Ciphera ID now holds for the person opens with this vault and signs. */
+  async function proofKeyOpens(server: FakeServer, vmk: VaultKey): Promise<boolean> {
+    const key = server.proofKeys.get(A)
+    if (!key) return false
+    const challenge = crypto.getRandomValues(new Uint8Array(32))
+    try {
+      await signProof(vaultOpsFor(vmk), { sealedPrivateKey: key.sealedPrivateKey, publicKey: key.publicKey, challenge, userId: A, purpose: 'tkp' })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  it('replaces a proof key that does not open, then publishes the team key, with one password', async () => {
+    const server = new FakeServer()
+    const a = await person(server, A, 'Ada')
+    const broken = await server.registerProofKey(A, await newVmk())
+    await a.session.start()
+    expect(a.session.getSnapshot().status).toBe('cannot_open')
+    server.events.length = 0
+    await a.session.reset('correct horse', [TEAM])
+    expect(a.session.getSnapshot().status).toBe('ready')
+    expect(resetFlow(server)).toEqual(['proof:register', 'reset'])
+    expect(server.proofKeys.get(A)).not.toBe(broken)
+    expect(await proofKeyOpens(server, a.vmk)).toBe(true)
+    expect(server.keys.has(A)).toBe(true)
+  })
+
+  it('registers one when Ciphera ID holds none', async () => {
+    const server = new FakeServer()
+    await keyed(server, A, 'Ada')
+    const lost = await person(server, A, 'Ada') // a device whose vault key does not open the team key
+    await lost.session.start()
+    expect(lost.session.getSnapshot().status).toBe('cannot_open')
+    server.events.length = 0
+    await lost.session.reset('correct horse', [TEAM])
+    expect(resetFlow(server)).toEqual(['proof:register', 'reset'])
+    expect(await proofKeyOpens(server, lost.vmk)).toBe(true)
+  })
+
+  it('registers nothing when the proof key exists and opens here', async () => {
+    const server = new FakeServer()
+    const a = await keyed(server, A, 'Ada')
+    await server.registerProofKey(A, a.vmk)
+    const again = await person(server, A, 'Ada')
+    again.vmk = a.vmk
+    await again.session.start()
+    expect(again.session.getSnapshot().status).toBe('ready')
+    server.events.length = 0
+    await again.session.reset('correct horse', [TEAM])
+    expect(resetFlow(server)).toEqual(['reset'])
+  })
+
+  it('still publishes the team key when the registration fails, and the next reset registers', async () => {
+    const server = new FakeServer()
+    const a = await person(server, A, 'Ada')
+    await server.registerProofKey(A, await newVmk())
+    await a.session.start()
+    expect(a.session.getSnapshot().status).toBe('cannot_open')
+    server.failNextRegister = true
+    server.events.length = 0
+    await a.session.reset('correct horse', [TEAM])
+    expect(a.session.getSnapshot().status).toBe('ready')
+    expect(resetFlow(server)).toEqual(['proof:register', 'reset'])
+    expect(await proofKeyOpens(server, a.vmk)).toBe(false)
+    server.events.length = 0
+    await a.session.reset('correct horse', [TEAM])
+    expect(resetFlow(server)).toEqual(['proof:register', 'reset'])
+    expect(await proofKeyOpens(server, a.vmk)).toBe(true)
   })
 })
 
@@ -681,7 +986,7 @@ describe('reconcile', () => {
     if (answer.kind !== 'directory') throw new Error('no directory')
     const swapped: DirectoryAnswer = { kind: 'directory', directory: { ...answer.directory, keys: answer.directory.keys.map((k) => (k.userId === A ? { ...k, publicKey: impostor } : k)) } }
     const s2 = new TeamNamesSession({
-      userId: A, api: { ...api, fetchDirectory: async () => swapped }, loadVaultKey: async () => a.vmk,
+      userId: A, api: { ...api, fetchDirectory: async () => swapped }, vaultProof: server.vaultProof(A), loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }), prove: async () => { throw new Error('unused') }, warn: vi.fn(),
     })
     await s2.start()
@@ -704,6 +1009,7 @@ describe('dispose', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, fetchDirectory: async (team, warn) => { await gate; return api.fetchDirectory(team, warn) } },
+      vaultProof: server.vaultProof(A),
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'x@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -800,6 +1106,7 @@ describe('the email pass (design §16.4)', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, fetchDirectory: async () => { throw new TeamNamesError('team_names/request_failed') } },
+      vaultProof: server.vaultProof(A),
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -909,6 +1216,7 @@ describe('the email pass (design §16.4)', () => {
     const s = new TeamNamesSession({
       userId: A,
       api: { ...api, fetchEmailDirectory: async () => ({ kind: 'too_large' }) },
+      vaultProof: server.vaultProof(A),
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },
@@ -935,6 +1243,7 @@ describe('the email pass (design §16.4)', () => {
           return { kind: 'directory', directory: { ...answer.directory, keys: [...answer.directory.keys, { userId: A, publicKey: impostor }] } }
         },
       },
+      vaultProof: server.vaultProof(A),
       loadVaultKey: async () => a.vmk,
       readVault: async () => ({ email: 'ada@example.com', display_name: 'Ada' }),
       prove: async () => { throw new Error('unused') },

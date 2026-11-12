@@ -1,13 +1,13 @@
 /**
  * The browser half of the vector run in Chromium, Firefox and WebKit (vectors.spec.ts, design
  * §8.2, review L1). vectors.spec.ts bundles this file with the production modules it imports,
- * unchanged, loads it into a page and calls `runTeamNamesVectors` with the three vector files.
+ * unchanged, loads it into a page and calls `runTeamNamesVectors` with the four vector files.
  *
  * This side only computes: every value goes back as hex, and every failure as its error name and
  * code, one outcome per check, so an engine that refuses one operation fails the checks that use
  * it and no others. The spec compares each value with the files, in Node.
  *
- * It mirrors hpke.test.ts, team-names.test.ts and team-emails.test.ts, minus what runs no WebCrypto
+ * It mirrors hpke.test.ts, team-names.test.ts, team-emails.test.ts and vault-proof.test.ts, minus what runs no WebCrypto
  * (the cleaning table, the padding decode, the fold key, the UUID parse, the spies). The address
  * check is the exception: it runs no WebCrypto, but its Unicode property escapes read each engine's
  * own Unicode tables, so it runs here too. It imports the ephemeral-key seams, which only files
@@ -15,10 +15,12 @@
  */
 
 import { vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
+import { PROOF_KEY_CONTEXT, createProofKey, proofMessage, signProof, type ProofPurpose } from '@ciphera-net/auth/vault-proof'
 import {
   SUITE_P256_SHA256_AES128GCM,
   SUITE_P256_SHA256_AES256GCM,
   SUITE_P521_SHA512_AES256GCM,
+  asBytes,
   importEcdhPublicKey,
   importPrivateKey,
   importPublicKey,
@@ -254,10 +256,31 @@ export interface TeamEmailsFile {
   envelope_negatives: VEnvelopeNegative[]
 }
 
+/** vault-proof-v1.json (design §17.12): byte fields are hex with a `_hex` suffix, and the inputs sit under `inputs`. */
+export interface VaultProofFile {
+  version: string
+  inputs: {
+    vmk_hex: string
+    context: string
+    proof_d_hex: string
+    proof_pub_hex: string
+    user_id: string
+    challenge_hex: string
+    purpose: string
+    sign_prefix: string
+    _rfc6979_control: { message_utf8: string; r_hex: string; s_hex: string }
+  }
+  plaintext_hex: string
+  envelope_hex: string
+  message_hex: string
+  signature_go_hex: string
+}
+
 export interface HarnessInput {
   rfc: RfcFile
   teamNames: TeamNamesFile
   teamEmails: TeamEmailsFile
+  vaultProof: VaultProofFile
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -426,6 +449,25 @@ export interface TeamEmailsReport {
   fresh: Outcome<FreshEmailReport>
 }
 
+export interface VaultProofReport {
+  /** The Go envelope opened under the vector vault key and the proof context. */
+  envelopePlaintext: Outcome<string>
+  /** proofMessage over the vector challenge, user id and purpose. */
+  message: Outcome<string>
+  /** subtle.verify of the Go signature over the vector message, under the vector key. */
+  goSignature: Outcome<boolean>
+  /** subtle.verify of RFC 6979 A.2.5's signature of "sample" under the same key. */
+  rfc6979: Outcome<boolean>
+  /** signProof with the Go envelope: this engine's signature, and whether this engine verifies it. */
+  signed: Outcome<{ signature: string; verifies: boolean }>
+  /** The vector plaintext sealed under the vector vault key and the proof context by this engine, and opened again. */
+  sealed: Outcome<{ envelope: string; reopened: string }>
+  /** A key createProofKey made here: its sizes, and whether its signature verifies under its own public key only. */
+  created: Outcome<{ publicKeyLength: number; envelopeLength: number; verifiesUnderItsKey: boolean; verifiesUnderVectorKey: boolean }>
+  /** Each must refuse: an open that throws, a signProof that throws (with the error's name), or a verify that answers false. */
+  negatives: Labelled<string | boolean>[]
+}
+
 export interface HarnessReport {
   rfc: RfcReport[]
   freshSeal: Outcome<FreshSealReport>
@@ -438,6 +480,7 @@ export interface HarnessReport {
   tagNegatives: TagNegativeReport[]
   createdIdentity: Outcome<CreatedIdentityReport>
   emails: TeamEmailsReport
+  vaultProof: VaultProofReport
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1072,6 +1115,103 @@ async function teamEmails(file: TeamEmailsFile): Promise<TeamEmailsReport> {
   return { identities, envelopeNegatives, seals, openNegatives, addressNegatives, crossKind, tagNegatives, checkCases, fresh }
 }
 
+// ---------------------------------------------------------------------------------------------
+// The vault-key proof (vault-proof.test.ts)
+// ---------------------------------------------------------------------------------------------
+
+async function ecdsaVerifies(publicKey: Uint8Array, signature: Uint8Array, message: Uint8Array): Promise<boolean> {
+  const key = await crypto.subtle.importKey('raw', asBytes(publicKey), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'])
+  return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, asBytes(signature), asBytes(message))
+}
+
+function flippedAt(bytes: Bytes, index: number): Bytes {
+  const out = new Uint8Array(bytes)
+  out[index] ^= 0x01
+  return out
+}
+
+async function vaultProof(file: VaultProofFile, teamNamesFile: TeamNamesFile): Promise<VaultProofReport> {
+  const { inputs } = file
+  const purpose = inputs.purpose as ProofPurpose
+  const pub = hex(inputs.proof_pub_hex)
+  const challenge = hex(inputs.challenge_hex)
+  const message = hex(file.message_hex)
+  const envelope = hex(file.envelope_hex)
+  const goSignature = hex(file.signature_go_hex)
+  const vault = vaultOpsFor(await vaultKey(inputs.vmk_hex))
+  const input = { sealedPrivateKey: envelope, publicKey: pub, challenge, userId: inputs.user_id, purpose }
+  const prefixLength = new TextEncoder().encode(inputs.sign_prefix).length
+  const rfc = inputs._rfc6979_control
+
+  const negatives: Labelled<string | boolean>[] = []
+  const team = teamNamesFile.identities[0]
+  negatives.push(
+    await labelled('a team-key envelope under the proof context', async () =>
+      toHex(await vaultOpsFor(await vaultKey(team.vmk)).open(PROOF_KEY_CONTEXT, hex(team.sealed_private_key))),
+    ),
+  )
+  negatives.push(await labelled('the proof envelope under the team-key context', async () => toHex(await vault.open(IDENTITY_CONTEXT, envelope))))
+  negatives.push(
+    await labelled('the proof key sealed under the team-key context, signed as a proof key', async () => {
+      const underTeamContext = await vault.seal(IDENTITY_CONTEXT, hex(file.plaintext_hex))
+      return toHex((await signProof(vault, { ...input, sealedPrivateKey: underTeamContext })).signature)
+    }),
+  )
+  negatives.push(
+    await labelled('another vault key', async () => {
+      const other = vaultOpsFor(await vaultKey('09'.repeat(32)))
+      return toHex((await signProof(other, input)).signature)
+    }),
+  )
+  negatives.push(
+    await labelled('a served public key that is not the sealed one', async () => {
+      const elsewhere = (await createProofKey(vault)).publicKey
+      return toHex((await signProof(vault, { ...input, publicKey: elsewhere })).signature)
+    }),
+  )
+  const fields: [string, number][] = [
+    ['the prefix', 0],
+    ['the separator', prefixLength],
+    ['the challenge', prefixLength + 1],
+    ['the user id', prefixLength + 1 + 32],
+    ['the purpose', prefixLength + 1 + 32 + 16],
+  ]
+  for (const [field, index] of fields) {
+    negatives.push(await labelled(`the Go signature, one byte of ${field} flipped`, () => ecdsaVerifies(pub, goSignature, flippedAt(message, index))))
+  }
+  negatives.push(
+    await labelled('the Go signature over the message of another purpose', () =>
+      ecdsaVerifies(pub, goSignature, proofMessage(challenge, inputs.user_id, 'tmk' as ProofPurpose)),
+    ),
+  )
+
+  return {
+    envelopePlaintext: await attempt(async () => toHex(await vault.open(PROOF_KEY_CONTEXT, envelope))),
+    message: await attempt(() => toHex(proofMessage(challenge, inputs.user_id, purpose))),
+    goSignature: await attempt(() => ecdsaVerifies(pub, goSignature, message)),
+    rfc6979: await attempt(() => ecdsaVerifies(pub, hex(rfc.r_hex + rfc.s_hex), new TextEncoder().encode(rfc.message_utf8))),
+    signed: await attempt(async () => {
+      const { signature } = await signProof(vault, input)
+      return { signature: toHex(signature), verifies: await ecdsaVerifies(pub, signature, message) }
+    }),
+    sealed: await attempt(async () => {
+      const sealed = await vault.seal(PROOF_KEY_CONTEXT, hex(file.plaintext_hex))
+      return { envelope: toHex(sealed), reopened: toHex(await vault.open(PROOF_KEY_CONTEXT, sealed)) }
+    }),
+    created: await attempt(async () => {
+      const key = await createProofKey(vault)
+      const { signature } = await signProof(vault, { ...input, ...key })
+      return {
+        publicKeyLength: key.publicKey.length,
+        envelopeLength: key.sealedPrivateKey.length,
+        verifiesUnderItsKey: await ecdsaVerifies(key.publicKey, signature, message),
+        verifiesUnderVectorKey: await ecdsaVerifies(pub, signature, message),
+      }
+    }),
+    negatives,
+  }
+}
+
 export async function runTeamNamesVectors(input: HarnessInput): Promise<HarnessReport> {
   const rfc: RfcReport[] = []
   for (const { section, vector } of input.rfc.vectors) rfc.push(await rfcSection(section, vector))
@@ -1086,6 +1226,7 @@ export async function runTeamNamesVectors(input: HarnessInput): Promise<HarnessR
     publicKeys: await publicKeys(vectorOf(SUITE_P256_SHA256_AES256GCM), vectorOf(SUITE_P521_SHA512_AES256GCM)),
     ...(await teamNames(input.teamNames)),
     emails: await teamEmails(input.teamEmails),
+    vaultProof: await vaultProof(input.vaultProof, input.teamNames),
   }
 }
 

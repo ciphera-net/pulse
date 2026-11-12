@@ -35,6 +35,12 @@ export type ClientEventName =
   | 'oauth_callback_no_code'
   /** The callback's `state` matched no pending attempt on this device. */
   | 'oauth_callback_no_pending_attempt'
+  /**
+   * A credential ceremony offered a ticket and no vault-proof key was registered with it (team names design §17.5).
+   * Detail = the step and why: `create:error`, `create:timeout`, `post:<status>` (0: no connection), `post:timeout`,
+   * `post:error`. Nothing is shown; the next ceremony tries again.
+   */
+  | 'vault_proof_register_failed'
 
 export function reportClientEvent(name: ClientEventName, detail?: string): void {
   if (typeof window === 'undefined') return

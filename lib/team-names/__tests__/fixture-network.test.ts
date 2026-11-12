@@ -1,7 +1,8 @@
 // The made-up team's network answers (./fixtures/network.ts) put through the real session and the real decoders of
 // lib/team-names/api.ts: each state opens to what the browser check of the built pages expects to draw. None but
 // `first` leaves anything for the reconcile to write, so the check's read-only guard never sees a write attempted;
-// `first` (no key yet) publishes a key with no proof and then shares the name, as the browser does since R72. With an
+// `first` (no key yet) asks Ciphera ID for the vault-key proof, which answers that the account has no proof key, so
+// it publishes a key with no proof (R81) and then shares the name, as the browser does since R72. With an
 // email state the team-emails route serves addresses too (design §16), and the same holds for them; without one it
 // answers 404, and no address is opened or written.
 
@@ -21,51 +22,53 @@ const net = vi.hoisted(() => ({
 }))
 vi.mock('@/lib/api/client', async (importActual) => {
   const actual = await importActual<typeof import('@/lib/api/client')>()
-  return {
-    ...actual,
-    default: async (path: string, options: { method?: string; body?: string } = {}) => {
-      const method = options.method ?? 'GET'
-      net.calls.push(`${method} ${path}`)
-      const b = net.body as Record<string, unknown>
-      // The two writes a person with no key makes (R72): the key, with no proof, then their name for the team.
-      if (method === 'POST' && path === '/me/team-key') {
-        const sent = JSON.parse(options.body ?? '{}') as Record<string, string>
-        if (b.teamKey || net.posted || 'reauth_token' in sent) throw new Error(`a key POST that should not happen: ${Object.keys(sent)}`)
-        const pub = Uint8Array.from(atob(sent.public_key), (ch) => ch.charCodeAt(0))
-        const keyId = new Uint8Array(await crypto.subtle.digest('SHA-256', pub))
-        net.posted = { key_id: btoa(String.fromCharCode(...keyId)), public_key: sent.public_key, sealed_private_key: sent.sealed_private_key }
-        return net.posted
-      }
-      if (method === 'PUT' && path.endsWith('/team-names') && net.posted) {
-        net.written += (JSON.parse(options.body ?? '{}') as { entries: unknown[] }).entries.length
-        return null
-      }
-      if (method === 'PUT' && path.endsWith('/team-emails') && net.posted) {
-        net.writtenEmails += (JSON.parse(options.body ?? '{}') as { entries: unknown[] }).entries.length
-        return null
-      }
-      if (method !== 'GET') throw new Error(`a write was attempted: ${method} ${path}`)
-      if (path === '/me/team-key') {
-        const row = b.teamKey ?? net.posted
-        if (!row) throw new actual.ApiError('Not found', 404)
-        return row
-      }
-      if (path.endsWith('/team-names')) {
-        // Once published, the server serves my key with the others.
-        const directory = b.directory as { keys: { user_id: string; public_key: string }[] }
-        return net.posted ? { ...directory, keys: [{ user_id: net.me, public_key: net.posted.public_key }, ...directory.keys] } : directory
-      }
-      if (path.endsWith('/members')) return b.members
-      if (path.endsWith('/team-emails')) {
-        // Without an email state there is no address to serve: a 404, which the session reads as `unavailable`.
-        if (!b.emailDirectory) throw new actual.ApiError('Not found', 404)
-        return b.emailDirectory
-      }
-      throw new Error(`unexpected ${path}`)
-    },
+  const request = async (path: string, options: { method?: string; body?: string } = {}) => {
+    const method = options.method ?? 'GET'
+    net.calls.push(`${method} ${path}`)
+    const b = net.body as Record<string, unknown>
+    // Ciphera ID holds no vault-proof key for the made-up account (R81): the first key goes with no proof.
+    if (method === 'POST' && path === '/auth/vault-proof/start') throw new actual.ApiError('Not found', 404, { error: 'no_proof_key' })
+    // The two writes a person with no key makes (R72): the key, with no proof, then their name for the team.
+    if (method === 'POST' && path === '/me/team-key') {
+      const sent = JSON.parse(options.body ?? '{}') as Record<string, string>
+      if (b.teamKey || net.posted || 'reauth_token' in sent) throw new Error(`a key POST that should not happen: ${Object.keys(sent)}`)
+      const pub = Uint8Array.from(atob(sent.public_key), (ch) => ch.charCodeAt(0))
+      const keyId = new Uint8Array(await crypto.subtle.digest('SHA-256', pub))
+      net.posted = { key_id: btoa(String.fromCharCode(...keyId)), public_key: sent.public_key, sealed_private_key: sent.sealed_private_key }
+      return net.posted
+    }
+    if (method === 'PUT' && path.endsWith('/team-names') && net.posted) {
+      net.written += (JSON.parse(options.body ?? '{}') as { entries: unknown[] }).entries.length
+      return null
+    }
+    if (method === 'PUT' && path.endsWith('/team-emails') && net.posted) {
+      net.writtenEmails += (JSON.parse(options.body ?? '{}') as { entries: unknown[] }).entries.length
+      return null
+    }
+    if (method !== 'GET') throw new Error(`a write was attempted: ${method} ${path}`)
+    if (path === '/me/team-key') {
+      const row = b.teamKey ?? net.posted
+      if (!row) throw new actual.ApiError('Not found', 404)
+      return row
+    }
+    if (path.endsWith('/team-names')) {
+      // Once published, the server serves my key with the others.
+      const directory = b.directory as { keys: { user_id: string; public_key: string }[] }
+      return net.posted ? { ...directory, keys: [{ user_id: net.me, public_key: net.posted.public_key }, ...directory.keys] } : directory
+    }
+    if (path.endsWith('/members')) return b.members
+    if (path.endsWith('/team-emails')) {
+      // Without an email state there is no address to serve: a 404, which the session reads as `unavailable`.
+      if (!b.emailDirectory) throw new actual.ApiError('Not found', 404)
+      return b.emailDirectory
+    }
+    throw new Error(`unexpected ${path}`)
   }
+  // The team-names routes call the default export, the Ciphera ID routes authFetch: one network answers both.
+  return { ...actual, default: request, authFetch: request }
 })
 
+import { finishVaultProof, registerProofKey, startVaultProof } from '@/lib/auth/tessera/vault-proof'
 import { decryptVaultH } from '@/lib/crypto/vault-ops'
 import {
   fetchDirectory,
@@ -94,6 +97,7 @@ async function open(state: MadeUpState, account: MadeUpAccount = 'set', opts: { 
   const session = new TeamNamesSession({
     userId: ME,
     api: { fetchOwnKey, publishKey, resetKey, fetchDirectory, fetchMemberIds, writeNames, withdrawNames, fetchEmailDirectory, writeEmails, withdrawEmails },
+    vaultProof: { start: startVaultProof, finish: finishVaultProof, register: registerProofKey },
     loadVaultKey: async () => key,
     readVault: (k) => decryptVaultH({ kind: 'opaque', vault: vaultOpsFor(k) }, body.vault.encrypted_vault),
     prove: async () => {
@@ -152,10 +156,14 @@ describe('the made-up team, through the real session', () => {
   it.each([
     ['first', 'set'],
     ['named', 'first'],
-  ] as const)('no key yet (%s, %s): published with no step and no proof, then my name goes to every teammate (R72)', async (state, account) => {
+  ] as const)('no key yet (%s, %s): published with no step, and no proof while the account has no proof key (R81), then my name goes to every teammate (R72)', async (state, account) => {
     const s = await open(state, account)
     expect(s).toMatchObject({ status: 'ready', firstKey: true, share: 'name' })
-    expect(net.calls.filter((c) => !c.startsWith('GET'))).toEqual(['POST /me/team-key', `PUT /organizations/${TEAM}/team-names`])
+    expect(net.calls.filter((c) => !c.startsWith('GET'))).toEqual([
+      'POST /auth/vault-proof/start',
+      'POST /me/team-key',
+      `PUT /organizations/${TEAM}/team-names`,
+    ])
     expect(net.written).toBe(4) // the four current teammates; nothing for the former member
     // Nobody could seal a name for a key that did not exist: names arrive after each teammate's next visit.
     expect(names(s)).toEqual({})
@@ -198,10 +206,11 @@ describe('the made-up team\'s addresses (team emails), through the real session'
     expect(Object.keys(emails(s))).toHaveLength(4)
   })
 
-  it('no key yet: published with no proof, then my name to every teammate and my address to the two admins (R72)', async () => {
+  it('no key yet: published with no proof (R81), then my name to every teammate and my address to the two admins (R72)', async () => {
     const s = await open('first', 'set', { emails: 'all' })
     expect(s).toMatchObject({ status: 'ready', firstKey: true })
     expect(net.calls.filter((c) => !c.startsWith('GET'))).toEqual([
+      'POST /auth/vault-proof/start',
       'POST /me/team-key',
       `PUT /organizations/${TEAM}/team-names`,
       `PUT /organizations/${TEAM}/team-emails`,
