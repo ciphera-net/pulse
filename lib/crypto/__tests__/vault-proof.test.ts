@@ -35,7 +35,7 @@ import { asBytes } from '../hpke'
 import { IDENTITY_CONTEXT, openIdentityEnvelope } from '../team-names'
 
 const FILE = fileURLToPath(new URL('./vectors/vault-proof-v1.json', import.meta.url))
-const FILE_SHA256 = 'c4d47e73e6d67e30482c84b3003ff80453e0e9999032c0476fc0204a3a969239'
+const FILE_SHA256 = '8c3623df52843612f4cdf083c107ba65758ee27b095c736c34aa30693eda3dc0'
 const TEAM_NAMES_FILE = fileURLToPath(new URL('./vectors/team-names-v1.json', import.meta.url))
 
 const v = JSON.parse(readFileSync(FILE, 'utf8')) as {
