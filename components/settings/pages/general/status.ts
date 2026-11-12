@@ -11,7 +11,7 @@ export type ScriptState =
   | { kind: 'waiting'; caption: string }
   /** An event in the last day; `here` while someone has been on the site in the last 5 minutes (R7's halo). */
   | { kind: 'receiving'; caption: string; here: boolean }
-  /** Active, but the last event is a day to 14 days old (§4.4: the words follow the age of the last event). */
+  /** Active, but the last event is a day old or more, inside the site's quiet threshold (§4.4: the words follow the age of the last event). */
   | { kind: 'quiet'; label: string }
   | { kind: 'stopped'; label: string }
 
@@ -42,8 +42,9 @@ export function scriptState(
   }
   const last = install.last_event_at
   if (install.install_status === 'stalled') {
-    // The server calls a site stalled once its last event is 14 days old; with no stamp, that is the least it can be.
-    const days = last ? Math.floor((now - Date.parse(last)) / DAY) : 14
+    // The server calls a site stalled once its last event is older than the site's own quiet threshold, 24 hours to
+    // 7 days (pulse-backend database.QuietAfterHours); with no stamp, a day is the least it can be.
+    const days = last ? Math.floor((now - Date.parse(last)) / DAY) : 1
     return { kind: 'stopped', label: `No events for ${days} day${days === 1 ? '' : 's'}` }
   }
   if (!last) return { kind: 'quiet', label: 'Last event not recorded' }

@@ -256,7 +256,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20">
         {stalled && (
           <div className="px-4 pb-1.5 text-xs font-medium text-amber-400">
-            No events for {stalledDays ?? '14+'} days —{' '}
+            No events for {stalledDays ?? '1+'} day{stalledDays === 1 ? '' : 's'} —{' '}
             <Link {...settingsProps} className="pointer-events-auto underline underline-offset-2 hover:text-amber-300">
               check the install →
             </Link>
