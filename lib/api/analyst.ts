@@ -1,4 +1,4 @@
-import apiRequest, { apiRequestStream } from './client'
+import apiRequest, { ApiError, apiRequestStream } from './client'
 
 /**
  * Analyst, the AI analyst for one site (PUL-78). pulse-backend serves it under /barry (the internal name stays barry:
@@ -65,13 +65,15 @@ export function askAnalyst(siteId: string, question: string, conversationId: str
 }
 
 /**
- * One event of a streamed answer, in the order pulse-backend sends them: `start` (the conversation), then for each
- * lookup `step` and `step_done` (with its result), the answer's `text` in pieces (`discard` drops text that turned out
- * not to be the answer), and last `done` (the same body as askAnalyst's) or `error` (a failure, the question given
- * back).
+ * One event of a streamed answer, in the order pulse-backend sends them: `start` (the conversation, and the turn's id
+ * as it will be kept), then for each lookup `step` and `step_done` (with its result), the answer's `text` in pieces
+ * (`discard` drops text that turned out not to be the answer), and last `done` (the same body as askAnalyst's) or
+ * `error` (a failure, the question given back).
  */
 export type AnalystStreamEvent =
-  | { type: 'start'; conversation_id: string }
+  // * turn_id (round 8): the page reads the turn by it when the stream breaks before `done`; null from a server that
+  // * does not name it, which leaves such a break to the error it always had.
+  | { type: 'start'; conversation_id: string; turn_id: string | null }
   | { type: 'step'; index: number; tool: string; args: Record<string, unknown> | null }
   | { type: 'step_done'; index: number; ms: number; error: string; result: unknown }
   | { type: 'text'; delta: string }
@@ -142,7 +144,11 @@ export async function* askAnalystStream(
     }
     switch (event) {
       case 'start':
-        yield { type: 'start', conversation_id: String(p.conversation_id ?? '') }
+        yield {
+          type: 'start',
+          conversation_id: String(p.conversation_id ?? ''),
+          turn_id: typeof p.turn_id === 'string' && p.turn_id !== '' ? p.turn_id : null,
+        }
         break
       case 'step':
         yield { type: 'step', index: Number(p.index), tool: String(p.tool ?? ''), args: (p.args as Record<string, unknown> | null) ?? null }
@@ -190,4 +196,18 @@ export interface AnalystConversations {
 
 export function getAnalystConversations(siteId: string) {
   return apiRequest<AnalystConversations>(`/sites/${siteId}/barry/conversations`)
+}
+
+/**
+ * One of the person's own turns, by the id the stream's `start` named, once the server has kept it; null while it has
+ * not (round 8: what the page reads when an answer's stream broke after it started).
+ */
+export async function getAnalystTurn(siteId: string, turnId: string, signal?: AbortSignal): Promise<AnalystTurn | null> {
+  try {
+    const { turn } = await apiRequest<{ turn: AnalystTurn }>(`/sites/${siteId}/barry/turns/${turnId}`, { signal })
+    return turn
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null
+    throw err
+  }
 }

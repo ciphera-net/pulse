@@ -39,6 +39,7 @@ import { RailDelta } from '@/components/funnels/FunnelRail'
 import {
   askAnalystStream,
   getAnalystConversations,
+  getAnalystTurn,
   getAnalystUsage,
   type AnalystConversation,
   type AnalystStep,
@@ -52,8 +53,18 @@ import { getReferrerIcon } from '@/lib/utils/icons'
 import { pctChange } from '@/lib/utils/pctChange'
 import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
 import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
+import { RECOVERY_LIMIT_MS, waitForTurn } from './recover'
 import { describeStep, finishedLookup, runningLookup } from './steps'
-import { analystErrorMessage, followUpsOf, liveParts, turnMetadata, turnParts, type LiveStep } from './turn'
+import {
+  CONNECTION_DROPPED,
+  COULD_NOT_ANSWER,
+  analystErrorMessage,
+  followUpsOf,
+  liveParts,
+  turnMetadata,
+  turnParts,
+  type LiveStep,
+} from './turn'
 
 /**
  * Analyst: a page of its own for asking about one site (PUL-78, Pulse/docs/plans/09-11-2026-barry-ai-analyst-plan.md
@@ -69,6 +80,9 @@ import { analystErrorMessage, followUpsOf, liveParts, turnMetadata, turnParts, t
  *
  * Round 7 (picked 11-11-2026): a last row in the lookup list while Analyst works out its answer, lookups named with
  * what they were narrowed to (./steps), and "Ask next" under the newest answer: the questions written for it.
+ *
+ * Round 8 (picked 12-11-2026): an answer whose stream breaks after it started is read back from the server (./recover)
+ * with a line under what had come in, then shows as any answer; one not kept in time says the connection dropped.
  */
 
 const RAISED = 'bg-gradient-to-b from-white/[0.035] to-white/[0.01] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
@@ -84,6 +98,13 @@ const groupBy = groupPartByType({ 'tool-call': ['group-tool'] })
 
 /** The past chats' key: read by the list, refreshed after each answer. */
 const chatsKey = (siteId: string) => ['analyst-conversations', siteId] as const
+
+/** What a question stopped while its answer is read back throws: assistant-ui marks the message stopped, not failed. */
+function stoppedError(): Error {
+  const err = new Error('The question was stopped.')
+  err.name = 'AbortError'
+  return err
+}
 
 export default function AnalystPage({ siteId }: { siteId: string }) {
   const { data: site } = useSite(siteId)
@@ -180,12 +201,16 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
             : ''
         const steps: LiveStep[] = []
         let text = ''
+        // * The turn as the server will keep it (round 8), named by `start`: read back when the stream breaks.
+        let turnId: string | null = null
+        const askedAt = Date.now()
         try {
           for await (const ev of askAnalystStream(siteId, question, conversation.current, abortSignal)) {
             switch (ev.type) {
               case 'start':
                 // * Known from the first event, so a question stopped halfway still carries on its conversation.
                 conversation.current = ev.conversation_id
+                turnId = ev.turn_id
                 continue
               case 'step':
                 steps[ev.index] = { tool: ev.tool, args: ev.args ?? {} }
@@ -220,13 +245,32 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
         } catch (err) {
           if (abortSignal.aborted) throw err
           if (err instanceof ApiError) keepUsage(err.data?.usage as AnalystUsage | undefined)
+          // * The stream broke after Analyst started (round 8, picks 1B, 2A and 3B), while the question carries on at
+          // * the server: a line under what had come in says so while the page reads the turn back, which then shows
+          // * as any answer. An ApiError is the server's own answer (a refusal, or its `error` event), not a break.
+          if (turnId && !(err instanceof ApiError)) {
+            yield { content: liveParts(steps, text), metadata: { custom: { connectionDropped: true } } }
+            const id = turnId
+            const turn = await waitForTurn((signal) => getAnalystTurn(siteId, id, signal), askedAt + RECOVERY_LIMIT_MS, abortSignal)
+            if (abortSignal.aborted) throw stoppedError()
+            // * The team's count and the past chats moved at the server whatever came of it.
+            void setUsage()
+            void mutate(chatsKey(siteId))
+            if (turn && turn.outcome !== 'error') {
+              yield { content: turnParts(turn), metadata: turnMetadata(turn) }
+              return
+            }
+            // * A turn kept as a failure was given back to the allowance, as the `error` event says.
+            yield { content: [], metadata: { custom: { connectionDropped: false } } }
+            throw new Error(turn ? COULD_NOT_ANSWER : CONNECTION_DROPPED)
+          }
           // * A failed question shows only its sentence, never lookups for an answer that did not come.
           yield { content: [] }
           throw new Error(analystErrorMessage(err))
         }
       },
     }),
-    [siteId, keepUsage, mutate],
+    [siteId, keepUsage, setUsage, mutate],
   )
   const options = useMemo(() => ({ initialMessages: chat ? chatMessages(chat) : undefined }), [chat])
   const runtime = useLocalRuntime(adapter, options)
@@ -460,6 +504,7 @@ const PageMessage: FC = () => {
             }
           }}
         </MessagePrimitive.GroupedParts>
+        <PageConnectionDropped />
         <MessagePrimitive.Error>
           <ErrorPrimitive.Root className="flex items-start gap-2.5 border border-white/[0.08] px-4 py-3 text-sm text-neutral-300">
             <Warning className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
@@ -498,6 +543,23 @@ const PageMessage: FC = () => {
         <PageAskNext />
       </div>
     </MessagePrimitive.Root>
+  )
+}
+
+// * The stream broke after Analyst started and the page reads the answer back (round 8, pick 1B): a line under what had
+// * come in, with the pulsing dot the page shows before its first lookup, until the answer or the error replaces it.
+const PageConnectionDropped: FC = () => {
+  const dropped = useAuiState(
+    (s) => s.message.status?.type === 'running' && s.message.metadata?.custom?.connectionDropped === true,
+  )
+  if (!dropped) return null
+  return (
+    <div data-analyst="connection-dropped" role="status" className="pt-3">
+      <span className="inline-flex items-center gap-2 text-[15px] text-neutral-400">
+        <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-orange" />
+        The connection dropped. Analyst is still writing the answer.
+      </span>
+    </div>
   )
 }
 

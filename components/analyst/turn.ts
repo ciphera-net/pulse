@@ -9,6 +9,12 @@ import { ApiError } from '@/lib/api/client'
 
 const RESET_DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
 
+/** A question the server could not answer, given back to the team's allowance. */
+export const COULD_NOT_ANSWER = 'Analyst could not answer this time, so the question was not counted. Try again in a moment.'
+
+/** A question whose stream broke after it started and whose turn was not kept in time (round 8, pick 3B). */
+export const CONNECTION_DROPPED = 'The connection dropped and no answer was saved. Try again in a moment.'
+
 /** What a person reads when a question gets no answer. The server's own wording is used only for a 400. */
 export function analystErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -21,7 +27,7 @@ export function analystErrorMessage(err: unknown): string {
         : 'Your team has used all its questions for this month.'
     }
     if (err.status === 429) return 'That was a lot of questions at once. Wait a moment, then ask again.'
-    if (err.status === 503) return 'Analyst could not answer this time, so the question was not counted. Try again in a moment.'
+    if (err.status === 503) return COULD_NOT_ANSWER
     if (err.status === 404) return 'Analyst is not available for this site yet.'
     if (err.status === 400 && typeof data.error === 'string') return data.error
   }
