@@ -163,6 +163,8 @@ const FILTERED_TOOLS = new Set([
   'get_engagement',
   'get_goals',
   'get_funnels',
+  'get_journeys',
+  'get_hours',
 ])
 
 function narrowing(tool: string, args: Record<string, unknown>, result: Record<string, unknown> = {}): string {
@@ -251,6 +253,12 @@ function failedLookup(tool: string, args: Record<string, unknown>): string {
       return 'Analyst could not read the performance checks'
     case 'get_uptime':
       return 'Analyst could not read the uptime checks'
+    case 'get_journeys':
+      return 'Analyst could not read the journeys'
+    case 'get_hours':
+      return 'Analyst could not read when visitors come'
+    case 'get_cdn':
+      return 'Analyst could not read the CDN figures'
     case 'get_realtime':
       return 'Analyst could not read who is on the site right now'
     case 'compare_periods':
@@ -284,6 +292,12 @@ function lookupName(tool: string, args: Record<string, unknown>): string {
       return 'Performance checks'
     case 'get_uptime':
       return 'Uptime'
+    case 'get_journeys':
+      return typeof args.entry_page === 'string' && args.entry_page !== '' ? `Journeys from ${args.entry_page}` : 'Journeys'
+    case 'get_hours':
+      return 'Hours and weekdays'
+    case 'get_cdn':
+      return 'CDN figures'
     default:
       return 'Another lookup'
   }
@@ -334,6 +348,12 @@ export function runningLookup(tool: string, args: Record<string, unknown> | null
       return 'Reading the performance checks'
     case 'get_uptime':
       return 'Reading the uptime checks'
+    case 'get_journeys':
+      return `Reading the journeys${typeof a.entry_page === 'string' && a.entry_page !== '' ? ` from ${a.entry_page}` : ''}${narrowed}`
+    case 'get_hours':
+      return `Reading when visitors come${narrowed}`
+    case 'get_cdn':
+      return 'Reading the CDN figures'
     case 'get_realtime':
       return 'Reading who is on the site right now'
     default:
