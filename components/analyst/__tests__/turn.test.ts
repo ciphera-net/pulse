@@ -3,8 +3,8 @@
 // day, so this file also runs in the UTC+14 lane (npm run test:tz-positive).
 import { describe, it, expect } from 'vitest'
 import { ApiError } from '@/lib/api/client'
-import type { AnalystTurn } from '@/lib/api/analyst'
-import { OUTCOME_TEXT, analystErrorMessage, followUpsOf, turnMetadata, turnParts } from '../turn'
+import type { AnalystStep, AnalystTurn } from '@/lib/api/analyst'
+import { OUTCOME_TEXT, analystErrorMessage, followUpsOf, liveParts, lookupCounts, skippedLine, skippedLookup, turnMetadata, turnParts } from '../turn'
 
 const usage = { used: 50, limit: 50, resets_at: '2026-12-01T00:00:00Z' }
 
@@ -130,5 +130,37 @@ describe('follow-up questions on a message', () => {
     expect(followUpsOf(turnMetadata({ ...base, follow_ups: ['  '] }))).toBe(none)
     expect(followUpsOf(undefined)).toBe(none)
     expect(followUpsOf({ custom: { followUps: [1, 2] } })).toBe(none)
+  })
+})
+
+// * Round 8, pick B: a lookup past the question's limit never ran. It leaves the list, and one line under it counts it.
+describe('lookups skipped at the limit', () => {
+  const NOT_RUN = 'not run: this question has used all its tool calls; answer with what you already have'
+  const ran: AnalystStep = { tool: 'get_stats', args: {}, result: { visitors: 56 }, ms: 80 }
+  const skipped: AnalystStep = { tool: 'get_stats', args: { filters: ['referrer==Direct'] }, error: NOT_RUN, ms: 0 }
+
+  it("knows a skipped lookup by the server's own words, and a failed one apart", () => {
+    expect(skippedLookup(skipped)).toBe(true)
+    expect(skippedLookup({ error: 'the period could not be read' })).toBe(false)
+    expect(skippedLookup(ran)).toBe(false)
+    expect(skippedLookup(undefined)).toBe(false)
+  })
+
+  it('leaves skipped lookups out of the parts, and counts them in the metadata', () => {
+    const t: AnalystTurn = {
+      id: 't1', conversation_id: 'c1', site_id: 's1', question: 'q', answer: 'Up.', outcome: 'answered',
+      steps: [ran, ran, skipped, skipped, skipped], created_at: '2026-11-12T00:00:00Z',
+    }
+    expect(turnParts(t).filter((p) => p.type === 'tool-call')).toHaveLength(2)
+    expect(turnMetadata(t).custom).toMatchObject({ skippedLookups: 3, lookupsRan: 2 })
+    expect(skippedLine(turnMetadata(t))).toBe('Analyst skipped 3 more lookups because this question used all 2.')
+    expect(liveParts([{ tool: 'get_stats', args: {}, done: ran }, { tool: 'get_stats', args: {}, done: skipped }], '')).toHaveLength(1)
+  })
+
+  it('says one lookup in the singular, and nothing when none was skipped', () => {
+    expect(skippedLine({ custom: lookupCounts([ran, skipped]) })).toBe('Analyst skipped 1 more lookup because this question used all 1.')
+    expect(skippedLine({ custom: lookupCounts([ran, ran]) })).toBeNull()
+    expect(skippedLine(undefined)).toBeNull()
+    expect(skippedLine({ custom: { skippedLookups: '2', lookupsRan: 14 } })).toBeNull()
   })
 })
