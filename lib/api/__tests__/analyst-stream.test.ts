@@ -1,15 +1,18 @@
 // Analyst's streamed answers (PUL-78, round 6, live answers): the event-stream reader, fed in chunks that cut events,
 // lines and the CRLF pair apart, and askAnalystStream's typed events, including a server that answers with the whole
-// turn at once.
+// turn at once. Round 8: the turn `start` names, and reading it back once it is kept.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+const apiRequest = vi.hoisted(() => vi.fn())
 const apiRequestStream = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/client')>()),
+  default: apiRequest,
   apiRequestStream,
 }))
 
-import { askAnalystStream, readServerEvents, type AnalystAnswer } from '../analyst'
+import { ApiError } from '@/lib/api/client'
+import { askAnalystStream, getAnalystTurn, readServerEvents, type AnalystAnswer } from '../analyst'
 
 /** A body that delivers the given chunks one read at a time. */
 function body(...chunks: string[]): ReadableStream<Uint8Array> {
@@ -36,7 +39,10 @@ const answer: AnalystAnswer = {
   turn: { id: 't1', conversation_id: 'c1', site_id: 's1', question: 'q', answer: 'Up.', outcome: 'answered', steps: [], created_at: '2026-11-11T00:00:00Z' },
 }
 
-beforeEach(() => apiRequestStream.mockReset())
+beforeEach(() => {
+  apiRequest.mockReset()
+  apiRequestStream.mockReset()
+})
 
 describe('readServerEvents', () => {
   it('reads events whatever the chunks cut apart: a name, a line, the blank line, a CRLF pair', async () => {
@@ -69,7 +75,7 @@ describe('askAnalystStream', () => {
     apiRequestStream.mockResolvedValue(
       new Response(
         body(
-          'event: start\ndata: {"conversation_id":"c1"}\n\n',
+          'event: start\ndata: {"conversation_id":"c1","turn_id":"t1"}\n\n',
           'event: step\ndata: {"index":0,"tool":"compare_periods","args":{"period":"7d"}}\n\n',
           'event: step_done\ndata: {"index":0,"ms":210,"error":"","result":{"visitors":56}}\n\n',
           'event: text\ndata: {"delta":"Visitors"}\n\n',
@@ -82,7 +88,7 @@ describe('askAnalystStream', () => {
     )
     const events = await all(askAnalystStream('s1', 'Why?', null))
     expect(events).toEqual([
-      { type: 'start', conversation_id: 'c1' },
+      { type: 'start', conversation_id: 'c1', turn_id: 't1' },
       { type: 'step', index: 0, tool: 'compare_periods', args: { period: '7d' } },
       { type: 'step_done', index: 0, ms: 210, error: '', result: { visitors: 56 } },
       { type: 'text', delta: 'Visitors' },
@@ -107,6 +113,8 @@ describe('askAnalystStream', () => {
     )
     const events = await all(askAnalystStream('s1', 'And last month?', 'c1'))
     expect(JSON.parse(apiRequestStream.mock.calls[0][1].body)).toEqual({ question: 'And last month?', conversation_id: 'c1' })
+    // * A server that names no turn: a break then keeps the error it always had.
+    expect(events[0]).toEqual({ type: 'start', conversation_id: 'c1', turn_id: null })
     expect(events[1]).toEqual({
       type: 'error',
       error: 'Analyst could not answer this time, so the question was not counted.',
@@ -118,5 +126,20 @@ describe('askAnalystStream', () => {
   it('takes a whole answer from a server that does not stream', async () => {
     apiRequestStream.mockResolvedValue(new Response(JSON.stringify(answer), { headers: { 'content-type': 'application/json' } }))
     expect(await all(askAnalystStream('s1', 'Why?', null))).toEqual([{ type: 'done', answer }])
+  })
+})
+
+describe('getAnalystTurn', () => {
+  it('reads one turn by the id start named, null while the server has not kept it, and passes other failures on', async () => {
+    apiRequest.mockResolvedValueOnce({ turn: answer.turn })
+    const stop = new AbortController()
+    expect(await getAnalystTurn('s1', 't1', stop.signal)).toEqual(answer.turn)
+    expect(apiRequest).toHaveBeenCalledWith('/sites/s1/barry/turns/t1', { signal: stop.signal })
+
+    apiRequest.mockRejectedValueOnce(new ApiError('Not found', 404, { error: 'This answer is not kept yet.' }))
+    expect(await getAnalystTurn('s1', 't1')).toBeNull()
+
+    apiRequest.mockRejectedValueOnce(new ApiError('Network error', 0))
+    await expect(getAnalystTurn('s1', 't1')).rejects.toThrow('Network error')
   })
 })

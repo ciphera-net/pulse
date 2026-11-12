@@ -3,23 +3,27 @@
 // over, and a refused question shows a sentence a person can act on. Round 6: the recent chats under the suggestions
 // reopen a chat to carry on, and the horizon sits behind the welcome, then in the footer, lit while Analyst answers.
 // Round 7: a last row while Analyst works after its lookups, and "Ask next" under the newest answer.
+// Round 8: an answer whose stream broke after it started is read back, with a line under the words while it is.
 // Only the API functions, the site and the display zone are stubbed.
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { ApiError } from '@/lib/api/client'
 import type { AnalystAnswer, AnalystConversation, AnalystStreamEvent, AnalystUsage } from '@/lib/api/analyst'
+import { RECOVERY_LIMIT_MS } from '../recover'
 
 const askAnalyst = vi.hoisted(() => vi.fn())
 const askAnalystStream = vi.hoisted(() => vi.fn())
 const getAnalystUsage = vi.hoisted(() => vi.fn())
 const getAnalystConversations = vi.hoisted(() => vi.fn())
+const getAnalystTurn = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/analyst', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/analyst')>()),
   askAnalyst,
   askAnalystStream,
   getAnalystUsage,
   getAnalystConversations,
+  getAnalystTurn,
 }))
 vi.mock('@/lib/swr/dashboard', () => ({ useSite: () => ({ data: { id: 's1', domain: 'example.com', timezone: 'UTC' } }) }))
 vi.mock('@/lib/hooks/useDisplayZone', () => ({ useDisplayZone: () => ({ mode: 'local', zone: 'UTC', label: 'UTC' }) }))
@@ -141,6 +145,8 @@ beforeEach(() => {
   getAnalystUsage.mockResolvedValue(usage(3))
   getAnalystConversations.mockReset()
   getAnalystConversations.mockResolvedValue(chats())
+  getAnalystTurn.mockReset()
+  getAnalystTurn.mockResolvedValue(null)
 })
 afterEach(() => cleanup())
 
@@ -368,7 +374,7 @@ describe('the Analyst page', () => {
   it('lists each lookup while it runs, ticks it off, folds the list at the first word, then shows the whole answer', async () => {
     const g = gate()
     askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
-      yield { type: 'start', conversation_id: 'c9' }
+      yield { type: 'start', conversation_id: 'c9', turn_id: null }
       yield { type: 'step', index: 0, tool: 'compare_periods', args: { period: '7d', dimension: 'referrer' } }
       await g.wait()
       const done = answer('c9', 'Visitors rose from 48 to 56.', 4)
@@ -410,7 +416,7 @@ describe('the Analyst page', () => {
     const g = gate()
     askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
       const done = answer('c9', 'Visitors rose from 48 to 56.', 4)
-      yield { type: 'start', conversation_id: 'c9' }
+      yield { type: 'start', conversation_id: 'c9', turn_id: null }
       yield { type: 'step', index: 0, tool: 'compare_periods', args: { period: '7d', dimension: 'referrer' } }
       yield { type: 'step_done', index: 0, ms: 210, error: '', result: done.turn.steps![0].result }
       await g.wait()
@@ -478,7 +484,7 @@ describe('the Analyst page', () => {
 
   it('shows only the sentence when an answer fails halfway, never lookups for an answer that did not come', async () => {
     askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
-      yield { type: 'start', conversation_id: 'c1' }
+      yield { type: 'start', conversation_id: 'c1', turn_id: null }
       yield { type: 'step', index: 0, tool: 'get_stats', args: {} }
       yield { type: 'step_done', index: 0, ms: 80, error: '', result: { range: { from: '2026-11-04', to: '2026-11-10' }, visitors: 56 } }
       yield { type: 'error', error: 'Analyst could not answer this time, so the question was not counted.', conversation_id: 'c1', usage: usage(3) }
@@ -494,6 +500,136 @@ describe('the Analyst page', () => {
     expect(screen.queryByLabelText('Copy the answer')).toBeNull()
   })
 
+  it('reads back an answer whose stream broke after it started, saying so under the words until it is in', async () => {
+    const kept = answer('c9', 'Visitors rose from 48 to 56.', 4)
+    kept.turn.follow_ups = ['How did google.com change?']
+    const g = gate()
+    getAnalystTurn.mockImplementation(async (_s: string, id: string, signal?: AbortSignal) => {
+      await g.wait(signal)
+      return id === kept.turn.id ? kept.turn : null
+    })
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c9', turn_id: kept.turn.id }
+      yield { type: 'step', index: 0, tool: 'get_stats', args: {} }
+      yield { type: 'step_done', index: 0, ms: 80, error: '', result: kept.turn.steps![1].result }
+      yield { type: 'text', delta: 'Visitors rose' }
+      throw new TypeError('network error')
+    })
+    let used = 3
+    getAnalystUsage.mockImplementation(async () => usage(used))
+    const { container } = mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+
+    // * The words that came in stay, with the line under them, while the page reads the turn back.
+    expect(await screen.findByText('The connection dropped. Analyst is still writing the answer.')).toBeInTheDocument()
+    await waitFor(() => expect(container.querySelector('.an-md')?.textContent).toContain('Visitors rose'))
+    expect(getAnalystTurn).toHaveBeenCalledWith('s1', kept.turn.id, expect.any(AbortSignal))
+
+    // * Then the kept answer, as any answer: its figures, the copy button, Ask next and the team's new count.
+    used = 4
+    g.open()
+    expect(await screen.findByText('Visitors rose from 48 to 56.')).toBeInTheDocument()
+    expect(screen.queryByText('The connection dropped. Analyst is still writing the answer.')).toBeNull()
+    expect(screen.getByRole('button', { name: /Figures behind this answer/ })).toBeInTheDocument()
+    expect(screen.getByLabelText('Copy the answer')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'How did google.com change?' })).toBeInTheDocument()
+    expect(await screen.findByText('4 of 50 questions this month')).toBeInTheDocument()
+    expect(screen.queryByText(/Something went wrong/)).toBeNull()
+  })
+
+  it('says the connection dropped, and only that, when the answer was not kept in time', async () => {
+    // * The page's clock jumps past the limit at the first read, so the wait ends without real minutes going by.
+    const realNow = Date.now.bind(Date)
+    let late = false
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + (late ? RECOVERY_LIMIT_MS + 1_000 : 0))
+    try {
+      getAnalystTurn.mockImplementation(async () => {
+        late = true
+        return null
+      })
+      askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+        yield { type: 'start', conversation_id: 'c9', turn_id: 't9' }
+        yield { type: 'step', index: 0, tool: 'get_stats', args: {} }
+        yield { type: 'step_done', index: 0, ms: 80, error: '', result: { range: { from: '2026-11-04', to: '2026-11-10' }, visitors: 56 } }
+      })
+      mount()
+      await screen.findByText('3 of 50 questions this month')
+      ask('Why did visitors change?')
+      expect(await screen.findByText('The connection dropped and no answer was saved. Try again in a moment.')).toBeInTheDocument()
+      expect(getAnalystTurn).toHaveBeenCalledTimes(1)
+      expect(screen.queryByText('The connection dropped. Analyst is still writing the answer.')).toBeNull()
+      expect(screen.queryByText('Totals, 4 to 10 November')).toBeNull()
+      expect(screen.queryByLabelText('Copy the answer')).toBeNull()
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
+  it('says the question was not counted when the turn read back was kept as a failure', async () => {
+    const failed = answer('c9', '', 3).turn
+    failed.outcome = 'error'
+    failed.answer = null
+    getAnalystTurn.mockResolvedValue(failed)
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c9', turn_id: failed.id }
+    })
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+    expect(
+      await screen.findByText('Analyst could not answer this time, so the question was not counted. Try again in a moment.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('Copy the answer')).toBeNull()
+  })
+
+  it('keeps the error it always had for a break when the server named no turn', async () => {
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c9', turn_id: null }
+      yield { type: 'text', delta: 'Visitors rose' }
+    })
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+    expect(await screen.findByText('Something went wrong, so there is no answer. Try again in a moment.')).toBeInTheDocument()
+    expect(getAnalystTurn).not.toHaveBeenCalled()
+  })
+
+  it('stops reading the answer back when the question is stopped, without an error', async () => {
+    const g = gate()
+    getAnalystTurn.mockImplementation(async (_s: string, _id: string, signal?: AbortSignal) => {
+      await g.wait(signal)
+      return null
+    })
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c9', turn_id: 't9' }
+      yield { type: 'text', delta: 'Visitors rose' }
+    })
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+    await screen.findByText('The connection dropped. Analyst is still writing the answer.')
+    fireEvent.click(screen.getByLabelText('Stop'))
+    await waitFor(() => expect(screen.getByLabelText('Ask')).toBeInTheDocument())
+    expect(screen.queryByText('The connection dropped. Analyst is still writing the answer.')).toBeNull()
+    expect(screen.queryByText(/stopped|went wrong|dropped and/i)).toBeNull()
+  })
+
+  it("takes the server's own failure at its word, without reading the turn back", async () => {
+    askAnalystStream.mockImplementation(async function* (): AsyncGenerator<AnalystStreamEvent> {
+      yield { type: 'start', conversation_id: 'c9', turn_id: 't9' }
+      yield { type: 'error', error: 'Analyst could not answer this time, so the question was not counted.', conversation_id: 'c9', usage: usage(3) }
+    })
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did visitors change?')
+    expect(
+      await screen.findByText('Analyst could not answer this time, so the question was not counted. Try again in a moment.'),
+    ).toBeInTheDocument()
+    expect(getAnalystTurn).not.toHaveBeenCalled()
+    expect(screen.queryByText('The connection dropped. Analyst is still writing the answer.')).toBeNull()
+  })
+
   it('keeps the conversation of a question stopped halfway, so the next question carries on', async () => {
     const g = gate()
     askAnalystStream.mockImplementationOnce(async function* (
@@ -502,7 +638,7 @@ describe('the Analyst page', () => {
       _c: string | null,
       signal?: AbortSignal,
     ): AsyncGenerator<AnalystStreamEvent> {
-      yield { type: 'start', conversation_id: 'c5' }
+      yield { type: 'start', conversation_id: 'c5', turn_id: null }
       yield { type: 'step', index: 0, tool: 'get_stats', args: {} }
       await g.wait(signal)
     })
