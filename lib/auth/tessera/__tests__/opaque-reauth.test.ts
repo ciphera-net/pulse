@@ -41,7 +41,7 @@ vi.mock('@ciphera-net/tessera', () => {
 })
 
 import { authFetch } from '@/lib/api/client'
-import { performOpaqueReauth, performSessionOpaqueReauth } from '../opaque-reauth'
+import { performOpaqueReauth, performSessionOpaqueReauth, performTeamKeyReauth } from '../opaque-reauth'
 
 const authFetchSpy = vi.mocked(authFetch)
 
@@ -127,5 +127,50 @@ describe('performSessionOpaqueReauth with purpose tmk', () => {
     })
     await expect(performSessionOpaqueReauth({ password: 'hunter2', purpose: 'tmk' })).resolves.toBe('tmk-tok')
     expect(sent).toEqual({ blindIndex: '', purpose: 'tmk' })
+  })
+})
+
+/**
+ * The reset's ceremony also answers what Ciphera ID knows of the person's vault-proof key (team names design §17.5):
+ * whether it holds one, and a ticket to register one, which the reset uses on its way (§17.7).
+ */
+describe('performTeamKeyReauth', () => {
+  beforeEach(() => authFetchSpy.mockClear())
+
+  function wireFinish(finish: Record<string, unknown>, sent: Record<string, unknown> = {}) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authFetchSpy.mockImplementation(async (...args: any[]) => {
+      const path = args[0]
+      const body = args[1]?.body ? JSON.parse(args[1].body) : {}
+      if (path === '/auth/reauth/start') return { login_id: 'lid', response_b64: 'resp' }
+      if (path === '/auth/reauth/finish') {
+        sent.purpose = body.purpose
+        return finish
+      }
+      return {}
+    })
+  }
+
+  it('rides "tmk" and returns the token with what the answer said about the proof key', async () => {
+    const sent: Record<string, unknown> = {}
+    wireFinish({ reauth_token: 'tmk-tok', vault_proof_registered: false, vault_proof_ticket: 'the-ticket' }, sent)
+    await expect(performTeamKeyReauth({ password: 'hunter2' })).resolves.toEqual({
+      reauthToken: 'tmk-tok',
+      proofKey: { registered: false, ticket: 'the-ticket' },
+    })
+    expect(sent.purpose).toBe('tmk')
+  })
+
+  it('reads an answer without the fields as one that says nothing, and no ticket', async () => {
+    wireFinish({ reauth_token: 'tmk-tok' })
+    await expect(performTeamKeyReauth({ password: 'hunter2' })).resolves.toEqual({
+      reauthToken: 'tmk-tok',
+      proofKey: { registered: null, ticket: null },
+    })
+  })
+
+  it('still refuses to resolve without a token', async () => {
+    wireFinish({ vault_proof_registered: true, vault_proof_ticket: 'the-ticket' })
+    await expect(performTeamKeyReauth({ password: 'hunter2' })).rejects.toThrow()
   })
 })

@@ -60,15 +60,30 @@ describe('the key routes', () => {
   const key = { publicKey: bytes(65, 4), sealedPrivateKey: bytes(219, 5) }
   const KEY_ROW = { key_id: b64(bytes(32, 6)), public_key: b64(bytes(65, 4)), sealed_private_key: b64(bytes(219, 5)) }
 
-  it('POST /me/team-key sends no proof, and takes the client\'s refresh-and-retry like any other request (R72)', async () => {
+  it('POST /me/team-key carries a first key\'s vault-key proof and never takes the client\'s refresh-and-retry on a 401 (design §17.6)', async () => {
     apiRequest.mockResolvedValueOnce(KEY_ROW)
-    // Even handed a token, the first key's POST carries none.
-    await publishKey({ ...key, reauthToken: 'tmk-token' } as Parameters<typeof publishKey>[0])
+    await publishKey({ ...key, reauthToken: 'tkp-token' })
     expect(apiRequest).toHaveBeenCalledTimes(1)
+    const [path, options] = apiRequest.mock.calls[0]
+    expect(path).toBe('/me/team-key')
+    expect(options).toMatchObject({ method: 'POST', skipAuthRetry: true })
+    expect(JSON.parse(options.body)).toEqual({ reauth_token: 'tkp-token', public_key: KEY_ROW.public_key, sealed_private_key: KEY_ROW.sealed_private_key })
+  })
+
+  it('POST /me/team-key with no proof, for an account with no vault-proof key, takes the client\'s refresh-and-retry like any other request (R81)', async () => {
+    apiRequest.mockResolvedValueOnce(KEY_ROW)
+    await publishKey(key)
     const [path, options] = apiRequest.mock.calls[0]
     expect(path).toBe('/me/team-key')
     expect(options).toMatchObject({ method: 'POST', skipAuthRetry: false })
     expect(JSON.parse(options.body)).toEqual({ public_key: KEY_ROW.public_key, sealed_private_key: KEY_ROW.sealed_private_key })
+  })
+
+  it('reads a 401 reauth_required on a first key as the proof refused, so the browser makes a new one', async () => {
+    apiRequest.mockRejectedValueOnce(new ApiError('Session expired', 401, { error: 'reauth_required' }))
+    await expect(publishKey({ ...key, reauthToken: 'tkp-token' })).rejects.toMatchObject({ code: 'team_names/reauth_required' })
+    apiRequest.mockRejectedValueOnce(new ApiError('Session expired', 401, { error: 'reauth_required' }))
+    await expect(publishKey(key)).rejects.toMatchObject({ code: 'team_names/reauth_required' })
   })
 
   it('PUT /me/team-key carries the reset\'s proof and never takes the client\'s refresh-and-retry on a 401', async () => {

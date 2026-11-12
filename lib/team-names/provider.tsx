@@ -27,6 +27,7 @@ import { getMe } from '@/lib/api/me'
 import { ME_KEY } from '@/lib/features'
 import { loadVaultKey, onVaultKeyCustodyChange } from '@/lib/auth/vault-store'
 import { openVaultWithKey } from '@/lib/auth/vault-restore'
+import { finishVaultProof, registerProofKey, startVaultProof } from '@/lib/auth/tessera/vault-proof'
 import { shareableName } from '@/lib/crypto/team-names'
 import { logger } from '@/lib/utils/logger'
 import {
@@ -66,10 +67,13 @@ function defaultDeps(userId: string): SessionDeps {
   return {
     userId,
     api: { fetchOwnKey, publishKey, resetKey, fetchDirectory, fetchMemberIds, writeNames, withdrawNames, fetchEmailDirectory, writeEmails, withdrawEmails },
+    // A first key's proof, made with the vault and no prompt (design §17.6), and a proof key's registration at the reset.
+    vaultProof: { start: startVaultProof, finish: finishVaultProof, register: registerProofKey },
     loadVaultKey,
     readVault: openVaultWithKey,
-    // The OPAQUE re-auth ceremony with purpose `tmk` (design §6.3), loaded when a reset runs: a first key needs none (R72).
-    prove: async (password) => (await import('@/lib/auth/tessera/opaque-reauth')).performSessionOpaqueReauth({ password, purpose: 'tmk' }),
+    // The OPAQUE re-auth ceremony with purpose `tmk` (design §6.3), loaded when a reset runs: a first key needs no
+    // password (R72).
+    prove: async (password) => (await import('@/lib/auth/tessera/opaque-reauth')).performTeamKeyReauth({ password }),
     warn,
   }
 }

@@ -2,24 +2,26 @@
  * The crypto vectors in Chromium, Firefox and WebKit (design §8.2, review L1). Run with
  * `npm run test:crypto-vectors` (playwright.vectors.config.ts); CI runs it in .woodpecker/test.yml.
  *
- * hpke.test.ts, team-names.test.ts and team-emails.test.ts check the three vector files on Node's
- * WebCrypto only. Team names and members' addresses seal and open in the browser, and an engine
- * difference in JWK import, HKDF, ECDH deriveBits, point validation or a Unicode property escape
- * would show there while Node stays green. So this spec bundles harness.ts with the production
- * modules (lib/crypto/hpke.ts, lib/crypto/team-names.ts and Tessera's vault, as they are), runs it
- * in each engine on the same three files, and compares every value the engine computed with the
- * files, here in Node.
+ * hpke.test.ts, team-names.test.ts, team-emails.test.ts and vault-proof.test.ts check the four
+ * vector files on Node's WebCrypto only. Team names and members' addresses seal and open in the
+ * browser, and the vault-key proof signs there (design §17), and an engine difference in JWK import,
+ * HKDF, ECDH deriveBits, ECDSA, point validation or a Unicode property escape would show there while
+ * Node stays green. So this spec bundles harness.ts with the production modules (lib/crypto/hpke.ts,
+ * lib/crypto/team-names.ts, Tessera's vault and @ciphera-net/auth's vault-proof entry, as they are),
+ * runs it in each engine on the same four files, and compares every value the engine computed with
+ * the files, here in Node. What an engine made rather than computed (an envelope, a signature) is
+ * opened and verified here with Node's own primitives.
  *
  * The page is served by page.route on an https origin and talks to no server: WebCrypto exists
  * only in a secure context. The files' pinned SHA-256 stays with the vitest tests.
  */
 
-import { createHash } from 'node:crypto'
+import { createDecipheriv, createHash, createPublicKey, hkdfSync, verify as nodeVerify } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { build, type Plugin } from 'esbuild'
 import { expect, test } from '@playwright/test'
-import type { HarnessInput, HarnessReport, Outcome, RfcFile, TeamEmailsFile, TeamNamesFile } from './harness'
+import type { HarnessInput, HarnessReport, Outcome, RfcFile, TeamEmailsFile, TeamNamesFile, VaultProofFile } from './harness'
 
 const ROOT = join(__dirname, '..', '..', '..', '..')
 const VECTORS = join(__dirname, '..', 'vectors')
@@ -28,6 +30,7 @@ const ORIGIN = 'https://team-names-vectors.test'
 const rfc: RfcFile = JSON.parse(readFileSync(join(VECTORS, 'rfc9180-subset.json'), 'utf8'))
 const tn: TeamNamesFile = JSON.parse(readFileSync(join(VECTORS, 'team-names-v1.json'), 'utf8'))
 const te: TeamEmailsFile = JSON.parse(readFileSync(join(VECTORS, 'team-emails-v1.json'), 'utf8'))
+const vp: VaultProofFile = JSON.parse(readFileSync(join(VECTORS, 'vault-proof-v1.json'), 'utf8'))
 
 /**
  * Tessera's index reaches its WASM loader, which imports the core's Node and web builds by dynamic
@@ -100,7 +103,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
       loaded: typeof Reflect.get(globalThis, 'runTeamNamesVectors') === 'function',
     }))
     if (!env.loaded) throw new Error(`the harness did not load: ${pageErrors.join('; ') || 'no page error'}`)
-    const input: HarnessInput = { rfc, teamNames: tn, teamEmails: te }
+    const input: HarnessInput = { rfc, teamNames: tn, teamEmails: te, vaultProof: vp }
     const report: HarnessReport = await page.evaluate((arg) => Reflect.get(globalThis, 'runTeamNamesVectors')(arg), input)
     engine = { version: browser.version(), secureContext: env.secureContext, subtle: env.subtle, bundleInputs: bundle.inputs, report }
   } finally {
@@ -129,7 +132,12 @@ test('runs in a secure context, on WebCrypto, with the production modules bundle
   expect(r.secureContext).toBe(true)
   expect(r.subtle).toBe(true)
   // esbuild names its inputs relative to absWorkingDir, the repo root.
-  for (const file of ['lib/crypto/hpke.ts', 'lib/crypto/team-names.ts', 'node_modules/@ciphera-net/tessera/dist/vault.js']) {
+  for (const file of [
+    'lib/crypto/hpke.ts',
+    'lib/crypto/team-names.ts',
+    'node_modules/@ciphera-net/tessera/dist/vault.js',
+    'node_modules/@ciphera-net/auth/dist/vault-proof.js',
+  ]) {
     expect(r.bundleInputs).toContain(file)
   }
   // A file that lost its entries would generate no tests below and pass by never looking.
@@ -144,6 +152,10 @@ test('runs in a secure context, on WebCrypto, with the production modules bundle
   expect(te.address_negatives).toHaveLength(14)
   expect(te.cross_kind_negatives.map((n) => `${n.sealed_as}>${n.open_as}`).sort()).toEqual(['email>name', 'name>email'])
   for (const list of [te.open_negatives, te.tag_negatives, te.envelope_negatives]) expect(list.length).toBeGreaterThan(0)
+  expect(vp.version).toBe('vault-proof-v1')
+  for (const field of [vp.envelope_hex, vp.plaintext_hex, vp.message_hex, vp.signature_go_hex, vp.inputs._rfc6979_control.r_hex]) {
+    expect(field.length).toBeGreaterThan(0)
+  }
 })
 
 // ---------------------------------------------------------------------------------------------
@@ -495,4 +507,99 @@ test('sealEmail with a fresh ephemeral key round-trips, never repeats an enc, an
   refused(f.asName, 'team_names/open_failed')
   expect(f.nameRowAsName).toBe('Ada.Lovelace@Example.COM')
   refused(f.nameRowAsEmail, 'team_names/open_failed')
+})
+
+// ---------------------------------------------------------------------------------------------
+// The vault-key proof (vault-proof.test.ts)
+// ---------------------------------------------------------------------------------------------
+
+/** Tessera's record envelope v1 opened with Node's own HKDF and AES-GCM: an opener that shares no code with the engine's. */
+function openRecordEnvelope(vmkHex: string, context: string, envelopeHex: string): string {
+  const envelope = Buffer.from(envelopeHex, 'hex')
+  if (envelope[0] !== 0x01) throw new Error('not a version 1 envelope')
+  const aad = Buffer.concat([Buffer.from([0x01]), Buffer.from(context, 'utf8')])
+  const kek = Buffer.from(hkdfSync('sha256', Buffer.from(vmkHex, 'hex'), Buffer.alloc(32), Buffer.from(`tessera/vault/v1/record/${context}`, 'utf8'), 32))
+  const open = (key: Buffer, nonce: Buffer, sealed: Buffer) => {
+    const gcm = createDecipheriv('aes-256-gcm', key, nonce)
+    gcm.setAAD(aad)
+    gcm.setAuthTag(sealed.subarray(sealed.length - 16))
+    return Buffer.concat([gcm.update(sealed.subarray(0, sealed.length - 16)), gcm.final()])
+  }
+  // [0x01][nonce 12][the data key sealed under the KEK, 48][nonce 12][the plaintext sealed under the data key]
+  const dataKey = open(kek, envelope.subarray(1, 13), envelope.subarray(13, 61))
+  return open(dataKey, envelope.subarray(61, 73), envelope.subarray(73)).toString('hex')
+}
+
+/** An r || s signature checked with Node's own ECDSA against the raw point. */
+function nodeVerifies(publicKeyHex: string, signatureHex: string, messageHex: string): boolean {
+  const pub = Buffer.from(publicKeyHex, 'hex')
+  const key = createPublicKey({
+    key: { kty: 'EC', crv: 'P-256', x: pub.subarray(1, 33).toString('base64url'), y: pub.subarray(33).toString('base64url') },
+    format: 'jwk',
+  })
+  return nodeVerify('sha256', Buffer.from(messageHex, 'hex'), { key, dsaEncoding: 'ieee-p1363' }, Buffer.from(signatureHex, 'hex'))
+}
+
+test('vault proof: the Go envelope opens under the vault key and the proof context to 0x01 || d || pub', () => {
+  expect(value(run().report.vaultProof.envelopePlaintext)).toBe(vp.plaintext_hex)
+  expect(vp.plaintext_hex).toBe(`01${vp.inputs.proof_d_hex}${vp.inputs.proof_pub_hex}`)
+})
+
+test('vault proof: the message, byte for byte', () => {
+  expect(value(run().report.vaultProof.message)).toBe(vp.message_hex)
+})
+
+test('vault proof: the Go signature and RFC 6979 A.2.5\'s signature verify under the vector key', () => {
+  const r = run().report.vaultProof
+  expect(value(r.goSignature)).toBe(true)
+  expect(value(r.rfc6979)).toBe(true)
+  // The same two in Node, so a verify path that answers true for anything would not pass here.
+  expect(nodeVerifies(vp.inputs.proof_pub_hex, vp.signature_go_hex, vp.message_hex)).toBe(true)
+  expect(nodeVerifies(vp.inputs.proof_pub_hex, vp.signature_go_hex, `${vp.message_hex.slice(0, -2)}00`)).toBe(false)
+})
+
+test('vault proof: a signature this engine makes with the Go envelope verifies here and in Node', () => {
+  const s = value(run().report.vaultProof.signed)
+  expect(s.signature).toHaveLength(2 * 64)
+  expect(s.verifies).toBe(true)
+  expect(nodeVerifies(vp.inputs.proof_pub_hex, s.signature, vp.message_hex)).toBe(true)
+})
+
+test('vault proof: an envelope this engine seals opens again here and with Node\'s own HKDF and AES-GCM', () => {
+  const s = value(run().report.vaultProof.sealed)
+  expect(s.envelope).toHaveLength(2 * 187)
+  expect(s.envelope.slice(0, 2)).toBe('01')
+  expect(s.reopened).toBe(vp.plaintext_hex)
+  expect(openRecordEnvelope(vp.inputs.vmk_hex, vp.inputs.context, s.envelope)).toBe(vp.plaintext_hex)
+  // The same opener on the Go envelope, so it is the record envelope it reads and not only this engine's output.
+  expect(openRecordEnvelope(vp.inputs.vmk_hex, vp.inputs.context, vp.envelope_hex)).toBe(vp.plaintext_hex)
+})
+
+test('vault proof: a key made here signs for its own public key and for no other', () => {
+  expect(value(run().report.vaultProof.created)).toEqual({ publicKeyLength: 65, envelopeLength: 187, verifiesUnderItsKey: true, verifiesUnderVectorKey: false })
+})
+
+test('vault proof: every negative refuses', () => {
+  const { negatives } = run().report.vaultProof
+  expect(negatives.map((n) => n.label)).toEqual([
+    'a team-key envelope under the proof context',
+    'the proof envelope under the team-key context',
+    'the proof key sealed under the team-key context, signed as a proof key',
+    'another vault key',
+    'a served public key that is not the sealed one',
+    'the Go signature, one byte of the prefix flipped',
+    'the Go signature, one byte of the separator flipped',
+    'the Go signature, one byte of the challenge flipped',
+    'the Go signature, one byte of the user id flipped',
+    'the Go signature, one byte of the purpose flipped',
+    'the Go signature over the message of another purpose',
+  ])
+  const [teamUnderProof, proofUnderTeam, wrongContext, wrongVault, wrongKey, ...verifies] = negatives
+  // Soft, so a failure lists every negative the engine took, not the first.
+  expect.soft(teamUnderProof.outcome, teamUnderProof.label).toMatchObject({ ok: false })
+  expect.soft(proofUnderTeam.outcome, proofUnderTeam.label).toMatchObject({ ok: false })
+  expect.soft(wrongContext.outcome, wrongContext.label).toMatchObject({ ok: false, error: { name: 'ProofKeyUnopenableError' } })
+  expect.soft(wrongVault.outcome, wrongVault.label).toMatchObject({ ok: false, error: { name: 'ProofKeyUnopenableError' } })
+  expect.soft(wrongKey.outcome, wrongKey.label).toMatchObject({ ok: false, error: { name: 'ProofKeyMismatchError' } })
+  for (const n of verifies) expect.soft(n.outcome, n.label).toEqual({ ok: true, value: false })
 })

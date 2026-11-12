@@ -17,8 +17,11 @@
  */
 
 import { vaultOpsFor, type VaultKey } from '@ciphera-net/tessera'
+import { signProof, type ProofPurpose, type VaultOps } from '@ciphera-net/auth/vault-proof'
 import { readStatus } from '@/lib/api/status'
 import { isInvalidCredentials } from '@/lib/auth/tessera/errors'
+import type { TeamKeyReauth } from '@/lib/auth/tessera/opaque-reauth'
+import { TEAM_KEY_PROOF, isUnopenableProofKey, type ProofChallenge } from '@/lib/auth/tessera/vault-proof'
 import type { VaultData } from '@/lib/crypto/vault'
 import {
   bytesEqual,
@@ -47,7 +50,8 @@ import {
  * Where this browser stands:
  *   loading       working it out
  *   locked        this browser does not hold the vault key: ids, and the line to unlock on Account
- *   cannot_open   a key exists that this browser's vault key does not open: the reset
+ *   cannot_open   a key exists that this browser's vault key does not open (the person's team key, or the
+ *                 vault-proof key a first team key is proven with): the reset
  *   key_mismatch  the server's key for this person contradicts their envelope: nothing is sealed or opened
  *   ready         names are read and shared
  *   error         the server could not be reached; ids until the next try
@@ -88,7 +92,7 @@ export interface TeamNamesSnapshot {
 
 export interface TeamNamesApi {
   fetchOwnKey(): Promise<KeyRow | null>
-  publishKey(body: Omit<PublishKeyBody, 'reauthToken'>): Promise<KeyRow>
+  publishKey(body: PublishKeyBody): Promise<KeyRow>
   resetKey(body: PublishKeyBody & { reauthToken: string }): Promise<KeyRow>
   fetchDirectory(teamId: string, warn: Warn): Promise<DirectoryAnswer>
   fetchMemberIds(teamId: string): Promise<string[]>
@@ -99,17 +103,37 @@ export interface TeamNamesApi {
   withdrawEmails(): Promise<void>
 }
 
+/** Ciphera ID's vault-proof routes (design §17.5), as lib/auth/tessera/vault-proof.ts carries them. */
+export interface VaultProofApi {
+  /** A challenge with the person's proof key, or null when Ciphera ID holds none for them. */
+  start(purpose: ProofPurpose): Promise<ProofChallenge | null>
+  /** The single-use token for a signature over the challenge. */
+  finish(body: { challenge: string; signature: string; purpose: ProofPurpose }): Promise<string>
+  /** Registers a new proof key sealed under this vault with a ceremony's ticket; false when it did not (reported, never thrown). */
+  register(vault: VaultOps, ticket: string): Promise<boolean>
+}
+
 export interface SessionDeps {
   userId: string
   api: TeamNamesApi
+  vaultProof: VaultProofApi
   /** The vault key this browser holds for the person, or null. */
   loadVaultKey(userId: string): Promise<VaultKey | null>
   /** The person's own vault, read fresh from Ciphera ID: the one source of their current name and address. */
   readVault(key: VaultKey): Promise<VaultData>
-  /** The reset's password: the OPAQUE re-auth ceremony with purpose `tmk`; resolves with its single-use token. */
-  prove(password: string): Promise<string>
+  /**
+   * The reset's password: the OPAQUE re-auth ceremony with purpose `tmk`. Resolves with its single-use token and what
+   * its answer said about the person's vault-proof key.
+   */
+  prove(password: string): Promise<TeamKeyReauth>
   warn: Warn
 }
+
+/**
+ * Where the vault-key proof for a first key ended (design §17.6): a token for the POST, no proof key at Ciphera ID (the
+ * POST goes without a token, R81), or a proof key this vault does not open (§17.7).
+ */
+type VaultProofOutcome = { kind: 'token'; reauthToken: string } | { kind: 'no_proof_key' } | { kind: 'unopenable' }
 
 function emptyTeam(): TeamState {
   return {
@@ -163,6 +187,8 @@ export class TeamNamesSession {
   private snapshot: TeamNamesSnapshot = { status: 'loading', share: null, teams: new Map() }
   private readonly listeners = new Set<() => void>()
   private identity: TeamIdentity | null = null
+  /** The proof key Ciphera ID serves did not open here: the reset registers a new one on its way (design §17.7). */
+  private proofKeyUnopenable = false
   private disposed = false
   private queue: Promise<unknown> = Promise.resolve()
   private started: Promise<void> | null = null
@@ -252,7 +278,7 @@ export class TeamNamesSession {
     const row = await this.deps.api.fetchOwnKey()
     if (this.disposed) return
     if (!row) {
-      // R72: no prompt and no password. The first visit with the vault open publishes the key.
+      // R72: no prompt and no password. The first visit with the vault open publishes the key, proven with the vault.
       await this.publishFirst(vaultKey)
       return
     }
@@ -260,18 +286,20 @@ export class TeamNamesSession {
   }
 
   /**
-   * The person's first key, created under the vault key this browser holds and published at once (R72: the
-   * server takes a first key without a proof; the reset keeps one). A failure leaves the error state, and the
-   * next try reads again. Nothing is sealed until the answer names the key to use (design §4.3).
+   * The person's first key, created under the vault key this browser holds and published at once (R72: no prompt and
+   * no password; the reset keeps its password). The POST carries Ciphera ID's proof that this browser holds the vault
+   * (design §17.6), made without asking anything. A failure leaves the error state, and the next try reads again.
+   * Nothing is sealed until the answer names the key to use (design §4.3).
    */
   private async publishFirst(vaultKey: VaultKey): Promise<void> {
-    const created = await createIdentity(vaultOpsFor(vaultKey))
+    const vault = vaultOpsFor(vaultKey)
+    const created = await createIdentity(vault)
     if (this.disposed) return
-    const row = await this.deps.api.publishKey({
+    const row = await this.publishWithProof(vault, {
       publicKey: created.identity.publicKey,
       sealedPrivateKey: created.envelope,
     })
-    if (this.disposed) return
+    if (!row || this.disposed) return
     if (bytesEqual(row.publicKey, created.identity.publicKey)) {
       if (!(await this.servedKeyMatches(created.identity, row))) return
       if (this.disposed) return
@@ -281,6 +309,73 @@ export class TeamNamesSession {
     }
     // Another device of the person published first: its key is theirs, and the same vault key opens it.
     await this.adopt(vaultKey, row)
+  }
+
+  /**
+   * POST /me/team-key behind the vault-key proof (design §17.6): with the `tkp` token Ciphera ID answers, or with no
+   * token when Ciphera ID holds no proof key for the person (R81), which pulse-backend takes only while that is still
+   * so. Null when the session stopped, or when the proof key does not open here: then nothing is posted, because
+   * pulse-backend refuses a first key without a proof for an account that has a proof key, and the session waits in
+   * `cannot_open` for the reset, which registers a new proof key on its way (§17.7).
+   */
+  private async publishWithProof(vault: VaultOps, key: Omit<PublishKeyBody, 'reauthToken'>): Promise<KeyRow | null> {
+    for (let attempt = 0; ; attempt++) {
+      const proof = await this.proveVault(vault)
+      if (this.disposed) return null
+      if (proof.kind === 'unopenable') {
+        this.proofKeyUnopenable = true
+        this.deps.warn('team_names/proof_unopenable')
+        this.set({ status: 'cannot_open' })
+        return null
+      }
+      try {
+        return await this.deps.api.publishKey(proof.kind === 'token' ? { ...key, reauthToken: proof.reauthToken } : key)
+      } catch (err) {
+        // 401 `reauth_required`: the token expired before the POST (a tab that slept between the two), or the account
+        // registered a proof key after `start` answered that it had none. Once more from `start`; a second refusal
+        // ends in the error state.
+        if (attempt === 0 && isTeamNamesError(err, 'team_names/reauth_required')) continue
+        throw err
+      }
+    }
+  }
+
+  /**
+   * The proof itself: Ciphera ID's challenge, signed with the proof key it serves beside it, which only this person's
+   * vault opens, then exchanged for a single-use token. The opened key lives for the one signature (signProof). Throws
+   * `team_names/proof_failed` when Ciphera ID refused or was not reached, or answered something no proof can be made
+   * from.
+   */
+  private async proveVault(vault: VaultOps): Promise<VaultProofOutcome> {
+    let challenge: ProofChallenge | null
+    try {
+      challenge = await this.deps.vaultProof.start(TEAM_KEY_PROOF)
+    } catch (cause) {
+      throw new TeamNamesError('team_names/proof_failed', { cause })
+    }
+    if (this.disposed) throw new TeamNamesError('team_names/not_ready')
+    if (!challenge) return { kind: 'no_proof_key' }
+    let signature: string
+    try {
+      const signed = await signProof(vault, {
+        sealedPrivateKey: challenge.sealedPrivateKey,
+        publicKey: challenge.publicKey,
+        challenge: challenge.challengeBytes,
+        userId: this.deps.userId,
+        purpose: TEAM_KEY_PROOF,
+      })
+      signature = signed.signatureBase64
+    } catch (err) {
+      if (isUnopenableProofKey(err)) return { kind: 'unopenable' }
+      throw new TeamNamesError('team_names/proof_failed', { cause: err })
+    }
+    if (this.disposed) throw new TeamNamesError('team_names/not_ready')
+    try {
+      const reauthToken = await this.deps.vaultProof.finish({ challenge: challenge.challenge, signature, purpose: TEAM_KEY_PROOF })
+      return { kind: 'token', reauthToken }
+    } catch (cause) {
+      throw new TeamNamesError('team_names/proof_failed', { cause })
+    }
   }
 
   /** Opens a served row's envelope and runs the own-key check before anything uses the key. */
@@ -372,16 +467,25 @@ export class TeamNamesSession {
       this.set({ status: 'locked', share: null, teams: new Map() })
       throw new TeamNamesError('team_names/not_ready')
     }
-    let reauthToken: string
+    let proof: TeamKeyReauth
     try {
-      reauthToken = await this.deps.prove(password)
+      proof = await this.deps.prove(password)
     } catch (cause) {
       throw new TeamNamesError(passwordRejected(cause) ? 'team_names/password_failed' : 'team_names/proof_failed', { cause })
     }
     if (this.disposed) throw new TeamNamesError('team_names/not_ready')
-    const created = await createIdentity(vaultOpsFor(vaultKey))
+    const vault = vaultOpsFor(vaultKey)
+    // The ceremony's ticket registers a vault-proof key on the way when Ciphera ID holds none for the person, or when
+    // the one it holds did not open here, so one password repairs both halves (design §17.7). A failed registration is
+    // reported by register() and the reset goes on: its key needs no proof key.
+    const { ticket, registered } = proof.proofKey
+    if (ticket && (registered === false || this.proofKeyUnopenable)) {
+      if (await this.deps.vaultProof.register(vault, ticket)) this.proofKeyUnopenable = false
+      if (this.disposed) throw new TeamNamesError('team_names/not_ready')
+    }
+    const created = await createIdentity(vault)
     const body: PublishKeyBody & { reauthToken: string } = {
-      reauthToken,
+      reauthToken: proof.reauthToken,
       publicKey: created.identity.publicKey,
       sealedPrivateKey: created.envelope,
     }

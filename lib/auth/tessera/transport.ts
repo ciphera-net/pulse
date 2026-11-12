@@ -50,6 +50,13 @@ export interface OpaqueFinishBody {
    *  this: a single-use, short-TTL server token proving a fresh OPAQUE ceremony.
    *  The login/finish body never carries it. Empty/absent = mint failed → retry. */
   reauth_token?: string
+  /** Whether Ciphera ID holds a vault-proof key for the person. Carried, with
+   *  the ticket below, by the ceremonies that unwrap the vault key; among the
+   *  re-auth purposes only `ulk` and `tmk` (team names design §17.5). */
+  vault_proof_registered?: boolean
+  /** A single-use ticket (120 s) that registers a vault-proof key at
+   *  POST /auth/vault-proof/key. Spendable nowhere else. */
+  vault_proof_ticket?: string
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- server JSON is dynamic at this trust boundary
