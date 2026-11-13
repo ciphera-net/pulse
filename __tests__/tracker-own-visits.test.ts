@@ -213,6 +213,127 @@ describe('where the note comes from', () => {
   })
 })
 
+/**
+ * A site whose CSP says `require-trusted-types-for 'script'` makes the browser refuse a plain string as a script's src
+ * (Chrome: "This document requires 'TrustedScriptURL' assignment"). 1.8.0 assigned one, so the note never loaded there
+ * and the throw ended the core's run: a Count me again visit went uncounted. jsdom has no Trusted Types, so this
+ * enforces it the way a browser does: the src setter refuses anything but a value a policy made.
+ */
+describe('a page whose CSP enforces Trusted Types (1.8.1)', () => {
+  class TrustedURL {
+    constructor(private readonly url: string) {}
+    toString() {
+      return this.url
+    }
+  }
+  let policies: { name: string; rules: any }[] = []
+  // A refused plain assignment is a violation the console shows and the site's CSP reports.
+  let violations = 0
+
+  function enforceTrustedTypes({ refusePolicy = false, enforce = true, supported = true } = {}) {
+    policies = []
+    violations = 0
+    const proto = win.HTMLScriptElement.prototype
+    const plain = Object.getOwnPropertyDescriptor(proto, 'src')!
+    Object.defineProperty(proto, 'src', {
+      configurable: true,
+      get: plain.get,
+      set(value: unknown) {
+        if (enforce && !(value instanceof TrustedURL)) {
+          violations++
+          throw new win.TypeError("Failed to set the 'src' property on 'HTMLScriptElement': This document requires 'TrustedScriptURL' assignment.")
+        }
+        plain.set!.call(this, String(value))
+      },
+    })
+    if (!supported) return
+    win.trustedTypes = {
+      createPolicy(name: string, rules: any) {
+        // A CSP that lists the policies it allows (trusted-types …) and leaves pulse out.
+        if (refusePolicy) throw new win.TypeError(`Policy "${name}" disallowed.`)
+        policies.push({ name, rules })
+        return { createScriptURL: (u: string) => new TrustedURL(rules.createScriptURL(u)) }
+      },
+    }
+  }
+
+  it('Count me again: the note loads through a policy named pulse, and the visit counts', async () => {
+    newWindow('?pulse-ignore=off', { flag: true })
+    enforceTrustedTypes()
+    installScript()
+    await flush()
+    expect(flag()).toBeNull()
+    expect(pageviews()).toHaveLength(1)
+    expect(notes().map((n) => [n.getAttribute('data-note'), n.src])).toEqual([['off', 'https://js.ciphera.net/script.note.js']])
+    expect(policies.map((p) => p.name)).toEqual(['pulse'])
+  })
+
+  it('the policy comes first, so the page logs and reports no violation', async () => {
+    newWindow('?pulse-ignore=off')
+    enforceTrustedTypes()
+    installScript()
+    await flush()
+    expect(notes()).toHaveLength(1)
+    expect(violations).toBe(0)
+  })
+
+  it('Stop counting me: the flag is set, nothing is sent, and the note loads', async () => {
+    newWindow('?pulse-ignore=on')
+    enforceTrustedTypes()
+    installScript({ src: 'https://js.ciphera.net/script.js' })
+    await flush(60_000)
+    expect(flag()).toBe('true')
+    expect(sent).toHaveLength(0)
+    expect(notes().map((n) => [n.getAttribute('data-note'), n.src])).toEqual([['on', 'https://js.ciphera.net/script.note.js']])
+  })
+
+  it('a browser sending a privacy signal is still told why', async () => {
+    newWindow('?pulse-ignore=on', { gpc: true })
+    enforceTrustedTypes()
+    installScript()
+    await flush(60_000)
+    expect(sent).toHaveLength(0)
+    expect(notes().map((n) => n.getAttribute('data-note'))).toEqual(['signal'])
+  })
+
+  it('the policy can return nothing but the note it was made for', async () => {
+    newWindow('?pulse-ignore=off')
+    enforceTrustedTypes()
+    installScript({ src: 'https://js.ciphera.net/script.js' })
+    await flush()
+    const rules = policies[0].rules
+    expect(rules.createScriptURL('https://elsewhere.invalid/x.js')).toBe('https://js.ciphera.net/script.note.js')
+  })
+
+  it('a CSP that does not allow a policy named pulse: no note, nothing thrown, and the visit still counts', async () => {
+    newWindow('?pulse-ignore=off', { flag: true })
+    enforceTrustedTypes({ refusePolicy: true })
+    installScript()
+    await flush()
+    expect(flag()).toBeNull()
+    expect(notes()).toHaveLength(0)
+    expect(pageviews()).toHaveLength(1)
+  })
+
+  it('a CSP that lists other policies without enforcing them: the plain URL loads the note', async () => {
+    newWindow('?pulse-ignore=off')
+    enforceTrustedTypes({ refusePolicy: true, enforce: false })
+    installScript()
+    await flush()
+    expect(pageviews()).toHaveLength(1)
+    expect(notes().map((n) => n.src)).toEqual(['https://js.ciphera.net/script.note.js'])
+  })
+
+  it('a browser without Trusted Types loads the plain URL, as before', async () => {
+    newWindow('?pulse-ignore=off')
+    enforceTrustedTypes({ enforce: false, supported: false })
+    installScript()
+    await flush()
+    expect(pageviews()).toHaveLength(1)
+    expect(notes().map((n) => n.src)).toEqual(['https://js.ciphera.net/script.note.js'])
+  })
+})
+
 describe('script.note.js', () => {
   function runNote(state: string | null) {
     newWindow('')
