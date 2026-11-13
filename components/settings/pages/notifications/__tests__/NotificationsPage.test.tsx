@@ -87,6 +87,8 @@ function doc(categories?: CategoryPreferenceDoc[]): PreferencesDocument {
     categories: categories ?? [
       cat('billing', 'Billing'),
       cat('security', 'Security'),
+      // The inactive-team emails (13-11-2026): not suppressible in Iris, as production's document carries it.
+      cat('account', 'Account', { criticality: 'critical', suppressible: false }),
       cat('uptime', 'Monitoring'),
       cat('site', 'Site activity', { email: false, stored: true }),
       cat('team', 'Team'),
@@ -189,7 +191,7 @@ describe('NotificationsPage: Pulse emails', () => {
     renderPage()
     await ready()
     const ids = [...document.querySelectorAll('[data-notif-email-group]')].map((el) => el.getAttribute('data-notif-email-group'))
-    expect(ids).toEqual(['billing', 'security', 'uptime', 'site', 'team', 'system', 'lifecycle', 'summary'])
+    expect(ids).toEqual(['billing', 'security', 'account', 'uptime', 'site', 'team', 'system', 'lifecycle', 'summary'])
     expect(screen.queryByText('Account & sign-in')).toBeNull()
     expect(screen.queryByText('Operator')).toBeNull()
   })
@@ -200,6 +202,7 @@ describe('NotificationsPage: Pulse emails', () => {
     for (const line of [
       'Renewals, plan changes and event use. Invoices, failed payments and refunds go to the billing email.',
       'A new API key, or a dashboard shared by link, in your team.',
+      'Two warnings before an inactive team is deleted, 30 and 7 days ahead, and the email that confirms the deletion.',
       'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
       "Performance scores that drop or recover, pages losing visits, a goal's first conversion, finished imports and growth reports.",
       'A change to your role in the team.',
@@ -228,8 +231,10 @@ describe('NotificationsPage: Pulse emails', () => {
     await ready()
     expect(within(rowOf('Billing')).getByText('Always on')).toBeInTheDocument()
     expect(within(rowOf('Security')).getByText('Always on')).toBeInTheDocument()
+    expect(within(rowOf('Account')).getByText('Always on')).toBeInTheDocument()
     expect(screen.queryByRole('switch', { name: 'Email for Billing' })).toBeNull()
     expect(screen.queryByRole('switch', { name: 'Email for Security' })).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Email for Account' })).toBeNull()
   })
 
   it('locks a row from `suppressible`, never from the criticality word', async () => {
