@@ -1,9 +1,13 @@
 import type { AnalystStep } from '@/lib/api/analyst'
+import { formatMetricValue, metricBand } from '@/lib/performance/metrics'
+import { formatDuration, formatNumber } from '@/lib/utils/format'
 
 /**
  * "Figures behind this answer": what each of the analyst's lookups shows a person. A comparison (compare_periods) is
- * drawn as rows, earlier period to later; every other lookup is one line naming what was read and for which dates.
- * Pure, so the tests can feed it the shapes pulse-backend returns.
+ * drawn as rows, earlier period to later. Every other lookup is drawn the same way since the figures round (pick A,
+ * 13-11-2026): a title and its dates, then a row per figure with a grey note beside it. A lookup with no figures to
+ * show is one line naming what was read and for which dates. Pure, so the tests can feed it the shapes pulse-backend
+ * returns.
  */
 
 export interface StepRow {
@@ -14,12 +18,35 @@ export interface StepRow {
   logo: boolean
 }
 
+/** One row of figures: what it is, its figure, and a grey note beside it ("97.5% dropped off", "position 5.9"). */
+export interface FigureRow {
+  name: string
+  value: string
+  note: string
+  /** A figure Pulse rates poor (a Core Web Vital past its poor line) or a monitor down now: an orange dot by the note. */
+  mark: boolean
+  /** Draw the referrer's logo beside the name (rows of sources). */
+  logo: boolean
+}
+
+/** A block of figures, drawn as a comparison is: its title, its dates, its rows, then "and N more". */
+export interface FigureBlock {
+  title: string
+  range: string | null
+  rows: FigureRow[]
+  more: number
+}
+
 export type StepView =
   | { kind: 'compare'; title: string; range: string | null; rows: StepRow[]; more: number }
+  | { kind: 'figures'; blocks: FigureBlock[] }
   | { kind: 'line'; text: string; failed: boolean }
 
 /** How many changed rows a comparison shows before "and N more". */
 export const COMPARE_ROWS_SHOWN = 5
+
+/** How many rows a block of figures shows before "and N more": as many as a comparison. */
+export const FIGURE_ROWS_SHOWN = COMPARE_ROWS_SHOWN
 
 const DIMENSION_TITLES: Record<string, string> = {
   page: 'Pages',
@@ -226,8 +253,410 @@ export function describeStep(step: AnalystStep): StepView {
   const args = obj(step.args)
   if (step.error) return { kind: 'line', text: failedLookup(step.tool, args) + narrowing(step.tool, args), failed: true }
   if (step.tool === 'compare_periods') return describeCompare(result, args)
-  const name = lookupName(step.tool, { ...args, ...result }) + narrowing(step.tool, args, result)
-  return { kind: 'line', text: withRange(name, result), failed: false }
+  const blocks = figureBlocks(step.tool, result, args)
+  if (blocks.length > 0) return { kind: 'figures', blocks }
+  return { kind: 'line', text: lookupLine(step.tool, args, result), failed: false }
+}
+
+/** A lookup as one line: its name, what it was narrowed to and its dates ("Funnels, 14 October to 12 November"). */
+function lookupLine(tool: string, args: Record<string, unknown>, result: Record<string, unknown>): string {
+  return withRange(lookupName(tool, { ...args, ...result }) + narrowing(tool, args, result), result)
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// * The figures of each lookup. Each builder reads only what the server returned and leaves out a figure it lacks
+// * (an em dash never stands in for a missing row); no rows at all means the lookup stays one line.
+
+const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
+const list = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.map(obj) : [])
+
+/** A rate as the dashboard prints one: 69.97 as "70%", 53.5 as "53.5%". */
+function percent(n: number): string {
+  return `${Number(n.toFixed(1))}%`
+}
+
+/** An average a day or an hour, one decimal at most ("12.5", "5"). */
+function average(n: number): string {
+  return String(Number(n.toFixed(1)))
+}
+
+/** "1 visit", "38 visits". */
+function counted(n: number, one: string, many: string): string {
+  return `${formatNumber(n)} ${n === 1 ? one : many}`
+}
+
+function figure(name: string, value: string, note = '', more: Partial<FigureRow> = {}): FigureRow {
+  return { name, value, note, mark: false, logo: false, ...more }
+}
+
+/** Rows cut to what a block shows, and how many it left out. */
+function shown(rows: FigureRow[]): { rows: FigureRow[]; more: number } {
+  return { rows: rows.slice(0, FIGURE_ROWS_SHOWN), more: Math.max(0, rows.length - FIGURE_ROWS_SHOWN) }
+}
+
+function rangeText(result: Record<string, unknown>): string | null {
+  const range = asRange(result.range)
+  return range ? formatRange(range) : null
+}
+
+function oneDay(date: unknown): string | null {
+  return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? formatRange({ from: date, to: date }) : null
+}
+
+function figureBlocks(tool: string, result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  switch (tool) {
+    case 'get_stats':
+      return statsBlocks(result, args)
+    case 'get_daily_series':
+      return dailyBlocks(result, args)
+    case 'get_breakdown':
+      return breakdownBlocks(result, args)
+    case 'get_realtime':
+      return realtimeBlocks(result)
+    case 'get_engagement':
+      return engagementBlocks(result, args)
+    case 'get_excluded_traffic':
+      return excludedBlocks(result)
+    case 'get_search':
+      return searchBlocks(result)
+    case 'get_goals':
+      return goalsBlocks(result, args)
+    case 'get_funnels':
+      return funnelBlocks(result, args)
+    case 'get_performance':
+      return performanceBlocks(result)
+    case 'get_uptime':
+      return uptimeBlocks(result)
+    case 'get_journeys':
+      return journeyBlocks(result, args)
+    case 'get_hours':
+      return hourBlocks(result, args)
+    case 'get_cdn':
+      return cdnBlocks(result)
+    default:
+      return []
+  }
+}
+
+function statsBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  const rows: FigureRow[] = []
+  const add = (name: string, value: number | null, show: (n: number) => string) => {
+    if (value !== null) rows.push(figure(name, show(value)))
+  }
+  add('Visitors', num(result.visitors), formatNumber)
+  add('Pageviews', num(result.pageviews), formatNumber)
+  add('Bounce rate', num(result.bounce_rate), percent)
+  add('Visit duration', num(result.avg_duration), formatDuration)
+  add('Scroll depth', num(result.avg_scroll_depth), percent)
+  if (rows.length === 0) return []
+  return [{ title: 'Totals' + narrowing('get_stats', args, result), range: rangeText(result), rows, more: 0 }]
+}
+
+/** The day series by its own counts (the server's summary): the busiest and quietest days, and the empty ones. */
+function dailyBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  const summary = obj(result.summary)
+  const rows: FigureRow[] = []
+  const day = (label: string, d: Record<string, unknown>) => {
+    const date = oneDay(d.date)
+    const visitors = num(d.visitors)
+    if (!date || visitors === null) return
+    const ties = num(d.days_with_that_many) ?? 1
+    rows.push(figure(label, ties > 1 ? `${date} and ${ties - 1} more` : date, counted(visitors, 'visitor', 'visitors')))
+  }
+  day('Busiest day', obj(summary.busiest_day))
+  const quietest = obj(summary.quietest_day)
+  // * A quietest day with no visitors is the empty days' row below, said once.
+  if ((num(quietest.visitors) ?? 0) > 0) day('Quietest day', quietest)
+  const whole = num(summary.whole_days)
+  const empty = num(summary.days_without_visitors)
+  if (whole !== null && empty !== null) rows.push(figure('Whole days without visitors', `${formatNumber(empty)} of ${formatNumber(whole)}`))
+  if (rows.length === 0) return []
+  return [{ title: 'Day by day' + narrowing('get_daily_series', args, result), range: rangeText(result), rows, more: 0 }]
+}
+
+function breakdownBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  const dimension = str(result.dimension) ?? str(args.dimension) ?? ''
+  const rows = list(result.rows).flatMap((r) => {
+    const visitors = num(r.visitors)
+    if (typeof r.value !== 'string' || visitors === null) return []
+    const pageviews = num(r.pageviews)
+    return [
+      figure(r.value === '' ? '(none)' : r.value, formatNumber(visitors), pageviews === null ? '' : counted(pageviews, 'pageview', 'pageviews'), {
+        logo: dimension === 'referrer',
+      }),
+    ]
+  })
+  if (rows.length === 0) return []
+  return [{ title: titleOf(dimension) + narrowing('get_breakdown', args, result), range: rangeText(result), ...shown(rows) }]
+}
+
+function realtimeBlocks(result: Record<string, unknown>): FigureBlock[] {
+  const now = num(result.visitors_now)
+  if (now === null) return []
+  const minutes = num(result.window_minutes)
+  const rows = [figure('Visitors now', formatNumber(now), minutes ? `last ${minutes} minutes` : '')]
+  for (const page of list(result.top_pages)) {
+    const path = str(page.path) ?? str(page.value)
+    const visitors = num(page.visitors)
+    if (path && visitors !== null) rows.push(figure(path, formatNumber(visitors)))
+  }
+  return [{ title: 'Visitors right now', range: null, ...shown(rows) }]
+}
+
+/** Engagement: a page's time on page and entry bounce rate; any other row's visit duration and bounce rate. */
+function engagementBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  const dimension = str(result.dimension) ?? str(args.dimension) ?? ''
+  const pages = dimension === 'page'
+  const rows = list(result.rows).flatMap((r) => {
+    if (typeof r.value !== 'string') return []
+    const time = num(pages ? r.avg_time_on_page : r.avg_duration)
+    const bounce = num(pages ? r.entry_bounce_rate : r.bounce_rate)
+    if (time === null) return []
+    return [
+      figure(r.value === '' ? '(none)' : r.value, formatDuration(time), bounce === null ? '' : `${percent(bounce)} bounce`, {
+        logo: dimension === 'referrer',
+      }),
+    ]
+  })
+  if (rows.length === 0) return []
+  const title = `Engagement by ${engagementBy(dimension)}` + narrowing('get_engagement', args, result)
+  return [{ title, range: rangeText(result), ...shown(rows) }]
+}
+
+/**
+ * What each kind of traffic kept out is called in a row: every verdict family pulse-backend can return
+ * (cerberus.VerdictFamily), named from what the server says was observed for it. A kind added there later is named by
+ * its key until it is named here.
+ */
+const KEPT_OUT_KINDS: Record<string, string> = {
+  population_statistic: 'Bot and spam patterns',
+  declared_crawler: 'Declared crawlers',
+  operator_decision: 'Excluded by hand',
+  constructive: 'Made-up page addresses',
+  self_reported: 'Known bot screen sizes',
+  cross_tenant: 'Seen on unrelated sites',
+  physical: 'Impossible for one person',
+}
+
+/**
+ * The traffic kept out, by period as Settings shows it, then by kind in a block of its own: the kinds count every event
+ * still kept, never the last 30 days (measured 12-11-2026: a model read them as the last 30 days).
+ */
+function excludedBlocks(result: Record<string, unknown>): FigureBlock[] {
+  const periods: [string, string][] = [
+    ['Last 24 hours', 'events_last_24_hours'],
+    ['Last 7 days', 'events_last_7_days'],
+    ['Last 30 days', 'events_last_30_days'],
+    ['All time', 'events_all_kept'],
+  ]
+  const rows = periods.flatMap(([name, key]) => {
+    const n = num(result[key])
+    return n === null ? [] : [figure(name, counted(n, 'event', 'events'))]
+  })
+  // * `by_kind` is the key before pulse-backend#1305 named it for what it counts; it split everything kept then too.
+  const kinds = list(result.all_kept_by_kind ?? result.by_kind).flatMap((k) => {
+    const kind = str(k.kind)
+    const n = num(k.events)
+    return kind && n !== null ? [figure(KEPT_OUT_KINDS[kind] ?? kind.replace(/_/g, ' '), counted(n, 'event', 'events'))] : []
+  })
+  const blocks: FigureBlock[] = []
+  if (rows.length > 0) blocks.push({ title: 'Traffic kept out of your stats', range: null, rows, more: 0 })
+  if (kinds.length > 0) blocks.push({ title: 'Kept out, by kind', range: 'All time', rows: kinds, more: 0 })
+  return blocks
+}
+
+/** Search: Google's totals, the searches that brought a click, then Bing's totals (Bing reports no searches). */
+function searchBlocks(result: Record<string, unknown>): FigureBlock[] {
+  const google = obj(result.google)
+  const rows: FigureRow[] = []
+  const position = (q: Record<string, unknown>) => {
+    const p = num(q.position)
+    return p === null ? '' : `position ${p}`
+  }
+  const totals = obj(google.current)
+  const clicks = num(totals.clicks)
+  if (clicks !== null) rows.push(figure('Google, all searches', counted(clicks, 'click', 'clicks'), position(totals)))
+  const queries = list(google.top_queries).filter((q) => str(q.value) !== null && num(q.clicks) !== null)
+  const clicked = queries.filter((q) => (num(q.clicks) ?? 0) > 0).slice(0, FIGURE_ROWS_SHOWN)
+  for (const q of clicked) rows.push(figure(str(q.value) ?? '', counted(num(q.clicks) ?? 0, 'click', 'clicks'), position(q)))
+  const bing = obj(result.bing)
+  const bingClicks = num(obj(bing.current).clicks)
+  const bingBefore = num(obj(bing.previous).clicks)
+  if (bingClicks !== null) {
+    rows.push(figure('Bing, all searches', counted(bingClicks, 'click', 'clicks'), bingBefore === null ? '' : `was ${formatNumber(bingBefore)}`))
+  }
+  if (rows.length === 0) return []
+  return [{ title: 'Search figures', range: rangeText(result), rows, more: Math.max(0, queries.length - clicked.length) }]
+}
+
+function goalsBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  if (!Array.isArray(result.events)) return []
+  const title = 'Goals and events' + narrowing('get_goals', args, result)
+  const rows = list(result.events).flatMap((e) => {
+    const name = str(e.name) ?? str(e.event)
+    const rate = num(e.conversion_rate)
+    if (!name || rate === null) return []
+    const visits = num(e.visits)
+    return [figure(name, percent(rate), visits === null ? '' : counted(visits, 'visit', 'visits'))]
+  })
+  // * None at all is a finding ("LinkedIn recorded no events"), so it is said, not left as an empty block.
+  if (rows.length === 0) return [{ title, range: rangeText(result), rows: [figure('Pulse recorded no goals or events', '')], more: 0 }]
+  return [{ title, range: rangeText(result), ...shown(rows) }]
+}
+
+/** A funnel step by what it matches ("page /pricing" as "/pricing"), as the funnel was defined. */
+function stepLabel(step: Record<string, unknown>): string {
+  const match = str(step.match)
+  return match ? match.replace(/^(page|event)\s+/, '') : (str(step.name) ?? 'Step')
+}
+
+/** One block a funnel: every step with its visitors, and the share of the step before that dropped off. */
+function funnelBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  const range = rangeText(result)
+  const narrowed = narrowing('get_funnels', args, result)
+  return list(result.funnels).flatMap((f) => {
+    const name = str(f.name)
+    const rows = list(f.steps).flatMap((step, i) => {
+      const visitors = num(step.visitors)
+      if (visitors === null) return []
+      const drop = num(step.drop_off)
+      return [figure(stepLabel(step), formatNumber(visitors), i === 0 || drop === null ? '' : `${percent(drop)} dropped off`)]
+    })
+    return name && rows.length > 0 ? [{ title: `${name} funnel${narrowed}`, range, rows, more: 0 }] : []
+  })
+}
+
+/** The page a performance check measured, as a person names it: the homepage, or its path. */
+function checkedPage(url: unknown): string | null {
+  if (typeof url !== 'string' || url === '') return null
+  try {
+    const path = new URL(url).pathname
+    return path === '/' || path === '' ? null : path
+  } catch {
+    return url
+  }
+}
+
+const SPEED_METRICS: [string, string, string][] = [
+  ['Largest Contentful Paint', 'lcp', 'largest_contentful_paint_ms'],
+  ['Total Blocking Time', 'tbt', 'total_blocking_time_ms'],
+  ['First Contentful Paint', 'fcp', 'first_contentful_paint_ms'],
+  ['Cumulative Layout Shift', 'cls', 'cumulative_layout_shift'],
+]
+
+/**
+ * One block a device: the performance score and four lab metrics, printed and rated as the Performance page prints
+ * and rates them (lib/performance/metrics); a figure the page rates poor carries the orange dot and the word.
+ */
+function performanceBlocks(result: Record<string, unknown>): FigureBlock[] {
+  const page = checkedPage(result.page)
+  return list(result.checks).flatMap((check) => {
+    // * A check without its device is titled without one: "on this device" would read as the reader's own.
+    const device = str(check.device)
+    const title = (page ? `Speed of ${page}` : 'Homepage speed') + (device ? ` on ${device}` : '')
+    const range = oneDay(check.checked_on)
+    if (check.status !== 'ok') return [{ title, range, rows: [figure('The check failed', '')], more: 0 }]
+    const rows: FigureRow[] = []
+    const score = num(check.performance_score)
+    if (score !== null) rows.push(figure('Performance score', String(score), score < 50 ? 'poor' : '', { mark: score < 50 }))
+    for (const [name, metric, key] of SPEED_METRICS) {
+      const value = num(check[key])
+      if (value === null) continue
+      const poor = metricBand(metric, value) === 'poor'
+      rows.push(figure(name, formatMetricValue(metric, value), poor ? 'poor' : '', { mark: poor }))
+    }
+    return rows.length > 0 ? [{ title, range, rows, more: 0 }] : []
+  })
+}
+
+function uptimeBlocks(result: Record<string, unknown>): FigureBlock[] {
+  const rows = list(result.monitors).flatMap((m) => {
+    const name = str(m.name) ?? str(m.url)
+    if (!name) return []
+    const uptime = num(m.uptime)
+    const down = m.status_now === 'down'
+    const failed = num(m.failed_checks)
+    const note = down ? 'down now' : failed === null ? '' : counted(failed, 'failed check', 'failed checks')
+    return [figure(name, uptime === null ? 'no checks' : percent(uptime), note, { mark: down })]
+  })
+  if (rows.length === 0) return []
+  if (Array.isArray(result.incidents)) rows.push(figure('Incidents', formatNumber(result.incidents.length)))
+  return [{ title: 'Uptime', range: rangeText(result), rows, more: 0 }]
+}
+
+/** Journeys: the visits that went on to another page, then where they went next, each with its share. */
+function journeyBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  const entry = str(result.entry_page) ?? str(args.entry_page)
+  const title = (entry ? `Journeys from ${entry}` : 'Journeys') + narrowing('get_journeys', args, result)
+  // * `visits` is the key before pulse-backend#1305 named it for what it counts.
+  const total = num(result.visits_of_two_pages_or_more) ?? num(result.visits)
+  const first = list(result.steps)[0]
+  const moves = (Array.isArray(first?.moves) ? first.moves : []).flatMap((m: unknown) => {
+    if (!Array.isArray(m) || typeof m[1] !== 'string') return []
+    const visits = num(m[2])
+    if (visits === null) return []
+    return [figure(m[1], formatNumber(visits), total ? percent((visits / total) * 100) : '')]
+  })
+  const rows: FigureRow[] = []
+  if (total !== null) rows.push(figure('Went on to another page', counted(total, 'visit', 'visits')))
+  rows.push(...moves.slice(0, FIGURE_ROWS_SHOWN))
+  if (rows.length === 0) return []
+  return [{ title, range: rangeText(result), rows, more: Math.max(0, moves.length - FIGURE_ROWS_SHOWN) }]
+}
+
+/**
+ * Hours and weekdays: the average visitors a day of each weekday, then the three busiest hours by their average
+ * visitors, under the dashboard card's own name (Peak hours).
+ */
+function hourBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
+  const narrowed = narrowing('get_hours', args, result)
+  const range = rangeText(result)
+  const days = (Array.isArray(result.by_weekday) ? result.by_weekday : []).flatMap((d: unknown) => {
+    if (!Array.isArray(d) || typeof d[0] !== 'string') return []
+    const visitors = num(d[2])
+    if (visitors === null) return []
+    const pageviews = num(d[3])
+    return [figure(d[0], average(visitors), pageviews === null ? '' : `${average(pageviews)} pageviews`)]
+  })
+  const hours = (Array.isArray(result.by_hour) ? result.by_hour : []).flatMap((h: unknown) => {
+    if (!Array.isArray(h)) return []
+    const hour = num(h[0])
+    const visitors = num(h[1])
+    return hour === null || visitors === null ? [] : [{ hour, visitors, pageviews: num(h[2]) }]
+  })
+  const busiest = [...hours].sort((a, b) => b.visitors - a.visitors || a.hour - b.hour).slice(0, 3)
+  const blocks: FigureBlock[] = []
+  if (days.length > 0) blocks.push({ title: `Visitors a day, by weekday${narrowed}`, range, rows: days, more: 0 })
+  if (busiest.length > 0) {
+    const rows = busiest.map((h) =>
+      figure(`${String(h.hour).padStart(2, '0')}:00`, average(h.visitors), h.pageviews === null ? '' : `${average(h.pageviews)} pageviews`),
+    )
+    blocks.push({ title: `Peak hours, visitors an hour${narrowed}`, range, rows, more: 0 })
+  }
+  return blocks
+}
+
+/** The CDN's totals against the period before, as the server compared them. */
+function cdnBlocks(result: Record<string, unknown>): FigureBlock[] {
+  const current = obj(result.current)
+  const previous = obj(result.previous)
+  const cr = asRange(result.range)
+  const pr = asRange(result.previous_range)
+  const range = cr ? (pr ? `${formatRange(cr)} against ${formatRange(pr)}` : formatRange(cr)) : null
+  const rows: FigureRow[] = []
+  const add = (name: string, key: string, show: (n: number) => string) => {
+    const now = num(current[key])
+    if (now === null) return
+    const before = num(previous[key])
+    rows.push(figure(name, show(now), before === null ? '' : `was ${show(before)}`))
+  }
+  add('Requests', 'requests', formatNumber)
+  add('Data served', 'data_mb', (n) => `${formatNumber(Math.round(n))} MB`)
+  add('Cache hit rate', 'cache_hit_rate', percent)
+  add('Errors', 'errors', formatNumber)
+  add('Origin response', 'origin_response_ms', (n) => `${Math.round(n)}ms`)
+  if (rows.length === 0) return []
+  return [{ title: 'CDN figures', range, rows, more: 0 }]
 }
 
 /** A lookup that failed, as a sentence that names what is missing. */
@@ -365,5 +794,6 @@ export function runningLookup(tool: string, args: Record<string, unknown> | null
 export function finishedLookup(step: AnalystStep): { text: string; failed: boolean } {
   const view = describeStep(step)
   if (view.kind === 'line') return { text: view.text, failed: view.failed }
-  return { text: view.range ? `${view.title}, ${view.range}` : view.title, failed: false }
+  if (view.kind === 'compare') return { text: view.range ? `${view.title}, ${view.range}` : view.title, failed: false }
+  return { text: lookupLine(step.tool, obj(step.args), obj(step.result)), failed: false }
 }
