@@ -1,5 +1,5 @@
 /** The registry's category ids (immutable there; only display names move). */
-export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle' | 'summary' | 'summary_monthly'
+export type Category = 'billing' | 'uptime' | 'security' | 'account' | 'site' | 'team' | 'system' | 'lifecycle' | 'summary' | 'summary_monthly'
 
 /**
  * Category ORDER and fallback vocabulary, for Account → Notifications: the
@@ -15,7 +15,11 @@ export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'sy
  * 3-of-6 drift the ruling killed.
  *
  * This list also fixes the FAMILY ORDER the settings render: billing,
- * security, uptime, site, team, system, lifecycle, summary.
+ * security, account, uptime, site, team, system, lifecycle, summary.
+ *
+ * `account` (13-11-2026): the inactive-team emails (Terms 14.3: two warnings and
+ * the confirmation), not suppressible in Iris, so it reads Always on. It sits
+ * after Security so the three Always on rows come first (options round, A).
  */
 export interface NotificationCategory {
   id: Category
@@ -27,6 +31,7 @@ export interface NotificationCategory {
 export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   { id: 'billing', label: 'Billing', critical: true },
   { id: 'security', label: 'Security', critical: true },
+  { id: 'account', label: 'Account', critical: true },
   // Renamed "Monitoring" by iris migration 027 (14-09-2026): the category
   // now also carries the install watchers. The id stays `uptime` forever —
   // category_id is immutable in the registry; only the label moved.
