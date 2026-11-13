@@ -54,7 +54,7 @@ import { pctChange } from '@/lib/utils/pctChange'
 import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
 import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
 import { RECOVERY_LIMIT_MS, waitForTurn } from './recover'
-import { describeStep, finishedLookup, runningLookup } from './steps'
+import { describeStep, finishedLookup, runningLookup, type FigureBlock } from './steps'
 import {
   CONNECTION_DROPPED,
   COULD_NOT_ANSWER,
@@ -702,6 +702,15 @@ const PageCheck: FC<{ part: LookupPart }> = ({ part }) => {
       </div>
     )
   }
+  if (view.kind === 'figures') {
+    return (
+      <>
+        {view.blocks.map((block, i) => (
+          <PageFigures key={`${block.title}-${i}`} block={block} />
+        ))}
+      </>
+    )
+  }
   return (
     <div className="flex flex-col gap-1.5 px-5 py-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
@@ -730,6 +739,36 @@ const PageCheck: FC<{ part: LookupPart }> = ({ part }) => {
     </div>
   )
 }
+
+// * A lookup's figures (the figures round, pick A, 13-11-2026), drawn as the comparison block is: its title and dates,
+// * then a row per figure with a grey note beside it. The orange dot is the one colour, on a figure Pulse rates poor or
+// * a monitor that is down now; the note's word says why, so the dot carries nothing a screen reader would miss.
+const PageFigures: FC<{ block: FigureBlock }> = ({ block }) => (
+  <div data-analyst="figures" className="flex flex-col gap-1.5 px-5 py-4">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+      <span className="text-sm font-medium text-neutral-200">{block.title}</span>
+      {block.range && <span className="text-xs text-neutral-500">{block.range}</span>}
+    </div>
+    <div className="flex flex-col">
+      {block.rows.map((r, i) => (
+        <div key={`${r.name}-${i}`} className="flex items-center gap-2.5 py-1 text-sm">
+          {r.logo && (
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center [&_img]:h-4 [&_img]:w-4 [&_svg]:h-4 [&_svg]:w-4">
+              {getReferrerIcon(r.name)}
+            </span>
+          )}
+          <span className="min-w-0 flex-1 truncate text-neutral-300">{r.name}</span>
+          {r.value && <span className="shrink-0 text-right tabular-nums text-neutral-100">{r.value}</span>}
+          <span className="flex w-28 shrink-0 items-center justify-end gap-1.5 text-xs tabular-nums text-neutral-500">
+            {r.mark && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-orange" />}
+            {r.note}
+          </span>
+        </div>
+      ))}
+      {block.more > 0 && <span className="pt-1 text-xs text-neutral-600">and {block.more} more</span>}
+    </div>
+  </div>
+)
 
 // * Each element takes only what it draws; a link opens in a new tab, so following one never loses the conversation.
 // * While the words come, a caret follows the last one (an-md in styles/globals.css, off once the answer is in).

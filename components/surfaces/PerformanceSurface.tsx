@@ -23,6 +23,7 @@ import { formatSiteStampShort } from '@/lib/utils/siteTime'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { PerformanceTrend } from '@/components/performance/PerformanceTrend'
 import { auditDescription } from '@/lib/performance/descriptions'
+import { formatMetricValue, metricBand } from '@/lib/performance/metrics'
 import { remapLearnUrl } from '@/lib/learn-links'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useMinimumLoading } from '@/components/skeletons'
@@ -44,16 +45,6 @@ type Strategy = 'mobile' | 'desktop'
 const CARD = 'min-w-0 rounded-none border border-border bg-card'
 const SECTION_LABEL = 'text-xs font-semibold uppercase tracking-wider text-neutral-400'
 
-// * Google's Core Web Vitals thresholds: [good, needs-improvement] boundaries.
-const METRIC_THRESHOLDS: Record<string, [number, number]> = {
-  lcp: [2500, 4000],
-  cls: [0.1, 0.25],
-  tbt: [200, 600],
-  fcp: [1800, 3000],
-  si: [3400, 5800],
-  tti: [3800, 7300],
-}
-
 // * The "good" boundary, spelled out under each metric. A number with no
 // * threshold beside it asks the reader to already know what good looks like.
 const METRIC_GOOD_LABEL: Record<string, string> = {
@@ -63,14 +54,6 @@ const METRIC_GOOD_LABEL: Record<string, string> = {
   cls: '< 0.1',
   si: '< 3.4s',
   tti: '< 3.8s',
-}
-
-function metricBand(metric: string, value: number | null): 'good' | 'warn' | 'poor' | 'unknown' {
-  if (value === null) return 'unknown'
-  const [good, poor] = METRIC_THRESHOLDS[metric] ?? [0, 0]
-  if (value <= good) return 'good'
-  if (value <= poor) return 'warn'
-  return 'poor'
 }
 
 const BAND_DOT: Record<string, string> = {
@@ -101,16 +84,6 @@ const METRIC_TERM: Partial<Record<string, string>> = {
   cls: 'metric_cls',
   si: 'metric_speed_index',
   tti: 'metric_tti',
-}
-
-// * An em dash, never a zero. A metric Lighthouse did not produce is not a
-// * measurement of zero — that conflation is what made five months of stored
-// * history untrustworthy.
-function formatMetricValue(metric: string, value: number | null): string {
-  if (value === null) return '—'
-  if (metric === 'cls') return value.toFixed(3)
-  if (value < 1000) return `${Math.round(value)}ms`
-  return `${(value / 1000).toFixed(1)}s`
 }
 
 function formatMs(ms: number): string {

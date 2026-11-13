@@ -179,9 +179,63 @@ describe('the Analyst page', () => {
     expect(screen.getByText('Sources')).toBeInTheDocument()
     expect(screen.getByText('4 to 10 November against 28 October to 3 November')).toBeInTheDocument()
     expect(screen.getByText('google.com')).toBeInTheDocument()
-    expect(screen.getByText('Totals, 4 to 10 November')).toBeInTheDocument()
+    // * The totals are drawn as the comparison is (the figures round, pick A): a title, its dates, a row a figure.
+    expect(screen.getByText('Totals')).toBeInTheDocument()
+    expect(screen.getByText('4 to 10 November')).toBeInTheDocument()
+    expect(screen.getByText('Visitors').parentElement?.textContent).toContain('56')
     // * An answer with no follow-up questions offers none.
     expect(screen.queryByRole('heading', { name: 'Ask next' })).toBeNull()
+  })
+
+  it("draws a lookup's figures as a comparison is drawn: a block a funnel, and speed with its poor figure marked", async () => {
+    const turn = answer('c9', 'Few visitors reach the Pulse page.', 4)
+    turn.turn.steps = [
+      {
+        tool: 'get_funnels',
+        args: { period: '30d' },
+        ms: 90,
+        result: {
+          range: { from: '2026-10-14', to: '2026-11-12' },
+          funnels: [
+            {
+              name: 'Pulse Sign Up',
+              steps: [
+                { name: '/', match: 'page /', visitors: 158, drop_off: null },
+                { name: '/products/pulse', match: 'page /products/pulse', visitors: 4, drop_off: 97.5 },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        tool: 'get_performance',
+        args: {},
+        ms: 70,
+        result: {
+          page: 'https://example.com/',
+          checks: [{ device: 'mobile', checked_on: '2026-11-11', status: 'ok', performance_score: 78, largest_contentful_paint_ms: 4594, total_blocking_time_ms: 224 }],
+        },
+      },
+    ]
+    askAnalyst.mockResolvedValue(turn)
+    mount()
+    fireEvent.click(await screen.findByText('Why did visitors change'))
+    expect(await screen.findByText('Few visitors reach the Pulse page.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Figures behind this answer/ }))
+    expect(document.querySelectorAll('[data-analyst="figures"]')).toHaveLength(2)
+    expect(screen.getByText('Pulse Sign Up funnel')).toBeInTheDocument()
+    expect(screen.getByText('14 October to 12 November')).toBeInTheDocument()
+    expect(screen.getByText('97.5% dropped off')).toBeInTheDocument()
+    expect(screen.getByText('Homepage speed on mobile')).toBeInTheDocument()
+    // * The poor figure carries the orange dot beside its word; a figure that needs work carries neither.
+    const lcp = screen.getByText('Largest Contentful Paint').parentElement as HTMLElement
+    expect(lcp.textContent).toContain('4.6s')
+    expect(lcp.textContent).toContain('poor')
+    expect(lcp.querySelector('.bg-brand-orange')).not.toBeNull()
+    const tbt = screen.getByText('Total Blocking Time').parentElement as HTMLElement
+    expect(tbt.textContent).toContain('224ms')
+    expect(tbt.querySelector('.bg-brand-orange')).toBeNull()
   })
 
   it('carries the conversation into a follow-up, and New chat starts a new one', async () => {
