@@ -46,15 +46,19 @@
 
   const globalConfig = window.pulseConfig || {};
 
+  // * Both config styles are read: data-attr style ("some-name", "no-scroll") and camelCase
+  // * config style ("someName", "noScroll"). One conversion for the three readers below.
+  function camelCase(name) {
+    return name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+  }
+
   // * Helper: read a config value from script data-* attribute or globalConfig
   function attr(name) {
-    // * Support both data-attr style ("some-name") and camelCase config style ("someName")
-    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    var camel = camelCase(name);
     return (script && script.getAttribute('data-' + name)) || globalConfig[name] || globalConfig[camel] || null;
   }
   function hasAttr(name) {
-    // * Support both "no-scroll" (data-attr style) and "noScroll" (camelCase config style)
-    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    var camel = camelCase(name);
     return (script && script.hasAttribute('data-' + name)) || globalConfig[name] === true || globalConfig[camel] === true;
   }
 
@@ -71,7 +75,7 @@
   // * privacy that would silently stop honouring the signal, so an explicit false/0/no/off
   // * value keeps it honoured. Only a bare attribute or a truthy value turns it off.
   function optedOut(name) {
-    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    var camel = camelCase(name);
     if (globalConfig[name] === true || globalConfig[camel] === true) return true;
     if (!script || !script.hasAttribute('data-' + name)) return false;
     var v = String(script.getAttribute('data-' + name)).trim().toLowerCase();
@@ -95,9 +99,27 @@
   // * when a link was opened, so visitors never download it. It carries this tag's nonce for a
   // * CSP that requires one. If it can't load (a site serving this script from its own address
   // * without that file), the flag is still set; only the note is missing.
+  // *
+  // * 1.8.1: a CSP that enforces Trusted Types (require-trusted-types-for 'script') refuses a
+  // * plain string as a script's src. 1.8.0 threw there, so the note never showed and the throw
+  // * ended this run: a Count me again visit went uncounted. Now the URL goes through a policy
+  // * named "pulse" that can return nothing but this one URL. The policy comes first because a
+  // * refused plain assignment is itself a violation: the console shows it and the site's CSP
+  // * reports it. A browser without Trusted Types, or a CSP that lists the policies it allows
+  // * (trusted-types …) without pulse, gets the plain URL; where that is refused too, there is
+  // * no note. Either way, nothing here throws any more.
   function showNote(outcome) {
     var s = document.createElement('script');
-    s.src = ((script && script.src) || 'https://js.ciphera.net/script.js').replace(/[^/]*$/, 'script.note.js');
+    var src = ((script && script.src) || 'https://js.ciphera.net/script.js').replace(/[^/]*$/, 'script.note.js');
+    try {
+      try {
+        s.src = trustedTypes.createPolicy('pulse', { createScriptURL: () => src }).createScriptURL(src);
+      } catch (e) {
+        s.src = src;
+      }
+    } catch (e) {
+      return;
+    }
     s.setAttribute('data-note', outcome);
     if (script && script.nonce) s.nonce = script.nonce;
     (document.head || document.documentElement).appendChild(s);
