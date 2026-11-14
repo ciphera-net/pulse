@@ -659,9 +659,25 @@ function cdnBlocks(result: Record<string, unknown>): FigureBlock[] {
   return [{ title: 'CDN figures', range, rows, more: 0 }]
 }
 
+/** How many characters of a web search's words a line shows before it cuts them. */
+const WEB_QUERY_SHOWN = 60
+
+/**
+ * A web search's words as a line quotes them (plan §4c): the query the model wrote, on one line, cut to 60 characters;
+ * null when it wrote none.
+ */
+function webQuery(args: Record<string, unknown>): string | null {
+  const q = str(args.query)?.split(/\s+/).filter(Boolean).join(' ')
+  if (!q) return null
+  const chars = [...q]
+  return chars.length > WEB_QUERY_SHOWN ? `${chars.slice(0, WEB_QUERY_SHOWN).join('').trimEnd()}…` : q
+}
+
 /** A lookup that failed, as a sentence that names what is missing. */
 function failedLookup(tool: string, args: Record<string, unknown>): string {
   switch (tool) {
+    case 'search_web':
+      return 'Analyst could not search the web'
     case 'get_stats':
       return 'Analyst could not read the totals'
     case 'get_daily_series':
@@ -699,6 +715,10 @@ function failedLookup(tool: string, args: Record<string, unknown>): string {
 
 function lookupName(tool: string, args: Record<string, unknown>): string {
   switch (tool) {
+    case 'search_web': {
+      const q = webQuery(args)
+      return q ? `Web results for "${q}"` : 'Web results'
+    }
     case 'get_stats':
       return 'Totals'
     case 'get_daily_series':
@@ -755,6 +775,10 @@ export function runningLookup(tool: string, args: Record<string, unknown> | null
   const a = obj(args)
   const narrowed = narrowing(tool, a)
   switch (tool) {
+    case 'search_web': {
+      const q = webQuery(a)
+      return q ? `Searching the web for "${q}"` : 'Searching the web'
+    }
     case 'compare_periods':
       return `Comparing ${titleOf(a.dimension).toLowerCase()}${narrowed} with ${periodBefore(a)}`
     case 'get_stats':

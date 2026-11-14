@@ -289,6 +289,34 @@ describe('the Analyst page', () => {
     expect(link.getAttribute('rel')).toBe('noopener noreferrer')
   })
 
+  // * Plan §4c: web text reaches answers, so an answer links only to the site, Ciphera's hosts and the exact pages its
+  // * own web searches returned, and draws no image at all.
+  it('links only to the site, Ciphera and the pages its web searches returned, and draws no image', async () => {
+    const turn = answer(
+      'c8',
+      'Google confirmed [a core update](https://news.example.org/story-1). [Your pricing page](https://example.com/pricing) fell, ' +
+        'and [this page](https://evil.example/collect?d=56) says why. ![chart](https://evil.example/p.png)',
+      4,
+    )
+    turn.turn.steps = [
+      {
+        tool: 'search_web',
+        args: { query: 'google core update' },
+        ms: 900,
+        result: { query: 'google core update', market: 'en-us', results: [{ title: 'Core update', url: 'https://news.example.org/story-1', site: 'news.example.org' }] },
+      },
+    ]
+    askAnalyst.mockResolvedValue(turn)
+    mount()
+    await screen.findByText('3 of 50 questions this month')
+    ask('Why did Google traffic fall?')
+    expect((await screen.findByRole('link', { name: 'a core update' })).getAttribute('href')).toBe('https://news.example.org/story-1')
+    expect(screen.getByRole('link', { name: 'Your pricing page' }).getAttribute('href')).toBe('https://example.com/pricing')
+    expect(screen.queryByRole('link', { name: 'this page' })).toBeNull()
+    expect(screen.getByText('this page').getAttribute('data-analyst')).toBe('unlinked')
+    expect(document.querySelector('#main-content img, main img, img[src*="evil.example"]')).toBeNull()
+  })
+
   it('says Analyst is not available when the routes answer 404', async () => {
     askAnalyst.mockRejectedValue(new ApiError('Not found', 404, { error: 'Not found' }))
     mount()
