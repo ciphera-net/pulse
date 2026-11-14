@@ -181,13 +181,12 @@ export default function GeneralPage({ siteId }: { siteId: string }) {
         siteId={siteId}
         domain={site.domain}
         framework={site.detected_framework}
-        choices={c}
         onFrameworkSaved={() => void mutate()}
       />
 
       <KitSection
         title="What the script counts"
-        description="These change the script itself. After you save, copy the script again and replace it on your site."
+        description="Changes apply to your site within a few minutes of saving. Your script stays the same."
         icon={<ChartBar />}
       >
         <KitRows>
@@ -196,7 +195,7 @@ export default function GeneralPage({ siteId }: { siteId: string }) {
           <KitRow label="File downloads" caption="Clicks that download a file, like a PDF or ZIP." control={toggle(c.features.downloads, feature('downloads'), 'File downloads')} />
           <KitRow
             label="Clicks, copies and forms"
-            caption="Adds a second line to your script."
+            caption="Visitors download about 1 KB more while this is on."
             control={toggle(c.interactions, () => setChoices((x) => ({ ...x, interactions: !x.interactions })), 'Clicks, copies and forms')}
           />
           {c.interactions && (

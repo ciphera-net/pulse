@@ -22,6 +22,9 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * row per switch of Settings → Beta (PUL-40), flat too: `from` and `to`.
  * `site_analyst_memories_changed` is one row each time a site's Analyst memories are turned on or off (14-11-2026),
  * from Settings or from the first ask in a chat: `enabled`, `previous_enabled` (null while undecided) and `via`.
+ * `site_script_features_changed` is one row per save of General's "What the script counts" switches (scroll,
+ * outbound, downloads, interactions and its kinds), flat: each changed switch and its `previous_` value. Since
+ * tracker v1.9.0 (14-11-2026) a save takes effect on the site at once, so the row dates the change.
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.
@@ -81,6 +84,7 @@ export const AUDIT_ACTIONS = [
   'site_permanently_deleted',
   'site_privacy_signals_changed',
   'site_restored',
+  'site_script_features_changed',
   'site_soft_deleted',
   'site_timezone_changed',
   'site_visitor_views_disabled',
@@ -161,6 +165,7 @@ export const ACTION_LABELS = {
   site_permanently_deleted: 'Permanently deleted site',
   site_privacy_signals_changed: 'Changed Do Not Track or Global Privacy Control',
   site_restored: 'Restored site',
+  site_script_features_changed: 'Changed what the script counts',
   site_soft_deleted: 'Deleted site',
   site_timezone_changed: 'Changed site timezone',
   site_visitor_views_disabled: 'Turned off visitor views',

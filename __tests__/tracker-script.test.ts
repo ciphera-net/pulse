@@ -46,10 +46,12 @@ describe('tracker script endpoints', () => {
     expect(code).toContain("var ENGAGEMENT_PATH = '/api/v1/engagement'")
     // * Every send site must go through the constant. A reintroduced literal would
     // * pass the assertion above while sending somewhere else.
-    expect(code).toContain('apiUrl + ENGAGEMENT_PATH')
     // * v1.2.0: one beacon() function carries both transports (sendBeacon, keepalive
     // * fetch), so exactly two send sites remain and both go through the constant.
-    expect(code.match(/apiUrl \+ ENGAGEMENT_PATH/g)).toHaveLength(2)
+    // * v1.9.0: the fetch goes through post(), the one POST every send shares.
+    expect(code.match(/apiUrl \+ ENGAGEMENT_PATH/g)).toHaveLength(1)
+    expect(code.match(/post\(ENGAGEMENT_PATH, /g)).toHaveLength(1)
+    expect(code).toContain('return fetch(apiUrl + path, {')
   })
 
   // * Two call sites: the pageview in trackPageview and the custom event in
@@ -57,7 +59,13 @@ describe('tracker script endpoints', () => {
   // * one is intact — breaking exactly one endpoint is the realistic mistake, and it
   // * would take out goals and outbound-link tracking with nothing to show for it.
   it('still sends pageviews and custom events to /api/v1/events', () => {
-    expect(code.match(/apiUrl \+ '\/api\/v1\/events'/g)).toHaveLength(2)
+    expect(code.match(/post\('\/api\/v1\/events', /g)).toHaveLength(2)
+  })
+
+  // * v1.9.0: a browser sending Do Not Track or GPC asks for the site's settings here,
+  // * keyed by the domain in the PATH (the edge caches it per site and ignores query strings).
+  it('asks for a site’s settings at /api/v1/script-settings/<domain>', () => {
+    expect(code).toContain("fetch(apiUrl + '/api/v1/script-settings/' + domain, { referrerPolicy: 'no-referrer' })")
   })
 })
 

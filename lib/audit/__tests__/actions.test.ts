@@ -50,12 +50,12 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'ownership_transferred',
       'report_created', 'report_revoked', 'report_schedule_created', 'report_schedule_stopped',
       'site_analyst_memories_changed', 'site_created', 'site_exported', 'site_identity_window_changed', 'site_permanently_deleted',
-      'site_privacy_signals_changed', 'site_restored',
+      'site_privacy_signals_changed', 'site_restored', 'site_script_features_changed',
       'site_soft_deleted', 'site_timezone_changed', 'site_visitor_views_disabled', 'site_visitor_views_enabled',
       'subscription_cancel_at_period_end', 'subscription_canceled_immediate', 'subscription_plan_changed',
       'subscription_resumed',
     ]
-    expect(writtenToday).toHaveLength(55)
+    expect(writtenToday).toHaveLength(56)
     // History only (9): no code writes these any more, but production still
     // holds rows carrying them.
     const historyOnly = [
