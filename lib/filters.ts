@@ -31,6 +31,10 @@ export const DIMENSION_LABELS: Record<string, string> = {
   utm_content: 'UTM Content',
   event_name: 'Event',
   entry_path: 'Entry page',
+  // Not in the picker (DIMENSION_CATEGORIES) yet: a row of the Locations block sets these two, and without a label
+  // its pill read "language is en-US" and "timezone is Europe/Brussels", the raw keys.
+  language: 'Language',
+  timezone: 'Timezone',
 }
 
 export const OPERATOR_LABELS: Record<string, string> = {

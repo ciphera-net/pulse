@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { canHaveFavicon, siteFaviconUrl } from '@/lib/utils/favicon'
 
 interface SiteFaviconProps {
   domain: string
@@ -27,7 +27,8 @@ export function SiteFavicon({ domain, name, size = 40, className }: SiteFaviconP
   const [failed, setFailed] = useState(false)
   const letter = (name?.trim()?.[0] ?? domain?.trim()?.[0] ?? '?').toUpperCase()
 
-  if (failed) {
+  // A domain that cannot have a favicon gets its monogram at once, with no request to fail first.
+  if (failed || !canHaveFavicon(domain)) {
     return (
       <div
         aria-hidden
@@ -41,11 +42,14 @@ export function SiteFavicon({ domain, name, size = 40, className }: SiteFaviconP
 
   return (
     <Image
-      src={`${FAVICON_SERVICE_URL}?domain=${encodeURIComponent(domain)}&sz=${size >= 64 ? 128 : 64}`}
+      src={siteFaviconUrl(domain, size)}
       alt=""
       width={size}
       height={size}
       className={className}
+      // Eager: these sit in menus and lists that open on a click. A lazy image would only start once its menu had
+      // painted, however warm the cache (lib/utils/preloadImages.ts).
+      loading="eager"
       unoptimized
       onError={() => setFailed(true)}
     />

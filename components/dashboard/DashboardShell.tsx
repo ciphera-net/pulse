@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
+import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
 import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { StarFour as StarFourIcon } from '@phosphor-icons/react'
 import { formatUpdatedLabel } from '@/lib/utils/format'
@@ -27,6 +27,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { useSites } from '@/lib/swr/sites'
+import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
+import { canHaveFavicon, siteFaviconUrl } from '@/lib/utils/favicon'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import ContentHeader from './ContentHeader'
 import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
@@ -49,7 +51,6 @@ const PAGE_META: Record<string, PageMeta> = {
   '':         { title: 'Dashboard',     icon: LayoutDashboardIcon },
   journeys:   { title: 'Journeys',      icon: PathIcon },
   funnels:    { title: 'Funnels',       icon: FunnelIcon },
-  behavior:   { title: 'Behavior',      icon: CursorClickIcon },
   search:     { title: 'Search',        icon: SearchIcon },
   analyst:    { title: 'Analyst',       icon: StarFourIcon },
   cdn:        { title: 'CDN',           icon: CloudUploadIcon },
@@ -137,6 +138,9 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const { sites } = useSites()
+  // The picker opened with no favicons and filled in 180 ms later (measured 14-11-2026): each one was only asked
+  // for once its row existed. Asked for here, when the list of sites is known.
+  usePreloadImages(sites.map((site) => (canHaveFavicon(site.domain) ? siteFaviconUrl(site.domain, 20) : null)))
   const ref = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)

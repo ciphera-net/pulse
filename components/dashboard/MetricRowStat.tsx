@@ -12,6 +12,31 @@ import { type DimensionRateRow } from '@/lib/dashboard/metrics'
 // share of the range's visitor total (the F9 denominator).
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// ONE definition of a dimension row's box and of its number columns, shared by
+// the rows and by the unit labels in the card's header (14-11-2026).
+//
+// The labels and the numbers had drifted 16 and 24 px apart, because nothing
+// tied them together:
+//   * every row was `w-full ... px-2 -mx-2`. With an explicit width a negative
+//     right margin does not widen a box, so the row sat 8 px left of where it
+//     was meant to: it overhung the card's content by 8 px on the left,
+//     stopped 8 px short on the right, and its padding took 8 more;
+//   * the two number columns had a gap between them, the two labels had none.
+//
+// DIMENSION_ROW is 16 px wider than the card's content, so its 8 px of padding
+// ends exactly on the content's edges, which is where the header ends too.
+// The hover band and the bar are centred on the content for the same reason.
+// A card writes `interactive-row ${DIMENSION_ROW}`: the first word stays in the
+// card's own source, where interactive-rows.test.tsx looks for it.
+// ---------------------------------------------------------------------------
+export const DIMENSION_ROW =
+  'w-[calc(100%+1rem)] text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2'
+/** One number column, and the label over it. */
+const STAT_COLUMN = 'w-12 text-right'
+/** The space between two number columns, and between their two labels. */
+const STAT_GAP = 'gap-2'
+
 interface MetricRowStatProps {
   row: DimensionRateRow
   totals?: { pageviews: number; visitors: number }
@@ -27,7 +52,7 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
   const denom = totals?.visitors ?? 0
   const pct = denom > 0 ? `${Math.round((visitors / denom) * 100)}%` : ''
   return (
-    <div className={cn('relative flex items-center gap-2 ml-4', className)}>
+    <div className={cn('relative flex items-center ml-4', STAT_GAP, className)}>
       {pct && (
         // The hover % SLIDES in where it can be seen (PUL-20, owner pick B,
         // 12-10-2026): 12 px over 400 ms on an even curve. It was 8 px / 250 ms
@@ -39,9 +64,9 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
           {pct}
         </span>
       )}
-      <CompactNumber value={visitors} className={cn('text-sm font-semibold text-neutral-400', views && 'w-12 text-right')} />
+      <CompactNumber value={visitors} className={cn('text-sm font-semibold text-neutral-400', views && STAT_COLUMN)} />
       {views && (
-        <CompactNumber value={row.pageviews} className="w-12 text-right text-sm font-semibold text-neutral-400" />
+        <CompactNumber value={row.pageviews} className={cn('text-sm font-semibold text-neutral-400', STAT_COLUMN)} />
       )}
     </div>
   )
@@ -58,9 +83,11 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
  */
 export function MetricUnitLabel({ views }: { views?: boolean }) {
   return views ? (
-    <span className="shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">
-      <span className="inline-block w-12 text-right">visitors</span>
-      <span className="inline-block w-12 text-right">views</span>
+    // The same columns and the same gap as the numbers under them. A plain string, not cn(): the two `text-`
+    // utilities here are a size and a colour, and a class merger may take them for one group.
+    <span className={`inline-flex shrink-0 ${STAT_GAP} text-[11px] text-neutral-500`} data-testid="metric-unit">
+      <span className={STAT_COLUMN}>visitors</span>
+      <span className={STAT_COLUMN}>views</span>
     </span>
   ) : (
     <span className="shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">

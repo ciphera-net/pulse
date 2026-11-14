@@ -10,7 +10,7 @@ import { Switcher } from '@ciphera-net/facet'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
+import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
@@ -163,7 +163,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                      above it (relative z-10) opting back into pointer events for
                      its own box only. Everything else is pointer-events-none so
                      clicks reach the overlay. */}
-                  <div className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}>
+                  <div className={`interactive-row ${DIMENSION_ROW}${onFilter ? ' cursor-pointer' : ''}`}>
                     {onFilter && (
                       <button
                         type="button"
