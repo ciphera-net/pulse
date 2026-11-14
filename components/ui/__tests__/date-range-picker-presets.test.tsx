@@ -20,7 +20,12 @@ import type { Period } from '@/lib/hooks/periodUrl'
 // wait out in jsdom).
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
-import DateRangePicker, { type DateRangePickerProps } from '@/components/ui/DateRangePicker'
+import DateRangePicker, {
+  CALENDAR_COLUMN_PX,
+  LIST_COLUMN_PX,
+  placePanel,
+  type DateRangePickerProps,
+} from '@/components/ui/DateRangePicker'
 
 const NOW = new Date('2026-09-26T12:00:00Z')
 
@@ -102,11 +107,13 @@ describe('DateRangePicker open — the list', () => {
     expect(dividers.length).toBe(2)
     expect(list.children.length).toBe(3)
 
+    // The LIST is never a scroll box of its own: twelve rows, all in view. The panel around it may scroll, and
+    // only where the viewport is shorter than its content (a phone with the calendar open under the list). Its
+    // cap is the viewport's lower edge, set as a style from where the panel hangs, never a fixed height class.
     const popover = document.querySelector('[data-view-switcher]')!
-    expect(popover.className).not.toMatch(/max-h/)
-    expect(popover.className).not.toMatch(/overflow-y-auto/)
     expect(list.className).not.toMatch(/max-h/)
-    expect(list.className).not.toMatch(/overflow-y-auto/)
+    expect(list.className).not.toMatch(/overflow/)
+    expect(popover.className).not.toMatch(/max-h-/)
   })
 
   it('ticks the applied row with aria-pressed and a visible check', () => {
@@ -157,19 +164,96 @@ describe('DateRangePicker open — the calendar', () => {
   // never min/max, can be the reason a day near the picked start is disabled.
   const CALENDAR = { min: '2026-09-10', max: '2026-09-24', maxDays: 7, range: { start: '2026-09-15', end: '2026-09-20' } }
 
-  it('Custom range… swaps the list for the calendar, and Back to ranges returns to the list', () => {
+  // Since 14-11-2026 the calendar opens BESIDE the list instead of replacing it: the swap changed the panel's
+  // width and height in one frame, which showed as a jump. The list stays mounted and the same row closes the
+  // calendar again, so there is no "Back to ranges" button any more.
+  it('Custom range… opens the calendar beside the list, which stays, and the same row closes it', () => {
     renderPicker({ calendar: CALENDAR })
     openPicker()
-    expect(document.querySelector('[data-view-list]')).not.toBeNull()
+    const list = document.querySelector('[data-view-list]')!
+    const custom = document.querySelector('[data-row="custom"]')!
     expect(document.querySelector('[data-view-calendar]')).toBeNull()
+    expect(custom).toHaveAttribute('aria-expanded', 'false')
+    expect(custom).not.toHaveAttribute('aria-controls')
+
+    fireEvent.click(custom)
+    const calendar = document.querySelector('[data-view-calendar]')!
+    expect(calendar).not.toBeNull()
+    // The very same list node: not unmounted and drawn again, so it cannot have moved.
+    expect(document.querySelector('[data-view-list]')).toBe(list)
+    expect(custom).toHaveAttribute('aria-expanded', 'true')
+    expect(custom).toHaveAttribute('aria-controls', calendar.id)
+    expect(calendar).toHaveAttribute('role', 'group')
+    expect(calendar).toHaveAttribute('aria-label', 'Custom range')
+    expect(screen.queryByRole('button', { name: 'Back to ranges' })).toBeNull()
+    // In the document the calendar FOLLOWS the list, so Tab leaves "Custom range…" straight into it (the row is
+    // the list's last control) and a phone stacks it under the list.
+    expect(list.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.click(custom)
+    expect(document.querySelector('[data-view-calendar]')).toBeNull()
+    expect(document.querySelector('[data-view-list]')).toBe(list)
+    expect(custom).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('opens with the calendar closed every time, a custom range applied or not', () => {
+    renderPicker({ calendar: CALENDAR, tick: 'custom', label: '15 Sep – 20 Sep' })
+    openPicker()
+    expect(document.querySelector('[data-view-calendar]')).toBeNull()
+    expect(document.querySelector('[data-row="custom"]')).toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.click(document.querySelector('[data-row="custom"]')!)
     expect(document.querySelector('[data-view-calendar]')).not.toBeNull()
-    expect(document.querySelector('[data-view-list]')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back to ranges' }))
+    // Close the picker with the calendar open, then open it again.
+    fireEvent.click(document.querySelector('[data-tour="date-range-picker"]')!)
+    expect(document.querySelector('[data-view-switcher]')).toBeNull()
+    openPicker()
     expect(document.querySelector('[data-view-list]')).not.toBeNull()
     expect(document.querySelector('[data-view-calendar]')).toBeNull()
+  })
+
+  it('a named range still applies with the calendar open', () => {
+    const { onPick, onCustom } = renderPicker({ calendar: CALENDAR })
+    openPicker()
+    fireEvent.click(document.querySelector('[data-row="custom"]')!)
+    fireEvent.click(screen.getByText('15').closest('button')!) // a start, never finished
+
+    fireEvent.click(document.querySelector('[data-row="30"]')!)
+    expect(onPick).toHaveBeenCalledTimes(1)
+    expect(onPick).toHaveBeenCalledWith('30')
+    expect(onCustom).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-view-switcher]')).toBeNull()
+  })
+
+  it('drops a half-picked range when the calendar is closed', () => {
+    const { onCustom } = renderPicker({ calendar: CALENDAR })
+    openPicker()
+    const custom = document.querySelector('[data-row="custom"]')!
+    fireEvent.click(custom)
+    fireEvent.click(screen.getByText('15').closest('button')!) // start = 15
+    fireEvent.click(custom) // close
+    fireEvent.click(custom) // open again
+
+    // Were 15 still the start, this click would finish 15 → 20. It starts a new range instead.
+    fireEvent.click(screen.getByText('20').closest('button')!)
+    expect(onCustom).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('22').closest('button')!)
+    expect(onCustom).toHaveBeenCalledTimes(1)
+    expect(onCustom).toHaveBeenCalledWith({ start: '2026-09-20', end: '2026-09-22' })
+  })
+
+  it('draws each column at the width the panel was placed for', () => {
+    // placePanel() works from LIST_COLUMN_PX and CALENDAR_COLUMN_PX before the calendar exists; the classes draw
+    // the columns. If the two drift apart, the panel is placed for a width it does not have.
+    renderPicker({ calendar: CALENDAR })
+    openPicker()
+    fireEvent.click(document.querySelector('[data-row="custom"]')!)
+    expect(document.querySelector('[data-view-list]')!.className).toContain(`sm:w-[${LIST_COLUMN_PX}px]`)
+    const column = document.querySelector('[data-view-calendar]')!
+    expect(column.firstElementChild!.className).toContain(`sm:w-[${CALENDAR_COLUMN_PX}px]`)
+    // The column itself carries no width class: its width is what opens.
+    expect(column.className).not.toMatch(/(^|\s)(sm:)?w-/)
   })
 
   it('greys days outside [min, max], and once a start is picked refuses a span longer than maxDays', () => {
@@ -220,8 +304,12 @@ describe('DateRangePicker open — the calendar', () => {
     fireEvent.click(document.querySelector('[data-row="custom"]')!)
     expect(screen.getByText("Days follow the site's timezone · Asia/Karachi")).toBeInTheDocument()
 
-    // Closing the picker (never mind reopening) removes it — it is not left mounted.
-    fireEvent.click(screen.getByRole('button', { name: 'Back to ranges' }))
+    // Closing the calendar removes it — it is not left mounted and hidden, where its 42 day buttons would stay
+    // in the tab order. Closing the picker does the same.
+    fireEvent.click(document.querySelector('[data-row="custom"]')!)
+    expect(screen.queryByText(/Days follow the site's timezone/)).toBeNull()
+    fireEvent.click(document.querySelector('[data-row="custom"]')!)
+    expect(screen.getByText("Days follow the site's timezone · Asia/Karachi")).toBeInTheDocument()
     fireEvent.click(document.querySelector('[data-tour="date-range-picker"]')!)
     expect(screen.queryByText(/Days follow the site's timezone/)).toBeNull()
 
@@ -229,6 +317,54 @@ describe('DateRangePicker open — the calendar', () => {
     fireEvent.click(document.querySelector('[data-tour="date-range-picker"]')!)
     fireEvent.click(document.querySelector('[data-row="custom"]')!)
     expect(screen.queryByText(/Days follow the site's timezone/)).toBeNull()
+  })
+})
+
+// Where the panel hangs is decided once, when it opens, for its WIDEST state: the list plus the calendar's
+// column. That is what lets the calendar open later without anything being measured or moved. The numbers are a
+// 1440 px viewport and the real columns (176 px of list with its border, 280 px of calendar).
+describe('placePanel', () => {
+  const LIST = LIST_COLUMN_PX + 2
+  const CAL = CALENDAR_COLUMN_PX
+
+  it('hangs the list from the trigger\'s right edge and opens the calendar to its left', () => {
+    const placed = placePanel({ triggerRight: 1400, viewport: 1440, list: LIST, calendar: CAL })
+    expect(placed).toEqual({ calendarSide: 'left', right: 40 })
+    // The whole panel stays on screen: its left edge is right - list - calendar from the right edge.
+    expect(1440 - 40 - LIST - CAL).toBeGreaterThanOrEqual(8)
+  })
+
+  it('places the list in the same spot whether or not the calendar is ever opened', () => {
+    // The point of the change. With the calendar's width left out the answer is the same pinned edge.
+    const withCalendar = placePanel({ triggerRight: 1100, viewport: 1440, list: LIST, calendar: CAL })
+    const listAlone = placePanel({ triggerRight: 1100, viewport: 1440, list: LIST, calendar: 0 })
+    expect(withCalendar).toEqual(listAlone)
+  })
+
+  it('keeps 8 px from the viewport\'s edge when the trigger sits against it', () => {
+    expect(placePanel({ triggerRight: 1440, viewport: 1440, list: LIST, calendar: CAL })).toEqual({ calendarSide: 'left', right: 8 })
+    expect(placePanel({ triggerRight: 1436, viewport: 1440, list: LIST, calendar: CAL })).toEqual({ calendarSide: 'left', right: 8 })
+  })
+
+  it('opens the calendar to the RIGHT when a wrapped toolbar leaves no room on the left', () => {
+    // A toolbar that wrapped to the start of its row: the trigger ends 300 px in. 300 - 456 is off screen, so
+    // the list stays under the trigger (its left edge at 300 - 176) and the calendar takes the other side.
+    const placed = placePanel({ triggerRight: 300, viewport: 1024, list: LIST, calendar: CAL })
+    expect(placed).toEqual({ calendarSide: 'right', left: 300 - LIST })
+    expect(placed.left! + LIST + CAL).toBeLessThanOrEqual(1024 - 8)
+  })
+
+  it('pushes the whole panel in when neither side has room', () => {
+    // 700 px wide, the trigger ending at 450: 450 - 456 is off the left edge and 274 + 456 runs past the right.
+    const placed = placePanel({ triggerRight: 450, viewport: 700, list: LIST, calendar: CAL })
+    expect(placed).toEqual({ calendarSide: 'left', right: 700 - LIST - CAL - 8 })
+    expect(700 - placed.right! - LIST - CAL).toBe(8)
+  })
+
+  it('centres a phone\'s full-width panel, where the calendar adds no width', () => {
+    // Below `sm` the panel is min(460, viewport - 16) wide and the calendar opens under the list.
+    expect(placePanel({ triggerRight: 374, viewport: 390, list: 374, calendar: 0 })).toEqual({ calendarSide: 'left', right: 8 })
+    expect(placePanel({ triggerRight: 200, viewport: 390, list: 374, calendar: 0 })).toEqual({ calendarSide: 'left', right: 8 })
   })
 })
 
