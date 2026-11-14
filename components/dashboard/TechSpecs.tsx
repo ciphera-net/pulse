@@ -10,7 +10,7 @@ import { DeviceMobile } from '@phosphor-icons/react'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
+import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
@@ -200,7 +200,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                 <CascadeRow key={item.name} index={i}>
                   <Row
                     {...(canFilter ? { type: 'button' as const, onClick: () => canFilter && onFilter({ dimension: dim, operator: 'is', values: [item.name] }) } : {})}
-                    className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
+                    className={`interactive-row ${DIMENSION_ROW}${canFilter ? ' cursor-pointer' : ''}`}
                   >
                     <RowBar width={barWidth} index={i} />
                     <div className="relative flex-1 truncate text-white flex items-center gap-3">

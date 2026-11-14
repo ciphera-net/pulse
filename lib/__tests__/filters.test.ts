@@ -199,6 +199,12 @@ describe('filterLabel', () => {
     expect(filterLabel(f)).toBe('custom_dim contains foo')
   })
 
+  it('names the two dimensions only a Locations row can set', () => {
+    // Without a label the pill showed the raw keys: "language is en-US", "timezone is Europe/Brussels".
+    expect(filterLabel({ dimension: 'language', operator: 'is', values: ['en-US'] })).toBe('Language is en-US')
+    expect(filterLabel({ dimension: 'timezone', operator: 'is', values: ['Europe/Brussels'] })).toBe('Timezone is Europe/Brussels')
+  })
+
   it('uses readable operator labels', () => {
     const f: DimensionFilter = { dimension: 'page', operator: 'not_contains', values: ['/admin'] }
     expect(filterLabel(f)).toBe('Page does not contain /admin')

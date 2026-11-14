@@ -19,6 +19,7 @@ import { ArrowClockwise, ArrowUpRight, Sparkle } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { cdnUrl } from '@/lib/cdn'
 import { useWhatsNew } from '@/lib/hooks/useWhatsNew'
+import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { useClaimUpdateNotice, useUpdateReady } from '@/lib/updateNotice'
 import type { WhatsNewEntry, WhatsNewKind, WhatsNewPost, WhatsNewResponse } from '@/lib/api/whatsNew'
 
@@ -106,7 +107,7 @@ function LeadCard({ row }: { row: Row }) {
         <span className="relative block h-[210px] overflow-hidden border-b border-neutral-800">
           <span className="absolute inset-x-0 top-0 h-16 bg-brand-orange" />
           {/* eslint-disable-next-line @next/next/no-img-element -- a docs screenshot from the CDN, drawn at the card's width */}
-          <img src={entry.image} alt="" loading="lazy" className="whats-new-shot absolute left-[26px] top-[26px] w-[calc(100%-26px)] max-w-none" />
+          <img src={entry.image} alt="" loading="eager" className="whats-new-shot absolute left-[26px] top-[26px] w-[calc(100%-26px)] max-w-none" />
         </span>
       )}
       <span className="block px-3.5 pt-3 pb-3">
@@ -173,11 +174,31 @@ function Body({ shown, error, onRetry }: { shown: WhatsNewResponse | undefined; 
   )
 }
 
+/** True once the browser reports an idle moment after mount, or after two seconds where it cannot say. */
+function useQuietMoment(): boolean {
+  const [quiet, setQuiet] = useState(false)
+  useEffect(() => {
+    const done = () => setQuiet(true)
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(done, { timeout: 4000 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const id = window.setTimeout(done, 2000)
+    return () => window.clearTimeout(id)
+  }, [])
+  return quiet
+}
+
 export default function WhatsNewButton() {
   useClaimUpdateNotice(true)
   const updateReady = useUpdateReady()
   const { data, error, reload, markSeen } = useWhatsNew()
   const [open, setOpen] = useState(false)
+  // The lead card's picture was requested only once the panel had opened, and arrived 330 ms after it (measured
+  // 14-11-2026). It is asked for ahead of that, but only when the page has gone quiet: most visits never open the
+  // panel, and the picture must not compete with the dashboard's own reads.
+  const quiet = useQuietMoment()
+  usePreloadImages([data ? arrange(data.posts).lead?.entry.image : null], quiet)
   // What the open panel shows: the answer as it was when the panel opened, so the dots stay while it is read even
   // though opening it records everything as seen.
   const [snapshot, setSnapshot] = useState<WhatsNewResponse | null>(null)

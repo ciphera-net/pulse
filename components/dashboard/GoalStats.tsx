@@ -10,6 +10,8 @@ import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
 import { useSiteRef } from '@/lib/scope/SiteScope'
 import { docsUrl } from '@/lib/docs'
+import { DIMENSION_ROW } from '@/components/dashboard/MetricRowStat'
+import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 
 interface GoalStatsProps {
   goalCounts: GoalCountStat[]
@@ -48,8 +50,14 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
   // The drill-down reads the property lists directly, not through a hook, so it resolves the read itself: on /demo
   // these are the public routes, for a member the member ones (PUL-34).
   const site = useSiteRef(siteId)
-  const list = (goalCounts || []).slice(0, LIMIT)
-  const hasData = list.length > 0
+  // Every event the range has, seven to a page. The card used to stop at the seventh with no way to the rest, so a
+  // site with more events than that could not see them anywhere (14-11-2026). The pager is the other blocks' own.
+  const all = goalCounts || []
+  const pageCount = Math.max(1, Math.ceil(all.length / LIMIT))
+  const windowKey = liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`
+  const [page, setPage] = useCardPage(windowKey, pageCount)
+  const list = all.slice((page - 1) * LIMIT, page * LIMIT)
+  const hasData = all.length > 0
   const emptySlots = Math.max(0, LIMIT - list.length)
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -59,7 +67,6 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
   // entering/leaving realtime), what was fetched for the old one is dropped rather than
   // shown under the new one (PULSE-192). Adjusted during render, React's pattern for
   // state derived from props, so no frame shows the old window's rows.
-  const windowKey = liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`
   const [cachedWindow, setCachedWindow] = useState(windowKey)
   if (cachedWindow !== windowKey) {
     setCachedWindow(windowKey)
@@ -117,7 +124,8 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
       {hasData ? (
         <div className="space-y-2 flex-1 min-h-[270px]">
           {list.map((row) => {
-            const maxCount = list[0]?.count ?? 0
+            // Against the whole list's largest count, so a bar means the same on every page.
+            const maxCount = all[0]?.count ?? 0
             const barWidth = maxCount > 0 ? (row.count / maxCount) * 75 : 0
             // M12 (owner pick A): a row whose count is imported days only has
             // no properties to show (an export carries none), so it neither
@@ -170,13 +178,13 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
                     aria-expanded={expandable ? isExpanded : undefined}
                     onClick={expandable ? () => toggleExpand(row.event_name) : undefined}
                     data-testid="goal-row"
-                    className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 ${expandable ? 'cursor-pointer' : 'cursor-default'}`}
+                    className={`interactive-row ${DIMENSION_ROW} ${expandable ? 'cursor-pointer' : 'cursor-default'}`}
                   >
                     {rowBody}
                   </button>
                 ) : (
                   // Imported days only: nothing to open, so not a control (M12, owner pick A).
-                  <div data-testid="goal-row" className="interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 cursor-default">
+                  <div data-testid="goal-row" className={`interactive-row ${DIMENSION_ROW} cursor-default`}>
                     {rowBody}
                   </div>
                 )}
@@ -257,6 +265,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
           }}
         />
       )}
+      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="events" />
     </>
   )
 

@@ -14,6 +14,8 @@ import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { CompactNumber } from '@/components/ui/compact-number'
 import { type DimensionFilter } from '@/lib/filters'
 import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
+import { DIMENSION_ROW } from '@/components/dashboard/MetricRowStat'
+import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 
 // ---------------------------------------------------------------------------
 // Outbound — where visitors go when they leave (owner pick A, 08-09-2026;
@@ -87,16 +89,22 @@ function hostOf(url: string): string | null {
   }
 }
 
+/** Where a destination's favicon comes from: the app's own proxy. One builder for the icon and for its preload. */
+const destinationIconUrl = (host: string) => `${FAVICON_SERVICE_URL}?domain=${encodeURIComponent(host)}&sz=32`
+
 /** A destination's favicon through the app's own proxy, falling back to the house globe. */
 function DestinationIcon({ host, failed, onFail }: { host: string; failed: boolean; onFail: () => void }) {
   if (failed) return <Globe className="text-neutral-500" />
   return (
     <Image
-      src={`${FAVICON_SERVICE_URL}?domain=${encodeURIComponent(host)}&sz=32`}
+      src={destinationIconUrl(host)}
       alt=""
       width={20}
       height={20}
       className="h-5 w-5 shrink-0 rounded-none object-contain"
+      // Eager and decoded with the row, as in Sources.
+      loading="eager"
+      decoding="sync"
       onError={onFail}
       unoptimized
     />
@@ -149,6 +157,12 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
   const pageCount = Math.max(1, Math.ceil(list.length / LIMIT))
   const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange.start}|${dateRange.end}`, pageCount)
   const displayed = list.slice((page - 1) * LIMIT, page * LIMIT)
+  // This page's favicons, its neighbours' and the first page of the two tabs that show them, asked for before a
+  // page flip or a tab switch needs them.
+  usePreloadImages(
+    [...list.slice(Math.max(0, (page - 2) * LIMIT), (page + 1) * LIMIT), ...rows.domains.slice(0, LIMIT), ...rows.links.slice(0, LIMIT)]
+      .map((row) => (row.host ? destinationIconUrl(row.host) : null)),
+  )
   const emptySlots = Math.max(0, LIMIT - displayed.length)
   const maxClicks = list.reduce((m, r) => Math.max(m, r.clicks), 0)
 
@@ -213,7 +227,7 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
                 const width = maxClicks > 0 ? (row.clicks / maxClicks) * BAR_CAP : 0
                 const share = totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''
                 const filterable = activeTab === 'from_page' && onFilter && row.path
-                const className = `interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${row.href || filterable ? ' cursor-pointer' : ''}`
+                const className = `interactive-row ${DIMENSION_ROW}${row.href || filterable ? ' cursor-pointer' : ''}`
                 const body = (
                   <>
                     <RowBar width={width} index={i} />

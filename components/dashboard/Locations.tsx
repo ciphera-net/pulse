@@ -9,7 +9,7 @@ import { formatNumber } from '@/lib/utils/format'
 import type { MapHover } from './MapView'
 import { MapHeadline } from './MapHeadline'
 import { CountryFlag } from '@/components/ui/CountryFlag'
-import { hasFlag } from '@/lib/flags'
+import { flagUrl, hasFlag } from '@/lib/flags'
 import iso3166 from 'iso-3166-2'
 import { TIMEZONE_COUNTRY } from '@/lib/timezone-countries.gen'
 import { formatLanguage } from '@/lib/dashboard/language'
@@ -21,8 +21,9 @@ import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
+import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
+import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
@@ -371,6 +372,15 @@ export default function Audience({ countries, cities, regions, languages, langua
   const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
 
   const displayedData = (!isVisualTab && hasData) ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
+  // The flags of this page and of the pages on either side, asked for before a page flip needs them.
+  usePreloadImages(
+    isVisualTab
+      ? []
+      : allData.slice(Math.max(0, (page - 2) * LIMIT), (page + 1) * LIMIT).map((item) => {
+          const code = getItemFlagCode(item, activeTab, isLanguageGrouped)
+          return hasFlag(code) ? flagUrl(code) : null
+        }),
+  )
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
   const getDisabledMessage = () => {
@@ -463,7 +473,7 @@ export default function Audience({ countries, cities, regions, languages, langua
                     <CascadeRow key={itemKey} index={idx}>
                       <Row
                         {...(canFilter ? { type: 'button' as const, onClick: () => canFilter && onFilter({ dimension: dim, operator: 'is', values: filterValues! }) } : {})}
-                        className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
+                        className={`interactive-row ${DIMENSION_ROW}${canFilter ? ' cursor-pointer' : ''}`}
                       >
                         <RowBar width={barWidth} index={idx} />
                         <div className="relative flex-1 truncate text-white flex items-center gap-3">

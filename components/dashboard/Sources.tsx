@@ -14,9 +14,10 @@ import { ListSkeleton } from '@/components/skeletons'
 import { type CampaignStat, type TopReferrer } from '@/lib/api/stats'
 import { useCampaignsList, useFullDimensionList } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
+import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
+import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { Select, Switcher } from '@ciphera-net/facet'
 
@@ -211,6 +212,14 @@ export default function Sources({
   const [page, setPage] = useCardPage(`${view}|${view === 'campaigns' ? utm : ''}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
   const slice = <T,>(rows: T[]) => rows.slice((page - 1) * LIMIT, page * LIMIT)
   const displayedReferrers = slice(allReferrers)
+  // The favicons of this page and of the pages on either side, asked for before a page flip or a tab switch
+  // needs them. On another tab that is the referrers' first two pages.
+  const referrerPage = view === 'referrers' ? page : 1
+  usePreloadImages(
+    allReferrers
+      .slice(Math.max(0, (referrerPage - 2) * LIMIT), (referrerPage + 1) * LIMIT)
+      .map((ref) => getReferrerFavicon(ref.referrer)),
+  )
   const displayedChannels = slice(filteredChannels)
   const displayedCampaigns = hasCampaignData ? slice(allCampaigns) : []
   const emptySlotsFor = (n: number) => Math.max(0, LIMIT - n)
@@ -237,6 +246,9 @@ export default function Sources({
           width={20}
           height={20}
           className="w-5 h-5 flex-shrink-0 rounded-none object-contain"
+          // Eager and decoded with the row: the row's page flip is the only moment this icon is looked at.
+          loading="eager"
+          decoding="sync"
           onError={() => setFaviconFailed((prev) => new Set(prev).add(key))}
           onLoad={(e) => {
             // Google's favicon service returns a 16x16 default globe when no real favicon exists
@@ -250,7 +262,7 @@ export default function Sources({
     return <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center">{getReferrerIcon(key)}</span>
   }
 
-  const rowClass = `interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`
+  const rowClass = `interactive-row ${DIMENSION_ROW}${onFilter ? ' cursor-pointer' : ''}`
   const infoTipKey: Tab = view === 'campaigns' ? utm : view
 
   return (

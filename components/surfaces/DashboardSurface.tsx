@@ -418,11 +418,12 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // zero is indistinguishable from a measured one (F11).
   const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
   const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
-  // In realtime the rail's headline visitors IS the orb's count — the tracker's
-  // presence over the same five minutes. Read from events instead, a reader still on
-  // one page past five minutes without a new pageview is on the site (orb) but not in
-  // the window (rail): both correct, contradictory side by side, which is exactly what
-  // the owner saw (plan §11.10). One source, one number.
+  // In realtime the rail's headline visitors IS the orb's count: the server's live count
+  // over the same five minutes (since 14-11-2026 read from ClickHouse with the realtime
+  // view's visibility, so a bot caught after it arrived is left out; the Redis presence
+  // list is only its fallback). Taken from the window's own stats instead, the rail and
+  // the orb could each be right and still disagree side by side, which is what was
+  // reported (plan §11.10). One source, one number.
   const deckStats: Stats = isLive ? { ...stats, visitors: realtime } : stats
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
