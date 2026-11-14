@@ -17,8 +17,8 @@ import { integrations, isInstallUnsupported, type Integration } from '@/lib/inte
 const flagged = integrations.filter(isInstallUnsupported)
 
 describe('snippet.unsupported', () => {
-  it('marks exactly the platforms that forbid custom script injection', () => {
-    expect(flagged.map((i) => i.id).sort()).toEqual(['amp', 'linktree', 'notion', 'substack'])
+  it('lists no platform that cannot run Pulse: such a platform is removed from the registry, never listed as unsupported', () => {
+    expect(flagged.map((i) => i.id)).toEqual([])
   })
 
   it('never ships alongside install code — the contradiction the flag prevents', () => {
