@@ -441,8 +441,8 @@ export default function CommandDeck({
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
                 <CardEmptyState
                   icon={<ChartLine />}
-                  title="No visitors yet"
-                  description="Your traffic chart will come alive once visitors start arriving. Share your site to get the first data point."
+                  title="No visits in this range"
+                  fresh="Visitors are drawn here from the first visit on."
                   className="py-0"
                 />
               </div>
@@ -450,8 +450,8 @@ export default function CommandDeck({
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
                 <CardEmptyState
                   icon={<ChartLine />}
-                  title={`No ${activeMetric?.label.toLowerCase()} recorded`}
-                  description="Try expanding the time range or checking back later."
+                  title="No visits in this range"
+                  fresh="Visitors are drawn here from the first visit on."
                   className="py-0"
                 />
               </div>

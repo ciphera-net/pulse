@@ -442,16 +442,10 @@ export default function Audience({ countries, cities, regions, languages, langua
               ) : null
             ) : (
               <CardEmptyState
-              live={live}
+                live={live}
                 icon={<GlobeHemisphereWest />}
-                title="Your first visitor hasn't arrived"
-                publicTitle="No visitors yet"
-                description="Countries and cities will light up on this map as traffic flows in from around the world."
-                action={{
-                label: 'Install tracking script',
-                href: '/settings/site/general',
-                onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
-              }}
+                title="No visits in this range"
+                fresh="The countries your visitors come from are shown here."
               />
             )
           ) : (
@@ -498,8 +492,8 @@ export default function Audience({ countries, cities, regions, languages, langua
             <CardEmptyState
               live={live}
               icon={<GlobeHemisphereWest />}
-              title={`No ${activeTab} data yet`}
-              description={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}-level breakdowns appear once enough visitors arrive to generate meaningful geographic data.`}
+              title="No visits in this range"
+              fresh="The countries your visitors come from are shown here."
             />
           )
         )}

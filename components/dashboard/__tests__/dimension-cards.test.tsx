@@ -484,7 +484,7 @@ describe('Sources — campaigns view', () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
     openCampaigns()
     expect(screen.getByText(/Couldn.t load campaigns/)).toBeTruthy()
-    expect(screen.queryByText(/No UTM data yet/)).toBeNull()
+    expect(screen.queryByText(/No campaign visits in this range/)).toBeNull()
     fireEvent.click(screen.getByText('Retry'))
     expect(mutate).toHaveBeenCalled()
   })
@@ -497,7 +497,7 @@ describe('Sources — campaigns view', () => {
     })
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
     openCampaigns()
-    expect(screen.getByText(/No UTM data yet/)).toBeTruthy()
+    expect(screen.getByText(/No campaign visits in this range/)).toBeTruthy()
     expect(screen.queryByText(/Couldn.t load campaigns/)).toBeNull()
   })
 
@@ -530,7 +530,7 @@ describe('Sources — campaigns view', () => {
       expect(call[5]).toBe(false)
     }
     // And the payload rows actually render.
-    expect(screen.queryByText(/No UTM data yet/)).toBeNull()
+    expect(screen.queryByText(/No campaign visits in this range/)).toBeNull()
   })
 
   // 05-09-2026: the card's own CSV export and the in-dashboard UTM builder are
@@ -550,7 +550,7 @@ describe('Sources — campaigns view', () => {
     })
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
     openCampaigns()
-    expect(screen.getByText(/No UTM data yet/)).toBeTruthy()
+    expect(screen.getByText(/No campaign visits in this range/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Build a UTM URL/ })).toBeNull()
   })
 })
@@ -710,14 +710,14 @@ describe('Outbound', () => {
     useOutboundLinks.mockReturnValue({ data: undefined, error: new Error('500'), isLoading: false })
     const { unmount } = render(<Outbound {...baseProps} />)
     expect(screen.getByText(/Couldn’t load outbound links/)).toBeTruthy()
-    expect(screen.queryByText(/No outbound clicks yet/)).toBeNull()
+    expect(screen.queryByText(/No outbound clicks in this range/)).toBeNull()
     unmount()
     // A failed revalidation after an EMPTY first fetch leaves stale empty
     // lists behind — still an error, never the empty state.
     useOutboundLinks.mockReturnValue({ data: { urls: [], paths: [] }, error: new Error('502'), isLoading: false })
     render(<Outbound {...baseProps} />)
     expect(screen.getByText(/Couldn’t load outbound links/)).toBeTruthy()
-    expect(screen.queryByText(/No outbound clicks yet/)).toBeNull()
+    expect(screen.queryByText(/No outbound clicks in this range/)).toBeNull()
   })
 
   it('keeps stale rows on screen through a failed revalidation', () => {
@@ -730,11 +730,11 @@ describe('Outbound', () => {
   it('shows the empty state for a range with no outbound clicks, and nothing while loading', () => {
     useOutboundLinks.mockReturnValue({ data: undefined, error: undefined, isLoading: true })
     const { unmount } = render(<Outbound {...baseProps} />)
-    expect(screen.queryByText(/No outbound clicks yet/)).toBeNull()
+    expect(screen.queryByText(/No outbound clicks in this range/)).toBeNull()
     unmount()
     useOutboundLinks.mockReturnValue({ data: { urls: [], paths: [] }, error: undefined, isLoading: false })
     render(<Outbound {...baseProps} />)
-    expect(screen.getByText(/No outbound clicks yet/)).toBeTruthy()
+    expect(screen.getByText(/No outbound clicks in this range/)).toBeTruthy()
   })
 
   it('keys its request on the resolved dates AND the period token', () => {

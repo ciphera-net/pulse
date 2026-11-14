@@ -99,6 +99,9 @@ vi.mock('@/lib/swr/dashboard', () => ({
   // The chart's previous-period series (PUL-19) — a separate request, not the
   // dashboard fan-out this file counts.
   useDailyStats: () => ({ data: undefined }),
+  // The banner's install status, which the surface reads too for its empty blocks' words (the same SWR entry in
+  // the app; here the banner is stubbed, so this is the one reader). Not a dashboard request either.
+  useInstallStatus: () => ({ data: undefined }),
   useDashboard: (
     siteId: string,
     start: string,

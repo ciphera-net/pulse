@@ -203,13 +203,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             <CardEmptyState
               live={live}
               icon={<FileText />}
-              title="Waiting for page views"
-              description="Your most visited pages will rank here once traffic arrives. Entry and exit pages are tracked automatically."
-              action={{
-                label: 'Install tracking script',
-                href: '/settings/site/general',
-                onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
-              }}
+              title="No page views in this range"
+              fresh="Your pages are listed here by how often they are viewed."
             />
           )}
         </div>

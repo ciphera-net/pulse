@@ -251,18 +251,14 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
         </div>
       ) : (
         <CardEmptyState
+          // Realtime: the one line every live block reads, where this one used to say "No events tracked yet".
+          live={liveMinutes != null}
           icon={<Target />}
-          title="No events tracked yet"
-          description="Add pulse.track('event') where actions happen on your site, then see conversion counts here."
-          action={{
-            // * This one is genuinely documentation, not the snippet: the copy
-            // * above it is about pulse.track('event'). /installation is a
-            // * marketing page about the script and says nothing about custom
-            // * events. Verified 200 before linking it.
-            label: 'Read the docs',
-            href: docsUrl('custom-events'),
-            external: true,
-          }}
+          title="No events in this range"
+          fresh="Events your site sends are counted here."
+          // This block stays empty until the customer sends an event, on a new site as on an old one: the link is
+          // to the page that says how (the docs, not the install page, which says nothing about events).
+          docs={{ label: 'How to send events', href: docsUrl('custom-events'), whenFresh: true }}
         />
       )}
       <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="events" />

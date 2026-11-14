@@ -36,18 +36,16 @@ function dimFor(share: number): number {
 
 const CAPTIONS = ['to 25%', 'to 50%', 'to 75%', 'to the end']
 
-export default function ScrollDepthBars({ scrollDepth, preview, bare = false, siteId }: {
+export default function ScrollDepthBars({ scrollDepth, preview, bare = false, live = false }: {
   scrollDepth?: ScrollDepthDistribution
-  // * Which site this belongs to. Only the empty state needs it — the install
-  // * link has to record the site before /settings/site/general reads it, or
-  // * it opens on whichever site happened to be remembered last. Optional so
-  // * the existing render tests keep passing unchanged.
   // The newest full-page capture; null/undefined = render the rails fallback.
   preview?: PagePreview | null
   // Render only the content, no card chrome/header — for composition inside
   // the Content section's tabbed card (Scroll depth · Events).
   bare?: boolean
-  siteId?: string
+  // Realtime mode: an empty card reads the one realtime line, as every block does (CardEmptyState). "Try a longer
+  // range." is no advice for a window that is always the last five minutes.
+  live?: boolean
 }) {
   const total = scrollDepth?.total_sessions ?? 0
   const hasData = total > 0
@@ -187,14 +185,10 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false, si
         preview?.screenshot ? renderLayered(preview.screenshot) : rails
       ) : (
         <CardEmptyState
+          live={live}
           icon={<ArrowLineDown />}
-          title="No scrolls recorded yet"
-          description="Scroll tracking is automatic — depth data appears once visitors start reading your pages."
-          action={{
-            label: 'Install tracking script',
-            href: '/settings/site/general',
-            onClick: siteId ? () => sessionStorage.setItem('pulse_active_site', siteId) : undefined,
-          }}
+          title="No scroll depth in this range"
+          fresh="How far visitors scroll down your pages is shown here."
         />
       )}
     </>
