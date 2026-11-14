@@ -26,7 +26,7 @@ describe("installMethod: 'plugin'", () => {
     // GTM uses its own 'gtm-tag' method. Adding an id here without a live
     // listing documents an install path a stranger cannot follow.
     expect(plugins.map((i) => i.id).sort()).toEqual(
-      ['astro', 'docusaurus', 'drupal', 'framer', 'woocommerce', 'wordpress'].sort(),
+      ['astro', 'docusaurus', 'drupal', 'framer', 'odoo', 'woocommerce', 'wordpress', 'zaraz'].sort(),
     )
   })
 

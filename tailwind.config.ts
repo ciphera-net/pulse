@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss'
 import plugin from 'tailwindcss/plugin'
-import { rampColors, rampVariables } from './styles/themeRamp'
+import { darkGroundVariables, rampColors, rampVariables } from './styles/themeRamp'
 
 // * Themed colour ramps (PULSE-31). The variables are emitted from the same
 // * module that defines the colour keys, so the two cannot disagree.
@@ -11,6 +11,9 @@ const themeRampPlugin = plugin(({ addBase }) => {
     ':root': ramp.dark,
     ':root.light': ramp.light,
     '@media (prefers-color-scheme: light)': { ':root.theme-system': ramp.light },
+    // * A subtree on a ground that is dark in both themes (a scrim, a darkened capture, a black chip) keeps the dark
+    // * palette: its white text stays white in the light theme (darkGroundVariables, styles/themeRamp.ts).
+    '.dark-ground': darkGroundVariables(),
   })
 })
 
