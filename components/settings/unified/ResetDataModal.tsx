@@ -6,6 +6,7 @@ import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
 import { ArrowCounterClockwise, WarningCircle } from '@phosphor-icons/react'
 import { whilePending } from '@/lib/hold/pending'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
+import { useFeature } from '@/lib/features'
 import { KitDialogRow, KitDialogTitle, KitWarningLine } from '@/components/settings/kit/Kit'
 
 /**
@@ -22,6 +23,14 @@ const MODULES: { id: ResetModule; label: string; caption: string; refetched?: bo
   { id: 'cdn', label: 'Bunny CDN', caption: "Pulse's copy of your bandwidth data. Pulse fetches it again from Bunny.", refetched: true },
   { id: 'search_console', label: 'Search Console', caption: "Pulse's copy of your search data. Pulse fetches it again from Google.", refetched: true },
 ]
+
+/**
+ * "Visits and events" for a team with Analyst (the barry beta): an analytics reset also deletes the site's Analyst chats,
+ * since their answers quote the figures it erases (pulse-backend: barry_turns is on the reset's analyticsDerivedTables).
+ * Wording picked 14-11-2026 (option A, Pulse/docs/plans/09-11-2026-barry-ai-analyst-plan.md, Log 14:00).
+ */
+const ANALYTICS_CAPTION_WITH_ANALYST =
+  "Every pageview, visit and event, the totals made from them, and your team's Analyst chats about this site. An import in progress stops."
 
 interface ResetDataModalProps {
   open: boolean
@@ -44,6 +53,8 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
   const [selected, setSelected] = useState<Set<ResetModule>>(new Set())
   const { defer } = useUndo()
   const all = selected.size === MODULES.length
+  // * null until the team's betas load: the chats are named only once the team is known to have Analyst.
+  const analyst = useFeature('barry') === true
 
   const handleClose = () => {
     setSelected(new Set())
@@ -76,7 +87,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
     <KitDialogRow
       key={m.id}
       label={m.label}
-      caption={m.caption}
+      caption={m.id === 'analytics' && analyst ? ANALYTICS_CAPTION_WITH_ANALYST : m.caption}
       control={<Checkbox checked={selected.has(m.id)} onChange={() => toggle(m.id)} aria-label={m.label} />}
     />
   )
