@@ -226,3 +226,34 @@ describe('FleetDeck', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
   })
 })
+
+// 14-11-2026 (Pulse/docs/plans/14-11-2026-light-theme-site-cards.md): what sits on the card's dark scrim, chip and
+// gear carries `dark-ground`, which keeps the dark palette in the light theme (styles/themeRamp.ts).
+describe('FleetCard on its dark ground', () => {
+  const onGround = (el: Element | null) => el !== null && el.closest('.dark-ground') !== null
+
+  it('draws the name, the address, the count, the chip, the gear and the sparkline on dark ground', () => {
+    const { container } = render(
+      <FleetCard site={makeSite()} overview={makeOverview({ uptime_status: 'degraded' })} overviewError={false} />
+    )
+    expect(onGround(screen.getByText('Ciphera'))).toBe(true)
+    expect(onGround(screen.getByText('ciphera.net'))).toBe(true)
+    expect(onGround(screen.getByText('visitors today'))).toBe(true)
+    expect(onGround(screen.getByText('degraded'))).toBe(true)
+    expect(onGround(container.querySelector('a[title="Site Settings"]'))).toBe(true)
+    expect(onGround(container.querySelector('svg.h-16'))).toBe(true)
+    // The card itself is page chrome: its frame keeps following the theme.
+    expect(container.firstElementChild?.classList.contains('dark-ground')).toBe(false)
+  })
+
+  it('puts the setup text of a never-installed card on dark ground only over a capture', () => {
+    const overview = makeOverview({ install_status: 'never_installed', last_event_at: null, visitors_today: 0 })
+    const bare = render(<FleetCard site={makeSite()} overview={overview} overviewError={false} />)
+    expect(onGround(screen.getByText('Waiting for the first event'))).toBe(false)
+    bare.unmount()
+
+    previewData = { screenshot: 'data:image/png;base64,iVBORw0KGgo=', width: 1440, height: 900, strategy: 'desktop', checked_at: '2026-11-14T10:00:00Z' }
+    render(<FleetCard site={makeSite()} overview={overview} overviewError={false} />)
+    expect(onGround(screen.getByText('Waiting for the first event'))).toBe(true)
+  })
+})

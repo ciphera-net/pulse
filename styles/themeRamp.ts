@@ -21,9 +21,12 @@
  *     warning (red-900) becomes a light tint (red-100). Colour stays in the
  *     hue; only lightness flips, so meaning is kept and contrast holds.
  *   - `black` is not themed: its uses are scrims, which stay dark over a light page.
+ *   - A subtree drawn ON such a scrim takes the class `dark-ground` (darkGroundVariables below): the dark
+ *     palette inside it in both themes, so its text cannot turn into dark ink on a dark ground.
  *
  * Plain data and pure functions: loaded by Tailwind's config loader and by vitest.
  */
+import { tokens } from '@ciphera-net/facet-tokens'
 import colors from 'tailwindcss/colors'
 
 export const SHADES = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'] as const
@@ -116,4 +119,19 @@ export function rampColors(): Record<string, string | Record<string, string>> {
     out[hue] = Object.fromEntries(SHADES.map((s) => [s, ref(`${hue}-${s}`)]))
   }
   return out
+}
+
+/**
+ * The variables of a `dark-ground` subtree (14-11-2026): one that sits on a ground dark in BOTH themes, such as a
+ * scrim, a darkened capture or a black chip (the Your Sites cards, components/sites/FleetCard.tsx). It is the dark
+ * palette's own values, plus Facet's `--brand-ink` at its dark value (the brand fill, which facet.css uses as text in
+ * dark), so inside it `text-neutral-50` is near-white and `text-brand-ink` the brand orange whatever the page's theme.
+ * Custom properties set on an element win over the ones it inherits from `:root.light`, so the class works on any
+ * element below the root. Emitted under `.dark-ground` by the plugin in tailwind.config.ts.
+ *
+ * Why it exists: the light theme turned the cards' white text into near-black on their near-black scrim, so the site
+ * names and visitor counts disappeared (Pulse/docs/plans/14-11-2026-light-theme-site-cards.md).
+ */
+export function darkGroundVariables(): Record<string, string> {
+  return { ...rampVariables().dark, '--brand-ink': tokens.color.brand.rgb }
 }

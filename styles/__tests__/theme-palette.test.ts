@@ -14,7 +14,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import colors from 'tailwindcss/colors'
 import config from '../../tailwind.config'
-import { HUE_OVERRIDES, MIRROR, SHADES, THEMED_HUES, hexToTriplet, rampColors, rampVariables } from '../themeRamp'
+import { HUE_OVERRIDES, MIRROR, SHADES, THEMED_HUES, darkGroundVariables, hexToTriplet, rampColors, rampVariables } from '../themeRamp'
 
 const { dark, light } = rampVariables()
 const tw = colors as unknown as Record<string, Record<string, string>>
@@ -111,5 +111,37 @@ describe('chart variables', () => {
 
   it('every light chart variable overrides one the dark :root declares', () => {
     for (const k of Object.keys(lightBlock)) expect(root[k], k).toBeDefined()
+  })
+})
+
+// 14-11-2026 (Pulse/docs/plans/14-11-2026-light-theme-site-cards.md): a subtree on a ground that is dark in both
+// themes (the Your Sites cards' scrim, chip and gear) takes `dark-ground` and keeps the dark palette, so the light
+// theme cannot turn its white text into near-black on near-black.
+describe('dark ground', () => {
+  const ground = darkGroundVariables()
+
+  it('holds the dark value of every ramp variable, plus the dark brand ink and nothing else', () => {
+    for (const [name, value] of Object.entries(dark)) expect(ground[name], name).toBe(value)
+    expect(Object.keys(ground).sort()).toEqual([...Object.keys(dark), '--brand-ink'].sort())
+  })
+
+  it("its brand ink is facet.css's DARK --brand-ink (the :root block), never the light one", () => {
+    const css = readFileSync(path.join(__dirname, '..', '..', 'node_modules', '@ciphera-net', 'facet', 'dist', 'facet.css'), 'utf8')
+    const block = (selector: string) => {
+      const start = css.indexOf(`${selector} {`)
+      expect(start, selector).toBeGreaterThanOrEqual(0)
+      return css.slice(start, css.indexOf('}', start))
+    }
+    const ink = (b: string) => b.match(/--brand-ink:\s*([0-9 ]+);/)?.[1]
+    expect(ground['--brand-ink']).toBe(ink(block('\n:root')))
+    expect(ground['--brand-ink']).not.toBe(ink(block(':root.light')))
+  })
+
+  it('the Tailwind plugin emits it under .dark-ground', () => {
+    const emitted: Record<string, unknown> = {}
+    const ramp = (config.plugins ?? [])[0] as { handler: (api: { addBase: (b: Record<string, unknown>) => void }) => void }
+    ramp.handler({ addBase: (b) => Object.assign(emitted, b) })
+    expect(emitted['.dark-ground']).toEqual(ground)
+    expect(emitted[':root.light']).toEqual(light)
   })
 })
