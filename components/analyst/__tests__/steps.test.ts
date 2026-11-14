@@ -276,6 +276,27 @@ describe('the data lookups', () => {
     })
   })
 
+  // * Plan §4c: a web search is named by its words, on one line and cut, while it runs, once it is done and when it
+  // * failed. Its results have no figures block yet (that waits for an options round), so it stays one line.
+  it('names a web search by its words, cut on one line, and says when one failed', () => {
+    expect(runningLookup('search_web', { query: 'google core update november 2026' })).toBe('Searching the web for "google core update november 2026"')
+    expect(runningLookup('search_web', { query: '  google\n core   update ' })).toBe('Searching the web for "google core update"')
+    expect(runningLookup('search_web', {})).toBe('Searching the web')
+    expect(runningLookup('search_web', { query: 'b'.repeat(70) })).toBe(`Searching the web for "${'b'.repeat(60)}…"`)
+    const done = step('search_web', { query: 'google core update' }, {
+      query: 'google core update',
+      market: 'en-us',
+      results: [{ title: 'Core update', url: 'https://news.example.org/story-1', site: 'news.example.org' }],
+    })
+    expect(describeStep(done)).toEqual({ kind: 'line', text: 'Web results for "google core update"', failed: false })
+    expect(finishedLookup(done).text).toBe('Web results for "google core update"')
+    expect(describeStep(step('search_web', { query: 'x' }, undefined, 'the web search failed: answer without it'))).toEqual({
+      kind: 'line',
+      text: 'Analyst could not search the web',
+      failed: true,
+    })
+  })
+
   it('names the traffic kept out as the settings page does', () => {
     expect(describeStep(step('get_excluded_traffic', {}, { events_last_7_days: 30, by_kind: [] }))).toEqual({
       kind: 'figures',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import {
   ActionBarPrimitive,
@@ -53,6 +53,7 @@ import { getReferrerIcon } from '@/lib/utils/icons'
 import { pctChange } from '@/lib/utils/pctChange'
 import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
 import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
+import { answerLinkAllowed, webResultURLs } from './links'
 import { RECOVERY_LIMIT_MS, waitForTurn } from './recover'
 import { describeStep, finishedLookup, runningLookup, type FigureBlock } from './steps'
 import {
@@ -284,13 +285,15 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadHorizon reach={reach} />
-      <PageThread
-        siteId={siteId}
-        siteName={siteName}
-        siteTimezone={siteTimezone}
-        usage={usage ?? null}
-        onOpenChat={onOpenChat}
-      />
+      <AnswerSite.Provider value={siteName}>
+        <PageThread
+          siteId={siteId}
+          siteName={siteName}
+          siteTimezone={siteTimezone}
+          usage={usage ?? null}
+          onOpenChat={onOpenChat}
+        />
+      </AnswerSite.Provider>
     </AssistantRuntimeProvider>
   )
 }
@@ -770,33 +773,49 @@ const PageFigures: FC<{ block: FigureBlock }> = ({ block }) => (
   </div>
 )
 
+/** The domain of the site the thread is about, for the links an answer may carry (links.ts). */
+const AnswerSite = createContext<string | null>(null)
+
 // * Each element takes only what it draws; a link opens in a new tab, so following one never loses the conversation.
 // * While the words come, a caret follows the last one (an-md in styles/globals.css, off once the answer is in).
-const PageMarkdown: FC = () => (
-  <MarkdownTextPrimitive
-    className="an-md flex flex-col gap-4"
-    components={{
-      p: ({ children }) => <p className="text-[15px] leading-7 text-neutral-200">{children}</p>,
-      strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-      ul: ({ children }) => <ul className="flex list-disc flex-col gap-1.5 pl-5 text-[15px] leading-7 text-neutral-200">{children}</ul>,
-      ol: ({ children, start }) => (
-        <ol start={start} className="flex list-decimal flex-col gap-1.5 pl-5 text-[15px] leading-7 text-neutral-200">
-          {children}
-        </ol>
-      ),
-      a: ({ children, href }) => (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-white underline decoration-neutral-600 underline-offset-2 hover:decoration-white"
-        >
-          {children}
-        </a>
-      ),
-    }}
-  />
-)
+// * The web lookup (plan §4c) brings web text into answers, so a link is drawn only to the site's own pages, Ciphera's
+// * hosts and the exact pages the answer's own web searches returned (any other link keeps its words, unlinked), and
+// * an image is never drawn: the CSP stops one from an outside host already, and this is the second layer.
+const PageMarkdown: FC = () => {
+  const siteDomain = useContext(AnswerSite)
+  // * One string, so the selector's value changes only when a web search's results do.
+  const webKey = useAuiState((s) => webResultURLs(s.message.content).join('\n'))
+  const webURLs = useMemo(() => new Set(webKey ? webKey.split('\n') : []), [webKey])
+  return (
+    <MarkdownTextPrimitive
+      className="an-md flex flex-col gap-4"
+      components={{
+        p: ({ children }) => <p className="text-[15px] leading-7 text-neutral-200">{children}</p>,
+        strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+        ul: ({ children }) => <ul className="flex list-disc flex-col gap-1.5 pl-5 text-[15px] leading-7 text-neutral-200">{children}</ul>,
+        ol: ({ children, start }) => (
+          <ol start={start} className="flex list-decimal flex-col gap-1.5 pl-5 text-[15px] leading-7 text-neutral-200">
+            {children}
+          </ol>
+        ),
+        a: ({ children, href }) =>
+          answerLinkAllowed(href, siteDomain, webURLs, window.location.origin) ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white underline decoration-neutral-600 underline-offset-2 hover:decoration-white"
+            >
+              {children}
+            </a>
+          ) : (
+            <span data-analyst="unlinked">{children}</span>
+          ),
+        img: () => null,
+      }}
+    />
+  )
+}
 
 // * The question box is the page's one elevated object: lit from the top, a deep soft shadow under it, a hairline
 // * between the question and its toolbar, and the send button the only orange that is not the mark. It sits above
