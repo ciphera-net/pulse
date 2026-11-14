@@ -146,6 +146,14 @@ export interface FleetCardProps {
  * a 7-day ghost sparkline. The only overlay chip is an amber status chip when
  * something is wrong — derived from install_status + uptime last_status, NEVER
  * is_verified (the known false green). Realtime is out of scope by decision.
+ *
+ * 🔑 The scrim, the chip and the gear are dark in BOTH themes, so everything drawn
+ * on them carries `dark-ground` (styles/themeRamp.ts darkGroundVariables): the
+ * dark palette inside, so the light theme cannot turn the name and the count
+ * into near-black on near-black, which it did until 14-11-2026 (owner pick A,
+ * Pulse/docs/plans/14-11-2026-light-theme-site-cards.md). The setup text of a
+ * never-installed card takes it only over a capture (darkened); without one the
+ * card's own ground follows the theme, and so does its text.
  */
 export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
   const [cardRef, inView] = useInView<HTMLDivElement>()
@@ -217,7 +225,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
 
       {/* Amber status chip — ONLY when unhealthy */}
       {chip && (
-        <span className="absolute left-3 top-3 z-[5] inline-flex items-center gap-1.5 rounded-none border border-amber-500/40 bg-black/85 px-2 py-1 text-[11px] font-medium text-amber-400">
+        <span className="dark-ground absolute left-3 top-3 z-[5] inline-flex items-center gap-1.5 rounded-none border border-amber-500/40 bg-black/85 px-2 py-1 text-[11px] font-medium text-amber-400">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
           {chip}
         </span>
@@ -228,7 +236,11 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
 
       {/* Never-installed: this card IS the setup state (the old docs card's job) */}
       {neverInstalled && (
-        <div className="absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 px-6 text-center pointer-events-none">
+        <div
+          className={`absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 px-6 text-center pointer-events-none ${
+            preview?.screenshot ? 'dark-ground' : ''
+          }`}
+        >
           <p className="text-sm font-semibold text-neutral-100">Waiting for the first event</p>
           <p className="mx-auto mt-1 max-w-[34ch] text-xs text-neutral-400">
             Install the tracking script to start collecting privacy-friendly analytics.
@@ -253,7 +265,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
 
       {/* Bottom stack: stalled notice + identity row. pointer-events pass
           through to the overlay link except on the real links. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20">
+      <div className="dark-ground pointer-events-none absolute inset-x-0 bottom-0 z-20">
         {stalled && (
           <div className="px-4 pb-1.5 text-xs font-medium text-amber-400">
             No events for {stalledDays ?? '1+'} day{stalledDays === 1 ? '' : 's'} —{' '}
@@ -302,7 +314,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
         <Link
           {...settingsProps}
           title="Site Settings"
-          className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-none border border-neutral-700 bg-black/70 text-neutral-300 opacity-0 transition-opacity duration-fast ease-apple hover:bg-neutral-800 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange group-hover:opacity-100"
+          className="dark-ground absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-none border border-neutral-700 bg-black/70 text-neutral-300 opacity-0 transition-opacity duration-fast ease-apple hover:bg-neutral-800 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange group-hover:opacity-100"
         >
           <SettingsIcon className="h-4 w-4" />
         </Link>

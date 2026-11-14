@@ -17,14 +17,16 @@ interface FleetSparklineProps {
  * overview window is the server's "today-6 … today" (lib/api/sites.ts), so
  * the last point is ALWAYS the in-progress day; no client date math decides
  * that. Decorative (aria-hidden, pointer-events-none): the card's one number
- * is the datum; this is its shape. One opacity channel, on the svg.
+ * is the datum; this is its shape. One opacity channel, on the svg. It rides
+ * a scrim that is dark in both themes, so it carries `dark-ground` (its brand
+ * and neutral inks keep their dark values; FleetCard.tsx).
  */
 export function FleetSparkline({ days, dim = false }: FleetSparklineProps) {
   if (days.length < 2) return null
   return (
     <Sparkline
       active={!dim}
-      className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full transition-opacity duration-base ease-apple ${
+      className={`dark-ground pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full transition-opacity duration-base ease-apple ${
         dim ? 'opacity-50' : 'opacity-60 group-hover:opacity-80'
       }`}
       dashedTail
