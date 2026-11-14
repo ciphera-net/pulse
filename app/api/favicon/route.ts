@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readFaviconQuery } from './query'
 
 /**
  * Same-origin favicon proxy, resolved by Sigil.
@@ -107,12 +108,22 @@ export async function GET(request: NextRequest) {
     return new NextResponse(null, { status: 503, headers: { 'Cache-Control': 'no-store' } })
   }
 
-  const domain = request.nextUrl.searchParams.get('domain')?.trim().toLowerCase() ?? ''
-  const sz = request.nextUrl.searchParams.get('sz') ?? '32'
-  const emailFallback = request.nextUrl.searchParams.get('fallback') === 'email'
+  // * The RAW query, read one way (./query.ts says why): never `searchParams`, which decodes names and takes the
+  // * first of two, so that a cache in front of this route could read the same address differently.
+  const query = readFaviconQuery(request.nextUrl.search)
+  const domain = query?.domain.toLowerCase() ?? ''
+  const sz = query?.sz ?? '32'
+  const emailFallback = query?.fallback === 'email'
 
-  if (!DOMAIN_RE.test(domain) || !TLD_HAS_LETTER.test(domain) || !ALLOWED_SIZES.has(sz)) {
-    return new NextResponse(null, { status: 400 })
+  // * `no-store` on the refusal: a cache must never keep it under the address of a real icon.
+  if (
+    !query ||
+    (query.fallback !== null && !emailFallback) ||
+    !DOMAIN_RE.test(domain) ||
+    !TLD_HAS_LETTER.test(domain) ||
+    !ALLOWED_SIZES.has(sz)
+  ) {
+    return new NextResponse(null, { status: 400, headers: { 'Cache-Control': 'no-store' } })
   }
 
   // * Returns the image bytes, or null for "this resolver had no icon / failed".

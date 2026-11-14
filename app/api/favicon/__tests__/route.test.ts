@@ -90,11 +90,62 @@ describe('GET /api/favicon', () => {
     expect(dialled).not.toContain('google')
   })
 
-  it('still rejects malformed input once configured', async () => {
+  it('still rejects malformed input once configured, with a refusal no cache may keep', async () => {
     const GET = await loadRoute('http://sigil.apps.svc.cluster.local/icon')
-    expect((await GET(req('?domain=github.com&sz=999'))).status).toBe(400)
-    expect((await GET(req('?domain=127.0.0.1&sz=32'))).status).toBe(400)
+    for (const qs of ['?domain=github.com&sz=999', '?domain=127.0.0.1&sz=32', '', '?sz=32']) {
+      const res = await GET(req(qs))
+      expect(res.status, qs).toBe(400)
+      expect(res.headers.get('Cache-Control'), qs).toBe('no-store')
+    }
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  // ── one reading per address ───────────────────────────────────────────────
+  // A cache keys an answer by the address as the cache reads it; the route makes the answer from the address as
+  // the route reads it. Every case below is an address the two could read differently (./query.ts). Each has to be
+  // refused BEFORE anything is resolved, or the icon of the first domain can be stored under the second one.
+
+  it('refuses an address that could be read two ways, and resolves nothing for it', async () => {
+    const GET = await loadRoute('http://sigil.apps.svc.cluster.local/icon')
+    for (const qs of [
+      '?%64omain=evil.example.org&domain=github.com&sz=32', // a percent-escaped NAME: `domain` to the URL API
+      '?domain=evil.example.org&domain=github.com&sz=32', // the same name twice
+      '?domain=github.com&sz=32&sz=64',
+      '?domain=github.com&sz=32&fallback=email&fallback=email',
+      '?Domain=evil.example.org&domain=github.com&sz=32', // a name in another case
+      '?domain=github.com&sz=32&x=1', // a name the route does not know
+      '?domain=github.com&sz=32&x=.png',
+      '?domain=github.com&sz=32&', // an empty pair
+      '?domain=github.com&sz=32&fallback', // a name with no value
+      '?domain=git%68ub.com&sz=32', // a percent-escaped VALUE
+      '?domain=github.com+&sz=32',
+      '?domain=%20github.com&sz=32', // was trimmed and accepted before 14-11-2026
+      '?domain=github.com&sz=%33%32',
+    ]) {
+      const res = await GET(req(qs))
+      expect(res.status, qs).toBe(400)
+      expect(res.headers.get('Cache-Control'), qs).toBe('no-store')
+    }
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('answers every address the callers write, in either order, and resolves the lowercased domain', async () => {
+    const GET = await loadRoute('http://sigil.apps.svc.cluster.local/icon')
+    fetchSpy.mockImplementation(async () => pngResponse())
+    const cases: [string, string][] = [
+      ['?domain=github.com&sz=32', 'domain=github.com&sz=32'], // the app (lib/utils/favicon.ts, icons.tsx)
+      ['?domain=github.com&sz=128', 'domain=github.com&sz=128'],
+      ['?sz=64&domain=github.com', 'domain=github.com&sz=64'], // order is free: each name is still read once
+      ['?domain=GitHub.com&sz=32', 'domain=github.com&sz=32'],
+      ['?domain=github.com', 'domain=github.com&sz=32'], // no size: 32
+      ['?domain=github.com&sz=32&fallback=email', 'domain=github.com&sz=32'], // the summary email
+    ]
+    for (const [qs, dialled] of cases) {
+      fetchSpy.mockClear()
+      const res = await GET(req(qs))
+      expect(res.status, qs).toBe(200)
+      expect(String(fetchSpy.mock.calls[0][0]), qs).toBe(`http://sigil.apps.svc.cluster.local/icon?${dialled}`)
+    }
   })
 
   /**
@@ -211,7 +262,7 @@ describe('GET /api/favicon', () => {
 
   // ── fallback=email: the weekly summary email's favicons ──────────────────
   // An email cannot fall back to a monogram on error, so a miss asked for with fallback=email redirects to the
-  // neutral glyph the email uses. Without the parameter, or with any other value, the 404 stays.
+  // neutral glyph the email uses. Without the parameter the 404 stays; any other value is refused.
 
   it('redirects a miss to the fixed email glyph when fallback=email', async () => {
     fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
@@ -223,14 +274,29 @@ describe('GET /api/favicon', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps the 404 without fallback=email, and for any other value', async () => {
+  it('keeps the 404 without fallback=email', async () => {
     fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
     const GET = await loadRoute(MC, INCLUSTER)
-    for (const qs of ['?domain=nope.example&sz=32', '?domain=nope.example&sz=32&fallback=https://evil.example/x.png', '?domain=nope.example&sz=32&fallback=EMAIL']) {
+    const res = await GET(req('?domain=nope.example&sz=32'))
+    expect(res.status).toBe(404)
+    expect(res.headers.get('Location')).toBeNull()
+  })
+
+  it('refuses any other fallback value: never a redirect, and never a target taken from the request', async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
+    const GET = await loadRoute(MC, INCLUSTER)
+    for (const qs of [
+      '?domain=nope.example&sz=32&fallback=https://evil.example/x.png',
+      '?domain=nope.example&sz=32&fallback=EMAIL',
+      '?domain=nope.example&sz=32&fallback=',
+      '?domain=nope.example&sz=32&fallback=evil.example',
+    ]) {
       const res = await GET(req(qs))
-      expect(res.status).toBe(404)
-      expect(res.headers.get('Location')).toBeNull()
+      expect(res.status, qs).toBe(400)
+      expect(res.headers.get('Location'), qs).toBeNull()
+      expect(res.headers.get('Cache-Control'), qs).toBe('no-store')
     }
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it('serves a found icon unchanged with fallback=email, and still 400s bad input', async () => {
