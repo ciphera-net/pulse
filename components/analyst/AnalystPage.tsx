@@ -52,8 +52,10 @@ import { cn } from '@/lib/utils'
 import { getReferrerIcon } from '@/lib/utils/icons'
 import { pctChange } from '@/lib/utils/pctChange'
 import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
+import { AnswerMemory, MemorySite } from './AnswerMemory'
 import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
 import { answerLinkAllowed, webResultURLs } from './links'
+import { RAISED } from './raised'
 import { RECOVERY_LIMIT_MS, waitForTurn } from './recover'
 import { describeStep, finishedLookup, runningLookup, type FigureBlock } from './steps'
 import {
@@ -86,9 +88,10 @@ import {
  *
  * Round 8 (picked 12-11-2026): an answer whose stream breaks after it started is read back from the server (./recover)
  * with a line under what had come in, then shows as any answer; one not kept in time says the connection dropped.
+ *
+ * Memories (picked 14-11-2026, P1, Q1 and S2): a card under the answer asks once to turn memories on and keep what the
+ * person said, and once they are on a line names what Analyst kept (./AnswerMemory).
  */
-
-const RAISED = 'bg-gradient-to-b from-white/[0.035] to-white/[0.01] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
 
 const SUGGESTIONS = [
   { title: 'Why did visitors change', label: 'this week?', prompt: 'Why did visitors change this week?', icon: TrendUp },
@@ -281,18 +284,21 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
   )
   const options = useMemo(() => ({ initialMessages: chat ? chatMessages(chat) : undefined }), [chat])
   const runtime = useLocalRuntime(adapter, options)
+  const memorySite = useMemo(() => ({ siteId, domain: siteName }), [siteId, siteName])
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ThreadHorizon reach={reach} />
       <AnswerSite.Provider value={siteName}>
-        <PageThread
-          siteId={siteId}
-          siteName={siteName}
-          siteTimezone={siteTimezone}
-          usage={usage ?? null}
-          onOpenChat={onOpenChat}
-        />
+        <MemorySite.Provider value={memorySite}>
+          <PageThread
+            siteId={siteId}
+            siteName={siteName}
+            siteTimezone={siteTimezone}
+            usage={usage ?? null}
+            onOpenChat={onOpenChat}
+          />
+        </MemorySite.Provider>
       </AnswerSite.Provider>
     </AssistantRuntimeProvider>
   )
@@ -520,6 +526,7 @@ const PageMessage: FC = () => {
             <ErrorPrimitive.Message />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
+        <AnswerMemory />
         {/* A question that failed or was stopped has no answer to copy. The newest answer keeps its bar in the
             * flow; on an earlier one it shows on hover and floats (data-floating) in the gap under the answer, so
             * showing it never changes the thread's height. In the flow, every answer the pointer crossed grew and

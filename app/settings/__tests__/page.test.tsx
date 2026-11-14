@@ -11,6 +11,9 @@ vi.mock('@/components/settings/active-site', () => ({ useActiveSite: () => mockA
 
 let grantedPerms: Set<string>
 vi.mock('@/lib/auth/permissions', () => ({ useCan: (p: string) => grantedPerms.has(p) }))
+// The team's Analyst beta: off unless a test says otherwise; null while the team's betas load.
+let mockAnalyst: boolean | null = false
+vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'barry' ? mockAnalyst : false) }))
 vi.mock('@/components/settings/SettingsLoadingState', () => ({ default: () => <div data-testid="loading" /> }))
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => (prop === 'then' ? undefined : () => null),
@@ -24,6 +27,7 @@ const OWNER = ['sites.edit', 'goals.manage', 'billing.view', 'integrations.manag
 beforeEach(() => {
   replace.mockReset()
   grantedPerms = new Set(OWNER)
+  mockAnalyst = false
   mockActiveSite = { sites: [{ id: 'a' }], isLoading: false }
 })
 
@@ -49,6 +53,20 @@ describe('/settings', () => {
 
   it('decides nothing while the sites are loading', () => {
     mockActiveSite = { sites: [], isLoading: true }
+    render(<SettingsIndexPage />)
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('lands a member of a team with Analyst on Analyst, the first page a member can use there', () => {
+    grantedPerms = new Set(['billing.view', 'analytics.export'])
+    mockAnalyst = true
+    render(<SettingsIndexPage />)
+    expect(replace).toHaveBeenCalledWith('/settings/site/analyst')
+  })
+
+  it("decides nothing while the team's betas are loading, as a beta's page can be the first", () => {
+    grantedPerms = new Set(['billing.view', 'analytics.export'])
+    mockAnalyst = null
     render(<SettingsIndexPage />)
     expect(replace).not.toHaveBeenCalled()
   })

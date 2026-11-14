@@ -49,10 +49,44 @@ export function skippedLookup(step: Pick<AnalystStep, 'error'> | undefined): boo
   return typeof step?.error === 'string' && step.error.startsWith(NOT_RUN)
 }
 
+/** Analyst's tool that keeps a memory (memories, 14-11-2026). It is no lookup, so it is never a line or a count. */
+export const MEMORY_TOOL = 'save_memory'
+
+/** What a question's save_memory step came to: offered (the person is asked first), saved, or already kept. */
+export interface MemoryOutcome {
+  kind: 'offered' | 'saved' | 'already_kept'
+  /** The memory's words, as Analyst wrote them or as the site keeps them already. */
+  memory: string
+}
+
+/** The question's memory, from its save_memory step's result; null when it kept none or the step failed. */
+export function memoryOfSteps(steps: readonly (Pick<AnalystStep, 'tool' | 'result'> | undefined)[]): MemoryOutcome | null {
+  for (const step of steps) {
+    if (step?.tool !== MEMORY_TOOL || !step.result || typeof step.result !== 'object') continue
+    const r = step.result as Record<string, unknown>
+    const memory = typeof r.memory === 'string' ? r.memory.trim() : ''
+    if (!memory) continue
+    if (r.saved === true) return { kind: 'saved', memory }
+    if (r.offered === true) return { kind: 'offered', memory }
+    if (r.already_kept === true) return { kind: 'already_kept', memory }
+  }
+  return null
+}
+
+/** A message's memory, as turnMetadata keeps it; null when it has none. */
+export function memoryOf(metadata: { readonly custom?: Record<string, unknown> } | undefined): MemoryOutcome | null {
+  const m = metadata?.custom?.memory as Partial<MemoryOutcome> | null | undefined
+  if (!m || typeof m.memory !== 'string' || !['offered', 'saved', 'already_kept'].includes(String(m.kind))) return null
+  return { kind: m.kind as MemoryOutcome['kind'], memory: m.memory }
+}
+
 /** A message's lookups as the line under them counts them: those skipped at the limit, and those that ran. */
-export function lookupCounts(steps: readonly (Pick<AnalystStep, 'error'> | undefined)[]): { skippedLookups: number; lookupsRan: number } {
-  const skipped = steps.filter((s) => skippedLookup(s)).length
-  return { skippedLookups: skipped, lookupsRan: steps.filter((s) => s !== undefined).length - skipped }
+export function lookupCounts(
+  steps: readonly (Pick<AnalystStep, 'error' | 'tool'> | undefined)[],
+): { skippedLookups: number; lookupsRan: number } {
+  const lookups = steps.filter((s) => s?.tool !== MEMORY_TOOL)
+  const skipped = lookups.filter((s) => skippedLookup(s)).length
+  return { skippedLookups: skipped, lookupsRan: lookups.filter((s) => s !== undefined).length - skipped }
 }
 
 /** The line under a message's lookups when some were skipped at the limit (round 8, pick B); null when none was. */
@@ -63,9 +97,10 @@ export function skippedLine(metadata: { readonly custom?: Record<string, unknown
   return `Analyst skipped ${skipped} more ${skipped === 1 ? 'lookup' : 'lookups'} because this question used all ${ran}.`
 }
 
-/** The turn as assistant-ui message parts: each lookup that ran as a tool call, then the answer. */
+/** The turn as assistant-ui message parts: each lookup that ran as a tool call, then the answer. A memory is no lookup. */
 export function turnParts(turn: AnalystTurn): ThreadAssistantMessagePart[] {
-  const parts: ThreadAssistantMessagePart[] = (turn.steps ?? []).filter((step) => !skippedLookup(step)).map((step, i) => ({
+  const lookups = (turn.steps ?? []).filter((step) => !skippedLookup(step) && step.tool !== MEMORY_TOOL)
+  const parts: ThreadAssistantMessagePart[] = lookups.map((step, i) => ({
     type: 'tool-call' as const,
     toolCallId: `${turn.id}-${i}`,
     toolName: step.tool,
@@ -82,15 +117,22 @@ const NO_FOLLOW_UPS: readonly string[] = []
 
 /**
  * What a finished turn's message carries besides its parts: the questions written for the person to ask next (round
- * 7, "Ask next" under the newest answer), kept in the message so a reopened chat shows them as they were offered.
+ * 7, "Ask next" under the newest answer), kept in the message so a reopened chat shows them as they were offered, and
+ * the memory the question kept or offered (memories, 14-11-2026).
  */
 export function turnMetadata(turn: AnalystTurn): {
-  custom: { followUps: readonly string[]; skippedLookups: number; lookupsRan: number }
+  custom: { followUps: readonly string[]; skippedLookups: number; lookupsRan: number; memory: MemoryOutcome | null }
 } {
   const followUps = Array.isArray(turn.follow_ups)
     ? turn.follow_ups.filter((q) => typeof q === 'string' && q.trim() !== '')
     : []
-  return { custom: { followUps: followUps.length > 0 ? followUps : NO_FOLLOW_UPS, ...lookupCounts(turn.steps ?? []) } }
+  return {
+    custom: {
+      followUps: followUps.length > 0 ? followUps : NO_FOLLOW_UPS,
+      ...lookupCounts(turn.steps ?? []),
+      memory: memoryOfSteps(turn.steps ?? []),
+    },
+  }
 }
 
 /** A message's follow-up questions, as turnMetadata keeps them; the same empty list when it has none. */
@@ -116,7 +158,7 @@ export interface LiveStep {
 export function liveParts(steps: readonly (LiveStep | undefined)[], text: string): ThreadAssistantMessagePart[] {
   const parts: ThreadAssistantMessagePart[] = []
   steps.forEach((step, i) => {
-    if (!step || skippedLookup(step.done)) return
+    if (!step || skippedLookup(step.done) || step.tool === MEMORY_TOOL) return
     parts.push({
       type: 'tool-call' as const,
       toolCallId: `live-${i}`,

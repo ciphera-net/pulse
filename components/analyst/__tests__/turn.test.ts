@@ -4,7 +4,20 @@
 import { describe, it, expect } from 'vitest'
 import { ApiError } from '@/lib/api/client'
 import type { AnalystStep, AnalystTurn } from '@/lib/api/analyst'
-import { OUTCOME_TEXT, analystErrorMessage, followUpsOf, liveParts, lookupCounts, skippedLine, skippedLookup, turnMetadata, turnParts } from '../turn'
+import {
+  MEMORY_TOOL,
+  OUTCOME_TEXT,
+  analystErrorMessage,
+  followUpsOf,
+  liveParts,
+  lookupCounts,
+  memoryOf,
+  memoryOfSteps,
+  skippedLine,
+  skippedLookup,
+  turnMetadata,
+  turnParts,
+} from '../turn'
 
 const usage = { used: 50, limit: 50, resets_at: '2026-12-01T00:00:00Z' }
 
@@ -162,5 +175,71 @@ describe('lookups skipped at the limit', () => {
     expect(skippedLine({ custom: lookupCounts([ran, ran]) })).toBeNull()
     expect(skippedLine(undefined)).toBeNull()
     expect(skippedLine({ custom: { skippedLookups: '2', lookupsRan: 14 } })).toBeNull()
+  })
+})
+
+// * Memories (14-11-2026): save_memory is no lookup. It never shows as a line or a figure and never counts; the turn
+// * carries what it came to, for the card or the line under the answer.
+describe('memories in a turn', () => {
+  const lookup: AnalystStep = { tool: 'get_stats', args: {}, ms: 80, result: { visitors: 56 } }
+  const memoryStep = (result: unknown, error?: string): AnalystStep => ({
+    tool: MEMORY_TOOL,
+    args: { memory: 'Shared Link is our newsletter.' },
+    ms: 12,
+    result,
+    ...(error ? { error } : {}),
+  })
+  const memoryTurn = (steps: AnalystStep[]): AnalystTurn => ({
+    id: 't1', conversation_id: 'c1', site_id: 's1', question: 'q', answer: 'Up.', outcome: 'answered', steps,
+    created_at: '2026-11-14T00:00:00Z',
+  })
+
+  it('reads what the save came to', () => {
+    expect(memoryOfSteps([lookup, memoryStep({ offered: true, memory: 'Shared Link is our newsletter.' })])).toEqual({
+      kind: 'offered', memory: 'Shared Link is our newsletter.',
+    })
+    expect(memoryOfSteps([memoryStep({ saved: true, memory: ' Shared Link is our newsletter. ', id: 'm1' })])).toEqual({
+      kind: 'saved', memory: 'Shared Link is our newsletter.',
+    })
+    expect(memoryOfSteps([memoryStep({ already_kept: true, memory: 'Shared Link is our newsletter' })])?.kind).toBe('already_kept')
+  })
+
+  it('reads nothing from a refused save, an empty memory or another tool', () => {
+    expect(memoryOfSteps([memoryStep(undefined, 'keep only what the person said in this conversation, in their own words')])).toBeNull()
+    expect(memoryOfSteps([memoryStep({ saved: true, memory: '  ' })])).toBeNull()
+    expect(memoryOfSteps([{ ...lookup, result: { saved: true, memory: 'x' } }])).toBeNull()
+    expect(memoryOfSteps([memoryStep('saved')])).toBeNull()
+    expect(memoryOfSteps([undefined, lookup])).toBeNull()
+  })
+
+  it('leaves the save out of the parts and the counts, and keeps its outcome in the metadata', () => {
+    const turn = memoryTurn([lookup, memoryStep({ offered: true, memory: 'Shared Link is our newsletter.' })])
+    const tools = turnParts(turn).filter((p) => p.type === 'tool-call')
+    expect(tools).toHaveLength(1)
+    expect(tools[0]).toMatchObject({ toolName: 'get_stats' })
+    const meta = turnMetadata(turn)
+    expect(meta.custom.lookupsRan).toBe(1)
+    expect(meta.custom.memory).toEqual({ kind: 'offered', memory: 'Shared Link is our newsletter.' })
+    expect(memoryOf(meta)).toEqual({ kind: 'offered', memory: 'Shared Link is our newsletter.' })
+    expect(turnMetadata(memoryTurn([lookup])).custom.memory).toBeNull()
+  })
+
+  it('leaves a save out of the live list while an answer streams', () => {
+    const parts = liveParts(
+      [
+        { tool: 'get_stats', args: {}, done: lookup },
+        { tool: MEMORY_TOOL, args: { memory: 'x' } },
+      ],
+      'Up',
+    )
+    expect(parts.filter((p) => p.type === 'tool-call')).toHaveLength(1)
+    expect(lookupCounts([lookup, memoryStep({ saved: true, memory: 'x' })])).toEqual({ skippedLookups: 0, lookupsRan: 1 })
+  })
+
+  it('reads only a well-formed memory from metadata', () => {
+    expect(memoryOf(undefined)).toBeNull()
+    expect(memoryOf({ custom: { memory: null } })).toBeNull()
+    expect(memoryOf({ custom: { memory: { kind: 'kept', memory: 'x' } } })).toBeNull()
+    expect(memoryOf({ custom: { memory: { kind: 'saved', memory: 3 } } })).toBeNull()
   })
 })
