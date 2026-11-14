@@ -11,7 +11,7 @@ import { getIntegration, integrationDocsUrl } from '@/lib/integrations'
 import { docsUrl } from '@/lib/docs'
 import { setSiteFramework } from '@/lib/api/sites'
 import { useIngestHealth, useInstallStatus } from '@/lib/swr/dashboard'
-import { CSP_DIRECTIVES, trackingScript, type ScriptChoices } from '@/lib/tracking-script'
+import { CSP_DIRECTIVES, trackingScript } from '@/lib/tracking-script'
 import { scriptState, turnedAwayLine } from './status'
 
 /** The picker in the settings copy deck's words (§3.3); onboarding keeps its own. */
@@ -36,21 +36,19 @@ const LINK = 'text-xs font-medium text-foreground underline-offset-2 hover:under
  * and its fact (data arriving; the script's place), then the script itself on demand. Before the first visit the
  * script starts shown, in the same place (R12: one page order in every state).
  *
- * The script's text comes from the page's unsaved choices, so what is shown is what Save will store; it reaches the
- * site only when the site's own copy is replaced.
+ * The script's text is the same whatever the site's choices (tracker v1.9.0): the script takes them from the site's
+ * saved settings, so a change applies without replacing the copy on the site.
  */
 export function TrackingScriptSection({
   siteId,
   domain,
   framework,
-  choices,
   onFrameworkSaved,
 }: {
   siteId: string
   domain: string
   /** The platform on record ('' or null for none). */
   framework: string | null | undefined
-  choices: ScriptChoices
   onFrameworkSaved: () => void
 }) {
   // Polls every few seconds while waiting for the first event, slowly after (lib/swr/dashboard.ts).
@@ -203,7 +201,7 @@ export function TrackingScriptSection({
                 <CopyBlock
                   label={platform?.snippet?.label ?? 'Tracking script'}
                   copyName="the tracking script"
-                  code={trackingScript(domain, platform, choices)}
+                  code={trackingScript(domain, platform)}
                   copiedToast="Script copied"
                 />
               )}

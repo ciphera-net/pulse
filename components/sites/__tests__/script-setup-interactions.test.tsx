@@ -4,7 +4,8 @@ import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 /**
  * Interaction capture in the install panel — option B, owner 11-09-2026: one
- * row turns the companion tag on, three indented rows then expose the kinds.
+ * row turns interactions on, three indented rows then expose the kinds. Since
+ * tracker v1.9.0 they are the site's settings and never change the snippet.
  *
  * An active install with a siteId renders the customize panel EXPANDED, which
  * is what makes every absence assertion below non-vacuous — on a collapsed
@@ -76,50 +77,44 @@ describe('interaction capture rows', () => {
     }
   })
 
-  it('emits ONE tag while the companion is off', () => {
-    const { container } = mount()
-    const text = snippet(container)
-    expect(text).toContain('data-domain')
-    expect(text, 'no companion tag until a site opts in').not.toContain('script.interactions.js')
+  // * Tracker v1.9.0 (14-11-2026) loads the companion itself when the site's settings turn interactions on, so the
+  // * snippet is ONE tag whatever these rows say: switching interactions on asks the owner to paste nothing.
+  it('the snippet is one tag whether interactions are on or off', () => {
+    // * The code block alone: the panel's own text differs, since the kinds' rows appear.
+    const code = (container: HTMLElement) => {
+      snippet(container)
+      return container.querySelector('pre')?.textContent ?? ''
+    }
+    const off = mount()
+    const offText = code(off.container)
+    off.unmount()
+    const on = mount({ interactions: true, copy: false })
+    const onText = code(on.container)
+    expect(onText).toBe(offText)
+    expect(onText).toContain('data-domain')
+    expect(onText).not.toContain('script.interactions.js')
+    expect(onText).not.toMatch(/data-no-/)
   })
 
-  it('emits BOTH tags once the companion is on', () => {
-    const { container } = mount({ interactions: true })
-    const text = snippet(container)
-    expect(text).toContain('script.js')
-    expect(text).toContain('script.interactions.js')
-    // 🔴 The companion reads nothing of its own: exactly one data-domain, the core's.
-    expect((text.match(/data-domain/g) ?? []).length).toBe(1)
+  it('switching interactions on reports it for saving and leaves the snippet as it was', () => {
+    const onFeaturesChange = vi.fn()
+    const { container } = render(
+      <ScriptSetupBlock site={{ domain: 'example.com', script_features: {} }} siteId="s1" onFeaturesChange={onFeaturesChange} />,
+    )
+    fireEvent.click(screen.getByText('Show script'))
+    const before = container.querySelector('pre')?.textContent ?? ''
+    const row = screen.getByText('Interaction capture').closest('[class*="py-3.5"]')!
+    fireEvent.click(row.querySelector('button, input')!)
+    expect(onFeaturesChange.mock.lastCall?.[0]).toMatchObject({ interactions: true, clicks: true, copy: true, forms: true })
+    expect(container.querySelector('pre')?.textContent).toBe(before)
   })
 
-  it('writes a kind’s opt-out only when that kind is off', () => {
-    const on = mount({ interactions: true })
-    expect(snippet(on.container), 'all kinds on ⇒ no opt-outs').not.toContain('data-no-copy')
-    on.unmount()
-
-    const off = mount({ interactions: true, copy: false })
-    const text = snippet(off.container)
-    expect(text).toContain('data-no-copy')
-    expect(text, 'only the kind that is off').not.toContain('data-no-clicks')
-    expect(text, 'only the kind that is off').not.toContain('data-no-forms')
-  })
-
-  it('does not write a companion opt-out while the companion itself is off', () => {
-    // A site that switched copies off, then switched the whole thing off: the
-    // kind's state persists, but nothing may be emitted for a tag that is absent.
-    const { container } = mount({ interactions: false, copy: false })
-    const text = snippet(container)
-    expect(text).not.toContain('script.interactions.js')
-    expect(text, 'no flag for a tag that is not there').not.toContain('data-no-copy')
-  })
-
-  it('names the rolling companion with no integrity, even for a site that stored sri', () => {
+  it('names the rolling core with no integrity, even for a site that stored sri', () => {
     // The version lock (Subresource Integrity) was removed on 07-11-2026; a stored
     // `sri: true` from before then must not change the snippet.
     const { container } = mount({ interactions: true, sri: true })
     const text = snippet(container)
     expect(text).toContain('src="https://js.ciphera.net/script.js"')
-    expect(text).toContain('src="https://js.ciphera.net/script.interactions.js"')
     expect(text).not.toContain('integrity=')
     expect(text).not.toContain('crossorigin=')
   })

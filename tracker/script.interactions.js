@@ -2,10 +2,18 @@
  * Pulse — interaction capture (optional companion to script.js).
  *
  * Records what a visitor DID on a page: clicked a control, copied something,
- * submitted a form. Loaded with its own <script> tag, beside the core:
+ * submitted a form. Since v1.9.0 of the core (14-11-2026) the core loads it from
+ * beside itself when the site's settings turn interactions on, and publishes
+ * those settings as window.pulse.c, which this file reads each time it fires.
+ * Sites set up before then may still carry its own tag beside the core, which
+ * keeps working:
  *
  *   <script defer data-domain="example.com" src="https://js.ciphera.net/script.js"></script>
  *   <script defer src="https://js.ciphera.net/script.interactions.js"></script>
+ *
+ * One copy per document (the guard below), so a site with both counts each
+ * interaction once. Whatever this copy records, the server keeps only the kinds
+ * the site's settings have on.
  *
  * 🔴 WHY A SECOND FILE AND NOT PART OF script.js. The core has an ENFORCED 3 KB
  * gzip budget (scripts/build-scripts.mjs), which is also a published claim —
@@ -31,10 +39,18 @@
  *   - any element under [data-pulse-ignore], or inside an input or a
  *     contenteditable region.
  *
- * Opt-outs, on THIS tag: data-no-clicks, data-no-copy, data-no-forms.
+ * Opt-outs: the site's settings, read from window.pulse.c when each event fires
+ * (interactions, clicks, copy, forms). An older hand-written tag's own
+ * data-no-clicks, data-no-copy and data-no-forms still apply on top of them.
  */
 (function () {
   'use strict';
+
+  // * One companion per document: the core loads it when the site's settings turn
+  // * interactions on, and the page may also carry the companion's own tag from
+  // * before v1.9.0. Two copies would record every click twice.
+  if (window.__pulseInteractions) return;
+  window.__pulseInteractions = true;
 
   var me = document.currentScript;
   function off(name) {
@@ -45,10 +61,18 @@
   var doForms = !off('forms');
   if (!doClicks && !doCopy && !doForms) return;
 
+  // * The kind each event is switched by in the site's settings.
+  var KIND = { pulse_click: 'clicks', pulse_copy: 'copy', pulse_form_submit: 'forms' };
+
   // * Guarded at FIRE time, not load time: the tags may be in either order, and
-  // * the core may legitimately never arrive (blocked, 404, opted out).
+  // * the core may legitimately never arrive (blocked, 404, opted out). The site's
+  // * settings are asked here too, from the core (window.pulse.c, v1.9.0): they can
+  // * arrive, or change, after this file has run, and an event whose kind, or
+  // * interactions as a whole, they switch off is not sent, whatever this tag says.
   function track(name, props) {
     var p = window.pulse;
+    var c = p && p.c;
+    if (c && (c.interactions === false || c[KIND[name]] === false)) return;
     if (p && typeof p.track === 'function') p.track(name, props);
   }
   function pagePath() {
