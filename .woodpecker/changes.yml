@@ -19,7 +19,7 @@ skip_clone: true
 
 steps:
   note:
-    image: alpine:3.20
+    image: alpine:3.24
     commands:
       - |
         title="$$(printf '%s\n' "$$CI_COMMIT_MESSAGE" | head -n 1)"
