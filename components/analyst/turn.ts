@@ -39,6 +39,9 @@ export const OUTCOME_TEXT: Record<string, string> = {
   limit: 'This question needed more lookups than one answer allows. Try asking about one thing at a time.',
   cut_off: 'Analyst ran out of room before it could answer. Try a narrower question.',
   error: 'Analyst could not answer this time.',
+  // * A change Analyst noticed by itself (findings.ts): still being written, or one it could not write.
+  pending: 'Analyst is still writing its explanation of this change. Look again in a few minutes.',
+  finding_error: 'Analyst could not explain this change.',
 }
 
 /** How pulse-backend answers a lookup past the question's limit (internal/barry/loop.go, errNotRun): it never ran. */

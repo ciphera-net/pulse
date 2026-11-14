@@ -11,12 +11,15 @@ import { SWRConfig } from 'swr'
 import { ApiError } from '@/lib/api/client'
 import type { AnalystAnswer, AnalystConversation, AnalystStreamEvent, AnalystUsage } from '@/lib/api/analyst'
 import { RECOVERY_LIMIT_MS } from '../recover'
+import { findingFigures, findingHeading, findingNoticed, findingWeekLabel } from '../findings'
 
 const askAnalyst = vi.hoisted(() => vi.fn())
 const askAnalystStream = vi.hoisted(() => vi.fn())
 const getAnalystUsage = vi.hoisted(() => vi.fn())
 const getAnalystConversations = vi.hoisted(() => vi.fn())
 const getAnalystTurn = vi.hoisted(() => vi.fn())
+const getAnalystFindings = vi.hoisted(() => vi.fn())
+const getAnalystFinding = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/analyst', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/analyst')>()),
   askAnalyst,
@@ -24,7 +27,13 @@ vi.mock('@/lib/api/analyst', async (importOriginal) => ({
   getAnalystUsage,
   getAnalystConversations,
   getAnalystTurn,
+  getAnalystFindings,
+  getAnalystFinding,
 }))
+// * The watchers beta (design §12) and the address the summary's link lands on: off and empty unless a test sets them.
+const flags = vi.hoisted(() => ({ watchers: false as boolean | null, search: '' }))
+vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'barry-watchers' ? flags.watchers : null) }))
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(flags.search) }))
 vi.mock('@/lib/swr/dashboard', () => ({ useSite: () => ({ data: { id: 's1', domain: 'example.com', timezone: 'UTC' } }) }))
 vi.mock('@/lib/hooks/useDisplayZone', () => ({ useDisplayZone: () => ({ mode: 'local', zone: 'UTC', label: 'UTC' }) }))
 vi.mock('@/lib/utils/icons', () => ({ getReferrerIcon: () => null }))
@@ -143,6 +152,11 @@ beforeEach(() => {
   })
   getAnalystUsage.mockReset()
   getAnalystUsage.mockResolvedValue(usage(3))
+  flags.watchers = false
+  flags.search = ''
+  getAnalystFindings.mockReset()
+  getAnalystFindings.mockResolvedValue({ findings: [], kept_days: 90 })
+  getAnalystFinding.mockReset()
   getAnalystConversations.mockReset()
   getAnalystConversations.mockResolvedValue(chats())
   getAnalystTurn.mockReset()
@@ -769,5 +783,120 @@ describe('the Analyst page', () => {
     ask('And last month?')
     await screen.findByText('Second answer.')
     expect(askAnalystStream.mock.calls[1].slice(1, 3)).toEqual(['And last month?', 'c5'])
+  })
+})
+
+describe('changes Analyst noticed (design §12, A1 and O2)', () => {
+  const summary = {
+    id: 'f1',
+    week: '2026-10-26',
+    direction: 'fall' as const,
+    visitors: 72,
+    usual: 172,
+    change: -0.58,
+    outcome: 'answered' as const,
+    created_at: '2026-11-02T06:10:00Z',
+  }
+  const full = {
+    ...summary,
+    site_id: 's1',
+    question: 'Why did visitors to example.com fall to 72 in the week of 26 October, against a usual 172?',
+    answer: 'LinkedIn sent 9 visitors, down from 88 the week before.',
+    steps: [{ tool: 'get_stats', args: {}, ms: 80, result: { range: { from: '2026-10-26', to: '2026-11-01' }, visitors: 72 } }],
+    follow_ups: ['Which pages did visitors from LinkedIn read?'],
+  }
+
+  it('lists the changes under the suggestions for a team in the beta', async () => {
+    flags.watchers = true
+    getAnalystFindings.mockResolvedValue({ findings: [summary], kept_days: 90 })
+    mount()
+    expect(await screen.findByText('Changes Analyst noticed')).toBeTruthy()
+    expect(screen.getByText('Visitors fell 58%')).toBeTruthy()
+    expect(screen.getByText(findingFigures(summary))).toBeTruthy()
+    expect(screen.getByText(findingWeekLabel(summary.week))).toBeTruthy()
+  })
+
+  it('shows no list without the beta, and none while there is nothing to show', async () => {
+    getAnalystFindings.mockResolvedValue({ findings: [summary], kept_days: 90 })
+    mount()
+    await screen.findByLabelText('Your question')
+    expect(getAnalystFindings).not.toHaveBeenCalled()
+    expect(screen.queryByText('Changes Analyst noticed')).toBeNull()
+    cleanup()
+    flags.watchers = true
+    getAnalystFindings.mockResolvedValue({ findings: [], kept_days: 90 })
+    mount()
+    await waitFor(() => expect(getAnalystFindings).toHaveBeenCalled())
+    expect(screen.queryByText('Changes Analyst noticed')).toBeNull()
+  })
+
+  it("opens a change under a heading, never as the person's question, and says it used none of the team's questions", async () => {
+    flags.watchers = true
+    getAnalystFindings.mockResolvedValue({ findings: [summary], kept_days: 90 })
+    getAnalystFinding.mockResolvedValue({ finding: full })
+    const { container } = mount()
+    fireEvent.click(await screen.findByText('Visitors fell 58%'))
+    expect(await screen.findByText(findingHeading(full))).toBeTruthy()
+    expect(screen.getByText(`${findingFigures(full)} · ${findingNoticed(full.created_at, 'UTC')}`)).toBeTruthy()
+    expect(screen.getByText(full.answer)).toBeTruthy()
+    expect(screen.getByText(/did not use one of your team's questions/)).toBeTruthy()
+    expect(container.querySelector('[data-analyst="finding-heading"]')).toBeTruthy()
+    expect(screen.queryByText(full.question)).toBeNull()
+    expect(getAnalystFinding).toHaveBeenCalledWith('s1', 'f1')
+  })
+
+  it("starts the person's own chat from the change, then carries on in that chat", async () => {
+    flags.watchers = true
+    getAnalystFindings.mockResolvedValue({ findings: [summary], kept_days: 90 })
+    getAnalystFinding.mockResolvedValue({ finding: full })
+    askAnalyst.mockResolvedValueOnce(answer('c-own', 'They read the post on cookieless analytics.', 4))
+    askAnalyst.mockResolvedValueOnce(answer('c-own', 'Mostly on phones.', 5))
+    mount()
+    fireEvent.click(await screen.findByText('Visitors fell 58%'))
+    await screen.findByText(findingHeading(full))
+    ask('Which pages did visitors from LinkedIn read?')
+    await screen.findByText('They read the post on cookieless analytics.')
+    // * The first question names the finding and no conversation: the server starts the person's own chat.
+    expect(askAnalystStream.mock.calls[0][2]).toBeNull()
+    expect(askAnalystStream.mock.calls[0][4]).toBe('f1')
+    ask('On which devices?')
+    await screen.findByText('Mostly on phones.')
+    // * The next one carries on in that chat and names the finding no more.
+    expect(askAnalystStream.mock.calls[1][2]).toBe('c-own')
+    expect(askAnalystStream.mock.calls[1][4]).toBeNull()
+  })
+
+  it("reopens a chat started from a change with Analyst's question as a heading, and carries on in that chat", async () => {
+    const started = chat('c9', full.question, full.answer, 30)
+    const own = { id: 'c9-t2', conversation_id: 'c9', site_id: 's1', question: 'Which pages?', answer: 'The blog post.', outcome: 'answered' as const, steps: [], created_at: started.started_at }
+    getAnalystConversations.mockResolvedValue(chats({ ...started, turns: [{ ...started.turns[0], asked_by_analyst: true }, own] }))
+    askAnalyst.mockResolvedValue(answer('c9', 'Mostly on phones.', 4))
+    const { container } = mount()
+    fireEvent.click(await screen.findByText(full.question))
+    // * No change in hand: the heading is the question's own words, never a bubble of the person's.
+    const heading = await waitFor(() => {
+      const el = container.querySelector('[data-analyst="finding-heading"]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    expect(heading.textContent).toContain(full.question)
+    expect(heading.textContent).toContain('Noticed by Analyst')
+    expect(screen.getByText('Which pages?')).toBeInTheDocument()
+    ask('On which devices?')
+    await screen.findByText('Mostly on phones.')
+    expect(askAnalystStream.mock.calls[0][2]).toBe('c9')
+    expect(askAnalystStream.mock.calls[0][4]).toBeNull()
+  })
+
+  it("opens the change the summary's link names, and says so when it is gone", async () => {
+    flags.watchers = true
+    flags.search = 'finding=f1'
+    getAnalystFinding.mockResolvedValue({ finding: full })
+    mount()
+    expect(await screen.findByText(findingHeading(full))).toBeTruthy()
+    cleanup()
+    getAnalystFinding.mockRejectedValue(new ApiError('That change was not found.', 404))
+    mount()
+    expect(await screen.findByText('That change is no longer here. Analyst keeps the changes it noticed for 90 days.')).toBeTruthy()
   })
 })

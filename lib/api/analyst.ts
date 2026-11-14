@@ -32,6 +32,11 @@ export interface AnalystTurn {
   steps: AnalystStep[] | null
   /** The questions written for a person to ask next (round 7, "Ask next"); absent when none were written. */
   follow_ups?: string[] | null
+  /**
+   * True on the first turn of a chat opened from a change Analyst noticed: a copy of the finding's question and
+   * answer. Its question is drawn as a heading, never as the person's question (O2).
+   */
+  asked_by_analyst?: boolean
   created_at: string
 }
 
@@ -124,10 +129,18 @@ export async function* askAnalystStream(
   question: string,
   conversationId: string | null,
   signal?: AbortSignal,
+  findingId: string | null = null,
 ): AsyncGenerator<AnalystStreamEvent> {
+  // * A question about a change Analyst noticed names the finding instead of a conversation: the server starts the
+  // * person's own chat with a copy of the finding first, and `start` names that chat for the questions after it.
+  const body = conversationId
+    ? { question, conversation_id: conversationId }
+    : findingId
+      ? { question, finding_id: findingId }
+      : { question }
   const res = await apiRequestStream(`/sites/${siteId}/barry/questions`, {
     method: 'POST',
-    body: JSON.stringify(conversationId ? { question, conversation_id: conversationId } : { question }),
+    body: JSON.stringify(body),
     signal,
   })
   // * A server that answers with the whole turn at once (one that does not stream) still gives a done.
@@ -196,6 +209,45 @@ export interface AnalystConversations {
 
 export function getAnalystConversations(siteId: string) {
   return apiRequest<AnalystConversations>(`/sites/${siteId}/barry/conversations`)
+}
+
+/**
+ * A change Analyst's weekly watcher noticed on a site (design Pulse/docs/plans/14-11-2026-analyst-watchers-design.md
+ * §12): a row of the list under the suggestions (A1). The site's team reads the same ones. `week` is the week's Monday
+ * (YYYY-MM-DD, the site's calendar), `change` is (visitors - usual) / usual, and `outcome` is 'pending' until Analyst
+ * has written its explanation.
+ */
+export interface AnalystFindingSummary {
+  id: string
+  week: string
+  direction: 'fall' | 'rise'
+  visitors: number
+  usual: number
+  change: number
+  outcome: AnalystOutcome | 'pending'
+  created_at: string
+}
+
+export interface AnalystFindings {
+  findings: AnalystFindingSummary[]
+  kept_days: number
+}
+
+/** One change opened (O2): the question Analyst asked itself, its answer, the lookups behind it and what to ask next. */
+export interface AnalystFinding extends AnalystFindingSummary {
+  site_id: string
+  question: string
+  answer: string | null
+  steps: AnalystStep[] | null
+  follow_ups?: string[] | null
+}
+
+export function getAnalystFindings(siteId: string) {
+  return apiRequest<AnalystFindings>(`/sites/${siteId}/barry/findings`)
+}
+
+export function getAnalystFinding(siteId: string, findingId: string) {
+  return apiRequest<{ finding: AnalystFinding }>(`/sites/${siteId}/barry/findings/${encodeURIComponent(findingId)}`)
 }
 
 /**
