@@ -185,7 +185,9 @@ describe('nothing fails silently', () => {
     installScript()
     await flush(60_000)
     expect(flag()).toBeNull()
-    expect(sent).toHaveLength(0)
+    // * Since 1.9.0 it asks for the site's settings (the domain alone), and nothing else.
+    expect(sent.map((r) => r.url)).toEqual(['http://api.invalid/api/v1/script-settings/owner-site.invalid'])
+    expect(sent[0].body).toBeNull()
     expect(notes().map((n) => n.getAttribute('data-note'))).toEqual(['signal'])
   })
 
@@ -292,7 +294,8 @@ describe('a page whose CSP enforces Trusted Types (1.8.1)', () => {
     enforceTrustedTypes()
     installScript()
     await flush(60_000)
-    expect(sent).toHaveLength(0)
+    // * Since 1.9.0 it asks for the site's settings (the domain alone), and nothing else.
+    expect(sent.map((r) => r.url)).toEqual(['http://api.invalid/api/v1/script-settings/owner-site.invalid'])
     expect(notes().map((n) => n.getAttribute('data-note'))).toEqual(['signal'])
   })
 

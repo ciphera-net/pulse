@@ -58,6 +58,8 @@ afterEach(() => {
   for (const [t, h, o] of attached) document.removeEventListener(t, h, o as never)
   attached = []
   delete (window as unknown as { pulse?: unknown }).pulse
+  // * Each test is a fresh document; the script installs once per document (its guard).
+  delete (window as unknown as { __pulseInteractions?: unknown }).__pulseInteractions
 })
 
 /** The props of the single call made, for the given event name. */
@@ -346,5 +348,63 @@ describe('opt-outs and safety', () => {
     load()
     document.body.innerHTML = '<button>Go</button>'
     expect(() => document.querySelector('button')!.click()).not.toThrow()
+  })
+})
+
+/**
+ * Since core v1.9.0 the core loads this file when the site's settings turn interactions on and
+ * publishes those settings as window.pulse.c. A page may also still carry the companion's own
+ * tag from before, so the script installs once per document and asks the settings at fire time.
+ */
+describe('the site’s settings (core v1.9.0)', () => {
+  const settings = (c: Record<string, boolean>) => {
+    ;(window as unknown as { pulse: { c?: unknown } }).pulse.c = {
+      interactions: true, clicks: true, copy: true, forms: true, ...c,
+    }
+  }
+
+  it('installs once per document: a second copy records each click once', () => {
+    load()
+    load()
+    document.body.innerHTML = '<button>Go</button>'
+    document.querySelector('button')!.click()
+    expect(track.mock.calls.filter((c) => c[0] === 'pulse_click')).toHaveLength(1)
+  })
+
+  it('a kind the settings switch off is not sent', () => {
+    load()
+    settings({ clicks: false })
+    document.body.innerHTML = '<button>Go</button><form><input></form>'
+    document.querySelector('button')!.click()
+    expect(track).not.toHaveBeenCalled()
+    document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true }))
+    expect(propsOf('pulse_form_submit')).toBeTruthy()
+  })
+
+  it('interactions switched off in the settings sends nothing, whatever this tag says', () => {
+    load()
+    settings({ interactions: false })
+    document.body.innerHTML = '<button>Go</button><form><input></form>'
+    document.querySelector('button')!.click()
+    document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true }))
+    expect(track).not.toHaveBeenCalled()
+  })
+
+  it('settings that arrive after this file ran still apply: they are asked at fire time', () => {
+    load()
+    document.body.innerHTML = '<button>Go</button>'
+    document.querySelector('button')!.click()
+    expect(track).toHaveBeenCalledTimes(1)
+    settings({ clicks: false })
+    document.querySelector('button')!.click()
+    expect(track).toHaveBeenCalledTimes(1)
+  })
+
+  it('an older tag’s own data-no-* still applies on top of settings that allow the kind', () => {
+    load({ 'data-no-clicks': '' })
+    settings({})
+    document.body.innerHTML = '<button>Go</button>'
+    document.querySelector('button')!.click()
+    expect(track).not.toHaveBeenCalled()
   })
 })

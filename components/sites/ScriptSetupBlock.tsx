@@ -65,11 +65,12 @@ const INTERACTION_KINDS = [
 ] as const satisfies readonly { key: InteractionKey; label: string; description: string }[]
 
 /**
- * Once the companion tag is added, all three kinds are on.
+ * Once interactions are on, all three kinds are on.
  *
- * ⚠️ The companion itself defaults OFF and always will: it is a second tag a
- * site has to paste, so there is no version of "on by default" for it. The
- * question the design doc leaves open (§8.2) is only about these three.
+ * ⚠️ Interactions themselves default OFF: switching them on means visitors
+ * download the companion script (about 1 KB), which the core loads itself
+ * since tracker v1.9.0. The question the design doc leaves open (§8.2) is only
+ * about these three.
  */
 const DEFAULT_INTERACTIONS: Record<InteractionKey, boolean> = { clicks: true, copy: true, forms: true }
 
@@ -83,24 +84,24 @@ const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
  * The two privacy-signal toggles (PULSE-164) — Do Not Track and Global Privacy
  * Control. POSITIVE polarity, opposite FEATURES: ON means Pulse keeps
  * respecting the browser's signal (the default, so a DNT/GPC visitor is not
- * counted); OFF means "count them anyway" and adds `data-ignore-dnt` /
- * `data-ignore-gpc` to the tag.
+ * counted); OFF means "count them anyway". Saved as the site's respect_dnt /
+ * respect_gpc, which the script reads from the server (tracker v1.9.0).
  *
- * Kept as its OWN small list and state, never folded into FEATURES or its
- * `coreFlags` filter: FEATURES' rows mean "stop tracking this" when off, these
- * mean "start counting despite the browser's opt-out signal" when off — two
- * different promises that must not share one filter's meaning.
+ * Kept as its OWN small list and state, never folded into FEATURES: FEATURES'
+ * rows mean "stop tracking this" when off, these mean "start counting despite
+ * the browser's opt-out signal" when off — two different promises that must
+ * not share one list's meaning.
  */
 const PRIVACY_SIGNALS = [
   {
     key: 'respect_dnt',
     label: 'Respect Do Not Track',
-    description: 'Browsers that send Do Not Track are not counted. Turn off to count them; your tag gets data-ignore-dnt.',
+    description: 'Browsers that send Do Not Track are not counted. Turn off to count them.',
   },
   {
     key: 'respect_gpc',
     label: 'Respect Global Privacy Control',
-    description: 'Browsers that send Global Privacy Control are not counted. GPC is a legal opt-out signal in California and other US states. Turn off to count them; your tag gets data-ignore-gpc.',
+    description: 'Browsers that send Global Privacy Control are not counted. GPC is a legal opt-out signal in California and other US states. Turn off to count them.',
   },
 ] as const
 
@@ -201,19 +202,10 @@ export default function ScriptSetupBlock({
   const selected: Integration | undefined = framework ? getIntegration(framework) : undefined
 
   // * The script text comes from the ONE builder (lib/tracking-script.ts), shared with the General settings page, so
-  // * the two surfaces print the same tag for the same choices. It also cuts the domain to the hostname character set
-  // * before writing it: the text is pasted into the customer's <head>.
-  const scriptSnippet = useMemo(
-    () =>
-      trackingScript(site.domain, selected, {
-        features,
-        interactions,
-        kinds,
-        respectDnt: privacySignals.respect_dnt,
-        respectGpc: privacySignals.respect_gpc,
-      }),
-    [site.domain, selected, features, interactions, kinds, privacySignals],
-  )
+  // * the two surfaces print the same tag. It is the same whatever the toggles below say (tracker v1.9.0 takes them
+  // * from the site's saved settings), and it cuts the domain to the hostname character set before writing it: the
+  // * text is pasted into the customer's <head>.
+  const scriptSnippet = useMemo(() => trackingScript(site.domain, selected), [site.domain, selected])
 
   const copyCsp = useCallback(() => {
     navigator.clipboard.writeText(CSP_DIRECTIVES)
@@ -458,7 +450,7 @@ export default function ScriptSetupBlock({
               />
             ))}
             {/* ─── Interaction capture (option B, owner 11-09-2026) ───────
-                One row turns the companion tag on; three indented rows then
+                One row turns interactions on; three indented rows then
                 expose the kinds. The children render ONLY while the parent is
                 on, so the panel does not grow for a site that does not use it.
                 Each kind carries its own caption, which is where the privacy
@@ -466,7 +458,7 @@ export default function ScriptSetupBlock({
                 copies and meaningless of clicks. */}
             <PanelRow
               label="Interaction capture"
-              caption="Clicks, copies and form submits · adds a second script tag to your snippet"
+              caption="Clicks, copies and form submits · visitors download about 1 KB more while this is on"
               control={<Toggle checked={interactions} onChange={toggleInteractions} disabled={disabled} />}
             />
             {interactions &&

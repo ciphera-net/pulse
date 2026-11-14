@@ -1,11 +1,16 @@
 import { renderSnippet, type Integration } from '@/lib/integrations'
 
 /**
- * The tracking script a site pastes, built from its choices: ONE builder for every surface that shows the script
- * (onboarding's install panel and the General settings page), so the two can never print different tags for the same
- * site. Before the settings overhaul's General page (PUL-42, P2) it lived inside `ScriptSetupBlock`, and a second
- * surface would have meant a second copy: the drift its own comments warn about (the framework path once dropped the
- * flags the raw tag applied).
+ * The tracking script a site pastes: ONE builder for every surface that shows it (onboarding's install panel and the
+ * General settings page), so the two can never print different tags for the same site.
+ *
+ * 🔑 Since 14-11-2026 (tracker v1.9.0) the tag is the SAME for every site whatever its choices: the script takes its
+ * options from the site's saved settings, which the server sends, and the server enforces them. Until then each
+ * choice was a data-* flag written into the tag here (data-no-scroll, data-ignore-dnt, …) plus a second tag for
+ * interactions, so a saved choice did nothing until the owner pasted the tag again; on 14-11-2026 five of the seven
+ * live tags that could be read disagreed with their settings. The choices below are still the site's settings, saved
+ * through featuresPayload; they just no longer change the text.
+ * Design: Pulse/docs/plans/14-11-2026-one-tag-settings-from-server-design.md
  */
 
 // * Every copied script names the rolling files, so a site gets each new version without replacing its tag. The option
@@ -13,31 +18,21 @@ import { renderSnippet, type Integration } from '@/lib/integrations'
 // * the js.ciphera.net/v<version>/ copies, which stay on the CDN.
 const ROLLING_BASE = 'https://js.ciphera.net'
 
-/** The core script's opt-outs the script actually reads, in the order they are written. */
+/** The core script's three features, each a switch in the site's settings. */
 export const FEATURE_KEYS = ['scroll', 'outbound', 'downloads'] as const
 export type FeatureKey = (typeof FEATURE_KEYS)[number]
-const FEATURE_ATTR: Record<FeatureKey, string> = {
-  scroll: 'data-no-scroll',
-  outbound: 'data-no-outbound',
-  downloads: 'data-no-downloads',
-}
 
-/** The interactions companion's three kinds, one per `data-no-*` it honours. */
+/** The interactions companion's three kinds, each a switch in the site's settings. */
 export const INTERACTION_KEYS = ['clicks', 'copy', 'forms'] as const
 export type InteractionKey = (typeof INTERACTION_KEYS)[number]
-const INTERACTION_ATTR: Record<InteractionKey, string> = {
-  clicks: 'data-no-clicks',
-  copy: 'data-no-copy',
-  forms: 'data-no-forms',
-}
 
-/** Everything the script's text depends on besides the domain and the platform. */
+/** The site's tracking settings as the settings pages edit them. */
 export interface ScriptChoices {
   features: Record<FeatureKey, boolean>
-  /** The companion tag (clicks, copies and forms): off unless a site opted in. */
+  /** Interactions capture (clicks, copies and forms): off unless a site opted in. */
   interactions: boolean
   kinds: Record<InteractionKey, boolean>
-  /** Positive polarity: on means the browser's signal is respected, off adds `data-ignore-*`. */
+  /** Positive polarity: on means the browser's signal is respected, off counts those browsers. */
   respectDnt: boolean
   respectGpc: boolean
 }
@@ -73,44 +68,19 @@ export function featuresPayload(c: ScriptChoices): Record<string, unknown> {
 }
 
 /**
- * The `data-*` flags for the core tag: the features switched off, then the privacy signals not respected. One list for
- * the raw tag and every platform's snippet.
- */
-export function coreFlags(c: ScriptChoices): string[] {
-  return [
-    ...FEATURE_KEYS.filter((k) => !c.features[k]).map((k) => FEATURE_ATTR[k]),
-    ...(!c.respectDnt ? ['data-ignore-dnt'] : []),
-    ...(!c.respectGpc ? ['data-ignore-gpc'] : []),
-  ]
-}
-
-/**
- * The companion's own opt-outs, or `null` when the companion is off. `null` and `[]` differ: `[]` is "companion on,
- * every kind on"; `null` is "no companion tag at all".
- */
-export function interactionFlags(c: ScriptChoices): string[] | null {
-  return c.interactions ? INTERACTION_KEYS.filter((k) => !c.kinds[k]).map((k) => INTERACTION_ATTR[k]) : null
-}
-
-/**
- * The script text. A platform's own wiring (next/script and the like) when the platform has one; otherwise the
- * universal tag, plus the companion's line when it is on.
+ * The script text: a platform's own wiring (next/script and the like) when the platform has one, otherwise the
+ * universal tag. The same for every site on the same platform, whatever its settings (see the header).
  *
  * 🔴 The domain is cut to the hostname character set before it is written: the text is pasted into the site's
  * <head>, so a double quote in it could break out of `data-domain` and add an attacker's `src` to the site's page.
  */
-export function trackingScript(domain: string, platform: Integration | undefined, c: ScriptChoices): string {
+export function trackingScript(domain: string, platform: Integration | undefined): string {
   const safeDomain = domain.replace(/[^a-zA-Z0-9.-]/g, '')
-  const flags = coreFlags(c)
-  const companion = interactionFlags(c)
   if (platform?.snippet?.code) {
-    return renderSnippet(platform.snippet, safeDomain, flags, companion)
+    // * No flags and no companion line: the registry's snippets still accept both for older callers.
+    return renderSnippet(platform.snippet, safeDomain, [], null)
   }
-  const tag = (file: string, attrs: string[]) =>
-    `<script ${['defer', ...attrs, `src="${ROLLING_BASE}/${file}"`].join(' ')}></script>`
-  const core = tag('script.js', [`data-domain="${safeDomain}"`, ...flags])
-  // The companion has no data-domain: it reads nothing of its own and calls the core through window.pulse.
-  return companion === null ? core : `${core}\n${tag('script.interactions.js', companion)}`
+  return `<script defer data-domain="${safeDomain}" src="${ROLLING_BASE}/script.js"></script>`
 }
 
 /** The two directives a site with a Content Security Policy adds. */
