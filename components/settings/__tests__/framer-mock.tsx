@@ -37,6 +37,7 @@ const FRAMER_ONLY_PROPS = new Set([
   'dragConstraints',
   'onAnimationStart',
   'onAnimationComplete',
+  'onUpdate',
   'onViewportEnter',
   'onViewportLeave',
   'custom',

@@ -2,10 +2,14 @@
  * Pictures requested and decoded BEFORE the element that shows them exists.
  *
  * A dashboard row's icon is an <img> that mounts with its row, and every tab switch or page of a list unmounts the
- * rows and mounts new ones. So each icon was asked for only once its row had painted and arrived a frame or more
- * later: the rows of a block were up at about 140 ms and their icons between 250 and 850 ms, the site picker opened
- * with no favicons, and the What's new picture was requested only after its panel had opened (measured on
- * production, 14-11-2026).
+ * rows and mounts new ones. So an icon the browser does not hold yet was asked for only once its row had painted,
+ * and arrived a round trip later: the next page of a list, the site picker on its first opening, the What's new
+ * picture after its panel had opened.
+ *
+ * (An earlier version of this note gave times, "rows at about 140 ms, icons between 250 and 850 ms". They came
+ * from a test harness that routes every request, which switches the browser's cache off, so they showed every
+ * icon as late on every mount. With the cache on, an icon the browser holds is complete in the same task as its
+ * row. What this module buys is the FIRST showing: the icon is already held when its row arrives.)
  *
  * preloadImages() starts the request as soon as the caller knows the address (when the data arrives, or when the
  * neighbouring page becomes the next click) and keeps the decoded picture referenced, so an <img> with the same
