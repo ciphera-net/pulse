@@ -302,7 +302,7 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
           <CardEmptyState
             live={live}
             icon={<ArrowSquareOut />}
-            title="No outbound clicks in this range"
+            kind="outbound clicks"
             fresh="Clicks on links to other sites are listed here."
             // The page's filter does not reach these lists (their endpoints take none), so an empty block here is
             // never the filter's doing and must not say so.

@@ -52,9 +52,10 @@ describe('ScrollDepthBars', () => {
     expect(screen.queryByText('Reached 25%')).not.toBeInTheDocument()
   })
 
-  it('reads the one realtime line when it is empty in realtime, where a longer range is no advice', () => {
+  it('reads a realtime line when it is empty in realtime, where a longer range is no advice', () => {
+    // Outside the dashboard nobody has counted who is on the site, so the card says what it has none of.
     const { unmount } = render(<ScrollDepthBars scrollDepth={dist({ total_sessions: 0 })} live />)
-    expect(screen.getByRole('heading').textContent).toBe('Nobody on the site in the last 5 minutes.')
+    expect(screen.getByRole('heading').textContent).toBe('No scroll depth in the last 5 minutes.')
     expect(screen.queryByText('Try a longer range.')).not.toBeInTheDocument()
     unmount()
     // The control: out of realtime the same empty card says its own heading and the advice.

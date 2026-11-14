@@ -220,7 +220,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
           <CardEmptyState
             live={live}
             icon={<DeviceMobile />}
-            title="No visits in this range"
+            kind="visits"
             fresh="Your visitors' browsers and devices are listed here."
           />
         )}

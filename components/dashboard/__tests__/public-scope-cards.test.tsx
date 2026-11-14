@@ -18,6 +18,7 @@ import ContentSignals from '@/components/dashboard/ContentSignals'
 import Outbound from '@/components/dashboard/Outbound'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
+import { EmptyFactsProvider } from '@/lib/dashboard/emptyFacts'
 
 const h = vi.hoisted(() => ({
   idle: { data: undefined, error: undefined, isLoading: false, mutate: () => {} },
@@ -57,11 +58,15 @@ const noop = () => {}
 
 /**
  * `live` is realtime mode, handed to each card the way the surface hands it: the flag to the blocks, the window's
- * minutes to the one card that takes those instead.
+ * minutes to the one card that takes those instead. 'nobody' is realtime with the live count known to be at zero,
+ * 'somebody' with people on the site.
  */
-function Cards({ scope, live = false }: { scope: SiteScope; live?: boolean }) {
+type Live = false | 'nobody' | 'somebody'
+function Cards({ scope, live: mode = false }: { scope: SiteScope; live?: Live }) {
+  const live = mode !== false
   return (
     <SiteScopeProvider scope={scope}>
+    <EmptyFactsProvider value={{ filtered: false, neverVisited: false, canWiden: true, nobodyLive: mode === 'nobody' }}>
       <CommandDeck
         data={[]}
         stats={{ pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }}
@@ -79,6 +84,7 @@ function Cards({ scope, live = false }: { scope: SiteScope; live?: boolean }) {
       <ContentStats topPages={[]} entryPages={[]} exitPages={[]} domain="haldencycles.example" siteId="site-1" dateRange={range} live={live} />
       <ContentSignals goalCounts={[]} siteId="site-1" dateRange={range} liveMinutes={live ? 5 : undefined} />
       <Outbound siteId="site-1" dateRange={range} live={live} />
+    </EmptyFactsProvider>
     </SiteScopeProvider>
   )
 }
@@ -97,7 +103,7 @@ function walk(scope: SiteScope) {
   }
   return seen
 }
-function walkOnce(scope: SiteScope, live = false) {
+function walkOnce(scope: SiteScope, live: Live = false) {
   const hrefs = new Set<string>()
   const text = new Set<string>()
   const headings = new Set<string>()
@@ -152,11 +158,11 @@ describe('a member\'s empty cards say what is true and offer at most a docs link
   }, WALK_TIMEOUT)
 })
 
-describe('realtime: every empty card reads the one realtime line', () => {
-  it('says it in every card and on every tab, and never advises a longer range', () => {
+describe('realtime: every empty card reads a realtime line', () => {
+  it('with nobody on the site: the one line in every card and on every tab, and never a longer range', () => {
     // The window is always the last five minutes: "Try a longer range." is no advice there, and a card that kept its
     // own heading would sit beside five that say nobody is on the site. The scroll depth tab did exactly that.
-    const seen = walkOnce(memberScope('site-1'), true)
+    const seen = walkOnce(memberScope('site-1'), 'nobody')
     expect([...seen.headings]).toEqual(['Nobody on the site in the last 5 minutes.'])
     expect(seen.text.has(MEMBER_LINE)).toBe(false)
     expect([...seen.hrefs]).toEqual([])
@@ -165,6 +171,22 @@ describe('realtime: every empty card reads the one realtime line', () => {
     expect(calm.headings.size).toBeGreaterThan(4)
     expect(calm.headings.has('No scroll depth in this range')).toBe(true)
     expect(calm.text.has(MEMBER_LINE)).toBe(true)
+  }, WALK_TIMEOUT)
+
+  it('with somebody on the site: each card says what it has none of, and no card says nobody is there', () => {
+    // A counter at 1 stood beside a block reading "Nobody on the site in the last 5 minutes." Somebody on the site
+    // has not necessarily clicked a link out, sent an event or come through a tagged link.
+    const seen = walkOnce(memberScope('site-1'), 'somebody')
+    expect([...seen.headings].sort()).toEqual([
+      'No campaign visits in the last 5 minutes.',
+      'No events in the last 5 minutes.',
+      'No outbound clicks in the last 5 minutes.',
+      'No page views in the last 5 minutes.',
+      'No scroll depth in the last 5 minutes.',
+      'No visits in the last 5 minutes.',
+    ])
+    expect(seen.text.has(MEMBER_LINE)).toBe(false)
+    expect([...seen.hrefs]).toEqual([])
   }, WALK_TIMEOUT)
 })
 
@@ -202,7 +224,7 @@ describe('CardEmptyState under a scope', () => {
 
   it('keeps the whole empty state for a member, and for a page outside any scope', () => {
     for (const scope of [memberScope('site-1'), null]) {
-      const state = <CardEmptyState title="No events in this range" fresh="Events your site sends are counted here." docs={docs} />
+      const state = <CardEmptyState kind="events" fresh="Events your site sends are counted here." docs={docs} />
       const { unmount } = render(scope ? <SiteScopeProvider scope={scope}>{state}</SiteScopeProvider> : state)
       expect(screen.getByText('No events in this range')).toBeTruthy()
       expect(screen.getByText('Try a longer range.')).toBeTruthy()
@@ -215,7 +237,7 @@ describe('CardEmptyState under a scope', () => {
     for (const scope of [demoScope, shareScope]) {
       const { unmount } = render(
         <SiteScopeProvider scope={scope}>
-          <CardEmptyState title="No events in this range" fresh="Events your site sends are counted here." docs={docs} />
+          <CardEmptyState kind="events" fresh="Events your site sends are counted here." docs={docs} />
         </SiteScopeProvider>,
       )
       expect(screen.getByText('No events in this range')).toBeTruthy()
@@ -225,17 +247,21 @@ describe('CardEmptyState under a scope', () => {
     }
   })
 
-  it('reads the one realtime line in realtime mode, in every scope', () => {
+  it('reads a realtime line in realtime mode, in every scope: nobody on the site, or none of its kind', () => {
     for (const scope of [memberScope('site-1'), demoScope]) {
-      const { unmount } = render(
-        <SiteScopeProvider scope={scope}>
-          <CardEmptyState live title="No page views in this range" fresh="Your pages are listed here by how often they are viewed." docs={docs} />
-        </SiteScopeProvider>,
-      )
-      expect(screen.getByText('Nobody on the site in the last 5 minutes.')).toBeTruthy()
-      expect(screen.queryByText('No page views in this range')).toBeNull()
-      expect(screen.queryByRole('link')).toBeNull()
-      unmount()
+      for (const [nobodyLive, line] of [[true, 'Nobody on the site in the last 5 minutes.'], [false, 'No page views in the last 5 minutes.']] as const) {
+        const { unmount } = render(
+          <SiteScopeProvider scope={scope}>
+            <EmptyFactsProvider value={{ filtered: false, neverVisited: false, canWiden: true, nobodyLive }}>
+              <CardEmptyState live kind="page views" fresh="Your pages are listed here by how often they are viewed." docs={docs} />
+            </EmptyFactsProvider>
+          </SiteScopeProvider>,
+        )
+        expect(screen.getByText(line)).toBeTruthy()
+        expect(screen.queryByText('No page views in this range')).toBeNull()
+        expect(screen.queryByRole('link')).toBeNull()
+        unmount()
+      }
     }
   })
 })

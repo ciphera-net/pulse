@@ -203,7 +203,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             <CardEmptyState
               live={live}
               icon={<FileText />}
-              title="No page views in this range"
+              kind="page views"
               fresh="Your pages are listed here by how often they are viewed."
             />
           )}

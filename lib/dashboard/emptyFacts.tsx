@@ -31,10 +31,20 @@ export interface EmptyFacts {
   neverVisited: boolean
   /** False when the range is already the longest there is (All time): "Try a longer range." would be no advice. */
   canWiden: boolean
+  /**
+   * Realtime: the live counter is KNOWN and at zero, so nobody is on the site in the realtime window. False when
+   * somebody is, and while the count is not known: an empty block then says what it has none of ("No outbound
+   * clicks in the last 5 minutes."), which is true either way, where "Nobody on the site" beside a counter above
+   * zero was not.
+   */
+  nobodyLive: boolean
 }
 
-/** Outside the dashboard surface nothing is known: no filter, the site has visits, the range can be widened. */
-const UNKNOWN: EmptyFacts = { filtered: false, neverVisited: false, canWiden: true }
+/**
+ * Outside the dashboard surface nothing is known: no filter, the site has visits, the range can be widened, and
+ * nobody has counted who is on the site.
+ */
+const UNKNOWN: EmptyFacts = { filtered: false, neverVisited: false, canWiden: true, nobodyLive: false }
 
 const EmptyFactsContext = createContext<EmptyFacts>(UNKNOWN)
 

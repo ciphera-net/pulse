@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -21,7 +21,7 @@ import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/li
 
 const demoScope: SiteScope = { siteId: 'site-1', mode: 'public', basePath: '/demo', pages: SITE_PAGES, demo: true, fidelity: 'full' }
 const shareScope: SiteScope = { siteId: 'site-1', mode: 'public', basePath: '/share/site-1', pages: ['dashboard'], demo: false, fidelity: 'scoped' }
-const KNOWN: EmptyFacts = { filtered: false, neverVisited: false, canWiden: true }
+const KNOWN: EmptyFacts = { filtered: false, neverVisited: false, canWiden: true, nobodyLive: false }
 const DOCS = { label: 'How to send events', href: 'https://docs.ciphera.net/pulse/custom-events' }
 const OFF = { title: 'Outbound links are switched off', description: 'This site does not record clicks on links to other sites.' }
 
@@ -32,7 +32,7 @@ function show(
 ) {
   const state = (
     <EmptyFactsProvider value={{ ...KNOWN, ...facts }}>
-      <CardEmptyState title="No events in this range" fresh="Events your site sends are counted here." {...props} />
+      <CardEmptyState kind="events" fresh="Events your site sends are counted here." {...props} />
     </EmptyFactsProvider>
   )
   return render(scope ? <SiteScopeProvider scope={scope}>{state}</SiteScopeProvider> : state)
@@ -69,7 +69,7 @@ describe('the site has visits and this range has none of the kind', () => {
   })
 
   it('says the same outside the dashboard, where nothing is known (no provider)', () => {
-    render(<CardEmptyState title="No visits in this range" fresh="The sites that send you visitors are listed here." />)
+    render(<CardEmptyState kind="visits" fresh="The sites that send you visitors are listed here." />)
     expect(read()).toEqual({ title: 'No visits in this range', line: 'Try a longer range.', actions: [] })
   })
 })
@@ -147,9 +147,44 @@ describe('the kind is switched off for the site', () => {
 })
 
 describe('realtime', () => {
-  it('reads the one realtime line, whatever else is true', () => {
-    show({ filtered: true, neverVisited: true, clearFilters: () => {} }, { live: true, off: OFF, docs: DOCS })
+  it('reads the one realtime line when the live count is known to be at zero, whatever else is true', () => {
+    show({ nobodyLive: true, filtered: true, neverVisited: true, clearFilters: () => {} }, { live: true, off: OFF, docs: DOCS })
     expect(read()).toEqual({ title: 'Nobody on the site in the last 5 minutes.', line: null, actions: [] })
+  })
+
+  it('says what the block has none of while somebody is on the site: nobody is not true then', () => {
+    // Seen on a live page: a counter at 1 beside a block reading "Nobody on the site in the last 5 minutes."
+    show({ nobodyLive: false }, { live: true, docs: DOCS })
+    expect(read()).toEqual({ title: 'No events in the last 5 minutes.', line: null, actions: [] })
+  })
+
+  it('makes each block\'s line from what it counts, as the range heading is made', () => {
+    for (const kind of ['visits', 'page views', 'outbound clicks', 'campaign visits']) {
+      const { unmount } = show({}, { live: true, kind })
+      expect(read().title).toBe(`No ${kind} in the last 5 minutes.`)
+      unmount()
+      const calm = show({}, { kind })
+      expect(read().title).toBe(`No ${kind} in this range`)
+      calm.unmount()
+    }
+  })
+
+  it('does not say nobody is on the site while the count is not known (no provider): the block\'s own line is true either way', () => {
+    render(<CardEmptyState live kind="events" fresh="Events your site sends are counted here." />)
+    expect(read()).toEqual({ title: 'No events in the last 5 minutes.', line: null, actions: [] })
+  })
+
+  it('keeps realtime ahead of every other state, with somebody on the site too', () => {
+    show({ filtered: true, neverVisited: true, clearFilters: () => {} }, { live: true, off: OFF, docs: DOCS })
+    expect(read()).toEqual({ title: 'No events in the last 5 minutes.', line: null, actions: [] })
+  })
+
+  it('says the same to a public reader', () => {
+    show({ nobodyLive: true }, { live: true }, demoScope)
+    expect(read().title).toBe('Nobody on the site in the last 5 minutes.')
+    cleanup()
+    show({}, { live: true }, shareScope)
+    expect(read().title).toBe('No events in the last 5 minutes.')
   })
 })
 
@@ -212,7 +247,7 @@ describe('no dashboard block asks for the install any more', () => {
     expect(offenders).toEqual([])
   })
 
-  it('every empty block is written with the new words: a heading and what the block will show', () => {
+  it('every empty block is written with the new words: what it counts, and what it will show', () => {
     const calls: string[] = []
     const bad: string[] = []
     for (const name of files) {
@@ -220,25 +255,31 @@ describe('no dashboard block asks for the install any more', () => {
       // A call runs to the `/>` on a line of its own: its icon is an element too, and closes earlier on its line.
       for (const m of src.matchAll(/<CardEmptyState\b[\s\S]*?\n\s*\/>/g)) {
         calls.push(name)
-        if (!/\btitle=/.test(m[0]) || !/\bfresh=/.test(m[0]) || /\b(description|action|publicTitle)=/.test(m[0])) bad.push(name)
+        if (!/\bkind=/.test(m[0]) || !/\bfresh=/.test(m[0]) || /\b(title|description|action|publicTitle)=/.test(m[0])) bad.push(name)
       }
     }
-    // Sources 3, Locations 2, Technology, Pages, Outbound, Events, scroll depth, and the chart's 2.
-    expect(calls.length).toBe(12)
+    // Sources 3, Locations 2, Technology, Pages, Outbound, Events, scroll depth, and the chart.
+    expect(calls.length).toBe(11)
     expect(bad).toEqual([])
   })
 
-  it('every block hands realtime to its empty state; the chart alone has a realtime branch of its own', () => {
+  it('every block hands realtime to its empty state, the chart included', () => {
     // A block that forgets it says "Try a longer range." in a window that is always the last five minutes, beside
-    // blocks that say nobody is on the site. The scroll depth card did, until this was written.
+    // blocks that read their realtime line. The scroll depth card did, until this was written.
     const without: string[] = []
+    let calls = 0
     for (const name of files) {
       const src = strip(fs.readFileSync(path.join(dir, name), 'utf8'))
-      for (const m of src.matchAll(/<CardEmptyState\b[\s\S]*?\n\s*\/>/g)) if (!/\blive=/.test(m[0])) without.push(name)
+      for (const m of src.matchAll(/<CardEmptyState\b[\s\S]*?\n\s*\/>/g)) {
+        calls++
+        if (!/\blive=/.test(m[0])) without.push(name)
+      }
     }
-    // The chart draws the realtime line itself, one branch above its two empty states.
-    expect(without).toEqual(['CommandDeck.tsx', 'CommandDeck.tsx'])
-    expect(strip(fs.readFileSync(path.join(dir, 'CommandDeck.tsx'), 'utf8'))).toMatch(/live && !hasAnyNonZero[\s\S]{0,200}REALTIME_EMPTY_LINE/)
+    expect(calls).toBe(11)
+    expect(without).toEqual([])
+    // And nothing on the dashboard writes the realtime line by hand: it is said in one place, on a known zero.
+    const byHand = files.filter((name) => name !== 'CardEmptyState.tsx' && /REALTIME_EMPTY_LINE/.test(strip(fs.readFileSync(path.join(dir, name), 'utf8'))))
+    expect(byHand).toEqual([])
   })
 
   it('none of the old lines is left', () => {

@@ -444,7 +444,7 @@ export default function Audience({ countries, cities, regions, languages, langua
               <CardEmptyState
                 live={live}
                 icon={<GlobeHemisphereWest />}
-                title="No visits in this range"
+                kind="visits"
                 fresh="The countries your visitors come from are shown here."
               />
             )
@@ -492,7 +492,7 @@ export default function Audience({ countries, cities, regions, languages, langua
             <CardEmptyState
               live={live}
               icon={<GlobeHemisphereWest />}
-              title="No visits in this range"
+              kind="visits"
               fresh="The countries your visitors come from are shown here."
             />
           )

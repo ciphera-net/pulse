@@ -254,7 +254,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
           // Realtime: the one line every live block reads, where this one used to say "No events tracked yet".
           live={liveMinutes != null}
           icon={<Target />}
-          title="No events in this range"
+          kind="events"
           fresh="Events your site sends are counted here."
           // This block stays empty until the customer sends an event, on a new site as on an old one: the link is
           // to the page that says how (the docs, not the install page, which says nothing about events).

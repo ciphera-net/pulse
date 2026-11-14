@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, ReferenceLine as VisxReferenceLine } from '@/components/ui/area-chart'
 import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
-import { REALTIME_EMPTY_LINE } from '@/lib/dashboard/realtimeRange'
 import { Card } from '@ciphera-net/facet'
 import { formatCompactNumber, formatDuration } from '@/lib/utils/format'
 import Select from '@/components/ui/select'
@@ -18,7 +17,6 @@ import { formatDateShortUTC, formatTimeUTC, formatDateFullUTC, parseSiteWallCloc
 import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
-import { EmptyState } from '@/components/ui/EmptyState'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { DailyStat, ImportedProvenance, Stats } from '@/lib/api/stats'
 import { importBoundaryDay, importBoundaryLabel, importBoundaryX, railIncludesImported } from '@/lib/dashboard/importBoundary'
@@ -60,7 +58,7 @@ interface CommandDeckProps {
   interval: 'minute' | 'hour' | 'day' | 'week' | 'month'
   dateRange: { start: string; end: string }
   period?: string
-  /** Realtime mode: an empty window says so in one line (REALTIME_EMPTY_LINE). */
+  /** Realtime mode: an empty window says so in one line (CardEmptyState). */
   live?: boolean
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
@@ -433,24 +431,14 @@ export default function CommandDeck({
               same 500. Mobile keeps its smaller floor. fillParent (not
               aspectRatio) lets the plot use all of it. */}
           <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1">
-            {live && !hasAnyNonZero ? (
-              <div className="flex h-full min-h-72 flex-col items-center justify-center">
-                <EmptyState icon={<ChartLine />} title={REALTIME_EMPTY_LINE} className="py-0" />
-              </div>
-            ) : !hasData ? (
+            {!hasData || !hasAnyNonZero ? (
+              // One state for the chart with nothing to draw. In realtime it reads the realtime line (or, while
+              // somebody is on the site, that the window has no visits), as every block does.
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
                 <CardEmptyState
+                  live={live}
                   icon={<ChartLine />}
-                  title="No visits in this range"
-                  fresh="Visitors are drawn here from the first visit on."
-                  className="py-0"
-                />
-              </div>
-            ) : !hasAnyNonZero ? (
-              <div className="flex h-full min-h-72 flex-col items-center justify-center">
-                <CardEmptyState
-                  icon={<ChartLine />}
-                  title="No visits in this range"
+                  kind="visits"
                   fresh="Visitors are drawn here from the first visit on."
                   className="py-0"
                 />

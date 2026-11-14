@@ -187,7 +187,7 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false, li
         <CardEmptyState
           live={live}
           icon={<ArrowLineDown />}
-          title="No scroll depth in this range"
+          kind="scroll depth"
           fresh="How far visitors scroll down your pages is shown here."
         />
       )}

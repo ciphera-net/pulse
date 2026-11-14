@@ -378,7 +378,7 @@ export default function Sources({
             <CardEmptyState
               live={live}
               icon={<Globe />}
-              title="No visits in this range"
+              kind="visits"
               fresh="The sites that send you visitors are listed here."
             />
           )
@@ -409,7 +409,7 @@ export default function Sources({
             <CardEmptyState
               live={live}
               icon={<Globe />}
-              title="No visits in this range"
+              kind="visits"
               fresh="The sites that send you visitors are listed here."
             />
           )
@@ -455,7 +455,7 @@ export default function Sources({
             <CardEmptyState
               live={live}
               icon={<Megaphone />}
-              title="No campaign visits in this range"
+              kind="campaign visits"
               fresh="Visits from links you tagged are listed here."
               // The one view of this block that stays empty until the customer does something: tag a link.
               docs={{ label: 'How to tag links', href: docsUrl('campaigns') }}

@@ -324,10 +324,6 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   const filtered = filters.length > 0
   const clearFilters = caps.filters ? handleClearFilters : undefined
   const canWiden = period !== 'all'
-  const emptyFacts = useMemo<EmptyFacts>(
-    () => ({ filtered, clearFilters, neverVisited, canWiden }),
-    [filtered, clearFilters, neverVisited, canWiden],
-  )
   // The site's "Outbound links" option (Site settings, General; on unless it was switched off). Only the member's
   // site record carries it.
   const outboundOff = siteRecord?.script_features?.outbound != null && !siteRecord.script_features.outbound
@@ -450,6 +446,14 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // the orb could each be right and still disagree side by side, which is what was
   // reported (plan §11.10). One source, one number.
   const deckStats: Stats = isLive ? { ...stats, visitors: realtime } : stats
+  // Realtime's fact for an empty block: the live count is KNOWN and at zero. `realtime` above falls back to 0 while
+  // nothing is known, which suits a number on screen and not a claim: "Nobody on the site" is said on a known zero
+  // only, and a block with none of its own kind says that instead (owner ruling R25, 14-11-2026).
+  const nobodyLive = (realtimeData?.visitors ?? dashboard?.realtime_visitors) === 0
+  const emptyFacts = useMemo<EmptyFacts>(
+    () => ({ filtered, clearFilters, neverVisited, canWiden, nobodyLive }),
+    [filtered, clearFilters, neverVisited, canWiden, nobodyLive],
+  )
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
   // Show error toast on fetch failure

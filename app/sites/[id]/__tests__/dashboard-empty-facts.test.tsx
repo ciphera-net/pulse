@@ -218,6 +218,24 @@ describe('a member\'s dashboard', () => {
     expect(h.facts?.neverVisited).toBe(false)
   })
 
+  it('knows nobody is on the site only from a live count that is known and at zero', async () => {
+    // The first frame's default: the payload says 0.
+    await mount()
+    expect(h.facts?.nobodyLive).toBe(true)
+  })
+
+  it.each([
+    ['the live read says somebody is there', { visitors: 3 }, 0, false],
+    ['the live read says nobody, whatever the older payload says', { visitors: 0 }, 2, true],
+    ['only the payload knows, and it says somebody', undefined, 1, false],
+    ['nothing is known yet', undefined, undefined, false],
+  ])('nobodyLive when %s', async (_name, live, payloadCount, want) => {
+    h.useRealtime.mockImplementation(() => ({ data: live }))
+    h.useDashboard.mockImplementation(() => ({ data: { ...payload(), realtime_visitors: payloadCount }, isLoading: false, error: undefined, mutate: vi.fn() }))
+    await mount()
+    expect(h.facts?.nobodyLive).toBe(want)
+  })
+
   it('knows All time cannot be widened', async () => {
     mockSearchParams = new URLSearchParams('period=all')
     await mount()
