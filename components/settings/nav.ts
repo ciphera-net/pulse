@@ -7,13 +7,15 @@ import {
   GearSix,
   ShareNetwork,
   ShieldCheck,
+  StarFour,
   Target,
   UserCircle,
   UsersThree,
 } from '@phosphor-icons/react'
 
 /**
- * Settings navigation: ONE list of ten pages (settings overhaul, rulings R1–R4 and R41, 05/06-11-2026; record
+ * Settings navigation: ONE list of ten pages, eleven for a team with Analyst (settings overhaul, rulings R1–R4 and
+ * R41, 05/06-11-2026; Analyst's memories page 14-11-2026; record
  * Pulse/docs/plans/05-11-2026-settings-overhaul-plan.md). There are no Site / Team / Account scopes any more: the
  * five site pages name their site in the header (with a picker when the team has more than one), and the rest are
  * the team's and your own. Everyone gets the same list, whether they work alone or in a team.
@@ -26,7 +28,7 @@ import {
  */
 
 export type SettingsPageKey =
-  | 'general' | 'goals' | 'sharing' | 'privacy' | 'data'
+  | 'general' | 'goals' | 'analyst' | 'sharing' | 'privacy' | 'data'
   | 'team' | 'billing' | 'developers' | 'account' | 'notifications'
 
 export interface SettingsPage {
@@ -44,6 +46,8 @@ export interface SettingsPage {
   site: boolean
   /** Listed only while this permission is held. A page opened by its address says why it is closed. */
   requires?: string
+  /** Listed only while this beta flag is known to be on for the team (Analyst: barry), never while it loads. */
+  flag?: string
   /**
    * Today's other routes this page takes in. Each shows this page's row as current, and redirects here once its
    * content has moved into the page.
@@ -54,6 +58,8 @@ export interface SettingsPage {
 export const SETTINGS_PAGES: SettingsPage[] = [
   { key: 'general', label: 'General', href: '/settings/site/general', description: "Your site's name, timezone and tracking script.", icon: GearSix, site: true, requires: 'sites.edit', absorbs: ['/settings/site/monitoring', '/settings/site/bot-spam'] },
   { key: 'goals', label: 'Goals', href: '/settings/site/goals', description: 'The events you count as goals.', icon: Target, site: true, requires: 'goals.manage', absorbs: [] },
+  // Analyst's memories (P1, picked 14-11-2026): everyone with Analyst reads and changes them, so no permission.
+  { key: 'analyst', label: 'Analyst', href: '/settings/site/analyst', description: 'What Analyst remembers about this site.', icon: StarFour, site: true, flag: 'barry', absorbs: [] },
   // Members read Sharing's two lists and download the PDFs, with no buttons that make or delete (R23).
   { key: 'sharing', label: 'Sharing', href: '/settings/site/visibility', description: 'Your public dashboard, growth reports and scheduled emails.', icon: ShareNetwork, site: true, absorbs: [] },
   { key: 'privacy', label: 'Privacy', href: '/settings/site/privacy', description: 'Visitor views, how long data is kept, and text for your privacy policy.', icon: ShieldCheck, site: true, requires: 'sites.edit', absorbs: [] },
@@ -68,11 +74,12 @@ export const SETTINGS_PAGES: SettingsPage[] = [
 ]
 
 /**
- * The pages one person sees: each one's permission is held. An unknown permission keeps its page listed, as the old
- * registry did, so a permission lookup that fails never hides a page from somebody who can use it.
+ * The pages one person sees: each one's permission is held, and each flagged page's beta is on. An unknown permission
+ * keeps its page listed, as the old registry did, so a permission lookup that fails never hides a page from somebody
+ * who can use it; a flag that is not known to be on hides its page, which only exists while it is on.
  */
-export function pagesVisibleTo(perm: Record<string, boolean>): SettingsPage[] {
-  return SETTINGS_PAGES.filter((p) => !p.requires || (perm[p.requires] ?? true))
+export function pagesVisibleTo(perm: Record<string, boolean>, flags: Record<string, boolean> = {}): SettingsPage[] {
+  return SETTINGS_PAGES.filter((p) => (!p.requires || (perm[p.requires] ?? true)) && (!p.flag || flags[p.flag] === true))
 }
 
 /** The page a settings pathname shows: its own route, or a route it takes in. Undefined anywhere else. */

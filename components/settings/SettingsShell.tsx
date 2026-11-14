@@ -21,6 +21,7 @@ import { useCan } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { SiteHeaderIdentity } from '@/components/settings/SiteHeaderIdentity'
 import { pageFor, pagesVisibleTo, type SettingsPage } from '@/components/settings/nav'
+import { useFeature } from '@/lib/features'
 import {
   MastheadSlotProvider,
   MastheadAction,
@@ -194,7 +195,8 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     'billing.view': useCan('billing.view'),
     'integrations.manage': useCan('integrations.manage'),
   }
-  const pages = pagesVisibleTo(perm)
+  // A page behind a beta (Analyst) is listed only while the team's flag is on.
+  const pages = pagesVisibleTo(perm, { barry: useFeature('barry') === true })
 
   // Close the mobile sheet on route change / Escape.
   useEffect(() => {

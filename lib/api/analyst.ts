@@ -1,4 +1,4 @@
-import apiRequest, { ApiError, apiRequestStream } from './client'
+import apiRequest, { ApiError, apiRequestStream, type SendOptions } from './client'
 
 /**
  * Analyst, the AI analyst for one site (PUL-78). pulse-backend serves it under /barry (the internal name stays barry:
@@ -210,4 +210,80 @@ export async function getAnalystTurn(siteId: string, turnId: string, signal?: Ab
     if (err instanceof ApiError && err.status === 404) return null
     throw err
   }
+}
+
+/**
+ * A memory: something a team told Analyst about one site, such as what a source is or when a campaign ran (memories,
+ * 14-11-2026; the server's table still says notes). Analyst reads every memory with every question about the site and,
+ * once someone has turned memories on, saves new ones from what people tell it. A memory belongs to the team, so the
+ * server never names its author.
+ */
+export interface AnalystMemory {
+  id: string
+  site_id: string
+  body: string
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * A site's memories, oldest first, with the server's limits (20 memories of up to 280 characters today) and its switch:
+ * enabled is null while nobody has decided, and offer_snoozed_until is set while a Not now holds the first ask back.
+ */
+export interface AnalystMemories {
+  memories: AnalystMemory[]
+  max_memories: number
+  max_length: number
+  enabled: boolean | null
+  offer_snoozed_until: string | null
+}
+
+/** The error code of a site that already keeps max_memories memories (409). */
+export const ANALYST_MEMORIES_FULL = 'barry_memories_full'
+
+/** Everyone with Analyst reads and changes a site's memories and its switch (owner ruling, 14-11-2026). */
+export function getAnalystMemories(siteId: string) {
+  return apiRequest<AnalystMemories>(`/sites/${siteId}/barry/memories`)
+}
+
+/** Rewrites a memory's text: 1 to max_length characters (400 otherwise), 404 when the memory is gone. */
+export function updateAnalystMemory(siteId: string, memoryId: string, body: string) {
+  return apiRequest<AnalystMemory>(`/sites/${siteId}/barry/memories/${memoryId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body }),
+  })
+}
+
+/** Deletes a memory (204); 404 when it is already gone. */
+export function deleteAnalystMemory(siteId: string, memoryId: string, send: SendOptions = {}) {
+  return apiRequest<void>(`/sites/${siteId}/barry/memories/${memoryId}`, { method: 'DELETE', keepalive: send.keepalive })
+}
+
+/** Turns the site's memories on or off (Site Settings, Analyst). */
+export function setAnalystMemoriesEnabled(siteId: string, enabled: boolean) {
+  return apiRequest<{ enabled: boolean }>(`/sites/${siteId}/barry/memories/settings`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled }),
+  })
+}
+
+/**
+ * The first ask's yes, from a chat: turns the site's memories on and keeps the memory Analyst offered. A full site
+ * still turns them on and answers 409 with code barry_memories_full.
+ */
+export function acceptAnalystMemory(siteId: string, body: string) {
+  return apiRequest<{ memory: AnalystMemory; enabled: true }>(`/sites/${siteId}/barry/memories/accept`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  })
+}
+
+/** The first ask's Not now: Analyst does not ask again on the site for 30 days (204). */
+export function snoozeAnalystMemories(siteId: string) {
+  return apiRequest<void>(`/sites/${siteId}/barry/memories/snooze`, { method: 'POST' })
+}
+
+/** True when a memory was refused because the site already keeps the most memories Analyst keeps. */
+export function isAnalystMemoriesFull(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409 && err.data?.code === ANALYST_MEMORIES_FULL
 }

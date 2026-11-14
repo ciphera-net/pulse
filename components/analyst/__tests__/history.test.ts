@@ -99,6 +99,24 @@ describe('chatMessages', () => {
     const messages = chatMessages(
       conversation('c1', [turn('t1', 'Why did visitors change?', '2026-11-10T21:00:00Z', { follow_ups: ['Which pages grew most?'] })]),
     )
-    expect(messages[1].metadata).toEqual({ custom: { followUps: ['Which pages grew most?'], skippedLookups: 0, lookupsRan: 0 } })
+    expect(messages[1].metadata).toEqual({
+      custom: { followUps: ['Which pages grew most?'], skippedLookups: 0, lookupsRan: 0, memory: null },
+    })
+  })
+
+  it('keeps the memory an answer saved, so a reopened chat still says what Analyst remembered, and counts it as no lookup', () => {
+    const messages = chatMessages(
+      conversation('c1', [
+        turn('t1', 'Shared Link is our newsletter. How many visitors did it send?', '2026-11-10T21:00:00Z', {
+          steps: [
+            { tool: 'save_memory', args: { memory: 'Shared Link is our newsletter.' }, result: { saved: true, memory: 'Shared Link is our newsletter.', id: 'm1' }, ms: 4 },
+            { tool: 'get_breakdown', args: { dimension: 'referrer' }, result: { rows: [] }, ms: 30 },
+          ],
+        }),
+      ]),
+    )
+    expect(messages[1].metadata).toEqual({
+      custom: { followUps: [], skippedLookups: 0, lookupsRan: 1, memory: { kind: 'saved', memory: 'Shared Link is our newsletter.' } },
+    })
   })
 })

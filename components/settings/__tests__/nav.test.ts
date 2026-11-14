@@ -12,15 +12,16 @@ const MEMBER = { 'sites.edit': false, 'goals.manage': false, 'billing.view': tru
 describe('settings registry: one list of ten pages', () => {
   it('lists the ten pages in the decided order, the same for everyone', () => {
     expect(SETTINGS_PAGES.map((p) => p.label)).toEqual([
-      'General', 'Goals', 'Sharing', 'Privacy', 'Data', 'Team', 'Billing', 'Developers', 'Account', 'Notifications',
+      'General', 'Goals', 'Analyst', 'Sharing', 'Privacy', 'Data', 'Team', 'Billing', 'Developers', 'Account', 'Notifications',
     ])
-    expect(new Set(SETTINGS_PAGES.map((p) => p.key)).size).toBe(10)
+    expect(new Set(SETTINGS_PAGES.map((p) => p.key)).size).toBe(11)
   })
 
   it('keeps each page on today\'s route, so links already sent and published keep working', () => {
     expect(Object.fromEntries(SETTINGS_PAGES.map((p) => [p.key, p.href]))).toEqual({
       general: '/settings/site/general',
       goals: '/settings/site/goals',
+      analyst: '/settings/site/analyst',
       sharing: '/settings/site/visibility',
       privacy: '/settings/site/privacy',
       data: '/settings/site/integrations',
@@ -33,7 +34,7 @@ describe('settings registry: one list of ten pages', () => {
   })
 
   it('marks the five site pages, and only those', () => {
-    expect(SETTINGS_PAGES.filter((p) => p.site).map((p) => p.key)).toEqual(['general', 'goals', 'sharing', 'privacy', 'data'])
+    expect(SETTINGS_PAGES.filter((p) => p.site).map((p) => p.key)).toEqual(['general', 'goals', 'analyst', 'sharing', 'privacy', 'data'])
     for (const p of SETTINGS_PAGES) expect(p.href.startsWith('/settings/site/'), p.key).toBe(p.site)
   })
 
@@ -69,7 +70,14 @@ describe('settings registry: one list of ten pages', () => {
   })
 
   it('keeps a page listed when its permission is unknown: a failed lookup never hides a page', () => {
-    expect(pagesVisibleTo({}).map((p) => p.key)).toEqual(SETTINGS_PAGES.map((p) => p.key))
+    expect(pagesVisibleTo({}).map((p) => p.key)).toEqual(SETTINGS_PAGES.filter((p) => !p.flag).map((p) => p.key))
+  })
+
+  it('lists Analyst only while the team\'s beta is known to be on, for a member too', () => {
+    expect(pagesVisibleTo(ALL).map((p) => p.key)).not.toContain('analyst')
+    expect(pagesVisibleTo(ALL, { barry: false }).map((p) => p.key)).not.toContain('analyst')
+    expect(pagesVisibleTo(ALL, { barry: true }).map((p) => p.key)).toContain('analyst')
+    expect(pagesVisibleTo(MEMBER, { barry: true })[0]?.key).toBe('analyst')
   })
 
   it('lands /settings on the first page, or the first that is not a site\'s when there are no sites', () => {

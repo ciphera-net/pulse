@@ -20,6 +20,8 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * flat (no nested object) so the tab's raw-payload rendering stays a key/value
  * list rather than a dumped mono JSON blob. `org_beta_features_changed` is one
  * row per switch of Settings → Beta (PUL-40), flat too: `from` and `to`.
+ * `site_analyst_memories_changed` is one row each time a site's Analyst memories are turned on or off (14-11-2026),
+ * from Settings or from the first ask in a chat: `enabled`, `previous_enabled` (null while undecided) and `via`.
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.
@@ -72,6 +74,7 @@ export const AUDIT_ACTIONS = [
   'report_revoked',
   'report_schedule_created',
   'report_schedule_stopped',
+  'site_analyst_memories_changed',
   'site_created',
   'site_exported',
   'site_identity_window_changed',
@@ -151,6 +154,7 @@ export const ACTION_LABELS = {
   report_revoked: 'Deleted report',
   report_schedule_created: 'Scheduled report emails',
   report_schedule_stopped: 'Stopped report emails',
+  site_analyst_memories_changed: 'Turned Analyst memories on or off',
   site_created: 'Created site',
   site_exported: 'Exported data',
   site_identity_window_changed: 'Changed identity window',

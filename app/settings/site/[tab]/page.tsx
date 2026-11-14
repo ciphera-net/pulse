@@ -10,9 +10,11 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-// The five site pages of the settings overhaul (PUL-42), each on today's route that carries most of its content.
+// The five site pages of the settings overhaul (PUL-42), each on today's route that carries most of its content, and
+// Analyst's memories (14-11-2026), listed only for a team with Analyst (components/settings/nav.ts).
 const GeneralPage = dynamic(() => import('@/components/settings/pages/general/GeneralPage'))
 const GoalsPage = dynamic(() => import('@/components/settings/pages/goals/GoalsPage'))
+const AnalystSettingsPage = dynamic(() => import('@/components/settings/pages/analyst/AnalystSettingsPage'))
 const SharingPage = dynamic(() => import('@/components/settings/pages/sharing/SharingPage'))
 const PrivacyPage = dynamic(() => import('@/components/settings/pages/privacy/PrivacyPage'))
 const DataPage = dynamic(() => import('@/components/settings/pages/data/DataPage'))
@@ -20,6 +22,7 @@ const DataPage = dynamic(() => import('@/components/settings/pages/data/DataPage
 const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = {
   general: GeneralPage,
   goals: GoalsPage,
+  analyst: AnalystSettingsPage,
   visibility: SharingPage,
   privacy: PrivacyPage,
   integrations: DataPage,
