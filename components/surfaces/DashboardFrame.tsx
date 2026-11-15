@@ -164,6 +164,7 @@ export default function DashboardFrame({
               dateRange={dateRange}
               liveMinutes={liveMinutes}
               memberFeatures={caps.fullReads}
+              filters={filtersParam || undefined}
             />
           </div>
         </div>

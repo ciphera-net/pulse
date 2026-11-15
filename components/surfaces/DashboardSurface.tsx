@@ -889,6 +889,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           dateRange={resolvedDateRange}
           liveMinutes={liveMinutes}
           memberFeatures={caps.fullReads}
+          filters={filtersParam || undefined}
         />
       </div>
 

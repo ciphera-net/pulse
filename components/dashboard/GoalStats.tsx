@@ -28,6 +28,13 @@ interface GoalStatsProps {
   memberFeatures?: boolean
   /** Realtime mode's rolling window in minutes (PULSE-192): the property breakdown uses it instead of the dates. */
   liveMinutes?: number
+  /**
+   * The page's filters, as the dashboard read was given them. The rows here are already filtered (the server
+   * applies them to the list); an opened event's property reads take the same string, so its values add up to
+   * the count its row shows. Without it they were the whole site's under any filter (found 15-11-2026: a row
+   * read 1,217 and the values under it added up to 2,019).
+   */
+  filters?: string
 }
 
 interface PropertyCache {
@@ -47,7 +54,7 @@ export function goalLabel(row: Pick<GoalCountStat, 'event_name' | 'display_name'
   return row.display_name ?? row.event_name.replace(/_/g, ' ')
 }
 
-export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true, liveMinutes }: GoalStatsProps) {
+export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true, liveMinutes, filters }: GoalStatsProps) {
   // The drill-down reads the property lists directly, not through a hook, so it resolves the read itself: on /demo
   // these are the public routes, for a member the member ones (PUL-34).
   const site = useSiteRef(siteId)
@@ -56,7 +63,8 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
   // site with more events than that could not see them anywhere (14-11-2026). The pager is the other blocks' own.
   const all = goalCounts || []
   const pageCount = Math.max(1, Math.ceil(all.length / LIMIT))
-  const windowKey = liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`
+  // What the list and its opened rows describe: one window under one set of filters.
+  const windowKey = `${liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`}|${filters ?? ''}`
   const [page, setPage] = useCardPage(windowKey, pageCount)
   const list = all.slice((page - 1) * LIMIT, page * LIMIT)
   const hasData = all.length > 0
@@ -65,9 +73,9 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [propertyCache, setPropertyCache] = useState<Record<string, PropertyCache>>({})
 
-  // The breakdowns describe ONE window. When the window changes (another range, or
-  // entering/leaving realtime), what was fetched for the old one is dropped rather than
-  // shown under the new one (PULSE-192). Adjusted during render, React's pattern for
+  // The breakdowns describe ONE window under ONE set of filters. When either changes (another
+  // range, entering/leaving realtime, a filter added or taken away), what was fetched for the
+  // old one is dropped rather than shown under the new one (PULSE-192). Adjusted during render, React's pattern for
   // state derived from props, so no frame shows the old window's rows.
   const [cachedWindow, setCachedWindow] = useState(windowKey)
   if (cachedWindow !== windowKey) {
@@ -101,13 +109,13 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
       }))
 
       try {
-        const keys = await getEventPropertyKeys(site, eventName, dateRange.start, dateRange.end, liveMinutes)
+        const keys = await getEventPropertyKeys(site, eventName, dateRange.start, dateRange.end, liveMinutes, filters)
         const values: Record<string, EventPropertyValue[]> = {}
 
         // Fetch all property values in parallel
         await Promise.all(
           keys.map(async (k) => {
-            const vals = await getEventPropertyValues(site, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes)
+            const vals = await getEventPropertyValues(site, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes, filters)
             values[k.key] = vals
           })
         )
@@ -123,7 +131,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
         }))
       }
     }
-  }, [expanded, propertyCache, site, dateRange.start, dateRange.end, liveMinutes, frame])
+  }, [expanded, propertyCache, site, dateRange.start, dateRange.end, liveMinutes, frame, filters])
 
   const content = (
     <>
