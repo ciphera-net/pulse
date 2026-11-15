@@ -93,6 +93,34 @@ describe('ReportSlides', () => {
     expect(within(sources).getByText('7,070')).toBeTruthy()
   })
 
+  it('draws a source once, however it was stored: its visitors and its share are the sum (lib/dashboard/sameRows.ts)', () => {
+    const payload: ReportPayload = {
+      ...PAYLOAD,
+      sources: {
+        channels: PAYLOAD.sources!.channels,
+        referrers: [
+          { name: 'Google', visitors: 6120, share: 35 },
+          { name: 'x.com', visitors: 900, share: 9 },
+          { name: 't.co', visitors: 600, share: 6 },
+          { name: 'news.ycombinator.com', visitors: 410, share: 4 },
+          { name: 'Twitter', visitors: 100, share: 1 },
+        ],
+      },
+    }
+    const { container } = render(<ReportSlides payload={payload} mode="page" />)
+    const sources = slides(container)[2]
+    // One "X", not three; nothing else changed.
+    expect(within(sources).getAllByText('X')).toHaveLength(1)
+    expect(within(sources).getByText('1,600')).toBeTruthy()
+    expect(within(sources).getByText('16%')).toBeTruthy()
+    expect(within(sources).getByText('6,120')).toBeTruthy()
+    expect(within(sources).getByText('Hacker News')).toBeTruthy()
+    // Still ranked by visitors: Google, X, Hacker News.
+    const text = sources.textContent ?? ''
+    expect(text.indexOf('Google')).toBeLessThan(text.indexOf('1,600'))
+    expect(text.indexOf('1,600')).toBeLessThan(text.indexOf('Hacker News'))
+  })
+
   it('leaves out a goals slide when the site has no goals, and says "Visitors per month" with nothing to compare', () => {
     const payload: ReportPayload = { ...PAYLOAD, goals: [], compare: null }
     const { container } = render(<ReportSlides payload={payload} mode="page" />)

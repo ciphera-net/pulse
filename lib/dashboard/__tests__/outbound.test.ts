@@ -8,7 +8,7 @@ import { outboundLinkRows } from '@/lib/dashboard/outbound'
 describe('outboundLinkRows', () => {
   it('reads a link as its host without www, then its path and query, with no scheme', () => {
     expect(outboundLinkRows([{ value: 'https://www.strava.com/clubs/haldencycles', count: 443 }])).toEqual([
-      { href: 'https://www.strava.com/clubs/haldencycles', host: 'strava.com', label: 'strava.com/clubs/haldencycles', clicks: 443 },
+      { href: 'https://www.strava.com/clubs/haldencycles', hrefs: ['https://www.strava.com/clubs/haldencycles'], host: 'strava.com', label: 'strava.com/clubs/haldencycles', clicks: 443 },
     ])
     expect(outboundLinkRows([{ value: 'http://Shop.Example.com/a/b?size=m&c=2', count: 3 }])[0]).toMatchObject({
       host: 'shop.example.com',
@@ -61,5 +61,64 @@ describe('outboundLinkRows', () => {
     expect(outboundLinkRows(undefined)).toEqual([])
     expect(outboundLinkRows(null)).toEqual([])
     expect(outboundLinkRows([])).toEqual([])
+  })
+})
+
+// A list never draws the same row twice (lib/dashboard/sameRows.ts). A link's row reads its host without `www.`,
+// its path and its query, so recorded links that differ only in what the row does not show are ONE row.
+describe('outboundLinkRows: links that read the same are one row', () => {
+  it.each([
+    ['the scheme', ['http://shop.example/cart', 'https://shop.example/cart']],
+    ['www.', ['https://www.shop.example/cart', 'https://shop.example/cart']],
+    ['the case of the host', ['https://Shop.Example/cart', 'https://shop.example/cart']],
+    ['an anchor', ['https://shop.example/cart#top', 'https://shop.example/cart#pay', 'https://shop.example/cart']],
+  ])('merges two links that differ only in %s', (_what, values) => {
+    const rows = outboundLinkRows(values.map((value, i) => ({ value, count: 10 - i })))
+    expect(rows).toHaveLength(1)
+    expect(rows[0].label).toBe('shop.example/cart')
+    expect(rows[0].clicks).toBe(values.reduce((sum, _v, i) => sum + 10 - i, 0))
+  })
+
+  it('opens its most clicked link and lists every link it stands for, most clicked first', () => {
+    const [row] = outboundLinkRows([
+      { value: 'http://shop.example/cart', count: 2 },
+      { value: 'https://www.shop.example/cart', count: 9 },
+      { value: 'https://shop.example/cart#pay', count: 5 },
+    ])
+    expect(row).toEqual({
+      href: 'https://www.shop.example/cart',
+      hrefs: ['https://www.shop.example/cart', 'https://shop.example/cart#pay', 'http://shop.example/cart'],
+      host: 'shop.example',
+      label: 'shop.example/cart',
+      clicks: 16,
+    })
+  })
+
+  it('keeps apart what reads apart: another path, another query, another host', () => {
+    const rows = outboundLinkRows([
+      { value: 'https://shop.example/cart', count: 4 },
+      { value: 'https://shop.example/cart/', count: 3 },
+      { value: 'https://shop.example/cart?step=2', count: 2 },
+      { value: 'https://blog.shop.example/cart', count: 1 },
+    ])
+    expect(rows.map((r) => r.label)).toEqual(['shop.example/cart', 'shop.example/cart/', 'shop.example/cart?step=2', 'blog.shop.example/cart'])
+  })
+
+  it('ranks a merged row by its own clicks, and loses none', () => {
+    const input = [
+      { value: 'https://a.example/', count: 10 },
+      { value: 'https://b.example/', count: 6 },
+      { value: 'http://b.example/', count: 6 },
+      { value: 'https://c.example/', count: 1 },
+    ]
+    const rows = outboundLinkRows(input)
+    expect(rows.map((r) => [r.label, r.clicks])).toEqual([['b.example', 12], ['a.example', 10], ['c.example', 1]])
+    expect(rows.reduce((sum, r) => sum + r.clicks, 0)).toBe(input.reduce((sum, v) => sum + v.count, 0))
+  })
+
+  it('never draws a label twice', () => {
+    const values = ['https://x.com/a', 'http://x.com/a', 'https://www.x.com/a', 'https://X.com/a#b', 'https://x.com/b', 'https://x.com/a?c=1', 'https://x.com/a?c=1#z']
+    const drawn = outboundLinkRows(values.map((value) => ({ value, count: 1 }))).map((r) => r.label)
+    expect(drawn).toEqual(['x.com/a', 'x.com/a?c=1', 'x.com/b'])
   })
 })

@@ -16,6 +16,7 @@ import { type DimensionFilter } from '@/lib/filters'
 import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
 import { DIMENSION_ROW } from '@/components/dashboard/MetricRowStat'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
+import { groupSameRows } from '@/lib/dashboard/sameRows'
 
 // ---------------------------------------------------------------------------
 // Outbound — where visitors go when they leave (owner pick A, 08-09-2026;
@@ -141,7 +142,16 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
       .sort((a, b) => b[1] - a[1])
       .map(([host, clicks]) => ({ key: host, label: host, host, clicks }))
     const from_page: Row[] = (data?.paths ?? []).map((v) => ({ key: v.value, label: v.value, path: v.value, clicks: v.count }))
-    return { domains, links, from_page }
+    // Links that read the same (http beside https, www. beside the bare host, two anchors of one page) are one
+    // row: lib/dashboard/sameRows.ts. Its clicks are the sum and it opens its most clicked link.
+    const sameLinks = groupSameRows(links, (link) => `${link.label}${link.sub ?? ''}`)
+    const mergedLinks: Row[] = sameLinks.length === links.length ? links : sameLinks
+      .map((parts) => {
+        const most = parts.reduce((m, part) => (part.clicks > m.clicks ? part : m), parts[0])
+        return { ...most, clicks: parts.reduce((sum, part) => sum + part.clicks, 0) }
+      })
+      .sort((a, b) => b.clicks - a.clicks)
+    return { domains, links: mergedLinks, from_page }
   }, [data])
 
   // The share denominator is EVERY outbound click in the range, not the

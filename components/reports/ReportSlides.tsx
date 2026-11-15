@@ -8,6 +8,7 @@ import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import { getReferrerDisplayName, getReferrerIcon } from '@/lib/utils/icons'
+import { groupSameRows } from '@/lib/dashboard/sameRows'
 import { REPORT_SECTIONS, type ReportChange, type ReportPayload } from '@/lib/api/reports'
 import {
   axisTicks,
@@ -342,7 +343,16 @@ export default function ReportSlides({ payload, mode }: { payload: ReportPayload
 
   if (sources) {
     const chMax = Math.max(0, ...sources.channels.map((c) => c.visitors))
-    const refMax = Math.max(0, ...sources.referrers.map((r) => r.visitors))
+    // A source is drawn as its brand, so stored sources that read the same (x.com beside t.co) are one row
+    // (lib/dashboard/sameRows.ts). Visitors and shares add up: every share is over the same total.
+    const referrers = groupSameRows(sources.referrers, (r) => getReferrerDisplayName(r.name) || r.name)
+      .map((parts) => (parts.length === 1 ? parts[0] : {
+        name: parts.reduce((most, part) => (part.visitors > most.visitors ? part : most), parts[0]).name,
+        visitors: parts.reduce((sum, part) => sum + part.visitors, 0),
+        share: parts.reduce((sum, part) => sum + part.share, 0),
+      }))
+      .sort((a, b) => b.visitors - a.visitors)
+    const refMax = Math.max(0, ...referrers.map((r) => r.visitors))
     slides.push({
       label: 'Where visitors come from',
       body: (
@@ -361,8 +371,8 @@ export default function ReportSlides({ payload, mode }: { payload: ReportPayload
                 />
               ))}
             </RankList>
-            <RankList caption="Top sources, visitors" empty={sources.referrers.length === 0}>
-              {sources.referrers.map((r) => (
+            <RankList caption="Top sources, visitors" empty={referrers.length === 0}>
+              {referrers.map((r) => (
                 <RankRow
                   key={r.name}
                   lead={<Lead>{getReferrerIcon(r.name)}</Lead>}

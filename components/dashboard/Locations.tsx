@@ -13,6 +13,7 @@ import { flagUrl, hasFlag } from '@/lib/flags'
 import iso3166 from 'iso-3166-2'
 import { TIMEZONE_COUNTRY } from '@/lib/timezone-countries.gen'
 import { formatLanguage } from '@/lib/dashboard/language'
+import { mergeSameRows } from '@/lib/dashboard/sameRows'
 
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import { GlobeIcon, Switcher } from '@ciphera-net/facet'
@@ -154,6 +155,8 @@ export default function Audience({ countries, cities, regions, languages, langua
     pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null
     // PULSE-173, grouped language rows only:
     members?: string[]; locale_count?: number; flag_region?: string | null
+    // A row made of several stored values that read the same (lib/dashboard/sameRows.ts): what a press filters by.
+    sameAs?: string[]
   }
 
   // PULSE-173: grouped mode is keyed on the PROP's presence, not its length.
@@ -299,6 +302,7 @@ export default function Audience({ countries, cities, regions, languages, langua
   // visitors the row's numbers describe. Every other tab, and an ungrouped
   // language row, keeps the single-value behaviour unchanged.
   const getItemFilterValues = (item: AudienceItem): string[] | undefined => {
+    if (item.sameAs && item.sameAs.length > 0) return item.sameAs
     if (isLanguageGrouped) {
       if (item.members && item.members.length > 0) return item.members
       // A grouped row with no `members` (a backend that omitted it, as a shared
@@ -348,7 +352,14 @@ export default function Audience({ countries, cities, regions, languages, langua
 
   const isVisualTab = activeTab === 'map'
   const rawData = isVisualTab ? [] : getData()
-  const data = filterUnknown(rawData)
+  // A row is its mark and its label. Stored values that draw the same row (two spellings of one locale, a code
+  // in two cases) are one row, and a press on it filters by all of them: lib/dashboard/sameRows.ts.
+  const sameRows = (items: AudienceItem[]) => mergeSameRows(
+    items,
+    (item) => `${getItemFlagCode(item, activeTab, isLanguageGrouped) ?? ''}|${getItemLabel(item)}`,
+    (parts) => (parts.length > 1 ? { sameAs: [...new Set(parts.flatMap((part) => getItemFilterValues(part) ?? []))] } : {}),
+  )
+  const data = sameRows(filterUnknown(rawData))
   const hasData = isVisualTab
     ? (countries && filterUnknown(countries).length > 0)
     : (data && data.length > 0)
@@ -366,7 +377,7 @@ export default function Audience({ countries, cities, regions, languages, langua
   )
   // Gate on wantsFullList: stale hook-state from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
-  const fullClean = wantsFullList && fullData ? filterUnknown(fullData) : null
+  const fullClean = wantsFullList && fullData ? sameRows(filterUnknown(fullData)) : null
   const allData = fullClean && fullClean.length >= data.length ? fullClean : data
   const pageCount = isVisualTab ? 1 : Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,

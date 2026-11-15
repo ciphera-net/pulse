@@ -5,6 +5,7 @@ import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
+import { mergeSameRows } from '@/lib/dashboard/sameRows'
 import { Monitor } from '@phosphor-icons/react'
 import { DeviceMobile } from '@phosphor-icons/react'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
@@ -79,7 +80,10 @@ const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os'
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: TechSpecsProps) {
   const frame = useDashboardFrame()
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
-  type TechItem = { name: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
+  // `names`: a row made of several stored names that read the same (lib/dashboard/sameRows.ts), what a press filters by.
+  type TechItem = { name: string; names?: string[]; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
+  // A row reads its name with a capital. Stored names that read the same (`mobile` beside `Mobile`) are one row.
+  const sameRows = (items: TechItem[]) => mergeSameRows(items, (item) => capitalize(item.name), (parts) => (parts.length > 1 ? { names: parts.map((part) => part.name) } : {}))
 
 
   // Filter out "Unknown" entries that result from disabled collection
@@ -124,7 +128,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   }
 
   const rawData = getRawData()
-  const data = filterUnknown(rawData)
+  const data = sameRows(filterUnknown(rawData) as TechItem[])
   const hasData = data && data.length > 0
 
   // The dashboard fan-out carries only the top 10 per dimension — when the
@@ -143,10 +147,10 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         : activeTab === 'os' ? getOSIcon(name)
           : activeTab === 'devices' ? getDeviceIcon(name)
             : <Monitor className="text-neutral-500" />
-    return filterUnknown((fullRaw ?? []).map(row => {
+    return sameRows(filterUnknown((fullRaw ?? []).map(row => {
       const name = (row[nameKey] as string) ?? ''
       return { name, pageviews: row.pageviews, visitors: row.visitors, bounce_rate: row.bounce_rate, avg_duration: row.avg_duration, icon: iconFor(name) }
-    }))
+    })) as TechItem[])
   }, [fullRaw, activeTab])
 
   // Gate on wantsFullList: stale hook-state from another range must never
@@ -201,7 +205,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               return (
                 <CascadeRow key={item.name} index={i}>
                   <Row
-                    {...(canFilter ? { type: 'button' as const, onClick: () => canFilter && onFilter({ dimension: dim, operator: 'is', values: [item.name] }) } : {})}
+                    {...(canFilter ? { type: 'button' as const, onClick: () => canFilter && onFilter({ dimension: dim, operator: 'is', values: item.names ?? [item.name] }) } : {})}
                     className={`interactive-row ${DIMENSION_ROW}${canFilter ? ' cursor-pointer' : ''}`}
                   >
                     <RowBar width={barWidth} index={i} />
