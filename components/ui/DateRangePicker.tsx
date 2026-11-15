@@ -9,6 +9,7 @@ import type { DateSpan, RowState } from '@/lib/view/view'
 import type { Period } from '@/lib/hooks/periodUrl'
 import { buttonVariants } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
+import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 
 // ─── The view switcher (PULSE-20, owner decisions 25-09-2026) ────────────────
 //
@@ -185,6 +186,7 @@ export default function DateRangePicker({
   calendar,
   now,
 }: DateRangePickerProps) {
+  const glass = useGlassPanels()
   const [isOpen, setIsOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   // How the calendar arrives, read when it is asked for: beside the list its width grows,
@@ -542,7 +544,8 @@ export default function DateRangePicker({
           data-view-switcher=""
           data-calendar-side={pos?.calendarSide}
           className={cn(
-            'fixed z-50 flex w-[min(460px,calc(100vw-16px))] flex-col overflow-x-hidden overflow-y-auto overscroll-contain rounded-none border border-border bg-popover shadow-lg sm:w-auto',
+            'fixed z-50 flex w-[min(460px,calc(100vw-16px))] flex-col overflow-x-hidden overflow-y-auto overscroll-contain rounded-none shadow-lg sm:w-auto',
+            panelSurface(glass),
             calendarToRight ? 'sm:flex-row' : 'sm:flex-row-reverse',
           )}
           style={panelStyle}

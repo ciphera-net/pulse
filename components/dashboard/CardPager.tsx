@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react'
+import { useDashboardFrame } from '@/lib/dashboard/frame'
 
 /**
  * Page state scoped to a context key (tab + filters + range): changing the
@@ -51,12 +52,18 @@ const GHOST = 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 curs
 const OFF = 'text-neutral-500 opacity-40 cursor-default'
 
 export function CardPager({ page, pageCount, onPageChange, label }: CardPagerProps) {
+  // In the new frame the pager sits on the block's footer row (lib/dashboard/frame.tsx, CardFooter): no margin
+  // of its own, in the middle when it is alone, at the right end when a note shares the row.
+  const frame = useDashboardFrame()
   if (pageCount <= 1) return null
   const go = (n: number) => {
     if (n >= 1 && n <= pageCount && n !== page) onPageChange(n)
   }
   return (
-    <nav className="flex items-center justify-center gap-0.5 mt-3.5" aria-label={`Pages of ${label}`}>
+    <nav
+      className={frame ? 'mx-auto flex shrink-0 items-center justify-center gap-0.5' : 'flex items-center justify-center gap-0.5 mt-3.5'}
+      aria-label={`Pages of ${label}`}
+    >
       <button
         type="button"
         onClick={() => go(page - 1)}

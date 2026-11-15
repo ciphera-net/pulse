@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { ArrowSquareOut, FileText, Globe } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, FRAME_CARD_NAME, FRAME_CARD_NOTE, useDashboardFrame } from '@/lib/dashboard/frame'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
@@ -118,6 +119,7 @@ function DestinationIcon({ host, failed, onFail }: { host: string; failed: boole
 }
 
 export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, liveMinutes, goalsImported, trackingOff = false }: OutboundProps) {
+  const frame = useDashboardFrame()
   const [activeTab, setActiveTab] = useState<Tab>('domains')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
   const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period, liveMinutes)
@@ -196,8 +198,11 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
       : null
 
   return (
-    <div data-tour="dimension-card" data-tour-card="outbound" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div data-tour="dimension-card" data-tour-card="outbound" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
       <div className="flex items-center justify-between mb-4">
+        {/* The frame has no section titles, and Domains, Links and From page do not say what the block is: its
+            name stands before its tabs. */}
+        {frame && <h2 className={`${FRAME_CARD_NAME} me-3`}>Outbound</h2>}
         <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
           <Switcher
             size="sm"
@@ -220,7 +225,7 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
         </div>
       </div>
 
-      <div className="flex-1 min-h-[270px]">
+      <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
         {error && !hasData ? (
           // Stale rows outlive a failed revalidation (the house SWR stance, as
           // in Sources); but with NOTHING to show, an error is an error — it
@@ -286,7 +291,7 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
             </CascadeGroup>
-            {footnote && (
+            {footnote && !frame && (
               <p className="mt-3 text-[11px] text-neutral-500" data-testid="outbound-footnote">{footnote}</p>
             )}
           </>
@@ -314,7 +319,14 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
         )}
       </div>
 
-      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab === 'from_page' ? 'pages' : activeTab} />
+      <CardFooter>
+        {/* In the frame the footnote sits on the footer row with the pager: under the rows it would make this
+            block taller than its neighbours. */}
+        {frame && hasData && footnote && (
+          <p className={FRAME_CARD_NOTE} title={footnote} data-testid="outbound-footnote">{footnote}</p>
+        )}
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab === 'from_page' ? 'pages' : activeTab} />
+      </CardFooter>
     </div>
   )
 }

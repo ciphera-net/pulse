@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
+import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 
 // ---------------------------------------------------------------------------
 // FilterPopover — the anchored surface the whole filter flow lives in.
@@ -27,6 +28,7 @@ export interface FilterPopoverProps {
 }
 
 export default function FilterPopover({ open, anchor, label, contentKey, onClose, children }: FilterPopoverProps) {
+  const glass = useGlassPanels()
   const panelRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
@@ -143,7 +145,7 @@ export default function FilterPopover({ open, anchor, label, contentKey, onClose
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 6, scale: 0.97 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-[100] w-[360px] max-w-[calc(100vw-32px)] bg-popover border border-border rounded-none shadow-lg origin-top-left"
+          className={`fixed z-[100] w-[360px] max-w-[calc(100vw-32px)] ${panelSurface(glass)} rounded-none shadow-lg origin-top-left`}
           // * Off-screen until the pre-paint measure runs — never a 0,0 flash.
           style={pos ?? { left: -9999, top: -9999 }}
         >

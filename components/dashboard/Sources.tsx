@@ -3,7 +3,7 @@
 import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
 import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { getOpenHostname, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Megaphone, Globe, ArrowSquareOut } from '@phosphor-icons/react'
@@ -21,6 +21,8 @@ import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { Select, Switcher } from '@ciphera-net/facet'
 import { docsUrl } from '@/lib/docs'
+import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
+import { TabMenu, TabMenuLabel } from '@/components/dashboard/TabMenu'
 
 /**
  * Sources — where visitors came from, in ONE card.
@@ -160,8 +162,14 @@ export default function Sources({
 }: SourcesProps) {
   // A row that filters is a real control; one that cannot is inert text.
   const Row = onFilter ? 'button' : 'div'
+  const frame = useDashboardFrame()
   const [view, setView] = useState<View>('referrers')
   const [utm, setUtm] = useState<UtmDimension>('source')
+  // The new frame: the Campaigns tab is also the menu of its five views (components/dashboard/TabMenu.tsx), in
+  // place of the Select in the header's right slot.
+  const [utmMenuOpen, setUtmMenuOpen] = useState(false)
+  const campaignsTabRef = useRef<HTMLSpanElement>(null)
+  const utmLabel = UTM_OPTIONS.find((o) => o.value === utm)?.label ?? ''
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
 
   // ── Referrers ──
@@ -267,7 +275,7 @@ export default function Sources({
   const infoTipKey: Tab = view === 'campaigns' ? utm : view
 
   return (
-    <div data-tour="dimension-card" data-tour-card="referrers" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div data-tour="dimension-card" data-tour-card="referrers" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
       <div className="flex items-center justify-between gap-2 mb-4">
         {/* The overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
         <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
@@ -278,17 +286,32 @@ export default function Sources({
             options={[
               { value: 'referrers', label: 'Referrers' },
               { value: 'channels', label: 'Channels' },
-              { value: 'campaigns', label: 'Campaigns' },
+              {
+                value: 'campaigns',
+                label: frame
+                  ? <TabMenuLabel name="Campaigns" choice={utmLabel} selected={view === 'campaigns'} open={utmMenuOpen} labelRef={campaignsTabRef} />
+                  : 'Campaigns',
+              },
             ]}
             value={view}
-            onChange={(v) => setView(v as View)}
+            onChange={(v) => {
+              // The Switcher calls this for a press on the tab that is already open too. In the frame that second
+              // press on Campaigns is what opens (and closes) its menu.
+              if (frame && v === 'campaigns' && view === 'campaigns') {
+                setUtmMenuOpen((open) => !open)
+                return
+              }
+              setUtmMenuOpen(false)
+              setView(v as View)
+            }}
           />
         </div>
         <DimensionInfoTip tab={infoTipKey} className="ms-2 me-auto" />
         <div className="flex min-w-0 shrink items-center gap-2">
-          {view === 'campaigns' && (
+          {view === 'campaigns' && !frame && (
             // The UTM dimension. A Select, not more segments: seven views at
             // half width clip (measured in the round); three plus a picker fit.
+            // (In the new frame the Campaigns tab itself is the picker.)
             <Select
               aria-label="Campaign dimension"
               options={UTM_OPTIONS}
@@ -301,7 +324,19 @@ export default function Sources({
         </div>
       </div>
 
-      <div className="flex-1 min-h-[270px]">
+      {frame && (
+        <TabMenu
+          open={utmMenuOpen && view === 'campaigns'}
+          anchorRef={campaignsTabRef}
+          label="Campaign dimension"
+          options={UTM_OPTIONS}
+          value={utm}
+          onChange={setUtm}
+          onClose={() => setUtmMenuOpen(false)}
+        />
+      )}
+
+      <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
         {view === 'referrers' ? (
           /* ── Referrers ── */
           !collectReferrers ? (
@@ -464,8 +499,10 @@ export default function Sources({
         )}
       </div>
 
-      <ImportedCardNote card={importedCards?.[VIEW_DIMENSION[view]]} dimension={VIEW_DIMENSION[view]} />
-      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={view} />
+      <CardFooter>
+        <ImportedCardNote card={importedCards?.[VIEW_DIMENSION[view]]} dimension={VIEW_DIMENSION[view]} />
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={view} />
+      </CardFooter>
     </div>
   )
 }

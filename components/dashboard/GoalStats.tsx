@@ -12,6 +12,7 @@ import { useSiteRef } from '@/lib/scope/SiteScope'
 import { docsUrl } from '@/lib/docs'
 import { DIMENSION_ROW } from '@/components/dashboard/MetricRowStat'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
+import { CardFooter, useDashboardFrame } from '@/lib/dashboard/frame'
 
 interface GoalStatsProps {
   goalCounts: GoalCountStat[]
@@ -50,6 +51,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
   // The drill-down reads the property lists directly, not through a hook, so it resolves the read itself: on /demo
   // these are the public routes, for a member the member ones (PUL-34).
   const site = useSiteRef(siteId)
+  const frame = useDashboardFrame()
   // Every event the range has, seven to a page. The card used to stop at the seventh with no way to the rest, so a
   // site with more events than that could not see them anywhere (14-11-2026). The pager is the other blocks' own.
   const all = goalCounts || []
@@ -79,9 +81,13 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
       const next = new Set(prev)
       if (next.has(eventName)) {
         next.delete(eventName)
-      } else {
-        next.add(eventName)
+        return next
       }
+      // In the new frame ONE event is open at a time: opening one closes the one that was open (the owner,
+      // 14-11-2026, on finding two open at once). The block has one size there, and two opened events in it are
+      // two lists fighting for the same 300 px. Outside the frame every opened event stays open, as before.
+      if (frame) return new Set([eventName])
+      next.add(eventName)
       return next
     })
 
@@ -117,12 +123,16 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
         }))
       }
     }
-  }, [expanded, propertyCache, site, dateRange.start, dateRange.end, liveMinutes])
+  }, [expanded, propertyCache, site, dateRange.start, dateRange.end, liveMinutes, frame])
 
   const content = (
     <>
       {hasData ? (
-        <div className="space-y-2 flex-1 min-h-[270px]">
+        // In the frame the block has ONE size, and an opened event's properties can be far taller than it (1,464 px
+        // measured for one event). So the rows scroll inside the block: the block, its pager and the page under it
+        // stay where they are. The box is 8 px wider on each side and padded back, because a row overhangs the
+        // block's content by 8 px (its hover band) and a scroll box would cut that off.
+        <div className={frame ? 'frame-scroll -mx-2 min-h-0 flex-1 space-y-2 px-2' : 'space-y-2 flex-1 min-h-[270px]'}>
           {list.map((row) => {
             // Against the whole list's largest count, so a bar means the same on every page.
             const maxCount = all[0]?.count ?? 0
@@ -261,7 +271,9 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
           docs={{ label: 'How to send events', href: docsUrl('custom-events'), whenFresh: true }}
         />
       )}
-      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="events" />
+      <CardFooter>
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="events" />
+      </CardFooter>
     </>
   )
 

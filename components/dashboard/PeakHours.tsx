@@ -13,6 +13,7 @@ import { useDailyStats } from '@/lib/swr/dashboard'
 import { parseSiteWallClock } from '@/lib/utils/formatDate'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { Switcher } from '@ciphera-net/facet'
+import { FRAME_SURFACE, useDashboardFrame } from '@/lib/dashboard/frame'
 
 /** The hourly series' ceiling, in days (pulse-backend MaxDaysPerInterval["hour"]). */
 const HOURLY_MAX_DAYS = 366
@@ -95,6 +96,7 @@ function getHighlightColor(value: number, max: number): string {
 }
 
 export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps) {
+  const frame = useDashboardFrame()
   const [animKey, setAnimKey] = useState(0)
   const [hovered, setHovered] = useState<{ day: number; bucket: number } | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
@@ -217,7 +219,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
   }
 
   return (
-    <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div className={frame ? `${FRAME_SURFACE} p-6 h-full flex flex-col min-w-0` : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1 flex-wrap">
           {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026). */}

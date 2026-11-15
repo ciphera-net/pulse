@@ -8,6 +8,7 @@ import { TopPage } from '@/lib/api/stats'
 import { ArrowSquareOut, FileText } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
@@ -59,6 +60,7 @@ const TAB_TO_KIND: Record<Tab, FullListKind> = {
 }
 
 export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: ContentStatsProps) {
+  const frame = useDashboardFrame()
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
 
@@ -118,7 +120,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
   return (
-    <div data-tour="dimension-card" data-tour-card="content" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div data-tour="dimension-card" data-tour-card="content" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
         <div className="flex items-center justify-between mb-4">
           {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
               the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
@@ -143,7 +145,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           </div>
         </div>
 
-        <div className="flex-1 min-h-[270px]">
+        <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
           {!collectPagePaths ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
               <p className="text-neutral-400 text-sm">Page path tracking is disabled in site settings</p>
@@ -209,8 +211,10 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           )}
         </div>
 
-      <ImportedCardNote card={importedCards?.[TAB_DIMENSION[activeTab]]} dimension={TAB_DIMENSION[activeTab]} />
-      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="pages" />
+      <CardFooter>
+        <ImportedCardNote card={importedCards?.[TAB_DIMENSION[activeTab]]} dimension={TAB_DIMENSION[activeTab]} />
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="pages" />
+      </CardFooter>
     </div>
   )
 }

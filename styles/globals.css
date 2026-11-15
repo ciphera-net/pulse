@@ -73,6 +73,11 @@
     --takeover-button-hover: 29 29 32; /* its hover (#1d1d20) */
     --whats-new-shot-line: rgb(255 255 255 / 0.1); /* What's new: the docs screenshot's hairline */
     --whats-new-shot-shadow: 0 18px 40px rgb(0 0 0 / 0.45); /* and its shadow */
+    /* * Glass (the new dashboard frame, 14-11-2026): how much of its own surface colour a glass surface keeps.
+     * * The marketing header's three values; the light blocks carry their own. */
+    --glass-block: 0.55; /* a dashboard block, of --card */
+    --glass-band: 0.6; /* the band behind a toolbar that stays, of --background */
+    --glass-panel: 0.75; /* a pop-up or a menu, of --popover */
 
     /* * Motion tokens (Phase 1 — premium UI pass) */
     --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
@@ -115,6 +120,9 @@
     --takeover-button-hover: 232 232 232;
     --whats-new-shot-line: rgb(0 0 0 / 0.14);
     --whats-new-shot-shadow: 0 14px 32px rgb(0 0 0 / 0.22);
+    --glass-block: 0.7;
+    --glass-band: 0.72;
+    --glass-panel: 0.82;
   }
   @media (prefers-color-scheme: light) {
     :root.theme-system {
@@ -143,6 +151,9 @@
       --takeover-button-hover: 232 232 232;
       --whats-new-shot-line: rgb(0 0 0 / 0.14);
       --whats-new-shot-shadow: 0 14px 32px rgb(0 0 0 / 0.22);
+      --glass-block: 0.7;
+      --glass-band: 0.72;
+      --glass-panel: 0.82;
     }
   }
 
@@ -197,6 +208,50 @@
   }
   .whats-new-halo {
     box-shadow: 0 0 0 3px rgb(253 94 15 / 0.18);
+  }
+
+  /* * Glass (the new dashboard frame, 14-11-2026): the marketing header's three recipes on the app's own tokens,
+   * so each theme has its fill (the --glass-* values above) and the hairline is the ink at low alpha (--white is
+   * 255 in dark and 10 in light). `.glass-surface` and `.glass-overlay` above are the old flat surfaces and are
+   * not these.
+   *
+   * A BLOCK carries its fill and its blur on ::before, never on itself. An element with a backdrop filter is a
+   * backdrop root (a see-through pop-up inside it would blur only the block's own content) and the containing
+   * block of every fixed descendant. The pseudo-element is neither for the block's content. */
+  .glass-block {
+    position: relative;
+    isolation: isolate;
+  }
+  .glass-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: rgb(var(--card) / var(--glass-block));
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    backdrop-filter: blur(24px) saturate(1.5);
+  }
+  /* * The band behind a toolbar that stays at the top while the page moves under it. Its own element. */
+  .glass-band {
+    background-color: rgb(var(--background) / var(--glass-band));
+    border-bottom: 1px solid rgb(var(--white) / 0.06);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    backdrop-filter: blur(24px) saturate(1.5);
+  }
+  /* * A list that scrolls INSIDE a block of one size (the Events block's rows while an event is open). A thin
+   * bar in the ink's colour, and the page under it does not take over the scroll at either end. */
+  .frame-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--white) / 0.18) transparent;
+  }
+  /* * A pop-up or a menu, drawn outside the blocks (a portal), where there is a page behind it to blur. */
+  .glass-panel {
+    background-color: rgb(var(--popover) / var(--glass-panel));
+    -webkit-backdrop-filter: blur(40px) saturate(1.5);
+    backdrop-filter: blur(40px) saturate(1.5);
   }
 }
 

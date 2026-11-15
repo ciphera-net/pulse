@@ -24,6 +24,7 @@ import { METRIC_TERMS } from '@/lib/dashboard/terms'
 import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
 import { pairPreviousSeries } from '@/lib/dashboard/previousSeries'
 import type { MetricType } from '@/lib/dashboard/metrics'
+import { useDashboardFrame } from '@/lib/dashboard/frame'
 
 // ---------------------------------------------------------------------------
 // The command deck — Direction C's headline device (dashboard overhaul Phase 2,
@@ -201,6 +202,7 @@ export default function CommandDeck({
   prevRange,
   prevFloor,
 }: CommandDeckProps) {
+  const frame = useDashboardFrame()
   // On by default; the legend's "Previous period" entry hides it (PUL-19).
   const [showPrev, setShowPrev] = useState(true)
   const endsNow = Boolean(period && PERIOD_ENDS_NOW[period])
@@ -287,7 +289,9 @@ export default function CommandDeck({
 
   // ─── Render ────────────────────────────────────────────────────────
   return (
-    <Card className="w-full overflow-hidden rounded-none">
+    // In the new frame the deck is glass like the blocks under it (styles/globals.css, `.glass-block`): the fill
+    // comes from the class, so the Card's own is switched off.
+    <Card className={cn('w-full overflow-hidden rounded-none', frame && 'glass-block border-white/[0.08] bg-transparent')}>
       <div className="grid md:grid-cols-[236px_1fr] md:grid-rows-[500px]">
         {/* KPI rail. On md+ the rows flex-stretch so the rail bottoms out level
             with the chart; on mobile it is a 2-column grid above the chart. */}

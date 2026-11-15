@@ -8,6 +8,7 @@ import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { Monitor } from '@phosphor-icons/react'
 import { DeviceMobile } from '@phosphor-icons/react'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
@@ -76,6 +77,7 @@ const LIMIT = 7
 const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: TechSpecsProps) {
+  const frame = useDashboardFrame()
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   type TechItem = { name: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
 
@@ -159,7 +161,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
   return (
-    <div data-tour="dimension-card" data-tour-card="tech" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div data-tour="dimension-card" data-tour-card="tech" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
       <div className="flex items-center justify-between mb-4">
         {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
             the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
@@ -184,7 +186,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         </div>
       </div>
 
-      <div className="flex-1 min-h-[270px]">
+      <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
         {isTabDisabled() ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
             <p className="text-neutral-400 text-sm">{getDisabledMessage()}</p>
@@ -226,8 +228,10 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         )}
       </div>
 
-      <ImportedCardNote card={importedCards?.[TAB_DIMENSION[activeTab]]} dimension={TAB_DIMENSION[activeTab]} />
-      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab} />
+      <CardFooter>
+        <ImportedCardNote card={importedCards?.[TAB_DIMENSION[activeTab]]} dimension={TAB_DIMENSION[activeTab]} />
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab} />
+      </CardFooter>
     </div>
   )
 }
