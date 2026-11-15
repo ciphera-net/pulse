@@ -7,8 +7,8 @@
   "components/cdn/CdnSplitInstrument.tsx": 2,
   "components/dashboard/CardPager.tsx": 1,
   "components/dashboard/MapView.tsx": 4,
-  "components/dashboard/PeakHours.tsx": 5,
   "components/dashboard/ScrollDepthBars.tsx": 3,
+  "components/dashboard/bottom/ConversionBlock.tsx": 1,
   "components/funnels/FunnelColumns.tsx": 3,
   "components/funnels/FunnelDailyInstrument.tsx": 1,
   "components/integrations/TierBadge.tsx": 3,
@@ -25,6 +25,7 @@
   "components/uptime/uptimeMetrics.ts": 3,
   "components/visitors/PresenceField.tsx": 2,
   "lib/chunk-recovery.ts": 1,
+  "lib/dashboard/heatmapGrid.ts": 5,
   "lib/skeleton/band.ts": 4,
   "lib/skeleton/dither.ts": 2,
   "lib/tour/TourController.tsx": 1

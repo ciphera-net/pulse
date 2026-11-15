@@ -41,6 +41,14 @@ function stepGlyph(step: FunnelStep) {
   return <FileText className={cls} />
 }
 
+/**
+ * The room the last step's label needs for its "completed" tag: the step's number, its icon and the tag with the
+ * gaps between them (measured 15-11-2026 at the labels' own text: 6.6 + 14 + 53.5 + three 6 px gaps = 92 px), and a
+ * little of the name for its ellipsis. With less, the tag ran past its label (on a phone, past the chart, where the
+ * dashboard's bottom block cut it); it is left out and the last column's glow marks the end.
+ */
+export const COMPLETED_TAG_ROOM = 104
+
 interface FunnelColumnsProps {
   steps: FunnelStepStats[]
   /** 1-based selected step (matches ?step=). Ignored in compact mode. */
@@ -233,23 +241,30 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
 
               {/* Step labels under the baseline, aligned to column left edges */}
               {!compact &&
-                steps.map((s, i) => (
-                  <div
-                    key={`label-${i}`}
-                    className="absolute flex min-w-0 items-baseline gap-1.5"
-                    style={{ left: colX(i), top: base + 12, maxWidth: slotW - 16 }}
-                  >
-                    <span className="text-[11px] tabular-nums text-neutral-500">{i + 1}</span>
-                    <span className="relative top-0.5">{stepGlyph(s.step)}</span>
-                    <span
-                      className={`truncate font-mono text-xs ${selectedStep === i + 1 ? 'text-white' : 'text-neutral-300'}`}
-                      title={s.step.value}
+                steps.map((s, i) => {
+                  // A label starts at its column, which sits inside its slot, so a slot's width from there runs
+                  // past the chart's right edge on the last step: where the chart is clipped (the dashboard's
+                  // bottom block) its "completed" tag was cut. Never past the chart.
+                  const room = Math.min(slotW - 16, w - colX(i))
+                  return (
+                    <div
+                      key={`label-${i}`}
+                      className="absolute flex min-w-0 items-baseline gap-1.5"
+                      style={{ left: colX(i), top: base + 12, maxWidth: room }}
+                      data-funnel-label={i + 1}
                     >
-                      {s.step.value}
-                    </span>
-                    {i === n - 1 && <span className="shrink-0 text-[11px] text-brand-ink">completed</span>}
-                  </div>
-                ))}
+                      <span className="text-[11px] tabular-nums text-neutral-500">{i + 1}</span>
+                      <span className="relative top-0.5">{stepGlyph(s.step)}</span>
+                      <span
+                        className={`truncate font-mono text-xs ${selectedStep === i + 1 ? 'text-white' : 'text-neutral-300'}`}
+                        title={s.step.value}
+                      >
+                        {s.step.value}
+                      </span>
+                      {i === n - 1 && room >= COMPLETED_TAG_ROOM && <span className="shrink-0 text-[11px] text-brand-ink">completed</span>}
+                    </div>
+                  )
+                })}
 
               {/* Step hit areas — real buttons, keyboard-rovable */}
               {!compact && onSelectStep && (

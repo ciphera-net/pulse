@@ -55,17 +55,14 @@ describe('HeatMapSkeletonBody', () => {
   })
 })
 
-describe('the dashboard\'s skeleton and the heat map\'s own loading state are one body', () => {
-  it('the frame\'s skeleton ends with the heat map: its switch over the body', () => {
+describe('the heat map\'s own loading state, and the frame\'s skeleton that no longer holds it', () => {
+  it('the new frame\'s skeleton no longer holds it: the frame closes with the bottom (R35), not the heat map', () => {
+    // The heat map across the page is today's arrangement's alone since the bottom's round. The frame's skeleton
+    // ends with what converts beside the week and three tiles (dashboard-skeleton-shapes.test.tsx).
     const { container } = render(<DashboardFrameSkeleton />)
-    const column = container.querySelector('.flex.flex-col.gap-3') as HTMLElement
-    const heat = column.children[2] as HTMLElement
-    expect(heat.className).toContain('glass-block')
-    expect(heat.className).not.toMatch(/\bh-\[\d+px\]/) // no fixed height: the body decides
-    const head = heat.children[0] as HTMLElement
-    expect(head.className.split(' ')).toEqual(expect.arrayContaining(['h-[34px]', 'mb-4']))
-    expect(heat.querySelector('.min-h-\\[270px\\]')).toBeTruthy()
-    expect(heat.querySelector<HTMLElement>('.skeleton.h-0')?.style.paddingBottom).toBe(heatRowsHeight())
+    expect(container.querySelector('.skeleton.h-0')).toBeNull()
+    expect(container.querySelector('.min-h-\\[270px\\]')).toBeNull()
+    expect(container.querySelector('[data-skeleton-bottom="tiles"]')).toBeTruthy()
   })
 
   it('in the frame the heat map loads as that body, so the page does not grow when its week arrives', () => {

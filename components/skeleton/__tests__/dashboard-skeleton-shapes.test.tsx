@@ -51,7 +51,8 @@ describe('the new frame\'s shape', () => {
     // The frame's own grid: Sources and Pages, Locations and Technology, then Events alone. A sixth block here
     // (Outbound had one until its links became the Pages block's tab) would make the skeleton a block taller than
     // the page on a phone, and draw two half blocks where one whole one lands.
-    const blocks = [...frame().querySelectorAll<HTMLElement>('.grid.gap-3 > div')]
+    // The first grid of the column alone: the bottom has two grids of its own under it.
+    const blocks = [...(frame().querySelector('.flex.flex-col.gap-3') as HTMLElement).children[1].children] as HTMLElement[]
     expect(blocks).toHaveLength(5)
     expect(FRAME_CARD).toContain('h-[442px]')
     for (const block of blocks) {
@@ -71,15 +72,37 @@ describe('the new frame\'s shape', () => {
     expect(source).not.toContain('<Outbound')
   })
 
-  it('stacks the chart, the blocks and the heat map 12 px apart, as the frame does', () => {
+  it('stacks the chart, the blocks and the bottom\'s two rows 12 px apart, as the frame does', () => {
     const column = frame().querySelector('.flex.flex-col.gap-3') as HTMLElement
-    expect(column.children).toHaveLength(3)
+    expect(column.children).toHaveLength(4)
     // The chart's rail holds five tiles.
     expect(column.children[0].querySelectorAll('.min-h-\\[93px\\]')).toHaveLength(5)
     expect(column.children[1].className).toContain('lg:grid-cols-2')
-    // The heat map has no height of its own: its body takes the grid's (heat-map-skeleton.test.tsx).
-    expect(column.children[2].className).toContain('glass-block')
-    expect(column.children[2].className).not.toMatch(/\bh-\[\d+px\]/)
+    expect(column.children[2].getAttribute('data-skeleton-bottom')).toBe('pair')
+    expect(column.children[3].getAttribute('data-skeleton-bottom')).toBe('tiles')
+  })
+
+  it('closes with the bottom in its own shape (R35): two blocks of the one height, then three tiles of 164 px', () => {
+    // components/dashboard/DashboardBottom.tsx draws the same two grids, so nothing moves when the data lands.
+    const column = frame().querySelector('.flex.flex-col.gap-3') as HTMLElement
+    const pair = column.children[2] as HTMLElement
+    expect(pair.className).toBe('grid gap-3 lg:grid-cols-2 [&>*]:min-w-0')
+    const [conversion, week] = [...pair.children] as HTMLElement[]
+    expect(pair.children).toHaveLength(2)
+    for (const block of [conversion, week]) for (const cls of FRAME_CARD.split(' ')) expect(block.classList.contains(cls), cls).toBe(true)
+    // What converts: seven row slots, like every block. The week: its figure and line over its grid.
+    expect(conversion.querySelectorAll('.h-9')).toHaveLength(7)
+    expect(week.querySelectorAll('.h-9')).toHaveLength(0)
+    expect(week.querySelector('.min-h-\\[3\\.25rem\\]')?.querySelectorAll('.skeleton')).toHaveLength(2)
+    const tiles = column.children[3] as HTMLElement
+    expect(tiles.className).toBe('grid gap-3 sm:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0')
+    expect(tiles.children).toHaveLength(3)
+    for (const tile of [...tiles.children]) expect(tile.classList.contains('h-[164px]')).toBe(true)
+    // Performance takes a row of its own under 1,280 px, as its tile does.
+    expect([...tiles.children].map((t) => t.className.includes('sm:col-span-2 xl:col-span-1'))).toEqual([false, false, true])
+    const source = readFileSync(join(process.cwd(), 'components/dashboard/DashboardBottom.tsx'), 'utf8')
+    expect(source).toContain('className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0"')
+    expect(source).toContain('className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0"')
   })
 
   it('draws the toolbar\'s three controls over them', () => {
@@ -92,9 +115,11 @@ describe('the new frame\'s shape', () => {
     const root = frame()
     const bars = root.querySelectorAll('.skeleton')
     // The toolbar's 3, the rail's 15 and the plot's 2, five blocks of 17 (a tab row and a unit, seven rows of a
-    // bar and a number, a pager), the heat map's switch and its body. A count that falls means a part went missing.
-    expect(root.querySelectorAll('.grid.gap-3 > div .skeleton')).toHaveLength(5 * 17)
-    expect(bars.length).toBeGreaterThanOrEqual(3 + 15 + 2 + 5 * 17 + 2)
+    // bar and a number, a pager), then the bottom: what converts is a sixth block of 17, the week has 5 (its
+    // switch, its figure and line, its grid, its legend) and each of the three tiles 3. A count that falls means a
+    // part went missing.
+    expect(root.querySelectorAll('.grid.gap-3 > div .skeleton')).toHaveLength(6 * 17 + 5 + 3 * 3)
+    expect(bars.length).toBe(3 + 15 + 2 + 6 * 17 + 5 + 3 * 3)
     expect(root.querySelectorAll('.bg-neutral-800:not(.skeleton)')).toHaveLength(0)
   })
 
@@ -192,7 +217,7 @@ describe('the server can draw every skeleton: none of its files reads a value ou
   const rel = walked.map((file) => file.slice(root.length + 1))
 
   it('walks the files the server draws a skeleton from', () => {
-    for (const file of ['components/skeletons.tsx', 'components/skeleton/DashboardFrameSkeleton.tsx', 'components/skeleton/HeatMapSkeletonBody.tsx', 'lib/dashboard/frameClasses.ts']) {
+    for (const file of ['components/skeletons.tsx', 'components/skeleton/DashboardFrameSkeleton.tsx', 'lib/dashboard/frameClasses.ts']) {
       expect(rel, file).toContain(file)
     }
     // The module they are client-only for is the boundary, and is not walked into.
