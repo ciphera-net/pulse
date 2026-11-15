@@ -189,6 +189,11 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // * Privacy-first: Disable analytics and telemetry
   productionBrowserSourceMaps: false,
+  // * `next build` does not type-check. The test lane (.woodpecker/test.yml, `npm run type-check`) checks every pull
+  // * request, as a required check, and every push to main. The build's own pass repeated that work, and it was the
+  // * build step's memory peak: on 15-11-2026 the step was killed at its 3 GiB limit three times in a row, each time
+  // * in "Running TypeScript" right after the compile finished (.woodpecker/push.yml, next-build).
+  typescript: { ignoreBuildErrors: true },
   experimental: {
     optimizePackageImports: ['@phosphor-icons/react'],
     // * See APP_HOST above.
