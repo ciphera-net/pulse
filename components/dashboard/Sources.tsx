@@ -24,6 +24,7 @@ import { docsUrl } from '@/lib/docs'
 import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { TabMenu, TabMenuLabel } from '@/components/dashboard/TabMenu'
 import { campaignViewReader, readCampaignView, writeCampaignView } from '@/lib/dashboard/campaignView'
+import { campaignRowLabel, campaignViewRows, type UtmDimension } from '@/lib/dashboard/campaignRows'
 import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 
 /**
@@ -49,7 +50,6 @@ type View = 'referrers' | 'channels' | 'campaigns'
 
 /** The dashboard's `imported_cards` key each view reads (PULSE-118). */
 const VIEW_DIMENSION: Record<View, ImportedDimension> = { referrers: 'referrer', channels: 'channel', campaigns: 'campaign' }
-type UtmDimension = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 // The ids that reach the InfoTip registry: the two list views plus the five
 // UTM dimensions. The `campaigns` VIEW never reaches it — on that view the
 // dimension is the key. The terms guard (lib/dashboard/__tests__/terms.test.ts)
@@ -106,44 +106,6 @@ interface SourcesProps {
 }
 
 const LIMIT = 7
-
-type GroupedRow = { name: string; visitors: number; pageviews: number; bounce_rate: number | null; avg_duration: number | null }
-
-/** Group campaign rows by one UTM dimension; rates are visitors-weighted means
- *  of the non-null components — a component with no rate contributes no
- *  weight rather than dragging the mean toward zero. */
-function groupByDimension(rows: CampaignStat[], dimension: UtmDimension): GroupedRow[] {
-  type Acc = { visitors: number; pageviews: number; bounceW: number; bounceBase: number; durW: number; durBase: number }
-  const grouped = new Map<string, Acc>()
-  for (const item of rows) {
-    const raw = item[dimension]
-    if (!raw) continue
-    let acc = grouped.get(raw)
-    if (!acc) {
-      acc = { visitors: 0, pageviews: 0, bounceW: 0, bounceBase: 0, durW: 0, durBase: 0 }
-      grouped.set(raw, acc)
-    }
-    acc.visitors += item.visitors
-    acc.pageviews += item.pageviews
-    if (item.bounce_rate != null && item.visitors > 0) {
-      acc.bounceW += item.bounce_rate * item.visitors
-      acc.bounceBase += item.visitors
-    }
-    if (item.avg_duration != null && item.visitors > 0) {
-      acc.durW += item.avg_duration * item.visitors
-      acc.durBase += item.visitors
-    }
-  }
-  return [...grouped.entries()]
-    .map(([name, a]) => ({
-      name,
-      visitors: a.visitors,
-      pageviews: a.pageviews,
-      bounce_rate: a.bounceBase > 0 ? a.bounceW / a.bounceBase : null,
-      avg_duration: a.durBase > 0 ? a.durW / a.durBase : null,
-    }))
-    .sort((a, b) => b.visitors - a.visitors)
-}
 
 export default function Sources({
   referrers,
@@ -227,8 +189,7 @@ export default function Sources({
   const { data: campaignRows, error: campaignError, isLoading: campaignsLoading, mutate: refetchCampaigns } =
     useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, campaignsArmed, period, liveMinutes)
   const campaignData = payloadRows ?? campaignRows ?? []
-  const sortedCampaigns = useMemo(() => [...campaignData].sort((a, b) => b.visitors - a.visitors), [campaignData])
-  const groupedCampaigns = useMemo(() => groupByDimension(sortedCampaigns, utm), [sortedCampaigns, utm])
+  const groupedCampaigns = useMemo(() => campaignViewRows(campaignData, utm), [campaignData, utm])
   const hasCampaignData = campaignData.length > 0
   // Overflow is judged on the GROUPED rows — the full list arms only when the
   // card genuinely has an eighth grouped row to page to.
@@ -237,7 +198,7 @@ export default function Sources({
     useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsCampaignFullList, period, liveMinutes)
   const groupedAllCampaigns = useMemo(() => {
     const base = fullCampaignsRaw && fullCampaignsRaw.length > 0 ? fullCampaignsRaw : campaignData
-    return groupByDimension([...base].sort((a, b) => b.visitors - a.visitors), utm)
+    return campaignViewRows(base, utm)
   }, [fullCampaignsRaw, campaignData, utm])
   const allCampaigns = groupedAllCampaigns.length >= groupedCampaigns.length ? groupedAllCampaigns : groupedCampaigns
 
@@ -496,15 +457,15 @@ export default function Sources({
               {displayedCampaigns.map((item, i) => (
                 <CascadeRow key={item.name} index={i}>
                   <Row
-                    {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: `utm_${utm}`, operator: 'is', values: [item.name] }) } : {})}
+                    {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: `utm_${utm}`, operator: 'is', values: item.names }) } : {})}
                     className={rowClass}
                   >
                     <RowBar width={rowBarWidth(item, allCampaigns)} index={i} />
                     <div className="relative flex-1 text-white flex items-center gap-3 min-w-0">
                       {utm === 'source' && renderFavicon(item.name)}
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-sm" title={item.name}>
-                          {utm === 'source' ? getReferrerDisplayName(item.name) : item.name}
+                        <div className="truncate font-medium text-sm" title={item.names.join(', ')}>
+                          {campaignRowLabel(utm, item.name)}
                         </div>
                       </div>
                     </div>
