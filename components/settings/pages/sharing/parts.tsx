@@ -7,6 +7,7 @@ import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { reportLinkOpen } from '@/components/settings/export/reportFields'
 import type { Report } from '@/lib/api/reports'
 import { siteDay } from '@/lib/reports/format'
+import { SkeletonBar } from '@/components/skeletons'
 
 // The pieces Sharing's two lists and two forms share (settings overhaul round 4: R22, R24, R25; copy deck §6.5).
 
@@ -138,10 +139,10 @@ export function ListBody({
         {[0, 1].map((i) => (
           <div key={i} className="flex items-center justify-between gap-4 py-4">
             <div className="min-w-0 space-y-2">
-              <div className="h-3.5 w-48 rounded-none bg-input" />
-              <div className="h-3 w-64 max-w-full rounded-none bg-input" />
+              <SkeletonBar className="h-3.5 w-48 rounded-none bg-input" />
+              <SkeletonBar className="h-3 w-64 max-w-full rounded-none bg-input" />
             </div>
-            <div className="h-8 w-20 shrink-0 rounded-none bg-input" />
+            <SkeletonBar className="h-8 w-20 shrink-0 rounded-none bg-input" />
           </div>
         ))}
       </div>

@@ -24,6 +24,7 @@ import {
   type TrailKind,
 } from '@/lib/visitors/trail'
 import type { VisitEvent, VisitorRange } from '@/lib/api/visitors'
+import { SkeletonBar } from '@/components/skeletons'
 
 // ─── The rail timeline (approved §9a detail 3; reorganised in round 6) ──────
 //
@@ -225,7 +226,7 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
             all to anyone else — the row simply expands into silence. */}
         <span className="sr-only">Loading this visit&rsquo;s steps…</span>
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} aria-hidden="true" className="mb-2 h-6 animate-pulse rounded-none bg-neutral-800/50" />
+          <SkeletonBar key={i} aria-hidden="true" className="mb-2 h-6 animate-pulse rounded-none bg-neutral-800/50" />
         ))}
       </div>
     )

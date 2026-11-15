@@ -3,7 +3,7 @@
 import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
 import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
-import { useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { getOpenHostname, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Megaphone, Globe, ArrowSquareOut } from '@phosphor-icons/react'
@@ -23,6 +23,8 @@ import { Select, Switcher } from '@ciphera-net/facet'
 import { docsUrl } from '@/lib/docs'
 import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { TabMenu, TabMenuLabel } from '@/components/dashboard/TabMenu'
+import { campaignViewReader, readCampaignView, writeCampaignView } from '@/lib/dashboard/campaignView'
+import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 
 /**
  * Sources — where visitors came from, in ONE card.
@@ -166,10 +168,34 @@ export default function Sources({
   const [view, setView] = useState<View>('referrers')
   const [utm, setUtm] = useState<UtmDimension>('source')
   // The new frame: the Campaigns tab is also the menu of its five views (components/dashboard/TabMenu.tsx), in
-  // place of the Select in the header's right slot.
+  // place of the Select in the header's right slot. The tab reads the open view's name on every state.
   const [utmMenuOpen, setUtmMenuOpen] = useState(false)
   const campaignsTabRef = useRef<HTMLSpanElement>(null)
   const utmLabel = UTM_OPTIONS.find((o) => o.value === utm)?.label ?? ''
+  // In the frame the tab is the view its reader last picked, as the date range is (lib/dashboard/
+  // campaignView.ts). The first render is Source on the server and in the browser alike, so the two agree; the
+  // memory is read before the browser paints, because the view's name is on the tab from the first frame and a
+  // read after the paint would show "Source" turn into the remembered view.
+  const campaignReader = campaignViewReader(useOptionalSiteScope())
+  useLayoutEffect(() => {
+    if (!frame) return
+    const remembered = readCampaignView(campaignReader)
+    if (remembered) setUtm(remembered)
+  }, [frame, campaignReader])
+  const pickUtm = (next: UtmDimension) => {
+    setUtm(next)
+    writeCampaignView(campaignReader, next)
+  }
+  // The tab's caret: one press opens the list of views from any tab, choosing Campaigns on the way; on the open
+  // tab it opens and closes the list.
+  const pressCampaignsCaret = () => {
+    if (view === 'campaigns') {
+      setUtmMenuOpen((open) => !open)
+      return
+    }
+    setView('campaigns')
+    setUtmMenuOpen(true)
+  }
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
 
   // ── Referrers ──
@@ -289,14 +315,15 @@ export default function Sources({
               {
                 value: 'campaigns',
                 label: frame
-                  ? <TabMenuLabel name="Campaigns" choice={utmLabel} selected={view === 'campaigns'} open={utmMenuOpen} labelRef={campaignsTabRef} />
+                  ? <TabMenuLabel name="Campaigns" choice={utmLabel} selected={view === 'campaigns'} open={utmMenuOpen && view === 'campaigns'} labelRef={campaignsTabRef} onCaretPress={pressCampaignsCaret} />
                   : 'Campaigns',
               },
             ]}
             value={view}
             onChange={(v) => {
-              // The Switcher calls this for a press on the tab that is already open too. In the frame that second
-              // press on Campaigns is what opens (and closes) its menu.
+              // The Switcher calls this for a press on the tab that is already open too. In the frame the tab's
+              // two parts keep a pointer's presses to themselves (the name chooses, the caret opens the list), so
+              // a second press that arrives here is the keyboard's: it opens (and closes) the list.
               if (frame && v === 'campaigns' && view === 'campaigns') {
                 setUtmMenuOpen((open) => !open)
                 return
@@ -331,7 +358,7 @@ export default function Sources({
           label="Campaign dimension"
           options={UTM_OPTIONS}
           value={utm}
-          onChange={setUtm}
+          onChange={pickUtm}
           onClose={() => setUtmMenuOpen(false)}
         />
       )}

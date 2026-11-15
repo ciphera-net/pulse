@@ -633,7 +633,9 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   }
 
   if (showSkeleton) {
-    return <DashboardSkeleton />
+    // A member's page holds both shapes of the skeleton and the stylesheet shows the one the team's dashboard has
+    // (components/skeletons.tsx). A public page is never offered the new dashboard and keeps today's.
+    return <DashboardSkeleton shape={caps.member ? 'both' : 'today'} />
   }
 
   // pulse#893: a failed dashboard request keeps the toolbar. Returning only the

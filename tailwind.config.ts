@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss'
 import plugin from 'tailwindcss/plugin'
 import { darkGroundVariables, rampColors, rampVariables } from './styles/themeRamp'
+import { BASE_TILE, baseTileSvg, tileSize } from './lib/skeleton/dither'
 
 // * Themed colour ramps (PULSE-31). The variables are emitted from the same
 // * module that defines the colour keys, so the two cannot disagree.
@@ -14,6 +15,20 @@ const themeRampPlugin = plugin(({ addBase }) => {
     // * A subtree on a ground that is dark in both themes (a scrim, a darkened capture, a black chip) keeps the dark
     // * palette: its white text stays white in the light theme (darkGroundVariables, styles/themeRamp.ts).
     '.dark-ground': darkGroundVariables(),
+  })
+})
+
+// * The skeleton's still dither pattern (lib/skeleton/dither.ts), as a picture in a CSS variable. Emitted from the
+// * module that also draws the band's glyphs in the browser, so the two stand on one grid and cannot drift.
+// * base64, so the stylesheet stays plain ASCII: each glyph is exactly four characters of it, which compresses as
+// * well as the glyphs themselves would.
+const skeletonDitherPlugin = plugin(({ addBase }) => {
+  const { width, height } = tileSize(BASE_TILE)
+  addBase({
+    ':root': {
+      '--skeleton-dither': `url("data:image/svg+xml;base64,${Buffer.from(baseTileSvg(), 'utf8').toString('base64')}")`,
+      '--skeleton-dither-size': `${width}px ${height}px`,
+    },
   })
 })
 
@@ -138,6 +153,7 @@ const config: Config = {
   },
   plugins: [
     themeRampPlugin,
+    skeletonDitherPlugin,
     require('@tailwindcss/typography'),
     require('tailwindcss-animate'),
   ],

@@ -253,6 +253,55 @@
     -webkit-backdrop-filter: blur(40px) saturate(1.5);
     backdrop-filter: blur(40px) saturate(1.5);
   }
+
+  /* * The skeleton's dither (the new look, 15-11-2026). lib/skeleton/dither.ts holds what it is made of, and
+   * lib/skeleton/look.ts says why it is switched by a class on <html> and not from React: the server's HTML
+   * already holds the skeleton, so the markup is the same in both looks and this stylesheet tells them apart.
+   *
+   * A bar (`.skeleton`, on every piece of components/skeletons.tsx) keeps today's gray fill without the class.
+   * With it, the bar's ground is the ink at 6% and ::before lays the still pattern over it: the ink at 22%, cut
+   * to the shade glyphs by a mask (--skeleton-dither, a tiled picture the Tailwind config emits). The ink is a
+   * token, so both themes get their own. The orange band is a canvas the page adds inside the bar
+   * (lib/skeleton/band.ts); a bar looks finished without it. */
+  html.new-dashboard .skeleton {
+    overflow: hidden;
+    background-color: rgb(var(--neutral-400) / 0.06);
+  }
+  /* The pattern and the band are placed against the bar. A bar that is already placed some other way keeps it. */
+  html.new-dashboard .skeleton:not(.absolute):not(.fixed):not(.sticky) {
+    position: relative;
+  }
+  html.new-dashboard .skeleton::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-color: rgb(var(--neutral-400) / 0.22);
+    -webkit-mask: var(--skeleton-dither) 0 0 / var(--skeleton-dither-size) repeat;
+    mask: var(--skeleton-dither) 0 0 / var(--skeleton-dither-size) repeat;
+  }
+  html.new-dashboard .skeleton > canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+  }
+  /* What pulses in today's look stands still in the new one: the band is its motion. */
+  html.new-dashboard .skeleton.animate-pulse,
+  html.new-dashboard .skeleton-still {
+    animation: none;
+  }
+  /* The dashboard's skeleton is drawn in two shapes on a member's page, today's and the new frame's, and the
+   * class chooses: a shape chosen from React would change in the middle of a hard load. */
+  .skeleton-new-shape {
+    display: none;
+  }
+  html.new-dashboard .skeleton-new-shape {
+    display: block;
+  }
+  html.new-dashboard .skeleton-old-shape {
+    display: none;
+  }
 }
 
 @layer utilities {

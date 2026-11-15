@@ -64,7 +64,7 @@ vi.mock('@ciphera-net/facet', async (importOriginal) => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 vi.mock('@/components/skeletons', () => ({
-  DashboardSkeleton: () => <div data-testid="skeleton" />,
+  DashboardSkeleton: ({ shape }: { shape?: string }) => <div data-testid="skeleton" data-shape={shape} />,
   useMinimumLoading: (v: boolean) => v,
   useSkeletonFade: () => '',
 }))
@@ -201,6 +201,20 @@ describe('the flag off, or not known yet: today\'s page, untouched', () => {
     expect(Object.values(h.inFrame).some(Boolean)).toBe(false)
     // Today's Events card still gets its scroll depth.
     expect(h.captured.ContentSignals.scrollDepth).toEqual({ total_sessions: 12, buckets: [] })
+  })
+})
+
+describe('while the dashboard loads', () => {
+  it.each([
+    ['on', true],
+    ['off', false],
+    ['not known yet', null],
+  ])('a member\'s page holds both shapes of the skeleton whatever the flag says (%s): the stylesheet shows one', async (_name, value) => {
+    // The flag is not known when the server draws the skeleton, so the surface never chooses the shape from it.
+    h.feature.mockImplementation(() => value)
+    h.useDashboard.mockImplementation(() => ({ data: undefined, isLoading: true, error: undefined, mutate: vi.fn() }))
+    await mount()
+    expect(screen.getByTestId('skeleton').getAttribute('data-shape')).toBe('both')
   })
 })
 

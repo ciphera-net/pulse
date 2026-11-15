@@ -5,6 +5,8 @@
  * A loading state that mirrors the populated layout reads as "this is filling
  * in" rather than "something is spinning".
  */
+import { SkeletonBar } from '@/components/skeletons'
+
 export default function SettingsLoadingState({ rows = 4 }: { rows?: number }) {
   return (
     <div
@@ -19,8 +21,8 @@ export default function SettingsLoadingState({ rows = 4 }: { rows?: number }) {
             key={i}
             className="grid grid-cols-[minmax(160px,220px)_1fr] items-center gap-x-4 px-5 py-3.5"
           >
-            <div className="h-3.5 w-24 rounded-none bg-input" />
-            <div className="h-8 w-full max-w-xs justify-self-start rounded-none bg-input" />
+            <SkeletonBar className="h-3.5 w-24 rounded-none bg-input" />
+            <SkeletonBar className="h-8 w-full max-w-xs justify-self-start rounded-none bg-input" />
           </div>
         ))}
       </div>

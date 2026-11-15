@@ -6,6 +6,7 @@ import { WarningCircle } from '@phosphor-icons/react'
 import { KitRow, KitRows } from '@/components/settings/kit/Kit'
 import { formatDateTimeFull } from '@/lib/utils/formatDate'
 import { ago } from './format'
+import { SkeletonBar } from '@/components/skeletons'
 
 /** Placeholder rows while a list loads: settings' house loading idiom, drawn in the kit's own row instead of a panel. */
 export function LoadingRows({ label, rows }: { label: string; rows: number }) {
@@ -15,8 +16,8 @@ export function LoadingRows({ label, rows }: { label: string; rows: number }) {
         {Array.from({ length: rows }, (_, i) => (
           <KitRow
             key={i}
-            label={<span className="block h-3.5 w-32 bg-input" />}
-            caption={<span className="block h-3 w-64 max-w-full bg-input" />}
+            label={<SkeletonBar as="span" className="block h-3.5 w-32 bg-input" />}
+            caption={<SkeletonBar as="span" className="block h-3 w-64 max-w-full bg-input" />}
           />
         ))}
       </KitRows>

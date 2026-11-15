@@ -71,7 +71,7 @@ vi.mock('@ciphera-net/facet', async (importOriginal) => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 vi.mock('@/components/skeletons', () => ({
-  DashboardSkeleton: () => <div data-testid="skeleton" />,
+  DashboardSkeleton: ({ shape }: { shape?: string }) => <div data-testid="skeleton" data-shape={shape} />,
   useMinimumLoading: (v: boolean) => v,
   useSkeletonFade: () => '',
 }))
@@ -330,6 +330,16 @@ describe('the demo (public, full): the whole member dashboard without the member
     await mount(demoScope)
     await act(async () => { vi.advanceTimersByTime(120_000) })
     expect(refetchDashboard).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['the demo', demoScope],
+    ['a share link', shareScope],
+  ])('%s draws today\'s skeleton alone: a public page is never offered the new dashboard', async (_name, scope) => {
+    dashboardState = {}
+    await mount(scope)
+    // No second shape in its markup, and nothing a class on <html> could hide.
+    expect(screen.getByTestId('skeleton').getAttribute('data-shape')).toBe('today')
   })
 
   it('tells the hero its page has drawn, once, when the payload first renders — never on the skeleton, never again', async () => {

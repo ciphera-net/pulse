@@ -12,6 +12,7 @@ import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { CompactNumber } from '@/components/ui/compact-number'
 import { useCan } from '@/lib/auth/permissions'
 import { displayDomain } from '@/lib/utils/displayDomain'
+import { SkeletonBar } from '@/components/skeletons'
 
 /** Bottom-third mean luminance above this ⇒ light capture ⇒ stronger scrim. */
 const LIGHT_CAPTURE_LUMINANCE = 0.55
@@ -294,7 +295,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
                   }`}
                 />
               ) : (
-                <div className="ml-auto h-6 w-12 animate-skeleton-fade bg-neutral-800" />
+                <SkeletonBar className="ml-auto h-6 w-12 animate-skeleton-fade bg-neutral-800" />
               )}
               <div className="text-[11px] text-neutral-400">visitors today</div>
             </div>

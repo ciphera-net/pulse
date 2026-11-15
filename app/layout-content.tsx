@@ -15,6 +15,7 @@ import SessionTakeover from '@/components/auth/SessionTakeover'
 import { isAuthedAppRoute, isPublicSiteRoute, isReportRoute, isStandaloneRoute } from '@/lib/auth/appRoutes'
 import { ActiveSiteProvider } from '@/components/settings/active-site'
 import ThemeSync from '@/components/theme/ThemeSync'
+import NewDashboardLookSync from '@/components/skeleton/NewDashboardLookSync'
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -170,6 +171,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
         {/* Sole writer of <html>'s theme class after boot (PULSE-31). Outside
             LayoutInner, so it runs on every route, including the auth callback. */}
         <ThemeSync />
+        {/* Sole writer, after boot, of the class that gives a page's skeletons the new look
+            (lib/skeleton/look.ts). */}
+        <NewDashboardLookSync />
         <LayoutInner>{children}</LayoutInner>
       </ErrorBoundary>
     </MotionConfig>

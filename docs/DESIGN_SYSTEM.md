@@ -393,8 +393,24 @@ Subtle dot grid background:
 
 **Skeleton Loading:**
 ```tsx
-<div className="animate-pulse rounded-2xl bg-neutral-100 dark:bg-neutral-800 h-48" />
+import { SkeletonLine, SkeletonCircle, SkeletonCard, SkeletonBar } from '@/components/skeleton/primitives'
+
+<SkeletonLine className="h-4 w-32" />
+<SkeletonCircle className="h-8 w-8" />
+<SkeletonCard className="h-48" />
+{/* A placeholder that keeps its own classes: */}
+<SkeletonBar className="h-10 animate-pulse bg-neutral-800" />
 ```
+
+A loading placeholder is always one of these pieces, never a bare gray `<div>`. A piece carries the class
+`skeleton`, and that class is what the new dashboard look draws on: a bare box would keep the old look while
+everything around it has the new one.
+
+In the new dashboard look a bar is filled with a dither of shade glyphs (░ ▒ ▓ █), and an orange band sweeps across
+it while the data is on its way. **Those glyphs are texture, not text.** They are drawn as a picture (a mask in the
+stylesheet, a canvas for the band) and are never characters in the page, so nobody can select them and they say
+nothing to a screen reader. The rule that monospace is for code does not apply to them, and the dither is never
+used to write a word or a number. Where it comes from: `lib/skeleton/dither.ts`.
 
 ---
 

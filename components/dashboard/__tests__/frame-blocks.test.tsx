@@ -9,6 +9,8 @@ import Outbound from '@/components/dashboard/Outbound'
 import ContentSignals from '@/components/dashboard/ContentSignals'
 import GoalStats from '@/components/dashboard/GoalStats'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
+import { CAMPAIGN_VIEW_KEY, PUBLIC_CAMPAIGN_VIEW_KEY } from '@/lib/dashboard/campaignView'
+import { SiteScopeProvider, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // The blocks INSIDE the new dashboard frame (beta `new-dashboard`), each beside itself outside it.
@@ -328,74 +330,221 @@ describe('Sources: the Campaigns tab is its own menu in the frame', () => {
   ]
   const block = () => <Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />
   const tab = () => screen.getAllByRole('radio')[2]
+  /** The tab's two parts: a pointer's press lands on one of them. A press on the tab itself is the keyboard's. */
+  const name = () => tab().querySelector('[data-tab-menu-name]') as HTMLElement
+  const caret = () => tab().querySelector('[data-tab-menu-caret]') as HTMLElement
+  /** What is on screen on the tab: the words kept for a screen reader left out. */
+  const tabReads = () => {
+    const seen = tab().cloneNode(true) as HTMLElement
+    seen.querySelectorAll('.sr-only').forEach((n) => n.remove())
+    return seen.textContent
+  }
   const rowNames = () => [...card().children[1].querySelectorAll('.interactive-row')].map((r) => r.textContent?.replace(/[\d%]+$/, '').trim())
+  const view = (label: string) => within(screen.getByRole('menu')).getByRole('menuitemradio', { name: label })
 
   beforeEach(() => {
+    window.localStorage.clear()
+    window.sessionStorage.clear()
     h.useCampaignsList.mockReturnValue({ data: campaignRows, error: undefined, isLoading: false, mutate: vi.fn() })
   })
 
-  it('reads "Campaigns" until it is chosen, then names the open view', () => {
+  it('reads the open view on every state of the tab, never "Campaigns"', () => {
     inFrame(block())
-    expect(tab().textContent).toBe('Campaigns')
-    fireEvent.click(tab())
+    // Another tab is open: the third one is already the view, not the name of its group.
+    expect(screen.getAllByRole('radio')[0].getAttribute('aria-checked')).toBe('true')
+    expect(tabReads()).toBe('Source')
+    // A screen reader still hears whose view it is.
+    expect(tab().textContent).toBe('Campaigns: Source')
+    fireEvent.click(name())
     expect(tab().getAttribute('aria-checked')).toBe('true')
-    expect(tab().textContent).toContain('Campaigns')
-    expect(tab().textContent).toContain('Source')
+    expect(tabReads()).toBe('Source')
+    expect(tab().textContent).toBe('Campaigns: Source, press again to choose another view')
     // No second control in the header: the Select is gone, and no menu is open yet.
     expect(screen.queryByRole('combobox')).toBeNull()
     expect(screen.queryByRole('menu')).toBeNull()
   })
 
-  it('opens the five views on a second press, with the open one ticked and focused', () => {
+  it('a press on the name chooses the tab and opens nothing, however often it is pressed', () => {
     inFrame(block())
-    fireEvent.click(tab())
-    fireEvent.click(tab())
+    fireEvent.click(name())
+    expect(rowNames()).toEqual(['Google', 'LinkedIn'])
+    fireEvent.click(name())
+    fireEvent.click(name())
+    expect(tab().getAttribute('aria-checked')).toBe('true')
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('the caret opens the five views in ONE press from another tab, choosing the tab on the way', () => {
+    inFrame(block())
+    expect(tab().getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(caret())
+    expect(tab().getAttribute('aria-checked')).toBe('true')
+    expect(rowNames()).toEqual(['Google', 'LinkedIn'])
     const menu = screen.getByRole('menu', { name: 'Campaign dimension' })
     const items = within(menu).getAllByRole('menuitemradio')
     expect(items.map((i) => i.textContent)).toEqual(['Source', 'Medium', 'Campaign', 'Term', 'Content'])
     expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false', 'false'])
     expect(document.activeElement).toBe(items[0])
+    // The caret is turned while the list is open.
+    expect(caret().querySelector('svg')?.getAttribute('class')).toContain('rotate-180')
     // Glass, and drawn outside the block (a portal), where there is a page behind it to blur.
     expect(classes(menu).has('glass-panel')).toBe(true)
     expect(card().contains(menu)).toBe(false)
   })
 
-  it('switches the view from the menu, closes it and names the new view on the tab', () => {
+  it('on the open tab the caret opens the list and closes it again', () => {
+    inFrame(block())
+    fireEvent.click(name())
+    fireEvent.click(caret())
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.click(caret())
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(tab().getAttribute('aria-checked')).toBe('true')
+    expect(caret().querySelector('svg')?.getAttribute('class')).not.toContain('rotate-180')
+  })
+
+  it('the keyboard reaches the list too: a press on the chosen tab itself opens it and closes it', () => {
+    // Enter and Space on the tab arrive as a click on the button, on neither of its two parts.
     inFrame(block())
     fireEvent.click(tab())
-    expect(rowNames()).toEqual(['Google', 'LinkedIn'])
-    fireEvent.click(tab())
-    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitemradio', { name: 'Medium' }))
+    expect(tab().getAttribute('aria-checked')).toBe('true')
     expect(screen.queryByRole('menu')).toBeNull()
-    expect(tab().textContent).toContain('Medium')
-    expect(tab().textContent).not.toContain('Source')
+    fireEvent.click(tab())
+    expect(screen.getByRole('menu', { name: 'Campaign dimension' })).toBeTruthy()
+    fireEvent.click(tab())
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('switches the view from the menu, closes it and names the new view on the tab', () => {
+    inFrame(block())
+    fireEvent.click(caret())
+    expect(rowNames()).toEqual(['Google', 'LinkedIn'])
+    fireEvent.click(view('Medium'))
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(tabReads()).toBe('Medium')
     expect(rowNames()).toEqual(['cpc', 'social'])
     expect(document.activeElement).toBe(tab())
   })
 
-  it('closes on a third press, on Escape, and when another tab is chosen', () => {
+  it('keeps the view\'s name while another tab is open: it is the tab until another view is picked', () => {
     inFrame(block())
-    fireEvent.click(tab())
-    fireEvent.click(tab())
-    fireEvent.click(tab())
-    expect(screen.queryByRole('menu')).toBeNull()
+    fireEvent.click(caret())
+    fireEvent.click(view('Term'))
+    fireEvent.click(screen.getAllByRole('radio')[0])
+    expect(tab().getAttribute('aria-checked')).toBe('false')
+    expect(tabReads()).toBe('Term')
+    fireEvent.click(screen.getAllByRole('radio')[1])
+    expect(tabReads()).toBe('Term')
+    fireEvent.click(name())
+    expect(tabReads()).toBe('Term')
+    // Until another view is picked.
+    fireEvent.click(caret())
+    fireEvent.click(view('Content'))
+    fireEvent.click(screen.getAllByRole('radio')[0])
+    expect(tabReads()).toBe('Content')
+  })
 
-    fireEvent.click(tab())
+  describe('the view last picked is the one the tab is, as the date range is remembered', () => {
+    const demo: SiteScope = { siteId: 'site-1', mode: 'public', basePath: '/demo', pages: SITE_PAGES, demo: true, fidelity: 'full' }
+    const share: SiteScope = { siteId: 'site-1', mode: 'public', basePath: '/share/site-1', pages: ['dashboard'], demo: false, fidelity: 'scoped' }
+    const pick = (label: string) => {
+      fireEvent.click(caret())
+      fireEvent.click(view(label))
+    }
+
+    it('a member\'s pick is kept in this browser, and the next dashboard shows it on the tab before the tab is opened', () => {
+      const first = inFrame(block())
+      pick('Medium')
+      expect(window.localStorage.getItem(CAMPAIGN_VIEW_KEY)).toBe('medium')
+      first.unmount()
+      inFrame(block())
+      // Referrers is open, nothing was pressed: the tab is already the remembered view.
+      expect(screen.getAllByRole('radio')[0].getAttribute('aria-checked')).toBe('true')
+      expect(tabReads()).toBe('Medium')
+      fireEvent.click(name())
+      expect(tabReads()).toBe('Medium')
+      expect(rowNames()).toEqual(['cpc', 'social'])
+    })
+
+    it('opening the list writes nothing: only a pick does', () => {
+      inFrame(block())
+      fireEvent.click(caret())
+      fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+      fireEvent.click(name())
+      expect(window.localStorage.getItem(CAMPAIGN_VIEW_KEY)).toBeNull()
+    })
+
+    it('a memory that is not one of the five views is no memory', () => {
+      window.localStorage.setItem(CAMPAIGN_VIEW_KEY, 'keyword')
+      inFrame(block())
+      expect(tabReads()).toBe('Source')
+      fireEvent.click(name())
+      expect(tabReads()).toBe('Source')
+    })
+
+    it('the demo keeps its pick until the tab closes, under its own key, and never touches a member\'s', () => {
+      window.localStorage.setItem(CAMPAIGN_VIEW_KEY, 'content')
+      const first = render(<SiteScopeProvider scope={demo}><DashboardFrameProvider>{block()}</DashboardFrameProvider></SiteScopeProvider>)
+      // The member's own memory is not the demo's.
+      expect(tabReads()).toBe('Source')
+      pick('Campaign')
+      expect(window.sessionStorage.getItem(PUBLIC_CAMPAIGN_VIEW_KEY)).toBe('campaign')
+      expect(window.localStorage.getItem(CAMPAIGN_VIEW_KEY)).toBe('content')
+      first.unmount()
+      render(<SiteScopeProvider scope={demo}><DashboardFrameProvider>{block()}</DashboardFrameProvider></SiteScopeProvider>)
+      expect(tabReads()).toBe('Campaign')
+    })
+
+    it('a share link remembers nothing and reads nothing', () => {
+      window.localStorage.setItem(CAMPAIGN_VIEW_KEY, 'content')
+      window.sessionStorage.setItem(PUBLIC_CAMPAIGN_VIEW_KEY, 'term')
+      render(<SiteScopeProvider scope={share}><DashboardFrameProvider>{block()}</DashboardFrameProvider></SiteScopeProvider>)
+      expect(tabReads()).toBe('Source')
+      pick('Medium')
+      expect(tabReads()).toBe('Medium')
+      expect(window.localStorage.getItem(CAMPAIGN_VIEW_KEY)).toBe('content')
+      expect(window.sessionStorage.getItem(PUBLIC_CAMPAIGN_VIEW_KEY)).toBe('term')
+    })
+
+    it('outside the frame nothing is read and nothing is written: today\'s Select is as it was', () => {
+      window.localStorage.setItem(CAMPAIGN_VIEW_KEY, 'medium')
+      render(block())
+      fireEvent.click(tab())
+      // Today's page opens on Source whatever the frame remembers.
+      expect(rowNames()).toEqual(['Google', 'LinkedIn'])
+      expect(window.localStorage.getItem(CAMPAIGN_VIEW_KEY)).toBe('medium')
+    })
+  })
+
+  it('closes on Escape, on a press of the name, and when another tab is chosen', () => {
+    inFrame(block())
+    fireEvent.click(caret())
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
     expect(document.activeElement).toBe(tab())
 
-    fireEvent.click(tab())
+    // The name is not the caret: a press on it is a press outside the list, and its click opens nothing.
+    fireEvent.click(caret())
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.pointerDown(name())
+    fireEvent.click(name())
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(tab().getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(caret())
     expect(screen.getByRole('menu')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('radio')[0])
     expect(screen.queryByRole('menu')).toBeNull()
-    // Back on Campaigns it is the tab again, not an open menu.
-    fireEvent.click(tab())
+    // Back on Campaigns by its name it is the tab again, not an open menu.
+    fireEvent.click(name())
     expect(screen.queryByRole('menu')).toBeNull()
   })
 
   it('outside the frame the tab is a plain tab and the views are behind the Select, as today', () => {
     render(block())
+    // No parts, no caret, and its own name before it is chosen and after.
+    expect(tab().textContent).toBe('Campaigns')
+    expect(tab().querySelector('[data-tab-menu-name], [data-tab-menu-caret], svg')).toBeNull()
     fireEvent.click(tab())
     expect(tab().textContent).toBe('Campaigns')
     expect(screen.getByRole('combobox', { name: 'Campaign dimension' })).toBeTruthy()

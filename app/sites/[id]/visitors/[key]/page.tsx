@@ -32,6 +32,7 @@ import {
 import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import { deviceLabel } from '@/components/visitors/VisitorMeta'
 import type { VisitRow, VisitorRange } from '@/lib/api/visitors'
+import { SkeletonBar } from '@/components/skeletons'
 
 // ─── The visitor page (approved design §9a, "The visitor page") ─────
 //
@@ -212,7 +213,7 @@ export default function VisitorDetailPage() {
           <div className="p-4" role="status">
             <span className="sr-only">Loading visits…</span>
             {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} aria-hidden="true" className="mb-3 h-9 animate-pulse rounded-none bg-neutral-800/50" />
+              <SkeletonBar key={i} aria-hidden="true" className="mb-3 h-9 animate-pulse rounded-none bg-neutral-800/50" />
             ))}
           </div>
         ) : visits.length === 0 ? (

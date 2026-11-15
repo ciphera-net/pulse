@@ -6,6 +6,7 @@ import { useUndo } from '@ciphera-net/facet-hold'
 import { WarningCircle } from '@phosphor-icons/react'
 import { KitRow } from '@/components/settings/kit/Kit'
 import { whilePending } from '@/lib/hold/pending'
+import { SkeletonBar } from '@/components/skeletons'
 
 /** A section's rows while its read is in flight: hairline rows of grey bars, in the kit's row geometry. */
 export function KitLoadingRows({ rows = 1 }: { rows?: number }) {
@@ -14,10 +15,10 @@ export function KitLoadingRows({ rows = 1 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="grid grid-cols-1 gap-x-6 gap-y-2 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="space-y-2">
-            <div className="h-3.5 w-32 bg-input" />
-            <div className="h-3 w-56 max-w-full bg-input" />
+            <SkeletonBar className="h-3.5 w-32 bg-input" />
+            <SkeletonBar className="h-3 w-56 max-w-full bg-input" />
           </div>
-          <div className="h-8 w-24 bg-input" />
+          <SkeletonBar className="h-8 w-24 bg-input" />
         </div>
       ))}
     </div>

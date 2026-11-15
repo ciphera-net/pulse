@@ -11,6 +11,7 @@ import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRan
 import { useSite, usePagesTable, useDataWindow } from '@/lib/swr/dashboard'
 import { servesPage, useSiteScope } from '@/lib/scope/SiteScope'
 import { siteDaysCaption } from '@/lib/utils/timezones'
+import { SkeletonBar } from '@/components/skeletons'
 
 // ---------------------------------------------------------------------------
 // The Pages surface (PULSE-18). Design + two options rounds:
@@ -91,7 +92,7 @@ function PagesList({ siteId }: { siteId: string }) {
           description="The request failed. This is usually temporary."
         />
       ) : isLoading && rows.length === 0 ? (
-        <div className="rounded-none border border-border bg-card h-96 animate-pulse" aria-hidden="true" />
+        <SkeletonBar className="rounded-none border border-border bg-card h-96 animate-pulse" aria-hidden="true" />
       ) : periodReady && !data ? (
         // * The request was switched on (the view is known) and there is still no table, no error
         // * and nothing in flight: the read was not made, because the scope does not answer it.

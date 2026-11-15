@@ -14,6 +14,9 @@ import { parseSiteWallClock } from '@/lib/utils/formatDate'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { Switcher } from '@ciphera-net/facet'
 import { FRAME_SURFACE, useDashboardFrame } from '@/lib/dashboard/frame'
+import { SkeletonBar } from '@/components/skeletons'
+import { HeatMapSkeletonBody } from '@/components/skeleton/HeatMapSkeletonBody'
+import { HEAT_COLUMNS } from '@/lib/dashboard/heatmapGrid'
 
 /** The hourly series' ceiling, in days (pulse-backend MaxDaysPerInterval["hour"]). */
 const HOURLY_MAX_DAYS = 366
@@ -33,7 +36,7 @@ const DAYS_FULL = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 
 // 24 hourly columns — the approved mockup's full-width grid. The old 12
 // two-hour buckets were sized for a HALF-width card; full width doubled the
 // square cells and the whole block with them.
-const BUCKETS = 24
+const BUCKETS = HEAT_COLUMNS
 // Label at bucket index 0=00:00, 6=06:00, 12=12:00, 18=18:00
 const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 6: '06:00', 12: '12:00', 18: '18:00' }
 
@@ -221,16 +224,22 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
   return (
     <div className={frame ? `${FRAME_SURFACE} p-6 h-full flex flex-col min-w-0` : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-1 flex-wrap">
-          {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026). */}
-          <Switcher
-            size="sm"
-            tone="solid"
-            aria-label="Peak hours metric"
-            options={METRICS.map((m) => ({ value: m.key, label: m.label }))}
-            value={metric}
-            onChange={(v) => setMetric(v as Metric)}
-          />
+        {/* In the new frame the switch scrolls inside its own box where the card is narrower than it, as every
+            block's tab row does. Outside the frame it is as it was: on a 390 px phone the switch then reaches 41 px
+            past its card, and past the content panel, whose scroll area it widens by as much. (`pb-1 -mb-1`: room
+            for the switch's focus ring inside a box that clips, and the header no taller for it.) */}
+        <div className={frame ? 'flex min-w-0 items-center gap-1' : 'flex items-center gap-1 flex-wrap'}>
+          <div className={frame ? 'min-w-0 overflow-x-auto scrollbar-hide pb-1 -mb-1' : 'contents'}>
+            {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026). */}
+            <Switcher
+              size="sm"
+              tone="solid"
+              aria-label="Peak hours metric"
+              options={METRICS.map((m) => ({ value: m.key, label: m.label }))}
+              value={metric}
+              onChange={(v) => setMetric(v as Metric)}
+            />
+          </div>
           {/* Glyph closes the tab row — the dimension-card device (P2). The
               entry existed registry-complete but unwired (closeout C1). */}
           <TermInfoTip term="peak_hours" />
@@ -238,12 +247,16 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
         {recentYearOnly && <span className="text-xs text-muted-foreground">Last 12 months</span>}
       </div>
 
-      {isLoading ? (
+      {isLoading && frame ? (
+        // In the new frame the heat map loads at the size its data will take, so the page under the six blocks
+        // does not grow when the week arrives (it grew by about 100 px at 1440).
+        <HeatMapSkeletonBody />
+      ) : isLoading ? (
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex items-center gap-1">
-              <div className="w-7 h-3 rounded-none bg-neutral-800 animate-skeleton-fade" />
-              <div className="flex-1 h-5 rounded-none bg-neutral-800 animate-skeleton-fade" />
+              <SkeletonBar className="w-7 h-3 rounded-none bg-neutral-800 animate-skeleton-fade" />
+              <SkeletonBar className="flex-1 h-5 rounded-none bg-neutral-800 animate-skeleton-fade" />
             </div>
           ))}
         </div>

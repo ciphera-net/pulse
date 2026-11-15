@@ -1,26 +1,15 @@
 /**
- * Reusable skeleton loading primitives and composites for Pulse.
- * All skeletons follow the design-system pattern:
- *   animate-pulse + bg-neutral-800 + rounded
+ * The skeletons of Pulse's pages: the composites, each made of the pieces in ./skeleton/primitives.
+ *
+ * A piece is a gray bar that arrives with a fade (bg-neutral-800, animate-skeleton-fade), or, for a team with the
+ * new look, a dithered one with an orange band sweeping across it (lib/skeleton/dither.ts). The composites here do
+ * not know which: they only place pieces.
  */
-
-const SK = 'animate-skeleton-fade bg-neutral-800'
+import { DashboardFrameSkeleton } from './skeleton/DashboardFrameSkeleton'
+import { SkeletonCard, SkeletonCircle, SkeletonLine } from './skeleton/primitives'
 
 export { useMinimumLoading, useSkeletonFade } from './useMinimumLoading'
-
-// ─── Primitives ──────────────────────────────────────────────
-
-export function SkeletonLine({ className = '' }: { className?: string }) {
-  return <div className={`${SK} rounded-none ${className}`} />
-}
-
-export function SkeletonCircle({ className = '' }: { className?: string }) {
-  return <div className={`${SK} rounded-full ${className}`} />
-}
-
-export function SkeletonCard({ className = '' }: { className?: string }) {
-  return <div className={`${SK} rounded-none ${className}`} />
-}
+export { SkeletonBar, SkeletonCard, SkeletonCircle, SkeletonLine, useSkeletonBar } from './skeleton/primitives'
 
 // ─── List skeleton (icon + two text lines per row) ───────────
 
@@ -120,9 +109,30 @@ export function ChartSkeleton() {
 
 // ─── Full dashboard skeleton ─────────────────────────────────
 
-export function DashboardSkeleton() {
+/**
+ * `today` draws today's dashboard. `both` adds the new frame's shape beside it and lets the stylesheet show the one
+ * this device's team has (styles/globals.css, `skeleton-old-shape` / `skeleton-new-shape`): the shape must be right
+ * in the server's HTML, before the browser has asked which dashboard the team has, and a shape chosen from React
+ * would change in the middle of a hard load.
+ *
+ * A member's dashboard asks for `both`. A public page (the demo, a share link) is never offered the new dashboard,
+ * so it keeps `today`, and its markup does not grow.
+ */
+export function DashboardSkeleton({ shape = 'today' }: { shape?: 'today' | 'both' }) {
+  if (shape === 'both') {
+    return (
+      <>
+        <TodayDashboardSkeleton className="skeleton-old-shape" />
+        <DashboardFrameSkeleton className="skeleton-new-shape" />
+      </>
+    )
+  }
+  return <TodayDashboardSkeleton />
+}
+
+function TodayDashboardSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${className}`}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
