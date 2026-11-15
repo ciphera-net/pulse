@@ -7,6 +7,7 @@ import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import ContentStats from '@/components/dashboard/ContentStats'
+import ContentSignals from '@/components/dashboard/ContentSignals'
 import Outbound from '@/components/dashboard/Outbound'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
 
@@ -35,6 +36,8 @@ const h = vi.hoisted(() => ({
   usePagePreview: vi.fn(),
   useOutboundUrls: vi.fn(),
   useOutboundLinks: vi.fn(),
+  useEventPropertyKeys: vi.fn(),
+  useEventPropertyValues: vi.fn(),
 }))
 
 vi.mock('@/lib/swr/dashboard', () => ({
@@ -43,6 +46,8 @@ vi.mock('@/lib/swr/dashboard', () => ({
   usePagePreview: (...a: unknown[]) => h.usePagePreview(...a),
   useOutboundUrls: (...a: unknown[]) => h.useOutboundUrls(...a),
   useOutboundLinks: (...a: unknown[]) => h.useOutboundLinks(...a),
+  useEventPropertyKeys: (...a: unknown[]) => h.useEventPropertyKeys(...a),
+  useEventPropertyValues: (...a: unknown[]) => h.useEventPropertyValues(...a),
 }))
 vi.mock('@/lib/hooks/usePreloadImages', () => ({ usePreloadImages: () => {} }))
 // Data behaviour, not motion: the cascade renders plain so no exit animation holds a row in jsdom.
@@ -70,6 +75,8 @@ beforeEach(() => {
   h.usePagePreview.mockReset().mockReturnValue({ data: null })
   h.useOutboundUrls.mockReset().mockReturnValue(idle)
   h.useOutboundLinks.mockReset().mockReturnValue(idle)
+  h.useEventPropertyKeys.mockReset().mockReturnValue({ ...idle, data: [], available: true })
+  h.useEventPropertyValues.mockReset().mockReturnValue({ ...idle, available: true })
 })
 
 const rows = () => [...document.querySelectorAll<HTMLElement>('.interactive-row')]
@@ -256,6 +263,43 @@ describe('Outbound links', () => {
   })
 })
 
+describe('Events, in the new frame', () => {
+  const block = (goalCounts: React.ComponentProps<typeof ContentSignals>['goalCounts']) => (
+    <DashboardFrameProvider>
+      <ContentSignals goalCounts={goalCounts} siteId="site-1" dateRange={dateRange} totals={totals} />
+    </DashboardFrameProvider>
+  )
+
+  it('the list: two events whose names read the same stay two rows (a row is one event), each under its stored name', () => {
+    render(block([
+      { event_name: 'Signup', count: 9, visitors: 9 },
+      { event_name: 'signup', count: 4, visitors: 4 },
+      { event_name: 'purchase', count: 2, visitors: 2 },
+    ]))
+    expectNoRowTwice()
+    expect(drawn()).toEqual(['Signup', 'signup', 'Purchase'])
+  })
+
+  it('the picked event\'s values: links that read the same are one row with all their events', () => {
+    h.useEventPropertyKeys.mockReturnValue({ ...idle, data: [{ key: 'target', count: 20 }], available: true })
+    h.useEventPropertyValues.mockReturnValue({
+      ...idle,
+      available: true,
+      data: [
+        { value: 'https://www.shop.example/cart', count: 9 },
+        { value: 'https://docs.example/start', count: 7 },
+        { value: 'http://shop.example/cart/', count: 4 },
+      ],
+    })
+    render(block([{ event_name: 'cta_click', count: 20, visitors: 18 }]))
+    const values = [...document.querySelectorAll<HTMLElement>('[data-event-value]')]
+    const read = values.map(reads)
+    expect(read.filter((r, i) => read.indexOf(r) !== i), `values that read the same: ${JSON.stringify(values.map(label))}`).toEqual([])
+    expect(values.map(label)).toEqual(['shop.example/cart', 'docs.example/start'])
+    expect(values[0].textContent).toContain('13')
+  })
+})
+
 // ─── The source: every block that draws dimension rows says how its rows stay apart ───────────────────────────
 
 const ROOT = process.cwd()
@@ -269,6 +313,8 @@ const HOW_ROWS_STAY_APART: Record<string, { by: string[] | null; why: string }> 
   'components/dashboard/Outbound.tsx': { by: ['groupSameRows('], why: 'Links merge by host and path; a domain is grouped by host; a page is its stored path.' },
   'components/dashboard/ContentStats.tsx': { by: null, why: 'A page is drawn as the path that is stored: the stored value is the row.' },
   'components/dashboard/GoalStats.tsx': { by: null, why: 'A row is one event. Its name is the event\'s, or the one its owner gave it: two events stay two rows.' },
+  'components/dashboard/events/EventsBlock.tsx': { by: ['eventLabels('], why: 'A row is one event, so two are never merged: names that read alike each read their stored name instead.' },
+  'components/dashboard/events/EventProperties.tsx': { by: ['propertyValueRows('], why: 'propertyValueRows merges values that read the same.' },
   'components/dashboard/MetricRowStat.tsx': { by: null, why: 'Defines the row and draws none.' },
 }
 
@@ -297,7 +343,7 @@ describe('the source: no block draws dimension rows without saying how they stay
   })
 
   it('the merge itself lives in one module, and the row builders use it', () => {
-    for (const file of ['lib/dashboard/campaignRows.ts', 'lib/dashboard/outbound.ts']) {
+    for (const file of ['lib/dashboard/campaignRows.ts', 'lib/dashboard/outbound.ts', 'lib/dashboard/events.ts']) {
       expect(readFileSync(join(ROOT, file), 'utf8')).toContain("from '@/lib/dashboard/sameRows'")
     }
   })

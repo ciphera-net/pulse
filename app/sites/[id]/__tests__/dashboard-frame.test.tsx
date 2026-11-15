@@ -265,6 +265,11 @@ describe('the new frame', () => {
     expect(h.captured.ContentSignals.goalCounts).toEqual([])
   })
 
+  it('hands the Events block the range\'s true totals, the denominator of its conversion', async () => {
+    await mount()
+    expect(h.captured.ContentSignals.totals).toEqual({ pageviews: 1234, visitors: 567 })
+  })
+
   it('wires every block as today: totals, the live window, the member\'s full lists, the filter', async () => {
     await mount()
     for (const name of ['Sources', 'ContentStats', 'Audience', 'TechSpecs']) {

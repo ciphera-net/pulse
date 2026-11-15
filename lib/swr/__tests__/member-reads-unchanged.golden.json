@@ -2047,6 +2047,168 @@
     },
     "api": []
   },
+  "useEventPropertyKeys#dated": {
+    "key": [
+      "eventKeys",
+      "site-1",
+      "signup",
+      "2026-10-01",
+      "2026-10-07",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getEventPropertyKeys",
+        [
+          "site-1",
+          "signup",
+          "2026-10-01",
+          "2026-10-07",
+          "__undefined__",
+          "v2:country|is|NL"
+        ]
+      ]
+    ]
+  },
+  "useEventPropertyKeys#live": {
+    "key": [
+      "eventKeys",
+      "site-1",
+      "signup",
+      "__live__",
+      5,
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 15000,
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getEventPropertyKeys",
+        [
+          "site-1",
+          "signup",
+          "2026-10-01",
+          "2026-10-01",
+          5,
+          "v2:country|is|NL"
+        ]
+      ]
+    ]
+  },
+  "useEventPropertyKeys#noEvent": {
+    "key": null,
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useEventPropertyValues#dated": {
+    "key": [
+      "eventValues",
+      "site-1",
+      "signup",
+      "plan",
+      "2026-10-01",
+      "2026-10-07",
+      100,
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getEventPropertyValues",
+        [
+          "site-1",
+          "signup",
+          "plan",
+          "2026-10-01",
+          "2026-10-07",
+          100,
+          "__undefined__",
+          "__undefined__",
+          "v2:country|is|NL"
+        ]
+      ]
+    ]
+  },
+  "useEventPropertyValues#live": {
+    "key": [
+      "eventValues",
+      "site-1",
+      "signup",
+      "plan",
+      "__live__",
+      5,
+      100,
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 15000,
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getEventPropertyValues",
+        [
+          "site-1",
+          "signup",
+          "plan",
+          "2026-10-01",
+          "2026-10-01",
+          100,
+          "__undefined__",
+          5,
+          "v2:country|is|NL"
+        ]
+      ]
+    ]
+  },
+  "useEventPropertyValues#noKey": {
+    "key": null,
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
   "usePagePreview#member": {
     "key": [
       "pagePreview",

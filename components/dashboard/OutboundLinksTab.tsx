@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Image from 'next/image'
 import { ArrowSquareOut } from '@phosphor-icons/react'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { DestinationIcon } from '@/components/dashboard/DestinationIcon'
 import { CardFooter, FRAME_CARD_BODY, FRAME_CARD_NOTE } from '@/lib/dashboard/frame'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
@@ -15,7 +15,7 @@ import { outboundLinkRows } from '@/lib/dashboard/outbound'
 import { useOutboundUrls } from '@/lib/swr/dashboard'
 import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
-import { getReferrerFavicon, getReferrerIcon } from '@/lib/utils/icons'
+import { getReferrerFavicon } from '@/lib/utils/icons'
 
 // ---------------------------------------------------------------------------
 // The Pages block's fourth tab in the new dashboard frame: Outbound (15-11-2026).
@@ -44,32 +44,6 @@ const BAR_CAP = 75
 
 /** Under a page filter. The Outbound card's line, with a colon where it has a dash. */
 export const OUTBOUND_NOT_FILTERED = 'Outbound is not filtered yet: these are whole-site clicks.'
-
-/** A destination's icon, by the Sources block's own rules (lib/utils/icons.tsx): one drawing for one site, wherever it is listed. */
-function DestinationIcon({ host, failed, onFail }: { host: string; failed: boolean; onFail: () => void }) {
-  const url = getReferrerFavicon(host)
-  if (url && !failed) {
-    return (
-      <Image
-        src={url}
-        alt=""
-        width={20}
-        height={20}
-        className="w-5 h-5 flex-shrink-0 rounded-none object-contain"
-        // Eager and decoded with the row, as in Sources: the row's page flip is the only moment the icon is looked at.
-        loading="eager"
-        decoding="sync"
-        onError={onFail}
-        // A 16 px answer is the proxy's own stand-in for "no icon": the house icon is drawn instead, as in Sources.
-        onLoad={(e) => {
-          if (e.currentTarget.naturalWidth <= 16) onFail()
-        }}
-        unoptimized
-      />
-    )
-  }
-  return <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center">{getReferrerIcon(host)}</span>
-}
 
 export interface OutboundLinksTabProps {
   siteId: string

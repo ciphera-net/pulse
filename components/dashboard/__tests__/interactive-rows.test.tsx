@@ -28,6 +28,8 @@ const CARDS = [
   'components/dashboard/Locations.tsx',
   'components/dashboard/TechSpecs.tsx',
   'components/dashboard/ContentStats.tsx',
+  // The new frame's Events list: its rows hold numbers with their own tooltips, so the press is an overlay button.
+  'components/dashboard/events/EventsBlock.tsx',
 ]
 
 /** The opening tag of every element carrying `interactive-row`. */

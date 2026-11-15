@@ -43,7 +43,9 @@ import {
   getDevices,
   getScreenResolutions,
   getTimezones,
+  getEventPropertyKeys,
   getEventPropertyValues,
+  type EventPropertyKey,
   type EventPropertyValue,
   // /stats carries the provenance of the imported days it includes (PULSE-118).
   type StatsResponse,
@@ -1139,7 +1141,7 @@ export function useBingDailyTotals(siteId: string, start: string, end: string) {
 //    isLiveListKey matches, and the same 15 s backstop the fan-out uses covers a dropped
 //    signal.
 export const LIVE_LIST_KEY = '__live__'
-const LIVE_LIST_KINDS = new Set(['fullList', 'outbound', 'campaignsList'])
+const LIVE_LIST_KINDS = new Set(['fullList', 'outbound', 'campaignsList', 'eventKeys', 'eventValues'])
 
 /**
  * Matches every live list SWR key of one site: what the page revalidates on its live signal.
@@ -1251,6 +1253,36 @@ export function useOutboundUrls(siteId: string, start: string, end: string, peri
         : start && end ? ['outboundUrls', siteKey, start, end, period ?? ''] : null,
     (ref) => getEventPropertyValues(ref, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, live ? undefined : period, liveMinutes),
     { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : { refreshInterval: 60_000, dedupingInterval: 10_000 }) }
+  )
+}
+
+// * One event's property keys, and one key's values, for the Events block's pane in the new dashboard frame
+// * (components/dashboard/events/EventProperties.tsx). The page's filters are SENT and are part of the key: the
+// * server applies them to the event rows as it does to the events list, so an event's values add up to the count
+// * its row shows, and nothing read under one set of filters is served under another. A live window keys on the
+// * window, never on the dates (see LIVE_LIST_KEY), and refreshes with the dashboard. A null event (or key) reads
+// * nothing. Route class `demo`: a share link is not served the property routes.
+export function useEventPropertyKeys(siteId: string, event: string | null, start: string, end: string, filters?: string, liveMinutes?: number) {
+  const live = liveMinutes != null
+  return useSiteSWR<EventPropertyKey[]>(
+    siteId, 'demo',
+    (siteKey) => !siteId || event === null ? null
+      : live ? ['eventKeys', siteKey, event, LIVE_LIST_KEY, liveMinutes, filters]
+        : start && end ? ['eventKeys', siteKey, event, start, end, filters] : null,
+    (ref) => getEventPropertyKeys(ref, event as string, start, end, liveMinutes, filters),
+    { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : {}) }
+  )
+}
+
+export function useEventPropertyValues(siteId: string, event: string | null, key: string | null, start: string, end: string, limit: number, filters?: string, liveMinutes?: number) {
+  const live = liveMinutes != null
+  return useSiteSWR<EventPropertyValue[]>(
+    siteId, 'demo',
+    (siteKey) => !siteId || event === null || key === null ? null
+      : live ? ['eventValues', siteKey, event, key, LIVE_LIST_KEY, liveMinutes, limit, filters]
+        : start && end ? ['eventValues', siteKey, event, key, start, end, limit, filters] : null,
+    (ref) => getEventPropertyValues(ref, event as string, key as string, start, end, limit, undefined, liveMinutes, filters),
+    { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : {}) }
   )
 }
 

@@ -7,15 +7,23 @@ import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 import type { GoalCountStat, ImportedProvenance, ScrollDepthDistribution } from '@/lib/api/stats'
 import ScrollDepthBars from './ScrollDepthBars'
 import GoalStats from './GoalStats'
+import EventsBlock from './events/EventsBlock'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { Switcher } from '@ciphera-net/facet'
-import { FRAME_CARD, FRAME_CARD_NAME, useDashboardFrame } from '@/lib/dashboard/frame'
+import { FRAME_CARD, useDashboardFrame } from '@/lib/dashboard/frame'
+import { EVENTS_IMPORTED_WORD } from '@/lib/dashboard/events'
 
 // ---------------------------------------------------------------------------
 // The Content section's second card in the approved C mockup: scroll depth and
 // custom events share one card behind tabs, balancing ContentStats beside it.
 // Both are read-only composition — the tab row is the same grammar as every
 // other dimension card; the content components render `bare`.
+//
+// In the new dashboard frame the block is the Events block alone (scroll depth
+// leaves the dashboard and comes back per page on the Pages page): the events
+// as a list beside the picked event's properties, ./events/EventsBlock.tsx.
+// Either way the root is ONE element, drawn here, carrying the tour's two
+// attributes.
 // ---------------------------------------------------------------------------
 
 interface ContentSignalsProps {
@@ -38,20 +46,45 @@ interface ContentSignalsProps {
   liveMinutes?: number
   /** The page's filters, for the Events tab's property breakdown (an opened event follows them, as its row does). */
   filters?: string
+  /**
+   * The new frame only: the range's true totals, filtered as the rows are. An event's conversion is its visitors
+   * over these visitors. Today's card shows no share and takes none.
+   */
+  totals?: { pageviews: number; visitors: number }
 }
 
 /** W-M12-5: the Events card's header word, the rail's own vocabulary (M11). */
-export const EVENTS_IMPORTED_WORD = 'incl. imported days'
+export { EVENTS_IMPORTED_WORD }
 
 type Tab = 'scroll' | 'events'
 
-export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported, liveMinutes, filters }: ContentSignalsProps) {
-  // In the new frame this block is EVENTS alone (owner ruling 14-11-2026: scroll depth leaves the dashboard and
-  // comes back per page on the Pages page). Its tabs go, its name stands where they were, and it says its unit as
-  // every other block does. The root below stays ONE element for both, because the tour finds the block by it.
+export default function ContentSignals(props: ContentSignalsProps) {
+  // The card's root is HERE for both arrangements: the tour finds the block by its two attributes, and each card's
+  // key lives in one file (lib/tour/anchors.ts).
   const frame = useDashboardFrame()
-  const [chosenTab, setActiveTab] = useState<Tab>('scroll')
-  const activeTab: Tab = frame ? 'events' : chosenTab
+  return (
+    <div data-tour="dimension-card" data-tour-card="content-signals" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
+      {frame ? (
+        <EventsBlock
+          goalCounts={props.goalCounts}
+          goalsImported={props.goalsImported}
+          siteId={props.siteId}
+          dateRange={props.dateRange}
+          liveMinutes={props.liveMinutes}
+          totals={props.totals}
+          memberFeatures={props.memberFeatures}
+          filters={props.filters}
+        />
+      ) : (
+        <TodaysContentSignals {...props} />
+      )}
+    </div>
+  )
+}
+
+/** Today's card, inside the root above: Scroll depth and Events behind two tabs. */
+function TodaysContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported, liveMinutes, filters }: ContentSignalsProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('scroll')
 
   // The full-page capture behind the scroll tab's stacked sheets. null =
   // no capture (a state — the tab renders its rails fallback), and a fetch
@@ -64,33 +97,28 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
   // So a public scope, or the legacy off switch, takes the public endpoint.
   const scope = useOptionalSiteScope()
   const publicRead = !memberFeatures || scope?.mode === 'public'
-  // The capture is the scroll tab's alone: in the frame it is not read (an empty id leaves the read unarmed).
-  const { data: pagePreview } = usePagePreview(frame ? '' : siteId, !publicRead)
+  const { data: pagePreview } = usePagePreview(siteId, !publicRead)
 
   const scrollSessions = scrollDepth?.total_sessions ?? 0
 
   return (
-    <div data-tour="dimension-card" data-tour-card="content-signals" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
+    <>
       <div className="flex items-center justify-between mb-4">
-        {frame ? (
-          <h2 className={FRAME_CARD_NAME}>Events</h2>
-        ) : (
-          /* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
-             the overflow wrapper keeps a narrow card scrollable, as the tab row was. */
-          <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
-            <Switcher
-              size="sm"
-              tone="solid"
-              aria-label="Content signals"
-              options={[
-                { value: 'scroll', label: 'Scroll depth' },
-                { value: 'events', label: 'Events' },
-              ]}
-              value={activeTab}
-              onChange={(v) => setActiveTab(v as Tab)}
-            />
-          </div>
-        )}
+        {/* One Facet Switcher for every dimension card (design pick C0, 06-09-2026);
+            the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
+        <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+          <Switcher
+            size="sm"
+            tone="solid"
+            aria-label="Content signals"
+            options={[
+              { value: 'scroll', label: 'Scroll depth' },
+              { value: 'events', label: 'Events' },
+            ]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as Tab)}
+          />
+        </div>
         <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         {activeTab === 'scroll' && scrollSessions > 0 && (
           <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
@@ -102,20 +130,15 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
             {EVENTS_IMPORTED_WORD}
           </span>
         )}
-        {frame && (
-          <span className="ms-2 shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">
-            events
-          </span>
-        )}
       </div>
 
-      <div className={frame ? 'flex min-h-0 flex-1 flex-col' : 'flex flex-1 flex-col min-h-[270px]'}>
+      <div className="flex flex-1 flex-col min-h-[270px]">
         {activeTab === 'scroll' ? (
           <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare live={liveMinutes != null} />
         ) : (
           <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} liveMinutes={liveMinutes} filters={filters} />
         )}
       </div>
-    </div>
+    </>
   )
 }

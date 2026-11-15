@@ -12,8 +12,10 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
   const frame = read('components/surfaces/DashboardFrame.tsx')
 
   it('passes the true totals and the page\'s filters to every block that takes them', () => {
-    // Four blocks take totals (Sources, Pages, Locations, Technology), as on today's page.
-    expect(frame.match(/totals=\{totals\}/g)?.length).toBe(4)
+    // Five blocks take totals: Sources, Pages, Locations and Technology, as on today's page, and the Events block,
+    // whose conversion is an event's visitors over the range's (today's Events card shows no share and takes none).
+    expect(frame.match(/totals=\{totals\}/g)?.length).toBe(5)
+    expect(frame).toMatch(/<ContentSignals\n(?:\s+\w+=\{[^}]*\}+\n)*\s+totals=\{totals\}\n/)
     // Sources, Pages, Locations, Technology, Events and the heat map thread the filters. (Outbound's links ride in
     // the Pages block and get its filters from there: they say they are whole-site clicks under one. Events takes
     // them since 15-11-2026, for an opened event's properties.)

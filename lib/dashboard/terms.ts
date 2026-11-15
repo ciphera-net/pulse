@@ -162,7 +162,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   events: {
     title: 'Events',
     definition:
-      'Counts firings, not people — one visitor firing the same event six times reads 6. Expanding a row loads that event\'s property keys and recorded values.',
+      'A visitor who sends the same event six times counts as 1 in visitors and 6 in events. Conversion is the share of all visitors in the range who sent it. Press an event to see the values of its properties.',
     docs: 'dashboard#events',
   },
   exits: {
