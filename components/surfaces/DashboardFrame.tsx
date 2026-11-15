@@ -16,7 +16,8 @@ const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSigna
 const DashboardBottom = dynamic(() => import('@/components/dashboard/DashboardBottom'))
 
 // ---------------------------------------------------------------------------
-// THE NEW DASHBOARD FRAME (beta `new-dashboard`, owner rulings of 14-11-2026).
+// THE NEW DASHBOARD FRAME (owner rulings of 14-11-2026). Every reader's since 15-11-2026: every team (it was the
+// beta `new-dashboard` until then) and the public pages, the demo and a share link.
 //
 // The same blocks as today's page, arranged anew and told so through DashboardFrameProvider:
 //   * tight cards, 12 px apart, and no section titles (R1, R12);
@@ -30,10 +31,10 @@ const DashboardBottom = dynamic(() => import('@/components/dashboard/DashboardBo
 // The toolbar that stays, the chart's missing bucket picker and the install banner are the surface's
 // (components/surfaces/DashboardSurface.tsx), which mounts this in place of its own arrangement.
 //
-// While the flag lives, today's arrangement stays in the surface, untouched, and this file repeats each block's
-// props. That is on purpose: no line of the page every customer sees moved to make room for the beta, and
+// Today's arrangement is still in the surface, no longer drawn, and this file repeats each block's props: it was
+// built that way so no line of the page every customer saw moved to make room for the beta.
 // components/dashboard/__tests__/frame-wiring.test.ts pins this file's props as phase3-wiring.test.ts pins the
-// surface's. When the frame goes to everyone the surface's arrangement is deleted and this one remains.
+// surface's. Deleting the surface's arrangement is the next step, and this one remains.
 // ---------------------------------------------------------------------------
 
 interface DashboardFrameProps {

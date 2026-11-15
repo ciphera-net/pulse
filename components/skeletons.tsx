@@ -1,9 +1,8 @@
 /**
  * The skeletons of Pulse's pages: the composites, each made of the pieces in ./skeleton/primitives.
  *
- * A piece is a gray bar that arrives with a fade (bg-neutral-800, animate-skeleton-fade), or, for a team with the
- * new look, a dithered one with an orange band sweeping across it (lib/skeleton/dither.ts). The composites here do
- * not know which: they only place pieces.
+ * A piece is a dithered bar with an orange band sweeping across it (lib/skeleton/dither.ts), for every reader since
+ * 15-11-2026. The composites here only place pieces.
  */
 import { DashboardFrameSkeleton } from './skeleton/DashboardFrameSkeleton'
 import { SkeletonCard, SkeletonCircle, SkeletonLine } from './skeleton/primitives'
@@ -110,70 +109,12 @@ export function ChartSkeleton() {
 // ─── Full dashboard skeleton ─────────────────────────────────
 
 /**
- * `today` draws today's dashboard. `both` adds the new frame's shape beside it and lets the stylesheet show the one
- * this device's team has (styles/globals.css, `skeleton-old-shape` / `skeleton-new-shape`): the shape must be right
- * in the server's HTML, before the browser has asked which dashboard the team has, and a shape chosen from React
- * would change in the middle of a hard load.
- *
- * A member's dashboard asks for `both`. A public page (the demo, a share link) is never offered the new dashboard,
- * so it keeps `today`, and its markup does not grow.
+ * The dashboard's skeleton: the new frame's shape, for every reader since 15-11-2026 (the members' dashboard went to
+ * everyone, and public pages draw the frame too). Today's shape and the stylesheet's choice between the two are
+ * gone with it.
  */
-export function DashboardSkeleton({ shape = 'today' }: { shape?: 'today' | 'both' }) {
-  if (shape === 'both') {
-    return (
-      <>
-        <TodayDashboardSkeleton className="skeleton-old-shape" />
-        <DashboardFrameSkeleton className="skeleton-new-shape" />
-      </>
-    )
-  }
-  return <TodayDashboardSkeleton />
-}
-
-function TodayDashboardSkeleton({ className = '' }: { className?: string }) {
-  return (
-    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${className}`}>
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div>
-              <SkeletonLine className="h-8 w-48 mb-2" />
-              <SkeletonLine className="h-4 w-32" />
-            </div>
-            <SkeletonLine className="h-8 w-40 rounded-none" />
-          </div>
-          <div className="flex items-center gap-2">
-            <SkeletonLine className="h-10 w-24 rounded-none" />
-            <SkeletonLine className="h-10 w-36 rounded-none" />
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="mb-8">
-        <ChartSkeleton />
-      </div>
-
-      {/* Widget grid (2 cols) */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <WidgetSkeleton />
-        <WidgetSkeleton />
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <WidgetSkeleton />
-        <WidgetSkeleton />
-      </div>
-
-      {/* Campaigns table */}
-      <div className="mb-8">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-none p-6">
-          <SkeletonLine className="h-6 w-32 mb-4" />
-          <TableSkeleton rows={7} cols={5} />
-        </div>
-      </div>
-    </div>
-  )
+export function DashboardSkeleton() {
+  return <DashboardFrameSkeleton />
 }
 
 // ─── Journeys page skeleton ─────────────────────────────────

@@ -45,8 +45,6 @@ import Outbound from '@/components/dashboard/Outbound'
 import SectionHeader from '@/components/dashboard/SectionHeader'
 import DashboardFrame from '@/components/surfaces/DashboardFrame'
 import FrameToolbar from '@/components/dashboard/FrameToolbar'
-import { useFeature } from '@/lib/features'
-import { NEW_DASHBOARD_FLAG } from '@/lib/dashboard/frame'
 
 const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
@@ -132,10 +130,10 @@ function SiteDashboardWithRecord({ scope, caps }: { scope: SiteScope; caps: Dash
 
 function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: DashboardCapabilities; facts: SiteFacts | null }) {
   const siteId = scope.siteId
-  // The new dashboard frame (beta `new-dashboard`; lib/dashboard/frame.tsx says what it is). `=== true` on
-  // purpose: while /me is loading, and if it fails, the page is today's. A public page (the demo, a share link)
-  // is never offered a beta, so it keeps today's page until the frame goes to everyone.
-  const frame = useFeature(NEW_DASHBOARD_FLAG) === true
+  // The new dashboard frame (lib/dashboard/frame.tsx says what it is) is every reader's since 15-11-2026: every
+  // team (the `new-dashboard` flag went to everyone at 20:32 UTC), and public pages too (the demo, a share link),
+  // which no beta ever reached. Today's arrangement below is no longer drawn; its removal follows on its own.
+  const frame: boolean = true
   const siteRecord = facts?.siteRecord
   const siteError = facts?.siteError
   const refetchSite = facts?.refetchSite
@@ -651,9 +649,8 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   }
 
   if (showSkeleton) {
-    // A member's page holds both shapes of the skeleton and the stylesheet shows the one the team's dashboard has
-    // (components/skeletons.tsx). A public page is never offered the new dashboard and keeps today's.
-    return <DashboardSkeleton shape={caps.member ? 'both' : 'today'} />
+    // The frame's own skeleton, for every reader (components/skeletons.tsx).
+    return <DashboardSkeleton />
   }
 
   // pulse#893: a failed dashboard request keeps the toolbar. Returning only the

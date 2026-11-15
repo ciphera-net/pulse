@@ -10,37 +10,25 @@ import { DashboardSkeleton } from '@/components/skeletons'
 import { DashboardFrameSkeleton } from '@/components/skeleton/DashboardFrameSkeleton'
 import { FRAME_CARD } from '@/lib/dashboard/frame'
 
-// The dashboard's skeleton has two shapes while the new dashboard is a beta. A member's page draws both and the
-// stylesheet shows one; a public page is never offered the new dashboard and draws today's alone.
+// The dashboard's skeleton is the new frame's shape for every reader since 15-11-2026 (the dashboard went to every
+// team, and public pages draw the frame too). Until then a member's page drew two shapes and the stylesheet showed
+// one; that choice and today's shape are gone.
 
 describe('DashboardSkeleton', () => {
-  it('by default draws today\'s shape alone, with no shape class: nothing can hide it', () => {
+  it('draws the frame\'s shape alone, for every reader, with no shape class left to hide it', () => {
     const { container } = render(<DashboardSkeleton />)
     expect(container.children).toHaveLength(1)
     const root = container.firstElementChild as HTMLElement
+    expect(root.outerHTML).toBe(render(<DashboardFrameSkeleton />).container.firstElementChild?.outerHTML)
     expect(root.className).not.toContain('skeleton-old-shape')
     expect(root.className).not.toContain('skeleton-new-shape')
-    expect(container.querySelector('.glass-block')).toBeNull()
+    // The page's width limit and gutters, so the skeleton sits where the page will.
+    for (const c of ['w-full', 'max-w-7xl', 'mx-auto', 'px-4', 'sm:px-6', 'pb-8']) expect(root.className.split(' '), c).toContain(c)
   })
 
-  it('for a member draws both shapes, each under the class the stylesheet switches', () => {
-    const { container } = render(<DashboardSkeleton shape="both" />)
-    expect(container.children).toHaveLength(2)
-    const [today, frame] = [...container.children] as HTMLElement[]
-    expect(today.className.split(' ')).toContain('skeleton-old-shape')
-    expect(frame.className.split(' ')).toContain('skeleton-new-shape')
-    // The same page width limit and gutters, so either shape sits where the page will.
-    for (const root of [today, frame]) {
-      for (const c of ['w-full', 'max-w-7xl', 'mx-auto', 'px-4', 'sm:px-6', 'pb-8']) expect(root.className.split(' '), c).toContain(c)
-    }
-  })
-
-  it('today\'s shape is unchanged by the second one: the same bars either way', () => {
-    const alone = render(<DashboardSkeleton />)
-    const both = render(<DashboardSkeleton shape="both" />)
-    const bars = (root: Element) => [...root.querySelectorAll('.skeleton')].map((b) => b.className)
-    expect(bars(both.container.firstElementChild as Element)).toEqual(bars(alone.container.firstElementChild as Element))
-    expect(bars(alone.container.firstElementChild as Element).length).toBeGreaterThan(100)
+  it('the stylesheet no longer hides a shape', () => {
+    const css = readFileSync(join(process.cwd(), 'styles/globals.css'), 'utf8')
+    expect(css).not.toMatch(/skeleton-(new|old)-shape/)
   })
 })
 
@@ -132,8 +120,8 @@ describe('the new frame\'s shape', () => {
 })
 
 describe('no loading placeholder in the app is drawn by hand any more', () => {
-  // A bare gray box keeps today's look when everything around it has the new one. Every placeholder goes through
-  // a piece of components/skeleton/primitives.tsx.
+  // A bare gray box stays a flat box among the dithered pieces. Every placeholder goes through a piece of
+  // components/skeleton/primitives.tsx.
   const ROOTS = ['app', 'components', 'lib']
   const files: string[] = []
   const walk = (dir: string) => {

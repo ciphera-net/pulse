@@ -12,7 +12,6 @@ import {
   CardFooter,
   DashboardFrameProvider,
   FRAME_CARD,
-  NEW_DASHBOARD_FLAG,
   panelSurface,
   useDashboardFrame,
   useGlassPanels,
@@ -20,8 +19,9 @@ import {
 import FilterPopover from '@/components/dashboard/filter/FilterPopover'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 
-// The new dashboard frame's two switches: the CONTEXT that tells a block it is in the frame, and the FLAG that
-// makes pop-ups glass on every page for a team that has the beta.
+// The new dashboard frame: the CONTEXT that tells a block it is in the frame, and glass on pop-ups and menus on every
+// page. Both were a beta's (the flag `new-dashboard`) until 15-11-2026, when the dashboard went to everyone: glass
+// is now every reader's, and nothing reads the flag any more (a stand-in for /me below proves it).
 
 function Probe() {
   return <span data-testid="probe">{String(useDashboardFrame())}</span>
@@ -55,10 +55,6 @@ describe('the frame\'s context', () => {
     expect(feature.read).not.toHaveBeenCalled()
   })
 
-  it('names the flag as pulse-backend lists it', () => {
-    expect(NEW_DASHBOARD_FLAG).toBe('new-dashboard')
-  })
-
   it('pins a block at one size', () => {
     expect(FRAME_CARD.split(' ')).toContain('h-[442px]')
     expect(FRAME_CARD.split(' ')).not.toContain('h-full')
@@ -80,16 +76,18 @@ describe('CardFooter', () => {
   })
 })
 
-describe('glass on pop-ups and menus follows the flag, on every page', () => {
-  it.each([
-    [true, 'true'],
-    [false, 'false'],
-    [null, 'false'],
-  ])('/me says %s: glass is %s', (value, shown) => {
+describe('glass on pop-ups and menus, on every page, for every reader', () => {
+  it.each([[true], [false], [null]])('whatever /me says (%s), glass is on, and the flag is not asked for', (value) => {
     feature.read.mockReturnValue(value)
     render(<GlassProbe />)
-    expect(screen.getByTestId('glass').textContent).toBe(shown)
-    expect(feature.read).toHaveBeenCalledWith('new-dashboard')
+    expect(screen.getByTestId('glass').textContent).toBe('true')
+    expect(feature.read).not.toHaveBeenCalled()
+  })
+
+  it('no file of the app reads the flag any more: no quoted flag name, no constant (comments keep its history)', () => {
+    const { execSync } = require('node:child_process') as typeof import('node:child_process')
+    const hits = execSync(`git grep -l -e "'new-dashboard'" -e '"new-dashboard"' -e NEW_DASHBOARD_FLAG -- 'app/*' 'components/*' 'lib/*' ':!*__tests__*' || true`, { encoding: 'utf8' }).trim()
+    expect(hits).toBe('')
   })
 
   it('is one of two surfaces, never a mix', () => {
@@ -111,8 +109,7 @@ describe('glass on pop-ups and menus follows the flag, on every page', () => {
   )
   const openPicker = () => fireEvent.click(document.querySelector('[data-tour="date-range-picker"]') as HTMLElement)
 
-  it('the date menu is glass under the flag', () => {
-    feature.read.mockReturnValue(true)
+  it('the date menu is glass', () => {
     render(picker())
     openPicker()
     const panel = document.querySelector('[data-view-switcher]') as HTMLElement
@@ -122,31 +119,16 @@ describe('glass on pop-ups and menus follows the flag, on every page', () => {
     expect(panel.className).not.toContain('border-border')
   })
 
-  it('the date menu is today\'s solid popover without it', () => {
-    render(picker())
-    openPicker()
-    const panel = document.querySelector('[data-view-switcher]') as HTMLElement
-    expect(panel.className).toContain('bg-popover')
-    expect(panel.className).toContain('border-border')
-    expect(panel.className).not.toContain('glass-panel')
-  })
-
   const popover = (anchor: HTMLElement) => (
     <FilterPopover open anchor={anchor} label="Add filter" contentKey="a" onClose={() => {}}><p>stage</p></FilterPopover>
   )
 
-  it('the filter is glass under the flag and solid without it', () => {
+  it('the filter is glass', () => {
     const anchor = document.createElement('button')
     document.body.appendChild(anchor)
-    feature.read.mockReturnValue(true)
-    const first = render(popover(anchor))
+    render(popover(anchor))
     expect(screen.getByRole('dialog', { name: 'Add filter' }).className).toContain('glass-panel')
     expect(screen.getByRole('dialog', { name: 'Add filter' }).className).not.toContain('bg-popover')
-    first.unmount()
-
-    feature.read.mockReturnValue(false)
-    render(popover(anchor))
-    expect(screen.getByRole('dialog', { name: 'Add filter' }).className).toContain('bg-popover border border-border')
     anchor.remove()
   })
 

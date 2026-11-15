@@ -25,8 +25,8 @@ import { INFO_TIP_GLYPH_CLASS, INFO_TIP_PANEL_CLASS } from '@/lib/ui/popupSurfac
 // ---------------------------------------------------------------------------
 
 // Every info pop-up of the app carries one class on its PANEL and one on its ICON (facet's `className` goes to the
-// panel, `glyphClassName` to the icon). They style nothing by themselves: under the new look's class on <html>
-// the stylesheet makes the panel glass with its name in a strip of its own, and draws the icon as a fine circle
+// panel, `glyphClassName` to the icon). The stylesheet makes the panel glass with its name in a strip of its own,
+// and draws the icon as a fine circle, for every reader since 15-11-2026
 // (styles/globals.css, beside `.glass-panel`; the names are lib/ui/popupSurface.ts's). This file is the only one
 // that draws facet's InfoTip, so that is every info pop-up on every page.
 export { INFO_TIP_PANEL_CLASS, INFO_TIP_GLYPH_CLASS }

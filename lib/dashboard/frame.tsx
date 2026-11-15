@@ -1,19 +1,15 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
-import { useFeature } from '@/lib/features'
 
 // ---------------------------------------------------------------------------
-// The new dashboard frame (beta, 14-11-2026): tight cards 12 px apart, Sources beside Pages, every block one
-// size, no section titles, the toolbar staying at the top, glass on the blocks.
+// The new dashboard frame (14-11-2026; every reader's since 15-11-2026): tight cards 12 px apart, Sources beside
+// Pages, every block one size, no section titles, the toolbar staying at the top, glass on the blocks.
 //
-// The dashboard surface decides it from the beta flag and PROVIDES it. A block reads `useDashboardFrame()` and
-// never the flag itself, so a block mounted anywhere else keeps today's look, and the day the frame goes to
-// everyone the provider's value is the only line that changes.
+// The dashboard surface PROVIDES it. A block reads `useDashboardFrame()`, so a block mounted anywhere else (a
+// funnel's page, Settings) keeps its own look. It was a beta (the Unleash flag `new-dashboard`) until it went to
+// every team on 15-11-2026; public pages (the demo, a share link) draw it since the same evening.
 // ---------------------------------------------------------------------------
-
-/** The Unleash flag, exactly as pulse-backend lists it in /me. */
-export const NEW_DASHBOARD_FLAG = 'new-dashboard'
 
 const DashboardFrameContext = createContext(false)
 
@@ -46,13 +42,14 @@ export function CardFooter({ children }: { children: ReactNode }) {
 }
 
 /**
- * True when pop-ups and menus are glass: for a team that has the new dashboard. It reads the FLAG, not the frame's
- * context, on purpose: the date menu, the filter and What's new are the same pop-ups on every page, and one that is
- * glass over the dashboard and solid over Pages would read as a fault. On a public page (the demo, a share link)
- * it is false, as every beta is there.
+ * True when pop-ups and menus are glass: on every page, for every reader, since the new dashboard went to everyone
+ * (15-11-2026). It was the beta flag's answer until then, never the frame's context, because the date menu, the
+ * filter and What's new are the same pop-ups on every page, and one that is glass over the dashboard and solid
+ * over Pages would read as a fault. Kept as a hook so its callers need no change, and so a page that ever needs a
+ * solid panel has one place to say so.
  */
 export function useGlassPanels(): boolean {
-  return useFeature(NEW_DASHBOARD_FLAG) === true
+  return true
 }
 
 /**

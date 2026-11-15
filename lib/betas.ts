@@ -25,7 +25,4 @@ export const BETAS: readonly Beta[] = [
   { flag: 'monthly-summary', name: 'Monthly summary email', revalidates: [] },
   // Analyst, the AI analyst (PUL-78): its menu row and page read useFeature.
   { flag: 'barry', name: 'Analyst', revalidates: [] },
-  // The dashboard's new arrangement, its loading state and glass pop-ups (lib/dashboard/frame.tsx): the dashboard
-  // and every pop-up read useFeature.
-  { flag: 'new-dashboard', name: 'New dashboard', revalidates: [] },
 ]

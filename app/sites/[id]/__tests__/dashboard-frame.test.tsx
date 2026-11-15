@@ -1,9 +1,9 @@
-// The new dashboard frame (beta `new-dashboard`) on the ONE dashboard surface.
+// The new dashboard frame on the ONE dashboard surface, for every reader since 15-11-2026 (the beta `new-dashboard`
+// until then: the flag went to every team, and public pages draw the frame too).
 //
-// The surface keeps today's arrangement and mounts components/surfaces/DashboardFrame.tsx in its place while the
-// flag is on. This file pins what a reader gets either way: today's page while the flag is off or unknown, and
-// under the flag the new order, no section titles, the toolbar that stays, no bucket picker on the chart, and the
-// Events block without scroll depth.
+// The surface mounts components/surfaces/DashboardFrame.tsx whatever /me says, and asks it nothing. This file pins
+// what a reader gets: the new order, no section titles, the toolbar that stays, no bucket picker on the chart, and
+// the Events block without scroll depth.
 //
 // The seams are those of dashboard-scopes.test.tsx: the data hooks are spies and the cards are prop-capturing
 // stubs (their own files test what a block does inside the frame).
@@ -64,7 +64,7 @@ vi.mock('@ciphera-net/facet', async (importOriginal) => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 vi.mock('@/components/skeletons', () => ({
-  DashboardSkeleton: ({ shape }: { shape?: string }) => <div data-testid="skeleton" data-shape={shape} />,
+  DashboardSkeleton: (props: Record<string, unknown>) => <div data-testid="skeleton" data-props={Object.keys(props).join(',')} />,
   useMinimumLoading: (v: boolean) => v,
   useSkeletonFade: () => '',
 }))
@@ -187,41 +187,31 @@ async function mount() {
 const sectionTitles = () => screen.queryAllByTestId('section').map((n) => n.textContent)
 const blockOrder = () => screen.queryAllByTestId('card').map((n) => n.getAttribute('data-block'))
 
-describe('the flag off, or not known yet: today\'s page, untouched', () => {
+describe('every reader gets the frame, whatever /me says (15-11-2026)', () => {
   it.each([
+    ['on', true],
     ['off', false],
     ['still loading, or /me failed', null],
-  ])('%s: the five section titles, the bucket picker and the plain toolbar', async (_name, value) => {
+  ])('/me says %s: the frame, and the flag is not asked for', async (_name, value) => {
     h.feature.mockImplementation(() => value)
     await mount()
-    expect(h.feature).toHaveBeenCalledWith('new-dashboard')
-    expect(sectionTitles()).toEqual(['Acquisition', 'Audience', 'Outbound', 'Content', 'Behaviour'])
-    expect(blockOrder()).toEqual(['Sources', 'Audience', 'TechSpecs', 'Outbound', 'ContentStats', 'ContentSignals'])
-    expect(h.captured.CommandDeck.intervalPicker).toBe(true)
-    expect(screen.queryByTestId('frame-toolbar')).toBeNull()
-    expect(document.querySelector('[data-dashboard-frame]')).toBeNull()
-    // No block is told it is in the frame.
-    expect(Object.values(h.inFrame).some(Boolean)).toBe(false)
-    // Today's Events card still gets its scroll depth.
-    expect(h.captured.ContentSignals.scrollDepth).toEqual({ total_sessions: 12, buckets: [] })
+    expect(h.feature).not.toHaveBeenCalledWith('new-dashboard')
+    expect(document.querySelector('[data-dashboard-frame]')).toBeTruthy()
+    expect(sectionTitles()).toEqual([])
+    expect(blockOrder()).toEqual(['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals'])
+    expect(h.captured.CommandDeck.intervalPicker).toBe(false)
   })
 })
 
 describe('while the dashboard loads', () => {
-  it.each([
-    ['on', true],
-    ['off', false],
-    ['not known yet', null],
-  ])('a member\'s page holds both shapes of the skeleton whatever the flag says (%s): the stylesheet shows one', async (_name, value) => {
-    // The flag is not known when the server draws the skeleton, so the surface never chooses the shape from it.
-    h.feature.mockImplementation(() => value)
+  it('draws the one skeleton, the frame\'s, with no shape to choose', async () => {
     h.useDashboard.mockImplementation(() => ({ data: undefined, isLoading: true, error: undefined, mutate: vi.fn() }))
     await mount()
-    expect(screen.getByTestId('skeleton').getAttribute('data-shape')).toBe('both')
+    expect(screen.getByTestId('skeleton').getAttribute('data-props')).toBe('')
   })
 })
 
-describe('the flag on: the new frame', () => {
+describe('the new frame', () => {
   it('orders the blocks Sources, Pages, Locations, Technology, Events and draws no section title', async () => {
     await mount()
     expect(sectionTitles()).toEqual([])

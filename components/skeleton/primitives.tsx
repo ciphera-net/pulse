@@ -2,22 +2,22 @@
 
 import { createElement, useEffect, useRef, type CSSProperties, type HTMLAttributes } from 'react'
 import { registerBar } from '@/lib/skeleton/band'
-import { SKELETON_BAR_CLASS } from '@/lib/skeleton/look'
 
 // ---------------------------------------------------------------------------
 // The pieces every skeleton in Pulse is made of.
 //
-// A piece is ONE element with the class `skeleton`. In today's look that class styles nothing and the piece is the
-// gray bar it always was. In the new look (the dither, lib/skeleton/dither.ts) the stylesheet textures every
-// `.skeleton` and lib/skeleton/band.ts sweeps the orange band across it. The markup is the same in both looks on
-// purpose: the server's HTML holds the skeleton before the browser knows which look the team has
-// (lib/skeleton/look.ts).
+// A piece is ONE element with the class `skeleton`: the stylesheet textures every `.skeleton` with the dither
+// (lib/skeleton/dither.ts, styles/globals.css) and lib/skeleton/band.ts sweeps the orange band across it. This was
+// the new look of the new dashboard's beta; it is every reader's since 15-11-2026.
 //
 // So a placeholder drawn anywhere in the app goes through one of these, never a bare <div> with a gray fill: a bare
-// one keeps today's look when everything around it has the new one.
+// one would stay a flat gray box among the dithered pieces.
 // ---------------------------------------------------------------------------
 
-/** Today's bar: the fill, and the fade it arrives with. */
+/** On every skeleton bar: the class the stylesheet textures. */
+export const SKELETON_BAR_CLASS = 'skeleton'
+
+/** The bar's own fill under the texture, and the fade it arrives with. */
 const BAR = 'animate-skeleton-fade bg-neutral-800'
 
 /**
@@ -58,8 +58,8 @@ interface SkeletonBarProps extends Omit<HTMLAttributes<HTMLElement>, 'children'>
 
 /**
  * A placeholder that keeps its OWN classes: for the loading states drawn by hand around the app (a settings row's
- * `bg-input` bars, the visitors list's pulsing rows). In today's look it is exactly what its classes say, so
- * nothing a customer sees moves. In the new look it takes the dither like every other piece.
+ * `bg-input` bars, the visitors list's pulsing rows). It takes the dither like every other piece; its own classes
+ * still give its size and shape.
  */
 export function SkeletonBar({ as = 'div', className = '', ...rest }: SkeletonBarProps) {
   const ref = useSkeletonBar<HTMLElement>()
