@@ -16,6 +16,7 @@ import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { useGoals } from '@/lib/swr/dashboard'
 import { checkGoal, hasProblems, NO_PROBLEMS, type GoalProblems } from './checkGoal'
 import { GoalForm } from './GoalForm'
+import { SkeletonBar } from '@/components/skeletons'
 
 /**
  * Goals (settings overhaul P3), from its approved drawing and the copy deck's §5. The page has no section heading: the
@@ -160,8 +161,8 @@ function GoalsForSite({ siteId }: { siteId: string }) {
                 {[0, 1, 2].map((i) => (
                   <KitRow
                     key={i}
-                    label={<span aria-hidden="true" className="block h-3.5 w-24 bg-input" />}
-                    caption={<span aria-hidden="true" className="mt-1 block h-3 w-48 max-w-full bg-input" />}
+                    label={<SkeletonBar as="span" aria-hidden="true" className="block h-3.5 w-24 bg-input" />}
+                    caption={<SkeletonBar as="span" aria-hidden="true" className="mt-1 block h-3 w-48 max-w-full bg-input" />}
                   />
                 ))}
               </KitRows>

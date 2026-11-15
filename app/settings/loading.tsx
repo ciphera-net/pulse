@@ -12,6 +12,8 @@
  * update failed after 24 retries", PUT 400 / DELETE 500), which failed three
  * production deploys at upload-static. A new hash sidesteps the stuck object.
  */
+import { SkeletonBar } from '@/components/skeletons'
+
 export default function SettingsLoading() {
   return (
     <div role="status" aria-busy="true" aria-label="Loading settings" className="space-y-8">
@@ -19,8 +21,8 @@ export default function SettingsLoading() {
         <div key={p} className="animate-skeleton-fade rounded-none border border-border bg-card">
           {/* Panel header ghost — kicker + one-line description. */}
           <div className="border-b border-border px-5 py-4">
-            <div className="h-3 w-24 rounded-none bg-input" />
-            <div className="mt-2 h-3.5 w-56 max-w-full rounded-none bg-input/70" />
+            <SkeletonBar className="h-3 w-24 rounded-none bg-input" />
+            <SkeletonBar className="mt-2 h-3.5 w-56 max-w-full rounded-none bg-input/70" />
           </div>
           {/* PanelRow ghosts — label bar + value bar per row. */}
           <div className="divide-y divide-border">
@@ -29,8 +31,8 @@ export default function SettingsLoading() {
                 key={i}
                 className="grid grid-cols-1 gap-x-4 gap-y-2 px-5 py-3.5 md:grid-cols-[220px_1fr_auto] md:items-center"
               >
-                <div className="h-3.5 w-24 rounded-none bg-input" />
-                <div className="h-8 w-full max-w-xs rounded-none bg-input" />
+                <SkeletonBar className="h-3.5 w-24 rounded-none bg-input" />
+                <SkeletonBar className="h-8 w-full max-w-xs rounded-none bg-input" />
               </div>
             ))}
           </div>

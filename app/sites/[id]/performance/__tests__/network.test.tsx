@@ -34,7 +34,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
   usePathname: () => '/demo/performance',
 }))
+// The page's loading state draws its bars with SkeletonBar: here a plain element that keeps its classes, which is
+// what the bar is in today's look.
 vi.mock('@/components/skeletons', () => ({
+  SkeletonBar: ({ className }: { className?: string }) => <div className={className} />,
   useMinimumLoading: (v: boolean) => v,
   useSkeletonFade: () => '',
 }))

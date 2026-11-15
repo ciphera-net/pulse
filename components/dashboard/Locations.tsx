@@ -18,6 +18,7 @@ const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import { GlobeIcon, Switcher } from '@ciphera-net/facet'
 import { GlobeHemisphereWest } from '@phosphor-icons/react'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
@@ -146,6 +147,7 @@ function formatTimezone(tz: string): string {
 }
 
 export default function Audience({ countries, cities, regions, languages, languageGroups, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, previousVisitors, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: AudienceProps) {
+  const frame = useDashboardFrame()
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   type AudienceItem = {
     country?: string; city?: string; region?: string; language?: string; timezone?: string
@@ -397,7 +399,7 @@ export default function Audience({ countries, cities, regions, languages, langua
   }
 
   return (
-    <div ref={containerRef} data-tour="dimension-card" data-tour-card="locations" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div ref={containerRef} data-tour="dimension-card" data-tour-card="locations" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
         <div className="flex items-center justify-between mb-4">
           {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
               the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
@@ -424,7 +426,7 @@ export default function Audience({ countries, cities, regions, languages, langua
           </div>
         </div>
 
-        <div className="flex-1 min-h-[270px]">
+        <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
           {isTabDisabled() ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
               <p className="text-neutral-400 text-sm">{getDisabledMessage()}</p>
@@ -432,11 +434,17 @@ export default function Audience({ countries, cities, regions, languages, langua
           ) : isVisualTab ? (
             hasData ? (
               inView ? (
-                <div className="flex h-full flex-col">
-                  <MapHeadline total={totals?.visitors ?? null} previous={previousVisitors ?? null} hover={mapHover} />
+                // In the frame the block keeps its size, so the map is drawn INSIDE the body: the drawing fills
+                // it and the headline lies over the map's lower left corner (open ocean). The box has its final
+                // size from the moment the tab is chosen, before the drawing's code has loaded, so nothing moves
+                // when it arrives. Outside the frame the headline sits above a map as tall as its width makes
+                // it, which is what grows the block.
+                <div className={frame ? 'relative h-full' : 'flex h-full flex-col'}>
+                  <MapHeadline total={totals?.visitors ?? null} previous={previousVisitors ?? null} hover={mapHover} overlay={frame} />
                   <MapView
                     data={filterUnknown(countries) as { country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }[]}
                     onHoverCountry={onHoverCountry}
+                    fill={frame}
                   />
                 </div>
               ) : null
@@ -499,8 +507,10 @@ export default function Audience({ countries, cities, regions, languages, langua
         )}
         </div>
 
-      <ImportedCardNote card={TAB_DIMENSION[activeTab] ? importedCards?.[TAB_DIMENSION[activeTab]!] : null} dimension={TAB_DIMENSION[activeTab]} />
-      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab} />
+      <CardFooter>
+        <ImportedCardNote card={TAB_DIMENSION[activeTab] ? importedCards?.[TAB_DIMENSION[activeTab]!] : null} dimension={TAB_DIMENSION[activeTab]} />
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab} />
+      </CardFooter>
     </div>
   )
 }

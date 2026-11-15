@@ -17,6 +17,7 @@ import {
 import { ApiError } from '@/lib/api/client'
 import { useFeature } from '@/lib/features'
 import { usePendingKeys, whilePending } from '@/lib/hold/pending'
+import { SkeletonBar } from '@/components/skeletons'
 
 /**
  * Site Settings, Analyst (P1, picked 14-11-2026): one Memories section, the switch as its first row, then the memories,
@@ -88,8 +89,8 @@ function MemoriesForSite({ siteId }: { siteId: string }) {
               {[0, 1, 2].map((i) => (
                 <KitRow
                   key={i}
-                  label={<span aria-hidden="true" className="block h-3.5 w-48 max-w-full bg-input" />}
-                  caption={<span aria-hidden="true" className="mt-1 block h-3 w-24 bg-input" />}
+                  label={<SkeletonBar as="span" aria-hidden="true" className="block h-3.5 w-48 max-w-full bg-input" />}
+                  caption={<SkeletonBar as="span" aria-hidden="true" className="mt-1 block h-3 w-24 bg-input" />}
                 />
               ))}
             </KitRows>

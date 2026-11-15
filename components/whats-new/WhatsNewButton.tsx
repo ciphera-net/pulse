@@ -22,6 +22,7 @@ import { useWhatsNew } from '@/lib/hooks/useWhatsNew'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { useClaimUpdateNotice, useUpdateReady } from '@/lib/updateNotice'
 import type { WhatsNewEntry, WhatsNewKind, WhatsNewPost, WhatsNewResponse } from '@/lib/api/whatsNew'
+import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 
 /** The panel's width on a computer; on a phone it is the screen width less 8 px on each side. */
 const PANEL_MAX_WIDTH = 400
@@ -190,6 +191,7 @@ function useQuietMoment(): boolean {
 }
 
 export default function WhatsNewButton() {
+  const glass = useGlassPanels()
   useClaimUpdateNotice(true)
   const updateReady = useUpdateReady()
   const { data, error, reload, markSeen } = useWhatsNew()
@@ -283,7 +285,7 @@ export default function WhatsNewButton() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-[100] origin-top-right overflow-y-auto rounded-none border border-border bg-popover"
+          className={`fixed z-[100] origin-top-right overflow-y-auto rounded-none ${panelSurface(glass)}`}
           style={{
             maxHeight: 'calc(100vh - 16px)',
             ...(fixedPos ? { left: fixedPos.left, top: fixedPos.top, width: fixedPos.width } : { width: PANEL_MAX_WIDTH }),

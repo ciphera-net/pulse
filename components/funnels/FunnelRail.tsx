@@ -4,6 +4,7 @@ import { Tooltip } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import type { PctChangeResult } from '@/lib/utils/pctChange'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { TOOLTIP_PANEL_CLASS } from '@/lib/ui/popupSurface'
 
 // ---------------------------------------------------------------------------
 // The funnels rail — one metric cell in the estate's instrument grammar
@@ -73,7 +74,7 @@ export function FunnelRail({
         {!isDash && <RailDelta change={delta ?? null} />}
       </div>
       {!isDash && exactValue && exactValue !== value ? (
-        <Tooltip content={exactValue}>
+        <Tooltip content={exactValue} className={TOOLTIP_PANEL_CLASS}>
           <span tabIndex={0} aria-label={exactValue} className={cn(valueClassName, 'cursor-help')}>
             {value}
           </span>

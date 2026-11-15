@@ -5,6 +5,7 @@ import { DIMENSION_TERM, METRIC_TERMS, TERMS, docsHref, type GlossaryTerm } from
 import type { MetricType } from '@/lib/dashboard/metrics'
 import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@/lib/utils/format'
+import { INFO_TIP_GLYPH_CLASS, INFO_TIP_PANEL_CLASS } from '@/lib/ui/popupSurface'
 
 // ---------------------------------------------------------------------------
 // The product's InfoTip call site (metric info layer, design record
@@ -23,6 +24,16 @@ import { formatNumber } from '@/lib/utils/format'
 // arithmetic invented in the browser.
 // ---------------------------------------------------------------------------
 
+// Every info pop-up of the app carries one class on its PANEL and one on its ICON (facet's `className` goes to the
+// panel, `glyphClassName` to the icon). They style nothing by themselves: under the new look's class on <html>
+// the stylesheet makes the panel glass with its name in a strip of its own, and draws the icon as a fine circle
+// (styles/globals.css, beside `.glass-panel`; the names are lib/ui/popupSurface.ts's). This file is the only one
+// that draws facet's InfoTip, so that is every info pop-up on every page.
+export { INFO_TIP_PANEL_CLASS, INFO_TIP_GLYPH_CLASS }
+
+/** The icon's classes: the look's own name first, then where the caller places it. */
+const glyphClasses = (placement?: string) => (placement ? `${INFO_TIP_GLYPH_CLASS} ${placement}` : INFO_TIP_GLYPH_CLASS)
+
 interface MetricInfoTipProps {
   metric: MetricType
   example?: React.ReactNode
@@ -39,7 +50,8 @@ export function MetricInfoTip({ metric, example, className }: MetricInfoTipProps
       definition={term.definition}
       example={example}
       learnMoreHref={docsHref(term)}
-      glyphClassName={className}
+      className={INFO_TIP_PANEL_CLASS}
+      glyphClassName={glyphClasses(className)}
     />
   )
 }
@@ -93,7 +105,8 @@ export function TermInfoTip({
       definition={term.definition}
       example={example}
       learnMoreHref={docsHref(term)}
-      glyphClassName={className}
+      className={INFO_TIP_PANEL_CLASS}
+      glyphClassName={glyphClasses(className)}
     />
   )
 }

@@ -48,6 +48,8 @@ interface MapViewProps {
   // metric (O3, 01-09-2026). Must be a stable callback; the paths rebind on change.
   onHoverCountry?: (hover: MapHover | null) => void
   className?: string
+  /** The new frame: fill the box's height too, where the height otherwise follows from the width. */
+  fill?: boolean
 }
 
 type CountryFeature = { properties: { name: string; a3: string }; id: string }
@@ -57,7 +59,7 @@ function getCountryFeatures(): CountryFeature[] {
   return (collection as unknown as GeoJSON.FeatureCollection).features as unknown as CountryFeature[]
 }
 
-function MapView({ data, onHoverCountry, className }: MapViewProps) {
+function MapView({ data, onHoverCountry, className, fill = false }: MapViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const highlightRef = useRef<d3.Selection<SVGPathElement, unknown, null, undefined> | null>(null)
 
@@ -159,11 +161,13 @@ function MapView({ data, onHoverCountry, className }: MapViewProps) {
 
   return (
     <div className={className} style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <div className="relative flex justify-center items-center w-full mx-auto">
+      <div className={fill ? 'relative mx-auto flex h-full w-full items-center justify-center' : 'relative flex justify-center items-center w-full mx-auto'}>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          className="w-full"
+          // `fill`: the drawing takes the box's height as well as its width and keeps its proportions inside it
+          // (an svg centres its viewBox by default). Without it the height follows from the width.
+          className={fill ? 'h-full w-full' : 'w-full'}
           style={{ cursor: 'default' }}
         />
       </div>

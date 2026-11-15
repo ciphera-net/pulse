@@ -25,5 +25,7 @@
   "components/uptime/uptimeMetrics.ts": 3,
   "components/visitors/PresenceField.tsx": 2,
   "lib/chunk-recovery.ts": 1,
+  "lib/skeleton/band.ts": 4,
+  "lib/skeleton/dither.ts": 2,
   "lib/tour/TourController.tsx": 1
 }

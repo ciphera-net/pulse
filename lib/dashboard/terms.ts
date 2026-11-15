@@ -639,6 +639,9 @@ export const DIMENSION_TERM: Record<string, string> = {
   domains: 'outbound_domains',
   links: 'outbound_links',
   from_page: 'outbound_pages',
+  // The Pages block's Outbound tab in the new dashboard frame (15-11-2026) IS the Outbound card's Links list, so
+  // it says the same sentence: one term, reached from two tab ids. The two never stand on one screen.
+  outbound: 'outbound_links',
 }
 
 /**

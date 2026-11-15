@@ -28,6 +28,7 @@ import { scopeHref, useOptionalSiteScope, type SiteScope } from '@/lib/scope/Sit
 import { NAV_GROUPS, SETTINGS_ITEM, publicNavGroups, type IconWeight, type NavGroup, type NavItem } from './siteNav'
 import { Badge } from '@ciphera-net/facet'
 import { useFeature } from '@/lib/features'
+import { TOOLTIP_PANEL_CLASS } from '@/lib/ui/popupSurface'
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -57,7 +58,7 @@ function Label({ children, collapsed }: { children: React.ReactNode; collapsed: 
 
 function SidebarTooltip({ children, label }: { children: React.ReactNode; label: string }) {
   return (
-    <Tooltip content={label} side="right" align="center" delayDuration={100} className="z-[100]">
+    <Tooltip content={label} side="right" align="center" delayDuration={100} className={`${TOOLTIP_PANEL_CLASS} z-[100]`}>
       {children}
     </Tooltip>
   )

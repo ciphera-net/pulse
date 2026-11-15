@@ -1,19 +1,21 @@
 'use client'
 
 import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
-import type { ImportedProvenance } from '@/lib/api/stats'
+import type { GoalCountStat, ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useState } from 'react'
 import { TopPage } from '@/lib/api/stats'
 import { ArrowSquareOut, FileText } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
+import OutboundLinksTab from '@/components/dashboard/OutboundLinksTab'
 
 interface ContentStatsProps {
   topPages: TopPage[]
@@ -43,24 +45,46 @@ interface ContentStatsProps {
   liveMinutes?: number
   /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
   importedCards?: Record<string, ImportedProvenance>
+  /**
+   * The new dashboard frame only: Outbound's links are this block's fourth tab (15-11-2026), in place of a block
+   * of their own. Given where their read is served (a member's page and the demo); a share link is not served it
+   * and gets no tab. Outside the frame it is ignored: today's page keeps its Outbound card.
+   */
+  outbound?: {
+    period?: string
+    goalCounts?: GoalCountStat[]
+    goalsImported?: ImportedProvenance | null
+    /** The site's "Outbound links" option is off. */
+    trackingOff?: boolean
+  }
 }
 
-type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
+type Tab = 'top_pages' | 'entry_pages' | 'exit_pages' | 'outbound'
+/** The three lists of pages. */
+type PageTab = Exclude<Tab, 'outbound'>
 
 /** The dashboard's `imported_cards` key each tab reads (PULSE-118). */
-const TAB_DIMENSION: Record<Tab, ImportedDimension> = { top_pages: 'page', entry_pages: 'entry_page', exit_pages: 'exit_page' }
+const TAB_DIMENSION: Record<PageTab, ImportedDimension> = { top_pages: 'page', entry_pages: 'entry_page', exit_pages: 'exit_page' }
 
 const LIMIT = 7
 
-const TAB_TO_KIND: Record<Tab, FullListKind> = {
+const TAB_TO_KIND: Record<PageTab, FullListKind> = {
   top_pages: 'pages',
   entry_pages: 'entry-pages',
   exit_pages: 'exit-pages',
 }
 
-export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: ContentStatsProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('top_pages')
-  const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards, outbound }: ContentStatsProps) {
+  const frame = useDashboardFrame()
+  const [chosenTab, setActiveTab] = useState<Tab>('top_pages')
+  // Outbound is a tab only in the frame, and only where its read is served.
+  const hasOutbound = frame && outbound !== undefined
+  const tabs: Tab[] = hasOutbound ? ['top_pages', 'entry_pages', 'exit_pages', 'outbound'] : ['top_pages', 'entry_pages', 'exit_pages']
+  // A tab that is no longer offered (the page turned into one without the read) falls back to Pages.
+  const activeTab: Tab = chosenTab === 'outbound' && !hasOutbound ? 'top_pages' : chosenTab
+  const onOutbound = activeTab === 'outbound'
+  /** The list of pages the block reads from, whichever tab is open: Outbound is drawn by its own component. */
+  const pageTab: PageTab = onOutbound ? 'top_pages' : activeTab
 
   // Twin columns (O3, 01-09-2026): the Pages tab shows visitors + views —
   // the one list where the two genuinely diverge (a page is read repeatedly).
@@ -76,7 +100,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   }
 
   const getData = () => {
-    switch (activeTab) {
+    switch (pageTab) {
       case 'top_pages':
         return filterGenericPaths(topPages)
       case 'entry_pages':
@@ -91,6 +115,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
       case 'top_pages': return 'Pages'
       case 'entry_pages': return 'Entries'
       case 'exit_pages': return 'Exits'
+      case 'outbound': return 'Outbound'
     }
   }
 
@@ -100,9 +125,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   // The dashboard fan-out carries only the top 10 — when the active tab
   // overflows the card, fetch the full list once (same endpoint the retired
   // view-all modal used) and paginate it client-side.
-  const wantsFullList = memberFeatures && collectPagePaths && data.length > LIMIT
+  const wantsFullList = !onOutbound && memberFeatures && collectPagePaths && data.length > LIMIT
   const { data: fullData } = useFullDimensionList<TopPage>(
-    wantsFullList ? TAB_TO_KIND[activeTab] : null,
+    wantsFullList ? TAB_TO_KIND[pageTab] : null,
     siteId, dateRange?.start, dateRange?.end, 100, filters, liveMinutes,
   )
   // Gate on wantsFullList: stale hook-state from another range must never
@@ -118,7 +143,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
   return (
-    <div data-tour="dimension-card" data-tour-card="content" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div data-tour="dimension-card" data-tour-card="content" className={frame ? FRAME_CARD : 'bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0'}>
         <div className="flex items-center justify-between mb-4">
           {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
               the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
@@ -139,11 +164,25 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               Pages view stays reachable from the sidebar. The unit label keeps
               its own right-aligned slot unchanged. */}
           <div className="flex min-w-0 shrink items-center gap-3">
-            <MetricUnitLabel views={twinColumns} />
+            {onOutbound ? <MetricUnitLabel unit="clicks" /> : <MetricUnitLabel views={twinColumns} />}
           </div>
         </div>
 
-        <div className="flex-1 min-h-[270px]">
+        {onOutbound && outbound ? (
+          <OutboundLinksTab
+            siteId={siteId}
+            dateRange={dateRange}
+            period={outbound.period}
+            goalCounts={outbound.goalCounts}
+            goalsImported={outbound.goalsImported}
+            filters={filters}
+            live={live}
+            liveMinutes={liveMinutes}
+            trackingOff={outbound.trackingOff}
+          />
+        ) : (
+        <>
+        <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
           {!collectPagePaths ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
               <p className="text-neutral-400 text-sm">Page path tracking is disabled in site settings</p>
@@ -209,8 +248,12 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           )}
         </div>
 
-      <ImportedCardNote card={importedCards?.[TAB_DIMENSION[activeTab]]} dimension={TAB_DIMENSION[activeTab]} />
-      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="pages" />
+      <CardFooter>
+        <ImportedCardNote card={importedCards?.[TAB_DIMENSION[pageTab]]} dimension={TAB_DIMENSION[pageTab]} />
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="pages" />
+      </CardFooter>
+        </>
+        )}
     </div>
   )
 }

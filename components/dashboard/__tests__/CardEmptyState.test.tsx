@@ -258,8 +258,9 @@ describe('no dashboard block asks for the install any more', () => {
         if (!/\bkind=/.test(m[0]) || !/\bfresh=/.test(m[0]) || /\b(title|description|action|publicTitle)=/.test(m[0])) bad.push(name)
       }
     }
-    // Sources 3, Locations 2, Technology, Pages, Outbound, Events, scroll depth, and the chart.
-    expect(calls.length).toBe(11)
+    // Sources 3, Locations 2, Technology, Pages, Outbound, the Pages block's Outbound tab, Events, scroll depth,
+    // and the chart.
+    expect(calls.length).toBe(12)
     expect(bad).toEqual([])
   })
 
@@ -275,7 +276,7 @@ describe('no dashboard block asks for the install any more', () => {
         if (!/\blive=/.test(m[0])) without.push(name)
       }
     }
-    expect(calls).toBe(11)
+    expect(calls).toBe(12)
     expect(without).toEqual([])
     // And nothing on the dashboard writes the realtime line by hand: it is said in one place, on a known zero.
     const byHand = files.filter((name) => name !== 'CardEmptyState.tsx' && /REALTIME_EMPTY_LINE/.test(strip(fs.readFileSync(path.join(dir, name), 'utf8'))))

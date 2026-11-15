@@ -39,6 +39,10 @@ import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import Outbound from '@/components/dashboard/Outbound'
 import SectionHeader from '@/components/dashboard/SectionHeader'
+import DashboardFrame from '@/components/surfaces/DashboardFrame'
+import FrameToolbar from '@/components/dashboard/FrameToolbar'
+import { useFeature } from '@/lib/features'
+import { NEW_DASHBOARD_FLAG } from '@/lib/dashboard/frame'
 
 const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
@@ -124,6 +128,10 @@ function SiteDashboardWithRecord({ scope, caps }: { scope: SiteScope; caps: Dash
 
 function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: DashboardCapabilities; facts: SiteFacts | null }) {
   const siteId = scope.siteId
+  // The new dashboard frame (beta `new-dashboard`; lib/dashboard/frame.tsx says what it is). `=== true` on
+  // purpose: while /me is loading, and if it fails, the page is today's. A public page (the demo, a share link)
+  // is never offered a beta, so it keeps today's page until the frame goes to everyone.
+  const frame = useFeature(NEW_DASHBOARD_FLAG) === true
   const siteRecord = facts?.siteRecord
   const siteError = facts?.siteError
   const refetchSite = facts?.refetchSite
@@ -247,7 +255,11 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
     dateRange.start === dateRange.end &&
     dateRange.start === formatDate(urlRange.siteNow) &&
     urlRange.siteNow.getHours() * 60 + urlRange.siteNow.getMinutes() < 3 * 60
-  const interval = !caps.hourlyBuckets ? 'day' : isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : multiDayInterval)
+  //
+  // In the new frame the chart has no bucket picker: the buckets follow the range (minutes live and for a young
+  // day, hours for one day, days beyond, and past a year whatever the server picks), so a range of several days
+  // is always asked for in days, whatever the picker was left on before the frame arrived.
+  const interval = !caps.hourlyBuckets ? 'day' : isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : (frame ? 'day' : multiDayInterval))
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -583,7 +595,10 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
     </>
   )
 
-  const toolbarRow = () => (
+  // In the new frame the toolbar stays at the top while the page moves under it (components/dashboard/FrameToolbar).
+  const toolbarRow = () => frame ? (
+    <FrameToolbar>{toolbarControls()}</FrameToolbar>
+  ) : (
     <div className="mb-3">
       {/* flex-wrap, not a single row: the five controls measure ~414px of
           intrinsic width, so on a 390px phone the row overflowed and the
@@ -618,7 +633,9 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   }
 
   if (showSkeleton) {
-    return <DashboardSkeleton />
+    // A member's page holds both shapes of the skeleton and the stylesheet shows the one the team's dashboard has
+    // (components/skeletons.tsx). A public page is never offered the new dashboard and keeps today's.
+    return <DashboardSkeleton shape={caps.member ? 'both' : 'today'} />
   }
 
   // pulse#893: a failed dashboard request keeps the toolbar. Returning only the
@@ -676,7 +693,8 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
         // One denominator for every card % (F9): the range's true totals,
         // filtered exactly as the rows are.
         const totals = { pageviews: stats.pageviews, visitors: stats.visitors }
-        return <><div className="mb-3 space-y-2">
+        // The deck is built ONCE and placed by whichever arrangement is on.
+        const deck = (
         <CommandDeck
           data={dailyStats}
           stats={deckStats}
@@ -691,14 +709,40 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           // False on a share link, where the backend clamps every read to day buckets
-          // and a selector would be a control wired to nothing.
-          intervalPicker={caps.hourlyBuckets}
+          // and a selector would be a control wired to nothing. False in the new frame
+          // too, where the buckets follow the range and there is no picker at all.
+          intervalPicker={caps.hourlyBuckets && !frame}
           imported={dashboard?.imported}
           prevImported={prevStats?.imported}
           prevData={comparesSeries ? (prevDaily ?? null) : null}
           prevRange={prevRange}
           prevFloor={dataWindow?.from ?? null}
         />
+        )
+        // The new frame: the same deck and the same blocks, arranged by DashboardFrame. Everything below this
+        // line is today's arrangement and is not mounted while the frame is on.
+        if (frame) {
+          return (
+            <DashboardFrame
+              deck={deck}
+              dashboard={dashboard}
+              site={site}
+              siteId={siteId}
+              caps={caps}
+              isLive={isLive}
+              liveMinutes={liveMinutes}
+              dateRange={resolvedDateRange}
+              period={apiPeriod || undefined}
+              rangeTotals={totals}
+              previousVisitors={prevStats?.visitors ?? null}
+              filtersParam={filtersParam}
+              onCardFilter={onCardFilter}
+              outboundOff={outboundOff}
+            />
+          )
+        }
+        return <><div className="mb-3 space-y-2">
+        {deck}
       </div>
 
       <SectionHeader title="Acquisition" />

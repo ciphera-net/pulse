@@ -30,6 +30,7 @@ import { VISITORS_MIN_DATE, presenceTicks } from '@/lib/visitors/range'
 import { formatLongDay } from '@/lib/view/view'
 import type { VisitorRow } from '@/lib/api/visitors'
 import { displayDomain } from '@/lib/utils/displayDomain'
+import { SkeletonBar } from '@/components/skeletons'
 
 // ─── The Visitors roster (approved design §9a, "The list page") ─────
 //
@@ -268,7 +269,7 @@ export default function VisitorsPage() {
           <div className="p-4" role="status">
             <span className="sr-only">Loading visitors…</span>
             {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} aria-hidden="true" className="mb-3 h-10 animate-pulse rounded-none bg-neutral-800/50" />
+              <SkeletonBar key={i} aria-hidden="true" className="mb-3 h-10 animate-pulse rounded-none bg-neutral-800/50" />
             ))}
           </div>
         ) : visitors.length === 0 ? (

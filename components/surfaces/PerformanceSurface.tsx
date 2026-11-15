@@ -26,7 +26,7 @@ import { auditDescription } from '@/lib/performance/descriptions'
 import { formatMetricValue, metricBand } from '@/lib/performance/metrics'
 import { remapLearnUrl } from '@/lib/learn-links'
 import { ErrorCard } from '@/components/ui/ErrorCard'
-import { useMinimumLoading } from '@/components/skeletons'
+import { SkeletonBar, useMinimumLoading } from '@/components/skeletons'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { TERMS } from '@/lib/dashboard/terms'
 import { canWrite, servesPage, useSiteRef, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
@@ -1211,17 +1211,17 @@ function AuditItem({ item }: { item: Record<string, unknown> }) {
 
 function PerformanceSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl animate-pulse px-4 pb-8 sm:px-6">
+    <div className="skeleton-still mx-auto w-full max-w-7xl animate-pulse px-4 pb-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <div className="h-6 w-36 bg-neutral-800" />
-          <div className="h-4 w-80 bg-neutral-800" />
-          <div className="h-3 w-56 bg-neutral-800" />
+          <SkeletonBar className="h-6 w-36 bg-neutral-800" />
+          <SkeletonBar className="h-4 w-80 bg-neutral-800" />
+          <SkeletonBar className="h-3 w-56 bg-neutral-800" />
         </div>
         <div className="flex items-center gap-3">
-          <div className="h-8 w-16 bg-neutral-800" />
-          <div className="h-8 w-20 bg-neutral-800" />
-          <div className="h-9 w-24 bg-neutral-800" />
+          <SkeletonBar className="h-8 w-16 bg-neutral-800" />
+          <SkeletonBar className="h-8 w-20 bg-neutral-800" />
+          <SkeletonBar className="h-9 w-24 bg-neutral-800" />
         </div>
       </div>
 
@@ -1231,26 +1231,26 @@ function PerformanceSkeleton() {
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex flex-col items-center gap-2">
                 <div className="h-[92px] w-[92px] rounded-full border-[5px] border-neutral-800" />
-                <div className="h-3 w-16 bg-neutral-800" />
+                <SkeletonBar className="h-3 w-16 bg-neutral-800" />
               </div>
             ))}
           </div>
           <div className="mt-5 flex items-center gap-4 border-t border-border pt-4">
-            <div className="h-3 w-40 bg-neutral-800" />
-            <div className="ml-auto h-2 w-32 bg-neutral-800" />
+            <SkeletonBar className="h-3 w-40 bg-neutral-800" />
+            <SkeletonBar className="ml-auto h-2 w-32 bg-neutral-800" />
           </div>
         </div>
 
         <div className={`${CARD} p-6 sm:p-8`}>
-          <div className="mb-5 h-3 w-16 bg-neutral-800" />
+          <SkeletonBar className="mb-5 h-3 w-16 bg-neutral-800" />
           <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-start gap-3">
-                <div className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full bg-neutral-800" />
+                <SkeletonBar className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full bg-neutral-800" />
                 <div className="space-y-2">
-                  <div className="h-3 w-32 bg-neutral-800" />
-                  <div className="h-7 w-20 bg-neutral-800" />
-                  <div className="h-2 w-16 bg-neutral-800" />
+                  <SkeletonBar className="h-3 w-32 bg-neutral-800" />
+                  <SkeletonBar className="h-7 w-20 bg-neutral-800" />
+                  <SkeletonBar className="h-2 w-16 bg-neutral-800" />
                 </div>
               </div>
             ))}
@@ -1258,8 +1258,8 @@ function PerformanceSkeleton() {
         </div>
 
         <div className={`${CARD} p-6 sm:p-8`}>
-          <div className="mb-5 h-3 w-40 bg-neutral-800" />
-          <div className="h-48 w-full bg-neutral-800/60" />
+          <SkeletonBar className="mb-5 h-3 w-40 bg-neutral-800" />
+          <SkeletonBar className="h-48 w-full bg-neutral-800/60" />
         </div>
       </div>
     </div>
