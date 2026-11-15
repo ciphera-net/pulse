@@ -9,6 +9,14 @@ export const HEAT_ROWS = 7
 export const HEAT_GAP_PX = 2
 
 /**
+ * The heat map's colour steps, from an empty cell to the busiest: no colour, then the brand orange at five strengths.
+ * Both heat maps read them (today's components/dashboard/PeakHours.tsx and the new frame's
+ * components/dashboard/bottom/WeekHeat.tsx), so one change here changes both, and the light theme's guard counts the
+ * five literals once (styles/__tests__/theme-guard.baseline.json).
+ */
+export const HEAT_STEPS = ['transparent', 'rgba(253,94,15,0.15)', 'rgba(253,94,15,0.35)', 'rgba(253,94,15,0.60)', 'rgba(253,94,15,0.82)', '#FD5E0F'] as const
+
+/**
  * How tall the seven rows are together, as CSS, in terms of the grid's width (a percentage here is a share of the
  * containing block's width when it is a padding): rows × cell + the gaps between rows, where a cell is
  * (width − the gaps between columns) / columns.

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { CaretDown, Check } from '@phosphor-icons/react'
 import { panelSurface } from '@/lib/dashboard/frame'
 
@@ -102,12 +103,16 @@ export function TabMenuLabel({
   )
 }
 
+/** The narrowest the menu is: the date picker's list column. A longer name widens it, up to MAX_WIDTH. */
 const WIDTH = 176
+/** A name longer than this is cut with an ellipsis (and said in full by its title): a menu never wraps a row. */
+const MAX_WIDTH = 320
 const GAP = 6
 const EDGE = 8
 
 // The date picker's own rows (components/ui/DateRangePicker.tsx), so this is the app's menu and not a second one.
-const ROW = 'flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:bg-accent'
+// `whitespace-nowrap`: a row is one line ("Journal to newsletter" wrapped onto two in a fixed 176 px, 15-11-2026).
+const ROW = 'flex items-center gap-2 w-full whitespace-nowrap text-left px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:bg-accent'
 const ROW_ON = `${ROW} text-foreground`
 const ROW_OFF = `${ROW} text-muted-foreground hover:text-foreground hover:bg-accent`
 
@@ -263,41 +268,55 @@ export function TabMenu<V extends string>({ open, anchorRef, label, options, val
     }
   }
 
-  if (!open || typeof document === 'undefined') return null
+  if (typeof document === 'undefined') return null
 
   return createPortal(
-    <div
-      ref={menuRef}
-      role="menu"
-      aria-label={label}
-      onKeyDown={onKeyDown}
-      // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
-      data-menu-list=""
-      className={`fixed z-50 flex flex-col overflow-hidden rounded-none shadow-lg ${panelSurface(glass)}`}
-      // Off-screen until the measure before the first paint has placed it: never a frame at 0, 0.
-      style={{ width: WIDTH, ...(pos ?? { left: -9999, top: -9999 }) }}
-    >
-      {options.map((option) => {
-        const on = option.value === value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="menuitemradio"
-            aria-checked={on}
-            tabIndex={-1}
-            className={on ? ROW_ON : ROW_OFF}
-            onClick={() => {
-              onChange(option.value)
-              close(true)
-            }}
-          >
-            <Check weight="bold" aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${on ? 'opacity-100' : 'opacity-0'}`} />
-            {option.label}
-          </button>
-        )
-      })}
-    </div>,
+    // It enters and leaves as the date menu does (components/ui/DateRangePicker: 150 ms, from 4 px under and 98 % of
+    // its size), as every menu of the new dashboard does since R48.
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="tab-menu"
+          ref={menuRef}
+          role="menu"
+          aria-label={label}
+          onKeyDown={onKeyDown}
+          initial={{ opacity: 0, y: 4, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 4, scale: 0.98 }}
+          transition={{ duration: 0.15 }}
+          // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
+          data-menu-list=""
+          className={`fixed z-50 flex flex-col overflow-hidden rounded-none shadow-lg ${panelSurface(glass)}`}
+          // As wide as its longest name, never under the date list's column; off-screen until the measure before
+          // the first paint has placed it: never a frame at 0, 0.
+          // (320 px fits inside the 8 px edges of any window from 336 px up, every phone included.)
+          style={{ minWidth: WIDTH, width: 'max-content', maxWidth: MAX_WIDTH, ...(pos ?? { left: -9999, top: -9999 }) }}
+        >
+          {options.map((option) => {
+            const on = option.value === value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="menuitemradio"
+                aria-checked={on}
+                tabIndex={-1}
+                className={on ? ROW_ON : ROW_OFF}
+                title={option.label}
+                onClick={() => {
+                  onChange(option.value)
+                  close(true)
+                }}
+              >
+                <Check weight="bold" aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${on ? 'opacity-100' : 'opacity-0'}`} />
+                <span className="min-w-0 truncate">{option.label}</span>
+              </button>
+            )
+          })}
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body,
   )
 }

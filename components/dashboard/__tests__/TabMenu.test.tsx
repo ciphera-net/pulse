@@ -1,7 +1,14 @@
 import React, { useRef, useState } from 'react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { TabMenu, TabMenuLabel, placeTabMenu } from '@/components/dashboard/TabMenu'
+
+// The menu enters and leaves as the date menu does (framer-motion). The shared stand-in draws motion elements as
+// plain ones and lets a closing menu go at once, as the date picker's own tests do; the entrance itself is pinned
+// below against the date menu's source, so the two cannot drift apart.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 // The tab that is also a menu (the new dashboard frame's Campaigns tab). The Sources block's own tests
 // (frame-blocks.test.tsx) cover it wired to the Switcher; this file pins the menu by itself: where it goes, the
@@ -310,7 +317,38 @@ describe('TabMenu: the menu', () => {
     // jsdom measures every box as 0 x 0 at 0, 0: under a tab at the origin the menu sits 6 px down, 8 px in.
     expect(menu.style.left).toBe('8px')
     expect(menu.style.top).toBe('6px')
-    expect(menu.style.width).toBe('176px')
+    expect(menu.style.minWidth).toBe('176px')
+  })
+
+  it('is as wide as its longest name and never wraps a row: at least the date list\'s 176 px, at most 320 px', () => {
+    // "Journal to newsletter" wrapped onto two lines in the first build's fixed 176 px (15-11-2026).
+    render(<Harness />)
+    const menu = screen.getByRole('menu')
+    expect(menu.style.width).toBe('max-content')
+    expect(menu.style.minWidth).toBe('176px')
+    expect(menu.style.maxWidth).toBe('320px')
+    for (const item of items()) {
+      expect(item.className).toContain('whitespace-nowrap')
+      // A name past the widest the menu goes is cut with an ellipsis, and said in full on the row.
+      const label = item.querySelector('span')
+      expect(label?.className).toContain('truncate')
+      expect(item.getAttribute('title')).toBe(label?.textContent)
+    }
+  })
+
+  it('enters and leaves exactly as the date menu does (R48: the same animation everywhere)', () => {
+    const root = process.cwd()
+    // The menu's own motion element: from its `initial={{`, the four literals that follow (the date picker's calendar
+    // has a transition of its own EARLIER in the file, so nothing is read from before that point).
+    const motionOf = (rel: string) => {
+      const src = readFileSync(join(root, rel), 'utf8')
+      const block = src.slice(src.indexOf('initial={{'))
+      const pick = (prop: string) => block.match(new RegExp(`${prop}=\\{\\{([^}]*)\\}\\}`))?.[1].replace(/\s+/g, ' ').trim()
+      return { initial: pick('initial'), animate: pick('animate'), exit: pick('exit'), transition: pick('transition') }
+    }
+    const date = motionOf('components/ui/DateRangePicker.tsx')
+    expect(date.initial).toBe('opacity: 0, y: 4, scale: 0.98')
+    expect(motionOf('components/dashboard/TabMenu.tsx')).toEqual(date)
   })
 
   it('renders nothing while closed', () => {

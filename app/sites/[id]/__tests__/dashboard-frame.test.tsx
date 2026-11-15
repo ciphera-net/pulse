@@ -88,6 +88,8 @@ vi.mock('@/components/dashboard/ContentStats', () => stub('ContentStats', 'card'
 vi.mock('@/components/dashboard/ContentSignals', () => stub('ContentSignals', 'card'))
 vi.mock('@/components/dashboard/Outbound', () => stub('Outbound', 'card'))
 vi.mock('@/components/dashboard/PeakHours', () => stub('PeakHours', 'peak-hours'))
+// The new frame's bottom (what converts, the week, the three tiles): today's heat map is today's arrangement's alone.
+vi.mock('@/components/dashboard/DashboardBottom', () => stub('DashboardBottom', 'bottom'))
 vi.mock('@/components/dashboard/SectionHeader', () => ({
   default: ({ title }: { title: string }) => <h2 data-testid="section">{title}</h2>,
 }))
@@ -140,6 +142,7 @@ beforeAll(async () => {
     import('@/components/dashboard/CommandDeck'),
     import('@/components/dashboard/ContentSignals'),
     import('@/components/dashboard/PeakHours'),
+    import('@/components/dashboard/DashboardBottom'),
     import('@/lib/tour/TourController'),
   ])
 })
@@ -228,18 +231,19 @@ describe('the flag on: the new frame', () => {
     const events = document.querySelector('[data-frame-events]') as HTMLElement
     expect(events.className).toBe('lg:col-span-2')
     expect(events.querySelector('[data-block="ContentSignals"]')).toBeTruthy()
-    // The deck first, the heat map last, all inside the frame.
+    // The deck first, the bottom last, all inside the frame; today's heat map is not drawn in it.
     const frame = document.querySelector('[data-dashboard-frame]') as HTMLElement
     expect(frame).toBeTruthy()
-    const marks = [...frame.querySelectorAll('[data-testid="deck"], [data-testid="card"], [data-testid="peak-hours"]')].map((n) => n.getAttribute('data-block'))
+    const marks = [...frame.querySelectorAll('[data-testid="deck"], [data-testid="card"], [data-testid="peak-hours"], [data-testid="bottom"]')].map((n) => n.getAttribute('data-block'))
     expect(marks[0]).toBe('CommandDeck')
-    expect(marks[marks.length - 1]).toBe('PeakHours')
+    expect(marks[marks.length - 1]).toBe('DashboardBottom')
+    expect(marks).not.toContain('PeakHours')
   })
 
-  it('tells the deck, every block and the heat map that they are in the frame', async () => {
+  it('tells the deck, every block and the bottom that they are in the frame', async () => {
     await mount()
     expect(h.inFrame).toEqual({
-      CommandDeck: true, Sources: true, ContentStats: true, Audience: true, TechSpecs: true, ContentSignals: true, PeakHours: true,
+      CommandDeck: true, Sources: true, ContentStats: true, Audience: true, TechSpecs: true, ContentSignals: true, DashboardBottom: true,
     })
   })
 
@@ -284,7 +288,8 @@ describe('the flag on: the new frame', () => {
     expect(h.captured.ContentStats.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
     expect(h.captured.ContentStats.outbound).toMatchObject({ goalCounts: [], trackingOff: false })
     expect(h.captured.Outbound).toBeUndefined()
-    expect(h.captured.PeakHours.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
+    expect(h.captured.DashboardBottom.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
+    expect(h.captured.DashboardBottom.siteId).toBe('site-1')
   })
 
   it('stands every block inside the page\'s empty facts, so an empty block can say why', async () => {

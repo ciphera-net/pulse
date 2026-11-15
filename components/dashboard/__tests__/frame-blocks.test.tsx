@@ -28,6 +28,10 @@ const h = vi.hoisted(() => ({
   mapProps: null as Record<string, unknown> | null,
 }))
 
+// The Campaigns tab's menu (components/dashboard/TabMenu) enters and leaves as the date menu does. The shared
+// stand-in lets a closing menu go at once, as the date picker's tests do; TabMenu.test.tsx pins the entrance itself.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
+
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...a: unknown[]) => h.useFullDimensionList(...a),
   useCampaignsList: (...a: unknown[]) => h.useCampaignsList(...a),

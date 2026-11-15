@@ -13,7 +13,7 @@ import { DashboardFrameProvider } from '@/lib/dashboard/frame'
 import type { DimensionFilter } from '@/lib/filters'
 
 const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
-const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
+const DashboardBottom = dynamic(() => import('@/components/dashboard/DashboardBottom'))
 
 // ---------------------------------------------------------------------------
 // THE NEW DASHBOARD FRAME (beta `new-dashboard`, owner rulings of 14-11-2026).
@@ -24,7 +24,9 @@ const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 //     links became the Pages block's fourth tab on 15-11-2026, so Outbound is no block of its own);
 //   * every block ONE size, the map inside it (lib/dashboard/frame.tsx, FRAME_CARD);
 //   * the last block is Events alone: scroll depth leaves the dashboard (R5);
-//   * glass on the deck, the blocks and the heat map (R3, R15).
+//   * under the blocks, what converts beside when people come, then Search, Uptime and Performance as three small
+//     overviews (R35, components/dashboard/DashboardBottom.tsx); today's heat map across the page is today's alone;
+//   * glass on the deck, the blocks and the bottom (R3, R15).
 // The toolbar that stays, the chart's missing bucket picker and the install banner are the surface's
 // (components/surfaces/DashboardSurface.tsx), which mounts this in place of its own arrangement.
 //
@@ -169,10 +171,11 @@ export default function DashboardFrame({
           </div>
         </div>
 
-        {/* The heat map keeps its place under the blocks until its own round. Hidden in realtime (one instant
-            has no week to draw) and on a share link (hour buckets are refused on a public-scoped read). */}
-        {!isLive && caps.hourlyBuckets && (
-          <PeakHours siteId={siteId} dateRange={dateRange} filters={filtersParam || undefined} />
+        {/* The bottom: what converts beside the week, then three overviews (R35). Not in realtime (one instant has
+            no week to draw, and no funnel worth a rate) and not on a share link, which is served neither hour
+            buckets nor any of the bottom's own reads. */}
+        {!isLive && caps.hourlyBuckets && caps.fullReads && (
+          <DashboardBottom siteId={siteId} dateRange={dateRange} period={period} filters={filtersParam || undefined} />
         )}
       </div>
     </DashboardFrameProvider>

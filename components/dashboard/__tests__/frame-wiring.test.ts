@@ -35,12 +35,21 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
     expect(frame.match(/liveMinutes=\{liveMinutes\}/g)?.length).toBe(5)
   })
 
-  it('orders the blocks Sources, Pages / Locations, Technology / Events, then the heat map', () => {
+  it('orders the blocks Sources, Pages / Locations, Technology / Events, then the bottom', () => {
     const at = (tag: string) => frame.indexOf(`<${tag}\n`)
     const order = ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals'].map(at)
     expect(order.every((i) => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    expect(frame.indexOf('<PeakHours ')).toBeGreaterThan(order[order.length - 1])
+    expect(frame.indexOf('<DashboardBottom ')).toBeGreaterThan(order[order.length - 1])
+  })
+
+  it('closes with the bottom (R35) in place of the heat map across the page, with the page\'s window and filters', () => {
+    // What converts beside the week, then Search, Uptime and Performance: components/dashboard/DashboardBottom.tsx.
+    expect(frame).toContain('<DashboardBottom siteId={siteId} dateRange={dateRange} period={period} filters={filtersParam || undefined} />')
+    // Today's heat map across the page is today's arrangement's alone.
+    expect(frame).not.toContain('PeakHours')
+    // Not in realtime, and not on a share link, which is served neither hour buckets nor the bottom's own reads.
+    expect(frame).toContain('{!isLive && caps.hourlyBuckets && caps.fullReads && (\n          <DashboardBottom ')
   })
 
   it('puts the five blocks in ONE grid, the fifth across both columns, and draws no section title', () => {

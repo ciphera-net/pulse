@@ -1,5 +1,4 @@
 import { FRAME_CARD, FRAME_SURFACE } from '@/lib/dashboard/frameClasses'
-import { HeatMapSkeletonBody } from './HeatMapSkeletonBody'
 import { SkeletonLine } from './primitives'
 
 // ---------------------------------------------------------------------------
@@ -7,11 +6,12 @@ import { SkeletonLine } from './primitives'
 //
 // Every box stands where the real thing lands, so nothing moves when the data arrives: the toolbar's three
 // controls, the chart with its rail of five tiles, five blocks of one height with seven row slots each (the last
-// one, Events, across both columns), the heat map.
-// Measured on the built page from 390 to 1920 px wide: the page is as tall on this skeleton as on its data. The
-// one part whose height follows its width is the heat map (square cells), and its body is built on the grid's own
-// arithmetic (HeatMapSkeletonBody). Today's skeleton is 640 px shorter than the new page and still draws a
-// campaigns table the dashboard no longer has.
+// one, Events, across both columns), then the bottom (ruling R35): what converts beside the week, two more blocks
+// of that one height, and three tiles of 164 px.
+// Every part now has a height of its own, so the page is as tall on this skeleton as on its data at every width.
+// (Until the bottom's round the frame closed with the heat map across the page, whose height followed its width;
+// today's arrangement still has it, with HeatMapSkeletonBody as its loading state.) Today's skeleton is shorter
+// than the new page and still draws a campaigns table the dashboard no longer has.
 //
 // It is drawn beside today's on a member's page and the stylesheet shows one of the two (`skeleton-new-shape`,
 // lib/skeleton/look.ts says why). No state, nothing read: the server and the browser draw the same thing.
@@ -29,6 +29,9 @@ const BLOCKS: { tabs: number; shares: number[]; wide?: boolean }[] = [
   { tabs: 260, shares: [68, 60, 52, 39, 28, 24, 17] }, // Technology
   { tabs: 44, shares: [70, 64, 50, 37, 33, 21, 14], wide: true }, // Events: a name, no tabs, both columns
 ]
+
+/** The bottom's first block, what converts: its two tabs, seven rows, the link in its foot. */
+const CONVERSION = { tabs: 172, shares: [74, 61, 49, 40, 32, 25, 18] }
 
 /** One tile of the chart's rail: the metric's name, its figure, its note. */
 function Tile() {
@@ -100,12 +103,36 @@ export function DashboardFrameSkeleton({ className = '' }: { className?: string 
           ))}
         </div>
 
-        {/* The heat map: its switch (34 px, 16 px under it), then the body its data will fill. */}
-        <div className={`${FRAME_SURFACE} flex min-w-0 flex-col p-6`}>
-          <div className="mb-4 flex h-[34px] shrink-0 items-center">
-            <SkeletonLine className="h-[34px] w-[348px] max-w-full" />
+        {/* The bottom (components/dashboard/DashboardBottom.tsx). First what converts beside the week: two blocks
+            of the frame's one height. The week's body is its figure and line, then its grid. */}
+        <div className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0" data-skeleton-bottom="pair">
+          <Block {...CONVERSION} />
+          <div className={FRAME_CARD} data-skeleton-block="week">
+            <div className="mb-4 flex h-[38px] shrink-0 items-center">
+              <SkeletonLine className="h-[34px] w-[306px] max-w-full" />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="mb-3 flex min-h-[3.25rem] shrink-0 flex-col justify-center gap-2">
+                <SkeletonLine className="h-6 w-44 max-w-full" />
+                <SkeletonLine className="h-3 w-56 max-w-full" />
+              </div>
+              <SkeletonLine className="min-h-0 w-full flex-1" />
+            </div>
+            <div className="mt-3.5 flex h-6 shrink-0 items-center justify-end">
+              <SkeletonLine className="h-2.5 w-28" />
+            </div>
           </div>
-          <HeatMapSkeletonBody />
+        </div>
+
+        {/* Then Search, Uptime and Performance: three tiles of 164 px, the third on a row of its own under 1,280 px. */}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0" data-skeleton-bottom="tiles">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className={`${FRAME_SURFACE} flex h-[164px] min-w-0 flex-col gap-2 px-6 pt-5${i === 2 ? ' sm:col-span-2 xl:col-span-1' : ''}`} data-skeleton-tile="">
+              <SkeletonLine className="h-4 w-28 max-w-full" />
+              <SkeletonLine className="h-6 w-20 max-w-full" />
+              <SkeletonLine className="h-3 w-40 max-w-full" />
+            </div>
+          ))}
         </div>
       </div>
     </div>

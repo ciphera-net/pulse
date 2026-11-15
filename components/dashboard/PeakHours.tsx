@@ -16,7 +16,7 @@ import { Switcher } from '@ciphera-net/facet'
 import { FRAME_SURFACE, useDashboardFrame } from '@/lib/dashboard/frame'
 import { SkeletonBar } from '@/components/skeletons'
 import { HeatMapSkeletonBody } from '@/components/skeleton/HeatMapSkeletonBody'
-import { HEAT_COLUMNS } from '@/lib/dashboard/heatmapGrid'
+import { HEAT_COLUMNS, HEAT_STEPS } from '@/lib/dashboard/heatmapGrid'
 
 /** The hourly series' ceiling, in days (pulse-backend MaxDaysPerInterval["hour"]). */
 const HOURLY_MAX_DAYS = 366
@@ -40,14 +40,8 @@ const BUCKETS = HEAT_COLUMNS
 // Label at bucket index 0=00:00, 6=06:00, 12=12:00, 18=18:00
 const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 6: '06:00', 12: '12:00', 18: '18:00' }
 
-const HIGHLIGHT_COLORS = [
-  'transparent',
-  'rgba(253,94,15,0.15)',
-  'rgba(253,94,15,0.35)',
-  'rgba(253,94,15,0.60)',
-  'rgba(253,94,15,0.82)',
-  '#FD5E0F',
-]
+// The steps live with the grid's numbers (lib/dashboard/heatmapGrid.ts): the new frame's week reads the same five.
+const HIGHLIGHT_COLORS = HEAT_STEPS
 
 type Metric = 'pageviews' | 'visitors' | 'avg_duration' | 'bounce_rate'
 
