@@ -26,7 +26,7 @@
 #   (`process.env.NEXT_PUBLIC_CDN_URL || ''`). That `|| ''` fails OPEN: an unset
 #   value yields relative paths — a working-looking site serving wrong URLs. Do not
 #   "tidy" this ARG away along with the others.
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
