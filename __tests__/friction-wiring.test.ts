@@ -84,18 +84,21 @@ describe('the onboarding wall exempts /join in BOTH branches', () => {
 })
 
 // ---------------------------------------------------------------------------
-// #15 — the dashboard's install buttons stay in the app.
+// #15 — the dashboard's install prompt stays in the app.
 //
-// They left for /installation, a MARKETING page whose snippet is written with
+// The install buttons left for /installation, a MARKETING page whose snippet is written with
 // `data-domain="your-site.com"` — so the one thing the person needed, their
-// own snippet, was the one thing not on the page they were sent to.
+// own snippet, was the one thing not on the page they were sent to. They were
+// brought back to the site's own settings.
+//
+// Since 14-11-2026 (owner ruling R11) there is ONE install prompt on the
+// dashboard, the banner above the chart. Six blocks each carried their own
+// button, and showed it on sites whose script had reported for months: an
+// empty block now says why it is empty (components/dashboard/CardEmptyState.tsx)
+// and the one way it still leads to settings is for a kind that is switched off.
 // ---------------------------------------------------------------------------
-describe('install CTAs point at the real snippet', () => {
-  // ⚠️ SIX, not the five this batch started with. TopReferrers was deleted on
-  // main while this branch was open (#607, "Sources is one card again") and
-  // Sources took its place; Outbound is new in the same change and arrived
-  // carrying the same /installation link. A list like this goes stale the
-  // moment a card is renamed — hence the sweep below, which is the real guard.
+describe('the install prompt points at the real snippet, from one place', () => {
+  // The six blocks that carried an install button of their own.
   const panels = [
     'components/dashboard/Sources.tsx',
     'components/dashboard/Outbound.tsx',
@@ -106,34 +109,50 @@ describe('install CTAs point at the real snippet', () => {
   ]
 
   for (const path of panels) {
-    it(`${path.split('/').pop()} sends you to your own site's settings`, () => {
+    it(`${path.split('/').pop()} carries no install button and no link to settings of its own`, () => {
       const src = stripComments(read(path))
-      expect(src).toMatch(/href: '\/settings\/site\/general'/)
-      expect(src, 'the marketing page shows data-domain="your-site.com"')
-        .not.toMatch(/href: '\/installation'/)
-      // 🔴 And it must say WHICH site, or the settings page opens on whichever
-      // one happened to be remembered last — the same key InstallBanner writes.
-      expect(src).toMatch(/pulse_active_site/)
+      expect(src).not.toMatch(/Install tracking script/)
+      expect(src).not.toMatch(/href: '\/settings\/site\/general'/)
+      expect(src).not.toMatch(/href: '\/installation'/)
     })
   }
 
-  it('NO dashboard panel anywhere still points an install button at /installation', () => {
-    // The list above names what exists today; this catches the next card
+  it('the banner sends you to your own site\'s settings', () => {
+    const src = stripComments(read('components/dashboard/InstallBanner.tsx'))
+    expect(src).toMatch(/href="\/settings\/site\/general"/)
+    expect(src, 'the marketing page shows data-domain="your-site.com"').not.toMatch(/\/installation/)
+    // 🔴 And it must say WHICH site, or the settings page opens on whichever
+    // one happened to be remembered last.
+    expect(src).toMatch(/pulse_active_site/)
+  })
+
+  it('the one settings link an empty block may show says which site too', () => {
+    // "Open site settings", for a kind that is switched off (Outbound links).
+    const src = stripComments(read('components/dashboard/CardEmptyState.tsx'))
+    expect(src).toMatch(/'\/settings\/site\/general'/)
+    expect(src).toMatch(/pulse_active_site/)
+  })
+
+  it('NO dashboard panel anywhere points at /installation', () => {
+    // The list above names what existed; this catches the next card
     // somebody adds — or renames — with the marketing link copied in.
     const dir = join(ROOT, 'components/dashboard')
     const stale: string[] = []
+    let scanned = 0
     for (const name of readdirSync(dir)) {
       if (!name.endsWith('.tsx')) continue
+      scanned++
       const src = stripComments(readFileSync(join(dir, name), 'utf8'))
-      if (/label: 'Install tracking script'[\s\S]{0,80}href: '\/installation'/.test(src)) {
+      if (/['"]\/installation['"]/.test(src)) {
         stale.push(name)
       }
     }
+    expect(scanned).toBeGreaterThan(20)
     expect(stale, 'these send you to a marketing page whose snippet says your-site.com').toEqual([])
   })
 
   it("the goals panel keeps a docs link, because that is what its copy is about", () => {
-    // Its label is "Read the docs" over copy about pulse.track('event').
+    // Its label is "How to send events": the block stays empty until the site sends one.
     // /settings/site/general shows the snippet and says nothing about events.
     const src = stripComments(read('components/dashboard/GoalStats.tsx'))
     // The host is lib/docs.ts's business; what this pins is that the panel

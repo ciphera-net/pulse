@@ -218,15 +218,10 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
           </CascadeGroup>
         ) : (
           <CardEmptyState
-              live={live}
+            live={live}
             icon={<DeviceMobile />}
-            title="No devices detected yet"
-            description="Browser, OS, and screen data appears automatically as visitors arrive. No extra setup needed."
-            action={{
-                label: 'Install tracking script',
-                href: '/settings/site/general',
-                onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
-              }}
+            kind="visits"
+            fresh="Your visitors' browsers and devices are listed here."
           />
         )}
       </div>

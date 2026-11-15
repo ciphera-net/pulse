@@ -59,6 +59,12 @@ interface OutboundProps {
    * imported clicks went (W-M12-6), because its per-link rows can't be imported.
    */
   goalsImported?: ImportedProvenance | null
+  /**
+   * The site's "Outbound links" option is off (Site settings, General): its script records no click on a link to
+   * another site. An empty block then says that, instead of "no clicks in this range". Rows recorded before it was
+   * switched off are still shown.
+   */
+  trackingOff?: boolean
 }
 
 /** W-M12-6 (owner pick A, 28-09-2026). */
@@ -111,7 +117,7 @@ function DestinationIcon({ host, failed, onFail }: { host: string; failed: boole
   )
 }
 
-export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, liveMinutes, goalsImported }: OutboundProps) {
+export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, liveMinutes, goalsImported, trackingOff = false }: OutboundProps) {
   const [activeTab, setActiveTab] = useState<Tab>('domains')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
   const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period, liveMinutes)
@@ -294,15 +300,16 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
           </div>
         ) : (
           <CardEmptyState
-              live={live}
+            live={live}
             icon={<ArrowSquareOut />}
-            title="No outbound clicks yet"
-            description="Clicks on links to other sites are recorded automatically and appear here. If outbound tracking is off in the script settings, nothing arrives."
-            action={{
-              label: 'Install tracking script',
-              href: '/settings/site/general',
-              onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
-            }}
+            kind="outbound clicks"
+            fresh="Clicks on links to other sites are listed here."
+            // The page's filter does not reach these lists (their endpoints take none), so an empty block here is
+            // never the filter's doing and must not say so.
+            filterable={false}
+            // The block used to guess ("If outbound tracking is off in the script settings, nothing arrives"). The
+            // site's own setting says whether it is, so the block says it.
+            off={trackingOff ? { title: 'Outbound links are switched off', description: 'This site does not record clicks on links to other sites.' } : null}
           />
         )}
       </div>

@@ -20,6 +20,7 @@ import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { Select, Switcher } from '@ciphera-net/facet'
+import { docsUrl } from '@/lib/docs'
 
 /**
  * Sources — where visitors came from, in ONE card.
@@ -377,14 +378,8 @@ export default function Sources({
             <CardEmptyState
               live={live}
               icon={<Globe />}
-              title="Nobody's linked to you yet"
-              publicTitle="No referrers yet"
-              description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
-              action={{
-                label: 'Install tracking script',
-                href: '/settings/site/general',
-                onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
-              }}
+              kind="visits"
+              fresh="The sites that send you visitors are listed here."
             />
           )
         ) : view === 'channels' ? (
@@ -414,8 +409,8 @@ export default function Sources({
             <CardEmptyState
               live={live}
               icon={<Globe />}
-              title="No channel data yet"
-              description="Channels group your traffic by type — direct, organic, social, and referral — as visitors arrive."
+              kind="visits"
+              fresh="The sites that send you visitors are listed here."
             />
           )
         ) : (
@@ -460,8 +455,10 @@ export default function Sources({
             <CardEmptyState
               live={live}
               icon={<Megaphone />}
-              title="No UTM data yet"
-              description="Tag your links with UTM parameters to track which campaigns drive the most traffic."
+              kind="campaign visits"
+              fresh="Visits from links you tagged are listed here."
+              // The one view of this block that stays empty until the customer does something: tag a link.
+              docs={{ label: 'How to tag links', href: docsUrl('campaigns') }}
             />
           )
         )}

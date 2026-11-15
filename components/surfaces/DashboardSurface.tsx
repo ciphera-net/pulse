@@ -53,7 +53,9 @@ import {
   useSite,
   useDataWindow,
   useDailyStats,
+  useInstallStatus,
 } from '@/lib/swr/dashboard'
+import { EmptyFactsProvider, type EmptyFacts } from '@/lib/dashboard/emptyFacts'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import InstallBanner from '@/components/dashboard/InstallBanner'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
@@ -307,6 +309,25 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // take no `onFilter` where filtering is refused (a share link).
   const onCardFilter = caps.filters ? handleAddFilter : undefined
 
+  // What an EMPTY block may truthfully say (lib/dashboard/emptyFacts.tsx): whether a filter is on, whether the
+  // site has ever had a visit, whether a longer range exists. The install status is the banner's own live read
+  // (the same SWR entry, so no second request), with the site record as the first frame's answer. It is a
+  // member's read: a public page is not served it, the hook is handed no site there and asks nothing, and a
+  // public block says its heading alone anyway.
+  const { data: installLive } = useInstallStatus(caps.member ? siteId : undefined)
+  // "No visitors yet" needs two things to agree: the script has never reported, AND the site has no day of history
+  // at all (its data window is `null`). A site whose history was imported from another tool has a window, and a
+  // chart full of visits, before its script ever reports; the server keeps that case on purpose (an import-only
+  // site still gets a window). An empty block beside that chart must not say nobody has come. While the window is
+  // still on its way (`undefined`) nothing is claimed.
+  const neverVisited = (installLive?.install_status ?? siteRecord?.install_status) === 'never_installed' && dataWindow === null
+  const filtered = filters.length > 0
+  const clearFilters = caps.filters ? handleClearFilters : undefined
+  const canWiden = period !== 'all'
+  // The site's "Outbound links" option (Site settings, General; on unless it was switched off). Only the member's
+  // site record carries it.
+  const outboundOff = siteRecord?.script_features?.outbound != null && !siteRecord.script_features.outbound
+
   // * Commit a draft from the filter popover — replaces the filter at its
   // * index when editing, appends (via the duplicate-guarded add) otherwise.
   const handleFilterApply = useCallback((filter: DimensionFilter, editingIndex: number | null) => {
@@ -425,6 +446,14 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // the orb could each be right and still disagree side by side, which is what was
   // reported (plan §11.10). One source, one number.
   const deckStats: Stats = isLive ? { ...stats, visitors: realtime } : stats
+  // Realtime's fact for an empty block: the live count is KNOWN and at zero. `realtime` above falls back to 0 while
+  // nothing is known, which suits a number on screen and not a claim: "Nobody on the site" is said on a known zero
+  // only, and a block with none of its own kind says that instead (owner ruling R25, 14-11-2026).
+  const nobodyLive = (realtimeData?.visitors ?? dashboard?.realtime_visitors) === 0
+  const emptyFacts = useMemo<EmptyFacts>(
+    () => ({ filtered, clearFilters, neverVisited, canWiden, nobodyLive }),
+    [filtered, clearFilters, neverVisited, canWiden, nobodyLive],
+  )
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
   // Show error toast on fetch failure
@@ -628,6 +657,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+      <EmptyFactsProvider value={emptyFacts}>
       {liveSync}
       {caps.member && <TourController />}
       {toolbarRow()}
@@ -779,6 +809,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
               goalsImported={dashboard?.imported_goals}
               filters={filtersParam || undefined}
               onFilter={onCardFilter}
+              trackingOff={outboundOff}
             />
           </div>
         </div>
@@ -837,6 +868,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           onApply={handleFilterApply}
         />
       )}
+      </EmptyFactsProvider>
     </div>
   )
 }

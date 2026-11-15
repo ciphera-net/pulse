@@ -16,9 +16,25 @@ interface EmptyStateProps {
    * dropped its onClick and the settings page opened on whichever site
    * happened to be remembered.
    */
-  action?: { label: string; href?: string; onClick?: () => void; external?: boolean }
+  action?: {
+    label: string
+    href?: string
+    onClick?: () => void
+    external?: boolean
+    /**
+     * `link`: a quiet text link in the brand's ink instead of the filled button. For a place where the thing to do
+     * is small and optional (the dashboard's empty blocks: "Clear filter", one docs link), and a filled orange
+     * button in every empty block would shout six times on one screen.
+     */
+    variant?: 'button' | 'link'
+  }
   className?: string
 }
+
+const ACTION_BUTTON =
+  'mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]'
+const ACTION_LINK =
+  'inline-flex items-center rounded-none text-sm font-medium text-brand-ink underline-offset-4 transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange'
 
 /**
  * Empty state — use in place of inline "No X" fallbacks.
@@ -30,13 +46,14 @@ interface EmptyStateProps {
  * Bad: "No data available"
  */
 export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
+  const actionClass = action?.variant === 'link' ? ACTION_LINK : ACTION_BUTTON
   const actionButton = action ? (
     action.href ? (
       <Link
         href={action.href}
         onClick={action.onClick}
         {...(action.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
+        className={actionClass}
       >
         {action.label}
       </Link>
@@ -44,7 +61,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       <button
         type="button"
         onClick={action.onClick}
-        className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
+        className={actionClass}
       >
         {action.label}
       </button>

@@ -52,6 +52,18 @@ describe('ScrollDepthBars', () => {
     expect(screen.queryByText('Reached 25%')).not.toBeInTheDocument()
   })
 
+  it('reads a realtime line when it is empty in realtime, where a longer range is no advice', () => {
+    // Outside the dashboard nobody has counted who is on the site, so the card says what it has none of.
+    const { unmount } = render(<ScrollDepthBars scrollDepth={dist({ total_sessions: 0 })} live />)
+    expect(screen.getByRole('heading').textContent).toBe('No scroll depth in the last 5 minutes.')
+    expect(screen.queryByText('Try a longer range.')).not.toBeInTheDocument()
+    unmount()
+    // The control: out of realtime the same empty card says its own heading and the advice.
+    render(<ScrollDepthBars scrollDepth={dist({ total_sessions: 0 })} />)
+    expect(screen.getByRole('heading').textContent).toBe('No scroll depth in this range')
+    expect(screen.getByText('Try a longer range.')).toBeInTheDocument()
+  })
+
   it('renders without data — the loading/undefined case must not throw', () => {
     // * `dashboard?.scroll_depth` is optional and undefined on first paint. Passing
     // * undefined is the normal path, not an edge case.

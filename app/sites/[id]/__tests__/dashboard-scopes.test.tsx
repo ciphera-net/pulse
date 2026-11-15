@@ -41,6 +41,7 @@ const h = vi.hoisted(() => ({
   useRealtime: vi.fn(),
   useStats: vi.fn(),
   useDailyStats: vi.fn(),
+  useInstallStatus: vi.fn(),
   useRealtimeSync: vi.fn(),
   postEmbedReady: vi.fn(),
   mutateLive: vi.fn(),
@@ -56,6 +57,8 @@ vi.mock('@/lib/swr/dashboard', async (importOriginal) => ({
   useRealtime: (...a: unknown[]) => h.useRealtime(...a),
   useStats: (...a: unknown[]) => h.useStats(...a),
   useDailyStats: (...a: unknown[]) => h.useDailyStats(...a),
+  // The empty blocks' facts read the install status (the banner's own entry): nothing to fetch here.
+  useInstallStatus: (...a: unknown[]) => h.useInstallStatus(...a),
 }))
 vi.mock('swr', async (importOriginal) => ({
   ...(await importOriginal<typeof import('swr')>()),
@@ -179,6 +182,7 @@ beforeEach(() => {
   h.useRealtime.mockImplementation(() => ({ data: { visitors: 4 } }))
   h.useStats.mockImplementation(() => ({ data: undefined }))
   h.useDailyStats.mockImplementation(() => ({ data: undefined }))
+  h.useInstallStatus.mockImplementation(() => ({ data: { install_status: 'active' } }))
   h.useDashboard.mockImplementation((siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string, minutes?: number) => {
     dashboardCalls.push({ siteId, start, end, interval, filters, period, minutes })
     return {

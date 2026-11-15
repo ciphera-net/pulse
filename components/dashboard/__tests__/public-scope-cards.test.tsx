@@ -18,6 +18,7 @@ import ContentSignals from '@/components/dashboard/ContentSignals'
 import Outbound from '@/components/dashboard/Outbound'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
+import { EmptyFactsProvider } from '@/lib/dashboard/emptyFacts'
 
 const h = vi.hoisted(() => ({
   idle: { data: undefined, error: undefined, isLoading: false, mutate: () => {} },
@@ -55,25 +56,35 @@ const shareScope: SiteScope = { siteId: 'site-1', mode: 'public', basePath: '/sh
 const range = { start: '2026-09-21', end: '2026-10-20' }
 const noop = () => {}
 
-function Cards({ scope }: { scope: SiteScope }) {
+/**
+ * `live` is realtime mode, handed to each card the way the surface hands it: the flag to the blocks, the window's
+ * minutes to the one card that takes those instead. 'nobody' is realtime with the live count known to be at zero,
+ * 'somebody' with people on the site.
+ */
+type Live = false | 'nobody' | 'somebody'
+function Cards({ scope, live: mode = false }: { scope: SiteScope; live?: Live }) {
+  const live = mode !== false
   return (
     <SiteScopeProvider scope={scope}>
+    <EmptyFactsProvider value={{ filtered: false, neverVisited: false, canWiden: true, nobodyLive: mode === 'nobody' }}>
       <CommandDeck
         data={[]}
         stats={{ pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }}
         metric="visitors"
         onMetricChange={noop}
         interval="day"
+        live={live}
         dateRange={range}
         multiDayInterval="day"
         setMultiDayInterval={noop}
       />
-      <Sources referrers={[]} siteId="site-1" dateRange={range} />
-      <Audience countries={[]} cities={[]} regions={[]} languages={[]} timezones={[]} siteId="site-1" dateRange={range} />
-      <TechSpecs browsers={[]} os={[]} devices={[]} screenResolutions={[]} siteId="site-1" dateRange={range} />
-      <ContentStats topPages={[]} entryPages={[]} exitPages={[]} domain="haldencycles.example" siteId="site-1" dateRange={range} />
-      <ContentSignals goalCounts={[]} siteId="site-1" dateRange={range} />
-      <Outbound siteId="site-1" dateRange={range} />
+      <Sources referrers={[]} siteId="site-1" dateRange={range} live={live} />
+      <Audience countries={[]} cities={[]} regions={[]} languages={[]} timezones={[]} siteId="site-1" dateRange={range} live={live} />
+      <TechSpecs browsers={[]} os={[]} devices={[]} screenResolutions={[]} siteId="site-1" dateRange={range} live={live} />
+      <ContentStats topPages={[]} entryPages={[]} exitPages={[]} domain="haldencycles.example" siteId="site-1" dateRange={range} live={live} />
+      <ContentSignals goalCounts={[]} siteId="site-1" dateRange={range} liveMinutes={live ? 5 : undefined} />
+      <Outbound siteId="site-1" dateRange={range} live={live} />
+    </EmptyFactsProvider>
     </SiteScopeProvider>
   )
 }
@@ -92,14 +103,16 @@ function walk(scope: SiteScope) {
   }
   return seen
 }
-function walkOnce(scope: SiteScope) {
+function walkOnce(scope: SiteScope, live: Live = false) {
   const hrefs = new Set<string>()
   const text = new Set<string>()
+  const headings = new Set<string>()
   const buttons = new Set<string>()
-  const { container, unmount } = render(<Cards scope={scope} />)
+  const { container, unmount } = render(<Cards scope={scope} live={live} />)
   const scan = () => {
     container.querySelectorAll('a[href]').forEach((a) => hrefs.add(a.getAttribute('href') ?? ''))
     container.querySelectorAll('h3, p').forEach((n) => text.add((n.textContent ?? '').trim()))
+    container.querySelectorAll('h3').forEach((n) => headings.add((n.textContent ?? '').trim()))
     container.querySelectorAll('button, a').forEach((n) => buttons.add((n.textContent ?? '').trim()))
   }
   scan()
@@ -109,45 +122,79 @@ function walkOnce(scope: SiteScope) {
     scan()
   }
   unmount()
-  return { hrefs, text, buttons }
+  return { hrefs, text, headings, buttons }
 }
 
 // Seven real cards, every tab of each: slow on a loaded machine.
 const WALK_TIMEOUT = 60_000
 
-/** What an empty card says to the site's owner: every phrase here must be gone from a public view. */
-const OWNER_PHRASES = [
-  "Nobody's linked to you yet",
-  "Your first visitor hasn't arrived",
-  'Share your site to get the first data point.',
-  'Your most visited pages will rank here',
-  'Tag your links with UTM parameters',
-  "Add pulse.track('event')",
-]
-const holds = (text: Set<string>, phrase: string) => [...text].some((t) => t.includes(phrase))
+/**
+ * What an empty card says to a member and to nobody else (components/dashboard/CardEmptyState.tsx): advice about the
+ * range, and the two docs links of the blocks that stay empty until the customer does something.
+ */
+const MEMBER_LINE = 'Try a longer range.'
+const MEMBER_LINKS = ['How to send events', 'How to tag links']
+/** Every label an empty card has ever offered, to anyone. */
+const EVERY_ACTION = [...MEMBER_LINKS, 'Install tracking script', 'Read the docs', 'Open site settings', 'Clear filter', 'Set up →', 'Check the snippet →']
 
 beforeEach(() => {
   cleanup()
   h.usePagePreview.mockReset().mockReturnValue({ data: undefined })
 })
 
-describe('a member\'s empty cards point at the way to install, as they always did (the control)', () => {
-  it('links to the site settings and offers to install the script', () => {
+describe('a member\'s empty cards say what is true and offer at most a docs link (the control)', () => {
+  it('advises a longer range and links to the two docs pages, and nowhere else', () => {
     const seen = walk(memberScope('site-1'))
-    expect(seen.hrefs.has('/settings/site/general')).toBe(true)
-    expect(seen.buttons.has('Install tracking script')).toBe(true)
-    expect(seen.buttons.has('Read the docs')).toBe(true)
-    // …and speaks to the owner everywhere the public view must not: without these, the
-    // absences asserted below would hold for a walk that never reached the card.
-    for (const phrase of OWNER_PHRASES) expect(holds(seen.text, phrase), phrase).toBe(true)
+    // Without these the absences asserted for a public view below would hold for a walk that never reached a card.
+    expect(seen.text.has(MEMBER_LINE)).toBe(true)
+    for (const label of MEMBER_LINKS) expect(seen.buttons.has(label), label).toBe(true)
+    expect(seen.text.has('No visits in this range')).toBe(true)
+    // 🔴 No card offers to install the script any more (owner ruling R11, 14-11-2026): six did, on sites whose
+    // script had reported for months. The install prompt is the banner's alone.
+    expect(seen.buttons.has('Install tracking script')).toBe(false)
+    expect([...seen.hrefs].filter((href) => /settings/.test(href))).toEqual([])
+    // The only links are the two docs pages.
+    expect([...seen.hrefs].every((href) => /^https:\/\/docs\.ciphera\.net\/pulse\//.test(href)), [...seen.hrefs].join(' ')).toBe(true)
+  }, WALK_TIMEOUT)
+})
+
+describe('realtime: every empty card reads a realtime line', () => {
+  it('with nobody on the site: the one line in every card and on every tab, and never a longer range', () => {
+    // The window is always the last five minutes: "Try a longer range." is no advice there, and a card that kept its
+    // own heading would sit beside five that say nobody is on the site. The scroll depth tab did exactly that.
+    const seen = walkOnce(memberScope('site-1'), 'nobody')
+    expect([...seen.headings]).toEqual(['Nobody on the site in the last 5 minutes.'])
+    expect(seen.text.has(MEMBER_LINE)).toBe(false)
+    expect([...seen.hrefs]).toEqual([])
+    // The control: the same walk out of realtime meets each card's own heading and the advice.
+    const calm = walk(memberScope('site-1'))
+    expect(calm.headings.size).toBeGreaterThan(4)
+    expect(calm.headings.has('No scroll depth in this range')).toBe(true)
+    expect(calm.text.has(MEMBER_LINE)).toBe(true)
+  }, WALK_TIMEOUT)
+
+  it('with somebody on the site: each card says what it has none of, and no card says nobody is there', () => {
+    // A counter at 1 stood beside a block reading "Nobody on the site in the last 5 minutes." Somebody on the site
+    // has not necessarily clicked a link out, sent an event or come through a tagged link.
+    const seen = walkOnce(memberScope('site-1'), 'somebody')
+    expect([...seen.headings].sort()).toEqual([
+      'No campaign visits in the last 5 minutes.',
+      'No events in the last 5 minutes.',
+      'No outbound clicks in the last 5 minutes.',
+      'No page views in the last 5 minutes.',
+      'No scroll depth in the last 5 minutes.',
+      'No visits in the last 5 minutes.',
+    ])
+    expect(seen.text.has(MEMBER_LINE)).toBe(false)
+    expect([...seen.hrefs]).toEqual([])
   }, WALK_TIMEOUT)
 })
 
 describe.each([
   ['the demo', demoScope],
   ['a share link', shareScope],
-])('%s: an empty card says there is nothing yet, and nothing else', (_name, scope) => {
-  it('links nowhere: not to settings, not to Visitors, not anywhere in the app', () => {
+])('%s: an empty card says its heading, and nothing else', (_name, scope) => {
+  it('links nowhere: not to settings, not to Visitors, not to the docs, not anywhere', () => {
     const { hrefs } = walk(scope)
     for (const href of hrefs) {
       expect(href, href).not.toMatch(/settings|visitors/i)
@@ -158,70 +205,63 @@ describe.each([
 
   it('offers no call to action', () => {
     const { buttons } = walk(scope)
-    for (const label of ['Install tracking script', 'Read the docs', 'Set up →', 'Check the snippet →']) {
+    for (const label of EVERY_ACTION) {
       expect(buttons.has(label), label).toBe(false)
     }
   }, WALK_TIMEOUT)
 
-  it('does not speak to the owner', () => {
+  it('does not advise the reader, who cannot change the site', () => {
     const { text } = walk(scope)
-    for (const phrase of OWNER_PHRASES) expect(holds(text, phrase), phrase).toBe(false)
+    expect(text.has(MEMBER_LINE)).toBe(false)
     // …and says what is true instead.
-    expect(text.has('No referrers yet')).toBe(true)
-    expect(text.has('No visitors yet')).toBe(true)
+    expect(text.has('No visits in this range')).toBe(true)
+    expect(text.has('No page views in this range')).toBe(true)
   }, WALK_TIMEOUT)
 })
 
-describe('CardEmptyState', () => {
-  const action = { label: 'Install tracking script', href: '/settings/site/general' }
+describe('CardEmptyState under a scope', () => {
+  const docs = { label: 'How to send events', href: 'https://docs.ciphera.net/pulse/custom-events' }
 
   it('keeps the whole empty state for a member, and for a page outside any scope', () => {
     for (const scope of [memberScope('site-1'), null]) {
-      const { unmount } = render(
-        scope ? (
-          <SiteScopeProvider scope={scope}>
-            <CardEmptyState title="Nobody's linked to you yet" publicTitle="No referrers yet" description="Traffic sources appear here." action={action} />
-          </SiteScopeProvider>
-        ) : (
-          <CardEmptyState title="Nobody's linked to you yet" publicTitle="No referrers yet" description="Traffic sources appear here." action={action} />
-        ),
-      )
-      expect(screen.getByText("Nobody's linked to you yet")).toBeTruthy()
-      expect(screen.getByText('Traffic sources appear here.')).toBeTruthy()
-      expect(screen.getByRole('link', { name: 'Install tracking script' })).toBeTruthy()
+      const state = <CardEmptyState kind="events" fresh="Events your site sends are counted here." docs={docs} />
+      const { unmount } = render(scope ? <SiteScopeProvider scope={scope}>{state}</SiteScopeProvider> : state)
+      expect(screen.getByText('No events in this range')).toBeTruthy()
+      expect(screen.getByText('Try a longer range.')).toBeTruthy()
+      expect(screen.getByRole('link', { name: 'How to send events' }).getAttribute('href')).toBe(docs.href)
       unmount()
     }
   })
 
-  it('drops the action and the description in a public view, and names its own title only where asked', () => {
-    const { rerender } = render(
-      <SiteScopeProvider scope={demoScope}>
-        <CardEmptyState title="Waiting for page views" description="Your most visited pages will rank here." action={action} />
-      </SiteScopeProvider>,
-    )
-    expect(screen.getByText('Waiting for page views')).toBeTruthy()
-    expect(screen.queryByText(/most visited/)).toBeNull()
-    expect(screen.queryByRole('link')).toBeNull()
-
-    rerender(
-      <SiteScopeProvider scope={shareScope}>
-        <CardEmptyState title="Nobody's linked to you yet" publicTitle="No referrers yet" action={action} />
-      </SiteScopeProvider>,
-    )
-    expect(screen.getByText('No referrers yet')).toBeTruthy()
-    expect(screen.queryByText("Nobody's linked to you yet")).toBeNull()
-  })
-
-  it('reads the one realtime line in realtime mode, in every scope', () => {
-    for (const scope of [memberScope('site-1'), demoScope]) {
+  it('drops the line and the link in a public view: the heading alone', () => {
+    for (const scope of [demoScope, shareScope]) {
       const { unmount } = render(
         <SiteScopeProvider scope={scope}>
-          <CardEmptyState live title="Waiting for page views" description="Soon." action={action} />
+          <CardEmptyState kind="events" fresh="Events your site sends are counted here." docs={docs} />
         </SiteScopeProvider>,
       )
-      expect(screen.getByText('Nobody on the site in the last 5 minutes.')).toBeTruthy()
-      expect(screen.queryByText('Soon.')).toBeNull()
+      expect(screen.getByText('No events in this range')).toBeTruthy()
+      expect(screen.queryByText('Try a longer range.')).toBeNull()
+      expect(screen.queryByRole('link')).toBeNull()
       unmount()
+    }
+  })
+
+  it('reads a realtime line in realtime mode, in every scope: nobody on the site, or none of its kind', () => {
+    for (const scope of [memberScope('site-1'), demoScope]) {
+      for (const [nobodyLive, line] of [[true, 'Nobody on the site in the last 5 minutes.'], [false, 'No page views in the last 5 minutes.']] as const) {
+        const { unmount } = render(
+          <SiteScopeProvider scope={scope}>
+            <EmptyFactsProvider value={{ filtered: false, neverVisited: false, canWiden: true, nobodyLive }}>
+              <CardEmptyState live kind="page views" fresh="Your pages are listed here by how often they are viewed." docs={docs} />
+            </EmptyFactsProvider>
+          </SiteScopeProvider>,
+        )
+        expect(screen.getByText(line)).toBeTruthy()
+        expect(screen.queryByText('No page views in this range')).toBeNull()
+        expect(screen.queryByRole('link')).toBeNull()
+        unmount()
+      }
     }
   })
 })
