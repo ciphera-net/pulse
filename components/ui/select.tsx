@@ -220,7 +220,10 @@ export default function Select({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.15 }}
-                className="fixed bg-popover border border-border rounded-none shadow-lg z-[300] overflow-y-auto py-1"
+                // No padding, and a divider with no margin: a menu's rows reach its edges (the rule is written at
+                // the date picker's rows, components/ui/DateRangePicker.tsx).
+                data-menu-list=""
+                className="fixed bg-popover border border-border rounded-none shadow-lg z-[300] overflow-y-auto"
                 style={{
                   left: coords.left,
                   width: coords.width,
@@ -232,7 +235,7 @@ export default function Select({
                 role="listbox"
               >
                 {options.map((option, index) => option.divider ? (
-                  <div key={`divider-${index}`} className="my-1 border-t border-border" role="separator" />
+                  <div key={`divider-${index}`} className="border-t border-border" role="separator" />
                 ) : (
                   <button
                     type="button"

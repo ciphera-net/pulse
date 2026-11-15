@@ -165,7 +165,9 @@ function Body({ shown, error, onRetry }: { shown: WhatsNewResponse | undefined; 
     <>
       <LeadCard row={lead} />
       {rows.length > 0 && (
-        <div className="pb-2">
+        // No padding under the last row: a menu's rows reach its edges, here the hairline over the panel's foot
+        // (the rule is written at the date picker's rows, components/ui/DateRangePicker.tsx).
+        <div data-menu-list="">
           {rows.map((row) => (
             <EntryRow key={row.key} row={row} />
           ))}
