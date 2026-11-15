@@ -11,15 +11,14 @@
  *     that fades its two edges. No bar rasterises anything of its own.
  *   - A bar's size comes from a resize observer and whether it is on screen from an intersection observer, so the
  *     loop reads no layout.
- *   - Bars off screen, a hidden tab and reduced motion draw nothing. With reduced motion, or the look switched
- *     off, there is no canvas and no loop at all.
+ *   - Bars off screen, a hidden tab and reduced motion draw nothing. With reduced motion there is no canvas and
+ *     no loop at all.
  *
  * The sweep, the fade of the band's edges and the 30 frames a second are ascii-reveal's (src/core/skeleton-anim.ts,
  * MIT, Copyright (c) 2026 Quan Hoang; see THIRD-PARTY-NOTICES.md). The library draws each bar's glyphs into a
  * picture of its own and copies sixteen strips of it a frame; the shared picture and the single fade are ours.
  */
 import { BAND, WAVE_TILE, bandAt, tileSize, waveTileSvg } from './dither'
-import { newLookOn, onNewLookChange } from './look'
 
 /** About 30 frames a second: the glyphs only change every 120 ms. */
 const FRAME_MS = 33
@@ -52,8 +51,6 @@ let sizes: ResizeObserver | null = null
 let sights: IntersectionObserver | null = null
 let motion: MediaQueryList | null = null
 let wired = false
-/** Stops listening to the look (what `wire` started). */
-let unwire: (() => void) | null = null
 
 /** The band's two frames, drawn once per pixel density. `asked` is the density being loaded or loaded. */
 let picture: HTMLCanvasElement | null = null
@@ -81,20 +78,19 @@ export function registerBar(el: HTMLElement): () => void {
   }
 }
 
-/** Listens, once, to the two things that start and stop the band: the look and the reader's motion setting. */
+/** Listens, once, to the reader's motion setting, which starts and stops the band. */
 function wire() {
   if (wired) return
   wired = true
-  unwire = onNewLookChange(sync)
   if (typeof window.matchMedia === 'function') {
     motion = window.matchMedia('(prefers-reduced-motion: reduce)')
     motion.addEventListener?.('change', sync)
   }
 }
 
-/** Starts or stops the loop: it runs while the look is on, motion is allowed and there is a bar to draw. */
+/** Starts or stops the loop: it runs while motion is allowed and there is a bar to draw. */
 function sync() {
-  const want = bars.size > 0 && newLookOn() && !motion?.matches
+  const want = bars.size > 0 && !motion?.matches
   if (want === running) return
   running = want
   if (want) {
@@ -308,8 +304,6 @@ export function resetBandForTests(): void {
   picture = null
   pictureDensity = 0
   asked = 0
-  unwire?.()
-  unwire = null
   motion?.removeEventListener?.('change', sync)
   motion = null
   wired = false

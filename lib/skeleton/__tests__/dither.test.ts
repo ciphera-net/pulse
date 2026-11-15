@@ -198,24 +198,22 @@ describe('the stylesheet carries the still pattern, from this module', () => {
     expect(css).toContain('-webkit-mask: var(--skeleton-dither) 0 0 / var(--skeleton-dither-size) repeat;')
   })
 
-  it('texture a bar only under the class on <html>: without it a bar is today\'s', () => {
+  it('texture every bar, for every reader, at a weight over the piece\'s own gray fill', () => {
     const css = read('styles/globals.css')
-    // Every rule that names a bar names the class before it.
+    // Every rule that names a bar starts with `html:root`: it matches every page, and it weighs what the new look's
+    // class on <html> weighed until 15-11-2026, so a piece's own `bg-neutral-800` (a utility, later in the sheet)
+    // cannot win over the dither's ground. Without it the rule would tie with that utility and lose.
     const rules = css.match(/^[^\n{}]*\.skeleton\b[^\n{}]*\{/gm) ?? []
     expect(rules.length).toBeGreaterThanOrEqual(4)
-    for (const rule of rules) {
-      if (/\.skeleton-new-shape\s*\{/.test(rule) && !rule.includes('html.new-dashboard')) continue // hidden until the class
-      expect(rule, rule).toContain('html.new-dashboard ')
-    }
-    // The new shape is hidden without the class, and today's is hidden with it.
-    expect(css).toMatch(/\n  \.skeleton-new-shape \{\n    display: none;\n  \}/)
-    expect(css).toMatch(/html\.new-dashboard \.skeleton-new-shape \{\n    display: block;\n  \}/)
-    expect(css).toMatch(/html\.new-dashboard \.skeleton-old-shape \{\n    display: none;\n  \}/)
+    for (const rule of rules) expect(rule.trim().startsWith('html:root '), rule).toBe(true)
+    // The look's class and the two shapes are gone.
+    expect(css).not.toContain('html.new-dashboard ')
+    expect(css).not.toMatch(/skeleton-(new|old)-shape/)
   })
 
   it('a bar that is already placed keeps its placing', () => {
     const css = read('styles/globals.css')
-    expect(css).toContain('html.new-dashboard .skeleton:not(.absolute):not(.fixed):not(.sticky) {\n    position: relative;')
+    expect(css).toContain('html:root .skeleton:not(.absolute):not(.fixed):not(.sticky) {\n    position: relative;')
   })
 })
 

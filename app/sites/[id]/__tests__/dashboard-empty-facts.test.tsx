@@ -2,7 +2,7 @@
 //
 // The words live in components/dashboard/CardEmptyState.tsx and are tested there. This file pins that the surface
 // hands them the right facts: a filter is on, the site has never had a visit, the range can be widened, and (to the
-// Outbound block alone) that outbound links are switched off for the site. The seams are those of
+// Pages block's Outbound tab alone) that outbound links are switched off for the site. The seams are those of
 // dashboard-scopes.test.tsx; one stub card reads the facts the way a real block's empty state does.
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, act, screen } from '@testing-library/react'
@@ -30,7 +30,8 @@ const h = vi.hoisted(() => ({
   useDailyStats: vi.fn(),
   useInstallStatus: vi.fn(),
   facts: null as EmptyFacts | null,
-  outbound: null as Record<string, unknown> | null,
+  /** The props the Pages block (ContentStats) was handed: its `outbound` is the Outbound tab's. */
+  pages: null as Record<string, unknown> | null,
 }))
 
 vi.mock('@/lib/swr/dashboard', async (importOriginal) => ({
@@ -70,12 +71,14 @@ vi.mock('@/components/dashboard/Sources', () => ({
 }))
 vi.mock('@/components/dashboard/Locations', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/TechSpecs', () => ({ default: () => null }))
-vi.mock('@/components/dashboard/ContentStats', () => ({ default: () => null }))
-vi.mock('@/components/dashboard/ContentSignals', () => ({ default: () => null }))
-vi.mock('@/components/dashboard/Outbound', () => ({
-  default: (p: Record<string, unknown>) => { h.outbound = p; return null },
+vi.mock('@/components/dashboard/ContentStats', () => ({
+  default: (p: Record<string, unknown>) => { h.pages = p; return null },
 }))
+vi.mock('@/components/dashboard/ContentSignals', () => ({ default: () => null }))
+// Today's Outbound block: still imported by the surface, never drawn in the frame.
+vi.mock('@/components/dashboard/Outbound', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/PeakHours', () => ({ default: () => null }))
+vi.mock('@/components/dashboard/DashboardBottom', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/FilterButton', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/FilterPills', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/filter/FilterBuilder', () => ({ default: () => null }))
@@ -124,6 +127,7 @@ beforeAll(async () => {
     import('@/components/dashboard/CommandDeck'),
     import('@/components/dashboard/ContentSignals'),
     import('@/components/dashboard/PeakHours'),
+    import('@/components/dashboard/DashboardBottom'),
     import('@/lib/tour/TourController'),
   ])
 })
@@ -134,7 +138,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockSearchParams = new URLSearchParams()
   h.facts = null
-  h.outbound = null
+  h.pages = null
   siteRecord = SITE
   h.useSite.mockImplementation(() => ({ data: siteRecord, error: undefined, mutate: vi.fn() }))
   h.useDataWindow.mockImplementation(() => null)
@@ -243,7 +247,7 @@ describe('a member\'s dashboard', () => {
   })
 })
 
-describe('the Outbound block is told when outbound links are switched off for the site', () => {
+describe('the Pages block\'s Outbound tab is told when outbound links are switched off for the site', () => {
   it.each([
     ['switched off', { outbound: false }, true],
     ['switched on', { outbound: true }, false],
@@ -252,7 +256,13 @@ describe('the Outbound block is told when outbound links are switched off for th
   ])('%s', async (_name, script_features, off) => {
     siteRecord = { ...SITE, script_features }
     await mount()
-    expect(h.outbound?.trackingOff).toBe(off)
+    expect((h.pages?.outbound as { trackingOff?: boolean } | undefined)?.trackingOff).toBe(off)
+  })
+
+  it('a share link\'s Pages block has no Outbound tab to tell', async () => {
+    await mount(shareScope)
+    expect(h.pages).not.toBeNull()
+    expect(h.pages?.outbound).toBeUndefined()
   })
 })
 

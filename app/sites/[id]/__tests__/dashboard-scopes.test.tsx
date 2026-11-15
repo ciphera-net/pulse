@@ -7,9 +7,12 @@
 //   member            the product, unchanged (today-single-fetch.test.tsx pins its requests)
 //   public, full      the demo site: the whole member dashboard, minus the member's own
 //                     affordances (install banner, tour, socket, links to settings)
-//   public, scoped    a customer's share link: today's share page rebuilt INSIDE the surface
+//   public, scoped    a customer's share link: the share page's rules INSIDE the surface
 //                     (four fixed windows, a period token alone, no filters, no comparison,
-//                     no hourly buckets, no Outbound, no Behaviour)
+//                     no hourly buckets, no Outbound tab, no heat map)
+//
+// All three draw the new dashboard's frame since 15-11-2026 (components/surfaces/DashboardFrame.tsx): no section
+// titles, the Search filter, Outbound as the Pages block's tab. dashboard-frame.test.tsx pins the frame itself.
 //
 // The real DateRangePicker and RealtimeOrb render (what a reader SEES is the subject, as in
 // the share page's own tests it replaces); the data hooks are spies, so every read the page
@@ -71,7 +74,8 @@ vi.mock('@ciphera-net/facet', async (importOriginal) => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }))
 vi.mock('@/components/skeletons', () => ({
-  DashboardSkeleton: ({ shape }: { shape?: string }) => <div data-testid="skeleton" data-shape={shape} />,
+  // Records the props it was handed: the one skeleton takes none.
+  DashboardSkeleton: (props: Record<string, unknown>) => <div data-testid="skeleton" data-props={Object.keys(props).join(',')} />,
   useMinimumLoading: (v: boolean) => v,
   useSkeletonFade: () => '',
 }))
@@ -101,12 +105,24 @@ vi.mock('@/components/dashboard/Outbound', () => ({
 vi.mock('@/components/dashboard/PeakHours', () => ({
   default: (p: Record<string, unknown>) => { h.captured.PeakHours = p; return <div data-testid="card-peak-hours" /> },
 }))
+// The frame's bottom (what converts, the week, the three tiles): today's heat map is today's arrangement's alone.
+vi.mock('@/components/dashboard/DashboardBottom', () => ({
+  default: (p: Record<string, unknown>) => { h.captured.DashboardBottom = p; return <div data-testid="dashboard-bottom" /> },
+}))
 vi.mock('@/components/dashboard/SectionHeader', () => ({
   default: ({ title }: { title: string }) => <h2 data-testid="section">{title}</h2>,
 }))
+// Today's filter controls: still imported by the surface, never drawn in the frame.
 vi.mock('@/components/dashboard/FilterButton', () => ({ default: () => <button data-testid="filter-button" /> }))
 vi.mock('@/components/dashboard/FilterPills', () => ({ default: () => <div data-testid="filter-pills" /> }))
 vi.mock('@/components/dashboard/filter/FilterBuilder', () => ({ default: () => <div data-testid="filter-builder" /> }))
+// The frame's: the Search filter's button and the box of filters on (their own files test what they do).
+vi.mock('@/components/dashboard/filter/search/SearchFilter', () => ({
+  default: (p: Record<string, unknown>) => { h.captured.SearchFilter = p; return <button data-testid="search-filter" /> },
+}))
+vi.mock('@/components/dashboard/filter/search/FiltersBox', () => ({
+  default: (p: Record<string, unknown>) => { h.captured.FiltersBox = p; return <div data-testid="filters-box" /> },
+}))
 vi.mock('@/components/dashboard/InstallBanner', () => ({ default: () => <div data-testid="install-banner" /> }))
 vi.mock('@/lib/tour/TourController', () => ({ default: () => <div data-testid="tour" /> }))
 
@@ -163,6 +179,7 @@ beforeAll(async () => {
     import('@/components/dashboard/CommandDeck'),
     import('@/components/dashboard/ContentSignals'),
     import('@/components/dashboard/PeakHours'),
+    import('@/components/dashboard/DashboardBottom'),
     import('@/lib/tour/TourController'),
   ])
 })
@@ -219,9 +236,15 @@ describe('the member dashboard is the product, with the member\'s own affordance
     await mount(memberScope('site-1'))
     expect(screen.getByTestId('tour')).toBeTruthy()
     expect(screen.getByTestId('install-banner')).toBeTruthy()
-    expect(screen.getByTestId('filter-button')).toBeTruthy()
-    expect(screen.getByTestId('filter-builder')).toBeTruthy()
-    expect(sectionTitles()).toEqual(['Acquisition', 'Audience', 'Outbound', 'Content', 'Behaviour'])
+    expect(screen.getByTestId('search-filter')).toBeTruthy()
+    expect(screen.getByTestId('filters-box')).toBeTruthy()
+    // The frame, and none of today's arrangement: no section title, no filter button or builder, no heat map.
+    expect(document.querySelector('[data-dashboard-frame]')).toBeTruthy()
+    expect(screen.getByTestId('dashboard-bottom')).toBeTruthy()
+    expect(sectionTitles()).toEqual([])
+    expect(screen.queryByTestId('filter-button')).toBeNull()
+    expect(screen.queryByTestId('filter-builder')).toBeNull()
+    expect(screen.queryByTestId('card-peak-hours')).toBeNull()
   })
 
   it('stays silent to the hero: a member page is never framed by it', async () => {
@@ -253,20 +276,27 @@ describe('the demo (public, full): the whole member dashboard without the member
     expect(document.querySelector('a[href*="/visitors"]')).toBeNull()
   })
 
-  it('keeps every card and section a member has, Outbound and Behaviour included', async () => {
+  it('keeps every block a member has, the Pages block\'s Outbound tab and the bottom included', async () => {
     await mount(demoScope)
-    expect(sectionTitles()).toEqual(['Acquisition', 'Audience', 'Outbound', 'Content', 'Behaviour'])
-    expect(screen.getByTestId('card-outbound')).toBeTruthy()
-    expect(screen.getByTestId('card-peak-hours')).toBeTruthy()
+    expect(document.querySelector('[data-dashboard-frame]')).toBeTruthy()
+    expect(sectionTitles()).toEqual([])
+    for (const id of ['card-sources', 'card-content-stats', 'card-audience', 'card-techspecs', 'card-content-signals', 'dashboard-bottom']) {
+      expect(screen.getByTestId(id), id).toBeTruthy()
+    }
+    expect(h.captured.ContentStats.outbound).toBeDefined()
+    expect(h.captured.DashboardBottom.siteId).toBe('site-1')
+    // Outbound is no block of its own in the frame, and today's heat map is not drawn in it.
+    expect(screen.queryByTestId('card-outbound')).toBeNull()
+    expect(screen.queryByTestId('card-peak-hours')).toBeNull()
   })
 
   it('filters like a member: the controls are there, the rows filter, a filtered URL is read and sent', async () => {
     const filter = { dimension: 'country', operator: 'is' as const, values: ['NO'] }
     mockSearchParams = new URLSearchParams({ filters: serializeFilters([filter]) })
     await mount(demoScope)
-    expect(screen.getByTestId('filter-button')).toBeTruthy()
-    expect(screen.getByTestId('filter-pills')).toBeTruthy()
-    expect(screen.getByTestId('filter-builder')).toBeTruthy()
+    expect(screen.getByTestId('search-filter')).toBeTruthy()
+    expect(screen.getByTestId('filters-box')).toBeTruthy()
+    expect(h.captured.FiltersBox.filters).toEqual([expect.objectContaining(filter)])
     expect(typeof h.captured.Sources.onFilter).toBe('function')
     expect(typeof h.captured.ContentStats.onFilter).toBe('function')
     expect(last().filters).toBe(serializeFilters([filter]))
@@ -335,11 +365,12 @@ describe('the demo (public, full): the whole member dashboard without the member
   it.each([
     ['the demo', demoScope],
     ['a share link', shareScope],
-  ])('%s draws today\'s skeleton alone: a public page is never offered the new dashboard', async (_name, scope) => {
+    ['a member\'s page', memberScope('site-1')],
+  ])('%s draws the frame\'s skeleton, the one every reader gets', async (_name, scope) => {
     dashboardState = {}
     await mount(scope)
-    // No second shape in its markup, and nothing a class on <html> could hide.
-    expect(screen.getByTestId('skeleton').getAttribute('data-shape')).toBe('today')
+    // One skeleton with no shape to choose: nothing in its markup for a class on <html> to hide.
+    expect(screen.getByTestId('skeleton').getAttribute('data-props')).toBe('')
   })
 
   it('tells the hero its page has drawn, once, when the payload first renders — never on the skeleton, never again', async () => {
@@ -365,7 +396,7 @@ describe('the demo (public, full): the whole member dashboard without the member
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════
-describe('a share link (public, scoped): today\'s share page, inside the surface', () => {
+describe('a share link (public, scoped): the share page\'s rules, inside the surface', () => {
   it('asks only what a share link is served: no site record, no data window', async () => {
     await mount(shareScope)
     expect(h.useSite).not.toHaveBeenCalled()
@@ -481,19 +512,25 @@ describe('a share link (public, scoped): today\'s share page, inside the surface
 
   it('offers no filter control and hands no card a way to filter', async () => {
     await mount(shareScope)
-    expect(screen.queryByTestId('filter-button')).toBeNull()
-    expect(screen.queryByTestId('filter-pills')).toBeNull()
-    expect(screen.queryByTestId('filter-builder')).toBeNull()
+    for (const id of ['search-filter', 'filters-box', 'filter-button', 'filter-pills', 'filter-builder']) {
+      expect(screen.queryByTestId(id), id).toBeNull()
+    }
     for (const card of ['Sources', 'Audience', 'TechSpecs', 'ContentStats']) {
       expect(h.captured[card].onFilter, card).toBeUndefined()
       expect(h.captured[card].filters, card).toBeUndefined()
     }
   })
 
-  it('shows no Outbound and no Behaviour, and no member affordance', async () => {
+  it('shows no Outbound tab and no bottom, and no member affordance', async () => {
     await mount(shareScope)
-    expect(sectionTitles()).toEqual(['Acquisition', 'Audience', 'Content'])
+    expect(document.querySelector('[data-dashboard-frame]')).toBeTruthy()
+    expect(sectionTitles()).toEqual([])
+    // The Pages block is drawn, without the Outbound tab: a share link is not served its read.
+    expect(screen.getByTestId('card-content-stats')).toBeTruthy()
+    expect(h.captured.ContentStats.outbound).toBeUndefined()
     expect(screen.queryByTestId('card-outbound')).toBeNull()
+    // Nor the bottom's reads (funnels, journeys, hour buckets, search, uptime, performance).
+    expect(screen.queryByTestId('dashboard-bottom')).toBeNull()
     expect(screen.queryByTestId('card-peak-hours')).toBeNull()
     expect(screen.queryByTestId('install-banner')).toBeNull()
     expect(screen.queryByTestId('tour')).toBeNull()

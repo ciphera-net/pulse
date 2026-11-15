@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-// Source-level pins for the NEW DASHBOARD FRAME (beta `new-dashboard`), the idiom of phase3-wiring.test.ts: while
-// the flag lives the page has two arrangements, and the frame's repeats each block's props. Dropping one there
-// leaves every component test green while the beta silently loses a filter, a denominator or a share link's diet.
+// Source-level pins for the NEW DASHBOARD FRAME (every reader's since 15-11-2026; the beta `new-dashboard` until
+// then), the idiom of phase3-wiring.test.ts: the page still holds today's arrangement, no longer drawn, until its
+// removal, and the frame's repeats each block's props. Dropping one there leaves every component test green while
+// the page silently loses a filter, a denominator or a share link's diet.
 const read = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
 
 describe('the new dashboard frame: every block is wired as on today\'s page', () => {
@@ -79,12 +80,13 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
   })
 })
 
-describe('the surface mounts the frame under the flag, and nothing of today\'s page moved', () => {
+describe('the surface mounts the frame for every reader, and nothing of today\'s page moved', () => {
   const page = read('components/surfaces/DashboardSurface.tsx')
 
-  it('reads the beta flag closed by default', () => {
-    // `=== true`: null (still loading, or /me failed) and false both leave today's page.
-    expect(page).toContain('const frame = useFeature(NEW_DASHBOARD_FLAG) === true')
+  it('mounts the frame for every reader: no flag is read, public pages included (15-11-2026)', () => {
+    expect(page).toContain('const frame: boolean = true')
+    expect(page).not.toContain('useFeature(')
+    expect(page).not.toContain('NEW_DASHBOARD_FLAG')
   })
 
   it('mounts the frame in place of its own arrangement, with the one deck', () => {

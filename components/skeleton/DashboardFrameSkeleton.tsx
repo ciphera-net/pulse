@@ -13,8 +13,8 @@ import { SkeletonLine } from './primitives'
 // today's arrangement still has it, with HeatMapSkeletonBody as its loading state.) Today's skeleton is shorter
 // than the new page and still draws a campaigns table the dashboard no longer has.
 //
-// It is drawn beside today's on a member's page and the stylesheet shows one of the two (`skeleton-new-shape`,
-// lib/skeleton/look.ts says why). No state, nothing read: the server and the browser draw the same thing.
+// It is the dashboard's skeleton for every reader since 15-11-2026 (components/skeletons.tsx). No state, nothing
+// read: the server and the browser draw the same thing.
 // ---------------------------------------------------------------------------
 
 /**

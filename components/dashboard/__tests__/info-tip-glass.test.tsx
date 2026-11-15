@@ -7,13 +7,14 @@ import { DimensionInfoTip, INFO_TIP_GLYPH_CLASS, INFO_TIP_PANEL_CLASS, MetricInf
 import { CompactNumber } from '@/components/ui/compact-number'
 import * as names from '@/lib/ui/popupSurface'
 
-// The info pop-up in the new look: glass, as a menu of the new dashboard is, on EVERY page (15-11-2026).
+// The info pop-up: glass, as a menu of the dashboard is, on EVERY page, for every reader (since 15-11-2026; it was
+// the new dashboard's beta look until that evening).
 //
 // Three things make "every page" true, and each is pinned here:
 //   - one file of the app draws facet's InfoTip, so there is one place to say what its panel is;
 //   - that file gives every panel one class;
-//   - the stylesheet turns that class into glass under the new look's class on <html>, with the menus' own
-//     declaration, and into nothing without it.
+//   - the stylesheet turns that class into glass, with the menus' own declaration, behind `html:root`: it matches
+//     every page and weighs enough to beat facet's solid fill (one utility class, later in the sheet).
 
 const read = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
 
@@ -77,11 +78,11 @@ describe('one file of the app draws facet\'s InfoTip', () => {
   })
 })
 
-describe('the stylesheet makes the panel glass under the new look, and only there', () => {
+describe('the stylesheet makes the panel glass on every page', () => {
   const css = read('styles/globals.css')
 
   it('with the menus\' own declaration: one rule for the menu, the pop-up and the small tooltip, so they cannot drift', () => {
-    const shared = css.match(/\n  \.glass-panel,\n  html\.new-dashboard \.info-tip-panel,\n  html\.new-dashboard \.tooltip-panel \{\n([^}]*)\}/)
+    const shared = css.match(/\n  \.glass-panel,\n  html:root \.info-tip-panel,\n  html:root \.tooltip-panel \{\n([^}]*)\}/)
     expect(shared).not.toBeNull()
     const body = shared?.[1] ?? ''
     expect(body).toContain('background-color: rgb(var(--popover) / var(--glass-panel));')
@@ -91,16 +92,16 @@ describe('the stylesheet makes the panel glass under the new look, and only ther
     expect(css.match(/\.glass-panel\b[^{]*\{/g)).toHaveLength(1)
   })
 
-  it('every rule that names the panel names the look\'s class before it: without the class it is facet\'s solid panel', () => {
+  it('every rule that names the panel starts with `html:root`, the weight that beats facet\'s solid panel', () => {
     const selectors = css.match(/^[^\n{}]*\.info-tip-panel\b[^\n{}]*[{,]/gm) ?? []
     // The shared rule, the panel's own, and the four parts of Header.
     expect(selectors.length).toBeGreaterThanOrEqual(6)
-    for (const selector of selectors) expect(selector, selector).toContain('html.new-dashboard .info-tip-panel')
+    for (const selector of selectors) expect(selector, selector).toContain('html:root .info-tip-panel')
   })
 
   it('gives it the frame\'s hairline, a menu\'s shadow, no ring and no padding of its own', () => {
     // The panel's own rule (in the rule it shares with the menus it is not the last selector).
-    const rules = [...css.matchAll(/\n  html\.new-dashboard \.info-tip-panel \{\n([^}]*)\}/g)]
+    const rules = [...css.matchAll(/\n  html:root \.info-tip-panel \{\n([^}]*)\}/g)]
     expect(rules).toHaveLength(1)
     const body = rules[0][1]
     // Header: the strips bring their own padding.
@@ -118,10 +119,10 @@ describe('the stylesheet makes the panel glass under the new look, and only ther
   })
 })
 
-describe('the pop-up\'s shape in the new look is Header: the name, the sentence, the link, each in its own strip', () => {
+describe('the pop-up\'s shape is Header: the name, the sentence, the link, each in its own strip', () => {
   const css = read('styles/globals.css')
   const rule = (selector: string) => {
-    const at = css.indexOf(`\n  html.new-dashboard .info-tip-panel > ${selector} {\n`)
+    const at = css.indexOf(`\n  html:root .info-tip-panel > ${selector} {\n`)
     expect(at, selector).toBeGreaterThan(-1)
     return css.slice(at, css.indexOf('}', at))
   }
@@ -180,7 +181,7 @@ describe('the pop-up\'s shape in the new look is Header: the name, the sentence,
   })
 })
 
-describe('the info icon in the new look is a fine circle, drawn by the stylesheet', () => {
+describe('the info icon is a fine circle, drawn by the stylesheet', () => {
   const css = read('styles/globals.css')
 
   it('every info icon carries the icon\'s class, before the class that places it', () => {
@@ -206,11 +207,11 @@ describe('the info icon in the new look is a fine circle, drawn by the styleshee
     render(<TermInfoTip term="outbound_links" />)
     const glyph = screen.getByRole('button')
     expect([...glyph.children].map((el) => el.tagName.toLowerCase())).toEqual(['svg'])
-    expect(css).toMatch(/\n  html\.new-dashboard \.info-tip-glyph > svg \{\n    display: none;\n  \}/)
+    expect(css).toMatch(/\n  html:root \.info-tip-glyph > svg \{\n    display: none;\n  \}/)
   })
 
   it('draws a 16 px mask over the button\'s own colour, so facet\'s rest, hover, focus and open still colour it', () => {
-    const at = css.indexOf('\n  html.new-dashboard .info-tip-glyph::before {\n')
+    const at = css.indexOf('\n  html:root .info-tip-glyph::before {\n')
     expect(at).toBeGreaterThan(-1)
     const body = css.slice(at, css.indexOf('}', at))
     expect(body).toContain("content: '';")
@@ -220,7 +221,7 @@ describe('the info icon in the new look is a fine circle, drawn by the styleshee
     expect(body).toContain('mask: var(--info-glyph) center / contain no-repeat;')
     expect(body).toContain('-webkit-mask: var(--info-glyph) center / contain no-repeat;')
     // No colour of its own anywhere in the icon's rules: a colour here would freeze it gray under the pointer.
-    const rules = css.match(/html\.new-dashboard \.info-tip-glyph[^{]*\{[^}]*\}/g) ?? []
+    const rules = css.match(/html:root \.info-tip-glyph[^{]*\{[^}]*\}/g) ?? []
     expect(rules).toHaveLength(3)
     for (const r of rules) expect(r.replace(/--info-glyph:[^;]*;/, ''), r.slice(0, 60)).not.toMatch(/(^|[\s;{])color:/)
   })
@@ -243,7 +244,7 @@ describe('the info icon in the new look is a fine circle, drawn by the styleshee
   it('every rule of the icon names the look\'s class: without it the icon is facet\'s bold one', () => {
     const selectors = css.match(/^[^\n{}]*\.info-tip-glyph\b[^\n{}]*\{/gm) ?? []
     expect(selectors).toHaveLength(3)
-    for (const selector of selectors) expect(selector, selector).toContain('html.new-dashboard .info-tip-glyph')
+    for (const selector of selectors) expect(selector, selector).toContain('html:root .info-tip-glyph')
   })
 })
 
@@ -251,8 +252,8 @@ describe('the small tooltip is glass too, wherever the app draws one', () => {
   const css = read('styles/globals.css')
 
   it('takes the menus\' declaration as a third selector, and the pop-up\'s hairline and shadow', () => {
-    expect(css).toMatch(/\n  \.glass-panel,\n  html\.new-dashboard \.info-tip-panel,\n  html\.new-dashboard \.tooltip-panel \{\n/)
-    const at = css.indexOf('\n  html.new-dashboard .tooltip-panel {\n    border-color')
+    expect(css).toMatch(/\n  \.glass-panel,\n  html:root \.info-tip-panel,\n  html:root \.tooltip-panel \{\n/)
+    const at = css.indexOf('\n  html:root .tooltip-panel {\n    border-color')
     expect(at).toBeGreaterThan(-1)
     const body = css.slice(at, css.indexOf('}', at))
     expect(body).toContain('border-color: rgb(var(--white) / 0.08);')
@@ -298,6 +299,6 @@ describe('the small tooltip is glass too, wherever the app draws one', () => {
 
   it('the three names are the ones the stylesheet uses', () => {
     expect(names).toMatchObject({ INFO_TIP_PANEL_CLASS: 'info-tip-panel', INFO_TIP_GLYPH_CLASS: 'info-tip-glyph', TOOLTIP_PANEL_CLASS: 'tooltip-panel' })
-    for (const name of Object.values(names)) expect(css, name).toContain(`html.new-dashboard .${name}`)
+    for (const name of Object.values(names)) expect(css, name).toContain(`html:root .${name}`)
   })
 })

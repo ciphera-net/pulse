@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { copyTiled, registerBar, resetBandForTests } from '@/lib/skeleton/band'
 import { BAND, WAVE_TILE, bandAt, tileSize } from '@/lib/skeleton/dither'
-import { setNewLook } from '@/lib/skeleton/look'
 
 // The band's animator. jsdom draws nothing, so the canvas, the two observers, the shared picture and the frame
 // clock are stand-ins the test drives. What is pinned: when a bar gets a canvas and when it loses it, what a frame
-// draws on it, and that nothing runs while the look is off or the reader asked for less motion.
+// draws on it, and that nothing runs while the reader asked for less motion. (Until 15-11-2026 the band ran only
+// for a team with the new dashboard's look; it is every reader's since.)
 
 type Call = { op: string; args: unknown[]; composite: string; transform: number[] }
 
@@ -104,7 +104,6 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  setNewLook(false)
   resetBandForTests()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -112,9 +111,8 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-/** A bar on the page, measured and on screen, with the look on and the shared picture loaded. */
+/** A bar on the page, measured and on screen, with the shared picture loaded. */
 function running(width = 400, height = 36) {
-  setNewLook(true)
   const el = bar()
   const leave = registerBar(el)
   resize(el, width, height)
@@ -124,39 +122,18 @@ function running(width = 400, height = 36) {
   return { el, leave }
 }
 
-describe('while the look is off', () => {
-  it('a bar gets no canvas, no observer and no frame: today\'s skeleton costs nothing', () => {
+describe('a bar on the page', () => {
+  it('starts the band at once: there is no look left to wait for', () => {
     const el = bar()
     registerBar(el)
-    expect(frames).toHaveLength(0)
-    expect(sizes).toHaveLength(0)
-    expect(sights).toHaveLength(0)
-    expect(images).toHaveLength(0)
-    expect(canvasOf(el)).toBeNull()
-  })
-
-  it('starts for the bars already on the page when the look is switched on, and stops when it is switched off', () => {
-    const el = bar()
-    registerBar(el)
-    setNewLook(true)
     expect(frames).toHaveLength(1)
-    resize(el, 400, 36)
-    sight(el, true)
-    frame()
-    pictureLoads()
-    frame()
-    expect(canvasOf(el)).not.toBeNull()
-    setNewLook(false)
-    // The canvas is gone and nothing is asked of the next frame.
-    expect(canvasOf(el)).toBeNull()
-    expect(frames).toHaveLength(0)
-    expect(sizes.every((o) => o.seen.size === 0)).toBe(true)
+    expect(sizes).toHaveLength(1)
+    expect(sights).toHaveLength(1)
   })
 })
 
-describe('with the look on', () => {
+describe('a bar the band draws on', () => {
   it('draws nothing until the bar has been measured and seen, and the shared picture has arrived', () => {
-    setNewLook(true)
     const el = bar()
     registerBar(el)
     frame()
@@ -175,7 +152,6 @@ describe('with the look on', () => {
   })
 
   it('asks for the shared picture once for the whole page, at the device\'s density', () => {
-    setNewLook(true)
     const els = [bar(), bar(), bar()]
     els.forEach((el) => { registerBar(el); resize(el, 300, 20); sight(el, true) })
     frame()
@@ -308,7 +284,6 @@ describe('with the look on', () => {
 describe('a reader who asked for less motion', () => {
   it('gets the still pattern and nothing else: no canvas, no frame', () => {
     reduced = true
-    setNewLook(true)
     const el = bar()
     registerBar(el)
     resize(el, 400, 36)
