@@ -866,6 +866,14 @@ function TooltipBox({
     setMounted(true);
   }, []);
 
+  // The card is measured WHEN IT IS DRAWN. It is not in the document until the
+  // pointer is on the chart (and never before this component has mounted), so an
+  // effect keyed on the two sizes alone never ran with the card there: the side
+  // was decided from the starting guess of 180 px for a card that is 224 px wide
+  // (w-56). In a band 44 px wide near the chart's right edge the card was then
+  // drawn past the chart, where the deck's overflow cuts it (measured on the
+  // dashboard's main chart, 15-11-2026: 33 px past the chart, 22 px cut).
+  // `visible` and `mounted` are what put the card in the document.
   useLayoutEffect(() => {
     if (tooltipRef.current) {
       const w = tooltipRef.current.offsetWidth;
@@ -877,7 +885,7 @@ function TooltipBox({
         setTooltipHeight(h);
       }
     }
-  }, [tooltipWidth, tooltipHeight]);
+  }, [tooltipWidth, tooltipHeight, visible, mounted]);
 
   const shouldFlipX = x + tooltipWidth + offset > containerWidth;
   const targetX = shouldFlipX ? x - offset - tooltipWidth : x + offset;
