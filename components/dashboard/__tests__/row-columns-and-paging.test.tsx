@@ -21,7 +21,7 @@ import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel } from '@/components/dash
 // ---------------------------------------------------------------------------
 
 const ROOT = path.resolve(__dirname, '../../..')
-const CARDS = ['Sources', 'GoalStats', 'Locations', 'TechSpecs', 'ContentStats', 'Outbound'].map(
+const CARDS = ['Sources', 'GoalStats', 'Locations', 'TechSpecs', 'ContentStats', 'Outbound', 'events/EventsBlock'].map(
   (name) => `components/dashboard/${name}.tsx`,
 )
 const classesOf = (el: Element) => new Set(el.className.split(/\s+/).filter(Boolean))

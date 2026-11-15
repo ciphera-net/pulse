@@ -39,7 +39,7 @@ vi.mock('@/lib/api/stats', () => rec.make('stats', [
   'getDashboard', 'getPagesTable', 'getCampaigns', 'getRealtime', 'getStats', 'getDailyStats', 'getTopPages',
   'getEntryPages', 'getExitPages', 'getTopReferrers', 'getCountries', 'getCities', 'getRegions', 'getLanguages',
   'getLanguageGroups', 'getBrowsers', 'getOS', 'getDevices', 'getScreenResolutions', 'getTimezones',
-  'getEventPropertyValues',
+  'getEventPropertyKeys', 'getEventPropertyValues',
 ]))
 vi.mock('@/lib/api/journeys', () => rec.make('journeys', ['getJourneyFlow', 'getJourneyEntryPoints']))
 vi.mock('@/lib/api/sites', () => rec.make('sites', ['getSite', 'getSiteTeam', 'getInstallStatus', 'getIngestHealth']))

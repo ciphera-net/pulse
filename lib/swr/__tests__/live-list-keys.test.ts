@@ -17,6 +17,7 @@ vi.mock('swr/infinite', () => ({ default: vi.fn(() => ({ data: undefined, size: 
 const api = vi.hoisted(() => ({
   getCountries: vi.fn(async () => []),
   getCampaigns: vi.fn(async () => []),
+  getEventPropertyKeys: vi.fn(async () => []),
   getEventPropertyValues: vi.fn(async () => []),
 }))
 vi.mock('@/lib/api/stats', async (importOriginal) => {
@@ -24,7 +25,7 @@ vi.mock('@/lib/api/stats', async (importOriginal) => {
   return { ...mod, ...api }
 })
 
-import { useFullDimensionList, useOutboundLinks, useCampaignsList, isLiveListKey, LIVE_LIST_KEY } from '../dashboard'
+import { useFullDimensionList, useOutboundLinks, useCampaignsList, useEventPropertyKeys, useEventPropertyValues, isLiveListKey, LIVE_LIST_KEY } from '../dashboard'
 
 const lastCall = () => swrSpy.mock.calls[swrSpy.mock.calls.length - 1]
 const keyOf = () => lastCall()[0] as unknown[] | null
@@ -104,12 +105,65 @@ describe('useCampaignsList in realtime mode (PULSE-192)', () => {
   })
 })
 
+// The Events block's pane in the new frame: an event's keys and one key's values, under the page's filters.
+describe('useEventPropertyKeys and useEventPropertyValues: the page\'s filters, and the live window', () => {
+  const F = 'v2:device|is|mobile'
+
+  it('key a dated read on the event, the dates and the filters, and send the filters', async () => {
+    renderHook(() => useEventPropertyKeys('site-1', 'signup', '2026-10-01', '2026-10-07', F))
+    expect(keyOf()).toEqual(['eventKeys', 'site-1', 'signup', '2026-10-01', '2026-10-07', F])
+    await fetcherOf()()
+    expect(api.getEventPropertyKeys).toHaveBeenCalledWith('site-1', 'signup', '2026-10-01', '2026-10-07', undefined, F)
+    expect(configOf().refreshInterval).toBeUndefined()
+
+    renderHook(() => useEventPropertyValues('site-1', 'signup', 'plan', '2026-10-01', '2026-10-07', 100, F))
+    expect(keyOf()).toEqual(['eventValues', 'site-1', 'signup', 'plan', '2026-10-01', '2026-10-07', 100, F])
+    await fetcherOf()()
+    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'signup', 'plan', '2026-10-01', '2026-10-07', 100, undefined, undefined, F)
+  })
+
+  it('another set of filters is another entry: an answer read under one is never served under the other', () => {
+    renderHook(() => useEventPropertyKeys('site-1', 'signup', '2026-10-01', '2026-10-07', F))
+    const mobile = JSON.stringify(keyOf())
+    renderHook(() => useEventPropertyKeys('site-1', 'signup', '2026-10-01', '2026-10-07'))
+    expect(JSON.stringify(keyOf())).not.toBe(mobile)
+  })
+
+  it('key a live read on the window, never on the dates, send the minutes with the filters, and refresh with the dashboard', async () => {
+    renderHook(() => useEventPropertyKeys('site-1', 'signup', '2026-10-01', '2026-10-01', F, 5))
+    expect(keyOf()).toEqual(['eventKeys', 'site-1', 'signup', LIVE_LIST_KEY, 5, F])
+    await fetcherOf()()
+    expect(api.getEventPropertyKeys).toHaveBeenCalledWith('site-1', 'signup', '2026-10-01', '2026-10-01', 5, F)
+    expect(configOf().refreshInterval).toBe(15_000)
+
+    renderHook(() => useEventPropertyValues('site-1', 'signup', 'plan', '2026-10-01', '2026-10-01', 100, F, 5))
+    expect(keyOf()).toContain(LIVE_LIST_KEY)
+    expect(keyOf()).not.toContain('2026-10-01')
+    await fetcherOf()()
+    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'signup', 'plan', '2026-10-01', '2026-10-01', 100, undefined, 5, F)
+    expect(configOf().refreshInterval).toBe(15_000)
+  })
+
+  it('read nothing without an event, or without a key', () => {
+    renderHook(() => useEventPropertyKeys('site-1', null, '2026-10-01', '2026-10-07', F))
+    expect(keyOf()).toBeNull()
+    renderHook(() => useEventPropertyValues('site-1', 'signup', null, '2026-10-01', '2026-10-07', 100, F))
+    expect(keyOf()).toBeNull()
+    renderHook(() => useEventPropertyValues('site-1', null, 'plan', '2026-10-01', '2026-10-07', 100, F))
+    expect(keyOf()).toBeNull()
+  })
+})
+
 describe('isLiveListKey: what the page revalidates on its live signal', () => {
   it('matches every live list of the site, and nothing dated or foreign', () => {
     const match = isLiveListKey('site-1')
     expect(match(['fullList', 'countries', 'site-1', LIVE_LIST_KEY, 5, 250, undefined])).toBe(true)
     expect(match(['outbound', 'site-1', LIVE_LIST_KEY, 5])).toBe(true)
     expect(match(['campaignsList', 'site-1', LIVE_LIST_KEY, 5, 10, undefined])).toBe(true)
+    // The Events block's pane follows the live window like the rows it belongs to.
+    expect(match(['eventKeys', 'site-1', 'signup', LIVE_LIST_KEY, 5, undefined])).toBe(true)
+    expect(match(['eventValues', 'site-1', 'signup', 'plan', LIVE_LIST_KEY, 5, 100, undefined])).toBe(true)
+    expect(match(['eventKeys', 'site-1', 'signup', '2026-10-01', '2026-10-07', undefined])).toBe(false)
     expect(match(['fullList', 'countries', 'site-1', '2026-10-01', '2026-10-01', 250, undefined])).toBe(false)
     expect(match(['fullList', 'countries', 'site-2', LIVE_LIST_KEY, 5, 250, undefined])).toBe(false)
     expect(match(['dashboard', 'site-1', '', '2026-10-01', '2026-10-01', 'minute', undefined, 5])).toBe(false)

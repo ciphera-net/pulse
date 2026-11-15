@@ -110,6 +110,17 @@ describe('terms registry', () => {
     expect(TERMS.pages.definition).toContain('Visitors over a range add up each day’s unique visitors.')
   })
 
+  /**
+   * The Events block's tip describes the block it sits on (15-11-2026): visitors beside events, a conversion, and
+   * an event pressed for its properties. The words are the picked ones; the old card's "expanding a row" is gone.
+   */
+  it('the Events tip is the picked worked example', () => {
+    expect(TERMS[DIMENSION_TERM.events ?? 'events'].definition).toBe(
+      'A visitor who sends the same event six times counts as 1 in visitors and 6 in events. Conversion is the share of all visitors in the range who sent it. Press an event to see the values of its properties.',
+    )
+    expect(TERMS.events.definition).not.toMatch(/expanding|firings|—|–/i)
+  })
+
   it('every term referenced by a template exists in the registry', () => {
     const missing: string[] = []
     for (const file of TEMPLATES) {

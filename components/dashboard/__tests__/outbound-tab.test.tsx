@@ -56,7 +56,8 @@ const card = () => document.querySelector('[data-tour-card="content"]') as HTMLE
 const tabs = () => screen.getAllByRole('radio').map((t) => t.textContent)
 const openOutbound = () => fireEvent.click(screen.getByRole('radio', { name: 'Outbound' }))
 const rows = () => [...card().querySelectorAll<HTMLElement>('.interactive-row')]
-const unit = () => screen.getByTestId('metric-unit').textContent
+/** The header's unit: a plain label, or in the frame's Pages tab its two column names, which sort the rows. */
+const unit = () => (card().querySelector('[data-testid="metric-unit"], [data-sort-head]') as HTMLElement).textContent
 
 beforeEach(() => {
   h.useFullDimensionList.mockReset().mockReturnValue(idle)

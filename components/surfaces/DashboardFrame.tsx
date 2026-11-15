@@ -158,7 +158,8 @@ export default function DashboardFrame({
           />
           {/* Events alone (the block switches its scroll depth tab off inside the frame). The scroll depth
               numbers still arrive on the payload and are simply not handed on. It is the fifth block, so it
-              closes the grid across both columns. */}
+              closes the grid across both columns. It takes the totals for its conversion: an event's visitors
+              over the range's visitors, the denominator every block's share has. */}
           <div className="lg:col-span-2" data-frame-events="">
             <ContentSignals
               goalCounts={dashboard?.goal_counts ?? []}
@@ -166,6 +167,7 @@ export default function DashboardFrame({
               siteId={siteId}
               dateRange={dateRange}
               liveMinutes={liveMinutes}
+              totals={totals}
               memberFeatures={caps.fullReads}
               filters={filtersParam || undefined}
             />

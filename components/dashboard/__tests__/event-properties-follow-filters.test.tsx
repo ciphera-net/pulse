@@ -1,6 +1,7 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
+import { SWRConfig } from 'swr'
 import GoalStats from '@/components/dashboard/GoalStats'
 import ContentSignals from '@/components/dashboard/ContentSignals'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
@@ -26,7 +27,9 @@ vi.mock('@/lib/api/stats', async (importOriginal) => ({
   getEventPropertyKeys: (...a: unknown[]) => h.getEventPropertyKeys(...a),
   getEventPropertyValues: (...a: unknown[]) => h.getEventPropertyValues(...a),
 }))
-vi.mock('@/lib/swr/dashboard', () => ({
+// The real property hooks (the new frame's pane reads through them), with the API functions above under them.
+vi.mock('@/lib/swr/dashboard', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/swr/dashboard')>()),
   usePagePreview: (...a: unknown[]) => h.usePagePreview(...a),
 }))
 
@@ -118,15 +121,33 @@ describe("an opened event's properties follow the page's filters", () => {
 })
 
 describe('the Events block hands its filters to its list', () => {
-  it('in the new frame', async () => {
-    render(
+  // The new frame's pane reads through SWR: every render gets a cache of its own, so no answer crosses tests.
+  const inFrame = (filters?: string) => (
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
       <DashboardFrameProvider>
-        <ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} filters={MOBILE} />
-      </DashboardFrameProvider>,
-    )
-    await press('signup')
-    expect(keysFilters()).toBe(MOBILE)
-    expect(valuesFilters()).toBe(MOBILE)
+        <ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} filters={filters} />
+      </DashboardFrameProvider>
+    </SWRConfig>
+  )
+
+  it('in the new frame: the picked event\'s two reads go out with the filters, and its values add up under them', async () => {
+    render(inFrame(MOBILE))
+    // The first event is shown at rest: its keys, then its first key's values (100 of them, paged in the pane).
+    await waitFor(() => expect(h.getEventPropertyValues).toHaveBeenCalled())
+    expect(h.getEventPropertyKeys.mock.calls[0].slice(1)).toEqual(['signup', dateRange.start, dateRange.end, undefined, MOBILE])
+    expect(h.getEventPropertyValues.mock.calls[0].slice(1)).toEqual(['signup', 'plan', dateRange.start, dateRange.end, 100, undefined, undefined, MOBILE])
+    expect(await screen.findByText('pro')).toBeInTheDocument()
+  })
+
+  it('in the new frame: another filter is another read, and what the old one answered is not shown under it', async () => {
+    const { rerender } = render(inFrame(MOBILE))
+    expect(await screen.findByText('pro')).toBeInTheDocument()
+    h.getEventPropertyValues.mockResolvedValue([{ value: 'free', count: 90 }])
+    rerender(inFrame(NORWAY))
+    expect(await screen.findByText('free')).toBeInTheDocument()
+    expect(screen.queryByText('pro')).not.toBeInTheDocument()
+    expect(keysFilters()).toBe(NORWAY)
+    expect(valuesFilters()).toBe(NORWAY)
   })
 
   it("in today's arrangement, on its Events tab", async () => {

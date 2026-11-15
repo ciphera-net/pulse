@@ -239,14 +239,6 @@
     -webkit-backdrop-filter: blur(24px) saturate(1.5);
     backdrop-filter: blur(24px) saturate(1.5);
   }
-  /* * A list that scrolls INSIDE a block of one size (the Events block's rows while an event is open). A thin
-   * bar in the ink's colour, and the page under it does not take over the scroll at either end. */
-  .frame-scroll {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
-    scrollbar-color: rgb(var(--white) / 0.18) transparent;
-  }
   /* * A pop-up or a menu, drawn outside the blocks (a portal), where there is a page behind it to blur.
    *
    * The second selector is the INFO pop-up (Facet's InfoTip, which components/dashboard/MetricInfoTip.tsx places

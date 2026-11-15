@@ -23,6 +23,8 @@ const h = vi.hoisted(() => ({
   useFullDimensionList: vi.fn(),
   useCampaignsList: vi.fn(),
   usePagePreview: vi.fn(),
+  useEventPropertyKeys: vi.fn(),
+  useEventPropertyValues: vi.fn(),
   getEventPropertyKeys: vi.fn(),
   getEventPropertyValues: vi.fn(),
   mapProps: null as Record<string, unknown> | null,
@@ -36,6 +38,8 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...a: unknown[]) => h.useFullDimensionList(...a),
   useCampaignsList: (...a: unknown[]) => h.useCampaignsList(...a),
   usePagePreview: (...a: unknown[]) => h.usePagePreview(...a),
+  useEventPropertyKeys: (...a: unknown[]) => h.useEventPropertyKeys(...a),
+  useEventPropertyValues: (...a: unknown[]) => h.useEventPropertyValues(...a),
 }))
 vi.mock('@/lib/api/stats', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/stats')>()),
@@ -87,12 +91,14 @@ beforeEach(() => {
   h.useFullDimensionList.mockReset().mockReturnValue(idle)
   h.useCampaignsList.mockReset().mockReturnValue(idle)
   h.usePagePreview.mockReset().mockReturnValue({ data: null })
+  h.useEventPropertyKeys.mockReset().mockReturnValue({ ...idle, data: [], available: true })
+  h.useEventPropertyValues.mockReset().mockReturnValue({ ...idle, available: true })
   h.getEventPropertyKeys.mockReset().mockResolvedValue([])
   h.getEventPropertyValues.mockReset().mockResolvedValue([])
   h.mapProps = null
 })
 
-describe.each(BLOCKS)('%s: one size and glass in the frame, today\'s card outside it', (_name, block) => {
+describe.each(BLOCKS)('%s: one size and glass in the frame, today\'s card outside it', (name, block) => {
   it('is 442 px tall and glass in the frame', () => {
     inFrame(block())
     const root = classes(card())
@@ -108,10 +114,17 @@ describe.each(BLOCKS)('%s: one size and glass in the frame, today\'s card outsid
 
   it('gives its body what the header and the footer leave, and never a height of its own, in the frame', () => {
     inFrame(block())
-    const body = card().children[1]
-    expect(classes(body).has('flex-1')).toBe(true)
-    expect(classes(body).has('min-h-0')).toBe(true)
-    expect(body.className).not.toContain('min-h-[270px]')
+    // A block's body is its second child. The Events block holds two panes in one grid instead: the grid takes the
+    // block's height, and each pane's body (its second child) takes what that pane's header and footer leave.
+    const bodies = name === 'Events'
+      ? [card().firstElementChild as Element, ...[...card().querySelectorAll('[data-events-pane]')].map((pane) => pane.children[1])]
+      : [card().children[1]]
+    expect(bodies.length).toBe(name === 'Events' ? 3 : 1)
+    for (const body of bodies) {
+      expect(classes(body).has('flex-1')).toBe(true)
+      expect(classes(body).has('min-h-0')).toBe(true)
+      expect(body.className).not.toContain('min-h-[270px]')
+    }
   })
 
   it('keeps the 270 px floor of its body outside it', () => {
@@ -174,23 +187,23 @@ describe('the footer: a block\'s note and its pager share ONE row in the frame',
   })
 })
 
-describe('Events: the last block, alone', () => {
-  it('has no tabs in the frame: its name stands where they were, and it says its unit', () => {
+describe('Events: the last block, across both columns', () => {
+  // The block's own rulings are pinned in events-block.test.tsx; here, what it shares with the other blocks.
+  const listPane = () => card().querySelector('[data-events-pane="list"]') as HTMLElement
+
+  it('in the frame it is the events beside the picked one\'s properties: never scroll depth, whatever arrives', () => {
     inFrame(<ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} scrollDepth={{ total_sessions: 12, buckets: [] } as never} />)
-    expect(screen.queryAllByRole('radio')).toHaveLength(0)
-    const header = card().children[0]
-    expect(header.firstElementChild).toBe(screen.getByRole('heading', { name: 'Events' }))
-    expect(within(header as HTMLElement).getByTestId('metric-unit').textContent).toBe('events')
-    // The events, not scroll depth, whatever arrives.
-    expect(screen.getAllByTestId('goal-row').length).toBe(7)
+    expect(within(listPane()).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Your events', 'Automatic'])
+    expect(screen.queryByRole('radio', { name: 'Scroll depth' })).toBeNull()
+    expect(listPane().querySelectorAll('[data-event]').length).toBe(7)
+    expect(card().querySelector('[data-events-pane="properties"]')).toBeTruthy()
     // The tour still finds the block by the one attribute.
     expect(card().getAttribute('data-tour-card')).toBe('content-signals')
   })
 
   it('does not read the page capture, which is the scroll tab\'s alone', () => {
     inFrame(<ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} />)
-    expect(h.usePagePreview).toHaveBeenCalled()
-    for (const call of h.usePagePreview.mock.calls) expect(call[0]).toBe('')
+    expect(h.usePagePreview).not.toHaveBeenCalled()
   })
 
   it('outside the frame it is today\'s card: two tabs, scroll depth first, the capture read for the site', () => {
@@ -201,11 +214,12 @@ describe('Events: the last block, alone', () => {
     expect(h.usePagePreview.mock.calls[0][0]).toBe('site-1')
   })
 
-  it('says imported days are included to the left of its unit', () => {
+  it('says imported days are included on its footer row, beside the pager, in the frame', () => {
     inFrame(<ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} goalsImported={{ included: true } as never} />)
     const word = screen.getByTestId('events-imported-word')
-    const unit = screen.getByTestId('metric-unit')
-    expect(word.compareDocumentPosition(unit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const footer = within(listPane()).getByTestId('card-footer')
+    expect([...footer.children]).toEqual([word, within(footer).getByRole('navigation', { name: 'Pages of events' })])
+    for (const c of ['truncate', 'flex-1', 'min-w-0']) expect(classes(word).has(c), c).toBe(true)
   })
 
   const expanded = () => screen.getAllByTestId('goal-row').filter((r) => r.getAttribute('aria-expanded') === 'true').map((r) => r.textContent?.replace(/\d+$/, '').trim())
@@ -214,34 +228,14 @@ describe('Events: the last block, alone', () => {
     await act(async () => { fireEvent.click(row) })
   }
 
-  it('holds ONE event open at a time in the frame: opening one closes the other', async () => {
-    inFrame(<GoalStats goalCounts={events} siteId="site-1" dateRange={dateRange} bare />)
-    await press('alpha')
-    expect(expanded()).toEqual(['alpha'])
-    await press('charlie')
-    expect(expanded()).toEqual(['charlie'])
-    // Pressing the open one closes it, as before.
-    await press('charlie')
-    expect(expanded()).toEqual([])
-  })
-
-  it('keeps every opened event open outside the frame, as today (the control)', async () => {
+  it('today\'s card keeps every opened event open, as before', async () => {
     render(<GoalStats goalCounts={events} siteId="site-1" dateRange={dateRange} bare />)
     await press('alpha')
     await press('charlie')
     expect(expanded()).toEqual(['alpha', 'charlie'])
   })
 
-  it('lets the rows scroll inside the block in the frame, so an opened event cannot push it taller', () => {
-    inFrame(<GoalStats goalCounts={events} siteId="site-1" dateRange={dateRange} bare />)
-    const list = screen.getAllByTestId('goal-row')[0].parentElement!.parentElement as HTMLElement
-    for (const c of ['frame-scroll', 'min-h-0', 'flex-1', '-mx-2', 'px-2']) expect(classes(list).has(c), c).toBe(true)
-    expect(list.className).not.toContain('min-h-[270px]')
-    // The pager on the footer row, as in every block.
-    expect(within(screen.getByTestId('card-footer')).getByRole('navigation', { name: 'Pages of events' })).toBeTruthy()
-  })
-
-  it('leaves the list as it is outside the frame', () => {
+  it('today\'s card leaves its list as it is', () => {
     render(<GoalStats goalCounts={events} siteId="site-1" dateRange={dateRange} bare />)
     const list = screen.getAllByTestId('goal-row')[0].parentElement!.parentElement as HTMLElement
     expect(list.className).toBe('space-y-2 flex-1 min-h-[270px]')

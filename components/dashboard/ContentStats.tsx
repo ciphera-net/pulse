@@ -16,6 +16,14 @@ import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import OutboundLinksTab from '@/components/dashboard/OutboundLinksTab'
+import { SortHead, sortRows, type Sort, type SortColumn } from '@/components/dashboard/SortHead'
+
+/** The Pages tab's two columns, which sort its rows in the new frame (R41): the widths of the numbers under them. */
+type PageSortKey = 'visitors' | 'views'
+const PAGE_COLUMNS: SortColumn<PageSortKey>[] = [
+  { key: 'visitors', label: 'visitors', className: 'w-12' },
+  { key: 'views', label: 'views', className: 'w-12' },
+]
 
 interface ContentStatsProps {
   topPages: TopPage[]
@@ -77,6 +85,8 @@ const TAB_TO_KIND: Record<PageTab, FullListKind> = {
 export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards, outbound }: ContentStatsProps) {
   const frame = useDashboardFrame()
   const [chosenTab, setActiveTab] = useState<Tab>('top_pages')
+  // The Pages tab's order in the frame. Visitors, high to low, is the order the server ranks by.
+  const [sort, setSort] = useState<Sort<PageSortKey>>({ key: 'visitors', dir: 'desc' })
   // Outbound is a tab only in the frame, and only where its read is served.
   const hasOutbound = frame && outbound !== undefined
   const tabs: Tab[] = hasOutbound ? ['top_pages', 'entry_pages', 'exit_pages', 'outbound'] : ['top_pages', 'entry_pages', 'exit_pages']
@@ -133,11 +143,15 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   // Gate on wantsFullList: stale hook-state from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
   const fullClean = wantsFullList && fullData ? filterGenericPaths(fullData) : null
-  const allData = fullClean && fullClean.length >= data.length ? fullClean : data
+  const listed = fullClean && fullClean.length >= data.length ? fullClean : data
+  // In the frame the Pages tab's two column names sort its rows, high to low and low to high (R41); ties keep the
+  // server's order, and the bars keep following visitors. Today's arrangement keeps the server's order.
+  const sortable = frame && twinColumns
+  const allData = sortable ? sortRows(listed, sort, (row, key) => (key === 'visitors' ? row.visitors ?? 0 : row.pageviews ?? 0)) : listed
   const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,
-  // and a shrinking list clamps at read time.
-  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
+  // and a shrinking list clamps at read time. In the frame a new order does too.
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}${sortable ? `|${sort.key}:${sort.dir}` : ''}`, pageCount)
 
   const displayedData = hasData ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -164,7 +178,14 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               Pages view stays reachable from the sidebar. The unit label keeps
               its own right-aligned slot unchanged. */}
           <div className="flex min-w-0 shrink items-center gap-3">
-            {onOutbound ? <MetricUnitLabel unit="clicks" /> : <MetricUnitLabel views={twinColumns} />}
+            {onOutbound ? (
+              <MetricUnitLabel unit="clicks" />
+            ) : sortable ? (
+              // The same two columns and gap as MetricUnitLabel's, each name a control.
+              <SortHead columns={PAGE_COLUMNS} sort={sort} onSort={setSort} className="gap-2" />
+            ) : (
+              <MetricUnitLabel views={twinColumns} />
+            )}
           </div>
         </div>
 
