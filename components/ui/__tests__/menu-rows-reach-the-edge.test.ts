@@ -88,14 +88,16 @@ for (const file of [...sources('components'), ...sources('app')]) {
 
 describe("a menu's rows reach its edges", () => {
   it('finds every menu list the app has', () => {
-    // Twelve lists in eleven files (the site picker has two: its sites, and the row under them). A list that
-    // loses its mark leaves the rule; a new menu's list takes it.
+    // Thirteen lists in twelve files (the site picker has two: its sites, and the row under them). A list that
+    // loses its mark leaves the rule; a new menu's list takes it. The new dashboard's "3 filters" list joined
+    // on 15-11-2026 (R46).
     expect(marked.map((m) => m.file).sort()).toEqual([
       'components/dashboard/DashboardShell.tsx',
       'components/dashboard/DashboardShell.tsx',
       'components/dashboard/TabMenu.tsx',
       'components/dashboard/filter/DimensionStage.tsx',
       'components/dashboard/filter/OperatorChip.tsx',
+      'components/dashboard/filter/search/FiltersBox.tsx',
       'components/funnels/FunnelModal.tsx',
       'components/onboarding/OnboardingChip.tsx',
       'components/search/NewQueriesChip.tsx',

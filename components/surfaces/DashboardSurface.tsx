@@ -32,6 +32,10 @@ import { PollLiveSync, SocketLiveSync } from '@/components/dashboard/LiveSync'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
+// The new dashboard's filter (owner rulings R36, R46, R48 of 15-11-2026): one field, the filters on in one box.
+import SearchFilter from '@/components/dashboard/filter/search/SearchFilter'
+import FiltersBox from '@/components/dashboard/filter/search/FiltersBox'
+import { pageValuesFrom } from '@/components/dashboard/filter/search/values'
 const CommandDeck = dynamic(() => import('@/components/dashboard/CommandDeck'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
 import Sources from '@/components/dashboard/Sources'
@@ -375,6 +379,8 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // Single-surface filter popover (create anchored to the Filter button,
   // edit anchored to the clicked pill).
   const filterBuilder = useFilterBuilder(handleFetchSuggestions)
+  // The kinds with no value read of their own, from the page's own answer (the Search filter offers them).
+  const pageValues = useMemo(() => pageValuesFrom(dashboard), [dashboard])
 
   // Previous period date range for comparison — the shared, tested helper
   // (periodUrl.ts), not ad-hoc arithmetic. It applies the exact same two
@@ -567,7 +573,19 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           In a wrapped mobile row a flex-1 spacer would claim a whole line and
           strand the controls, so it only exists at sm+. */}
       <div className="hidden flex-1 sm:block" />
-      {caps.filters && (
+      {caps.filters && (frame ? (
+        // The new dashboard: the filters on in one box, then the Search filter's button (its panel is a portal).
+        <>
+          <FiltersBox filters={filters} onApply={handleFilterApply} onRemove={handleRemoveFilter} pageValues={pageValues} />
+          {importLeftOutByFilter(dashboard?.imported) && (
+            <span className="inline-flex items-center gap-1 text-xs text-neutral-500" data-testid="imported-filtered-note">
+              Pulse-measured days only
+              <TermInfoTip term="imported_history" />
+            </span>
+          )}
+          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} />
+        </>
+      ) : (
         <>
           <FilterPills
             filters={filters}
@@ -590,7 +608,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
             onClick={anchor => filterBuilder.openCreate(anchor)}
           />
         </>
-      )}
+      ))}
       <DateRangePicker {...picker} />
     </>
   )
@@ -653,7 +671,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
         {liveSync}
         {toolbarRow()}
         {failureCard(dashboardError, () => refetchDashboard())}
-        {caps.filters && (
+        {caps.filters && !frame && (
           <FilterBuilder
             builder={filterBuilder}
             filters={filters}
@@ -906,7 +924,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
       </div></>)}</>
       })()}
 
-      {caps.filters && (
+      {caps.filters && !frame && (
         <FilterBuilder
           builder={filterBuilder}
           filters={filters}

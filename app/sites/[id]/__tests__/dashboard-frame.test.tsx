@@ -247,7 +247,9 @@ describe('the flag on: the new frame', () => {
     await mount()
     const toolbar = screen.getByTestId('frame-toolbar')
     expect(toolbar.className).toContain('sticky')
-    expect(toolbar.contains(screen.getByTestId('filter-button'))).toBe(true)
+    // The new dashboard's filter (R36): the Search filter's button, in place of today's.
+    expect(toolbar.contains(screen.getByTestId('search-filter-button'))).toBe(true)
+    expect(screen.queryByTestId('filter-button')).toBeNull()
     expect(toolbar.contains(screen.getByRole('button', { name: /^Date range:/ }))).toBe(true)
     // The band is its own element behind the controls, invisible at rest.
     const band = screen.getByTestId('frame-toolbar-band')
@@ -322,7 +324,9 @@ describe('the flag on: the new frame', () => {
     await mount()
     expect(screen.getByTestId('tour')).toBeTruthy()
     expect(screen.getByTestId('install-banner')).toBeTruthy()
-    expect(screen.getByTestId('filter-builder')).toBeTruthy()
+    // The filter is the member's too: the Search filter, whose panel is its own; today's popover is not drawn.
+    expect(screen.getByTestId('search-filter-button')).toBeTruthy()
+    expect(screen.queryByTestId('filter-builder')).toBeNull()
   })
 
   it('draws no heat map in realtime, as today', async () => {
