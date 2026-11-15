@@ -2,48 +2,15 @@
 
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import {
-  MagnifyingGlass,
-  FileText,
-  ArrowSquareOut,
-  Broadcast,
-  Tag,
-  Compass,
-  Cpu,
-  DeviceMobile,
-  FrameCorners,
-  GlobeHemisphereWest,
-  SignIn,
-  MapPin,
-  Buildings,
-  CursorClick,
-  type Icon,
-} from '@phosphor-icons/react'
+import { MagnifyingGlass } from '@phosphor-icons/react'
 import { DIMENSION_CATEGORIES, DIMENSION_LABELS, SCOPED_DIMENSIONS } from '@/lib/filters'
+import { DIMENSION_ICONS } from './dimensionIcons'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { moveHighlight } from './useFilterBuilder'
 
 // * Mirrors the dashboard's tool iconography so the popover reads as the same
 // * product surface (flags/brand icons appear once a dimension is picked).
-const DIMENSION_ICONS: Record<string, Icon> = {
-  page: FileText,
-  referrer: ArrowSquareOut,
-  channel: Broadcast,
-  utm_source: Tag,
-  utm_medium: Tag,
-  utm_campaign: Tag,
-  utm_term: Tag,
-  utm_content: Tag,
-  browser: Compass,
-  os: Cpu,
-  device: DeviceMobile,
-  screen_resolution: FrameCorners,
-  country: GlobeHemisphereWest,
-  region: MapPin,
-  city: Buildings,
-  event_name: CursorClick,
-  entry_path: SignIn,
-}
+// The map is shared with the Search filter (./dimensionIcons.ts).
 
 // ---------------------------------------------------------------------------
 // DimensionStage — stage 1 of the filter popover: type-to-search over the

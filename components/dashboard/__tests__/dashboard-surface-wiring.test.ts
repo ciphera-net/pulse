@@ -118,7 +118,14 @@ describe('the dashboard surface: what a share link is refused is not asked for',
   })
 
   it('offers the filter builder, its pills and its button where filtering is served', () => {
-    expect(page.match(/caps\.filters && \(/g)?.length).toBe(3)
+    // The toolbar's filter, in both arrangements: the new dashboard's Search filter and its box, or today's pills
+    // and button (R36, 15-11-2026). Today's popover, twice, in today's arrangement alone.
+    expect(page.match(/caps\.filters && \(frame \? \(/g)?.length).toBe(1)
+    expect(page.match(/caps\.filters && !frame && \(/g)?.length).toBe(2)
     expect(page.match(/<FilterBuilder/g)?.length).toBe(2)
+    expect(page.match(/<SearchFilter /g)?.length).toBe(1)
+    expect(page.match(/<FiltersBox /g)?.length).toBe(1)
+    // Nothing of the filter is drawn outside those three guards.
+    expect(page.match(/caps\.filters &&/g)?.length).toBe(3)
   })
 })
