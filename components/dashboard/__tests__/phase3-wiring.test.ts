@@ -21,8 +21,9 @@ describe('dashboard page wiring (Phase 3)', () => {
     // is a denominator nobody divides by.
     expect(page.match(/totals=\{totals\}/g)?.length).toBe(4)
     // ContentStats, Sources, Audience, TechSpecs, Outbound, PeakHours all
-    // thread the page's filters (Outbound to LABEL itself whole-site).
-    expect(page.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
+    // thread the page's filters (Outbound to LABEL itself whole-site), and since
+    // 15-11-2026 the Events block does, for an opened event's properties.
+    expect(page.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(7)
   })
 
   it('names each section, and says nothing else beside the name', () => {

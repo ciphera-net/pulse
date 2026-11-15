@@ -13,9 +13,10 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
   it('passes the true totals and the page\'s filters to every block that takes them', () => {
     // Four blocks take totals (Sources, Pages, Locations, Technology), as on today's page.
     expect(frame.match(/totals=\{totals\}/g)?.length).toBe(4)
-    // Sources, Pages, Locations, Technology and the heat map thread the filters. (Outbound's links ride in the
-    // Pages block and get its filters from there: they say they are whole-site clicks under one.)
-    expect(frame.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(5)
+    // Sources, Pages, Locations, Technology, Events and the heat map thread the filters. (Outbound's links ride in
+    // the Pages block and get its filters from there: they say they are whole-site clicks under one. Events takes
+    // them since 15-11-2026, for an opened event's properties.)
+    expect(frame.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
   })
 
   it('turns the full lists and drill-downs off from the one flag, and keeps a share link\'s campaigns on its payload', () => {

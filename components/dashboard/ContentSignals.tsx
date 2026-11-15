@@ -36,6 +36,8 @@ interface ContentSignalsProps {
   goalsImported?: ImportedProvenance | null
   /** Realtime mode's rolling window in minutes (PULSE-192), for the Events tab's property breakdown. */
   liveMinutes?: number
+  /** The page's filters, for the Events tab's property breakdown (an opened event follows them, as its row does). */
+  filters?: string
 }
 
 /** W-M12-5: the Events card's header word, the rail's own vocabulary (M11). */
@@ -43,7 +45,7 @@ export const EVENTS_IMPORTED_WORD = 'incl. imported days'
 
 type Tab = 'scroll' | 'events'
 
-export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported, liveMinutes }: ContentSignalsProps) {
+export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported, liveMinutes, filters }: ContentSignalsProps) {
   // In the new frame this block is EVENTS alone (owner ruling 14-11-2026: scroll depth leaves the dashboard and
   // comes back per page on the Pages page). Its tabs go, its name stands where they were, and it says its unit as
   // every other block does. The root below stays ONE element for both, because the tour finds the block by it.
@@ -111,7 +113,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         {activeTab === 'scroll' ? (
           <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare live={liveMinutes != null} />
         ) : (
-          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} liveMinutes={liveMinutes} />
+          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} liveMinutes={liveMinutes} filters={filters} />
         )}
       </div>
     </div>

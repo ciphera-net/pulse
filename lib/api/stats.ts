@@ -549,16 +549,21 @@ export interface EventPropertyValue {
   count: number
 }
 
-export function getEventPropertyKeys(site: SiteRef, eventName: string, startDate?: string, endDate?: string, minutes?: number): Promise<EventPropertyKey[]> {
-  return apiRequest<{ keys: EventPropertyKey[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, minutes })}`))
+// `filters` are the page's own filters (the `v2:` string the dashboard read was given). The server applies them
+// to the event rows, exactly as it does for the events list, so an event's properties add up to the count the
+// list shows for it. Until 15-11-2026 neither read took them: under a filter the list was filtered and the
+// properties under an opened event were the whole site's.
+export function getEventPropertyKeys(site: SiteRef, eventName: string, startDate?: string, endDate?: string, minutes?: number, filters?: string): Promise<EventPropertyKey[]> {
+  return apiRequest<{ keys: EventPropertyKey[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, minutes, filters })}`))
     .then(r => r?.keys || [])
 }
 
 // `period` wins over the dates when given (buildQuery): the server resolves a
 // token like `1h` or `today` in the SITE's timezone, which a date-only fetch
 // cannot express — the same reason the campaigns fetch threads it.
-export function getEventPropertyValues(site: SiteRef, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string, minutes?: number): Promise<EventPropertyValue[]> {
-  return apiRequest<{ values: EventPropertyValue[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period, minutes })}`))
+// `filters`: as getEventPropertyKeys takes them. The Outbound lists do not send them yet: their footnote says so.
+export function getEventPropertyValues(site: SiteRef, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string, minutes?: number, filters?: string): Promise<EventPropertyValue[]> {
+  return apiRequest<{ values: EventPropertyValue[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period, minutes, filters })}`))
     .then(r => r?.values || [])
 }
 
