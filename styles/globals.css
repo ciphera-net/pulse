@@ -247,11 +247,84 @@
     scrollbar-width: thin;
     scrollbar-color: rgb(var(--white) / 0.18) transparent;
   }
-  /* * A pop-up or a menu, drawn outside the blocks (a portal), where there is a page behind it to blur. */
-  .glass-panel {
+  /* * A pop-up or a menu, drawn outside the blocks (a portal), where there is a page behind it to blur.
+   *
+   * The second selector is the INFO pop-up (Facet's InfoTip, which components/dashboard/MetricInfoTip.tsx places
+   * for the whole app, 15-11-2026). It is on every page, most of them outside the dashboard's frame, so it is
+   * switched by the new look's class on <html> (lib/skeleton/look.ts) and not from React. One declaration for
+   * both, so an info pop-up and a menu cannot drift apart. The class beats the solid fill and the border colour
+   * Facet gives its panel (one utility class each). */
+  .glass-panel,
+  html.new-dashboard .info-tip-panel,
+  html.new-dashboard .tooltip-panel {
     background-color: rgb(var(--popover) / var(--glass-panel));
     -webkit-backdrop-filter: blur(40px) saturate(1.5);
     backdrop-filter: blur(40px) saturate(1.5);
+  }
+  /* * The small tooltip (Facet's Tooltip: an exact number under a rounded one, a control's name, a page's name
+   * beside the folded sidebar) is the third selector above, and takes the same hairline and shadow as the info
+   * pop-up below. Its four call sites mark it (lib/ui/popupSurface.ts), and a test finds a fifth that does not. */
+  html.new-dashboard .tooltip-panel {
+    border-color: rgb(var(--white) / 0.08);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+  /* * Its hairline: the ink at 8%, which a menu gets from lib/dashboard/frame.tsx (`panelSurface`). And a menu's
+   * shadow (Tailwind's shadow-lg, to the value): Facet's own is drawn for a solid panel on a dark page, half
+   * black over 25 px, and it dims the page around a panel that is meant to let the page through. */
+  html.new-dashboard .info-tip-panel {
+    border-color: rgb(var(--white) / 0.08);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    /* A pop-up pinned from the keyboard takes the focus on its own box (so a screen reader starts reading it),
+     * and the browser then rings the whole box in its own blue. The box is not a control: the open pop-up is the
+     * change to see, and the link inside it keeps its own ring. */
+    outline: none;
+    /* The parts below bring their own padding (Header). */
+    padding: 0;
+  }
+  /* * The info pop-up's shape in the new look: HEADER (ruled 15-11-2026, of four shown). The name in a strip of
+   * its own, the sentence under it, the link in a strip at the foot, each strip ruled off with the panel's own
+   * hairline. Facet's InfoTip draws its parts as the panel's direct children: the name (its only bold line), the
+   * sentence (a bare div), an example where there is one (the bordered inset), the link. These rules lay them
+   * out and change nothing inside them. components/dashboard/__tests__/info-tip-glass.test.tsx renders the real
+   * component and fails if a part stops matching, which is how a Facet update that moves one would show. */
+  html.new-dashboard .info-tip-panel > .font-semibold {
+    margin: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgb(var(--white) / 0.08);
+  }
+  html.new-dashboard .info-tip-panel > div:not([class]) {
+    padding: 10px 12px;
+  }
+  html.new-dashboard .info-tip-panel > div.border {
+    margin: 0 12px 10px;
+  }
+  html.new-dashboard .info-tip-panel > a {
+    margin: 0;
+    padding: 8px 12px;
+    justify-content: flex-end;
+    border-top: 1px solid rgb(var(--white) / 0.08);
+  }
+  /* * The info ICON in the new look: a FINE CIRCLE (ruled 15-11-2026, of eleven shown). Facet draws a bold circled
+   * i of 14 px. Here the same button draws a circle of 16 px in a 1 px line with a fine i: its own icon is
+   * hidden and ::before carries the drawing as a mask over the button's colour, so rest, hover, focus and open
+   * stay Facet's (gray, orange under the pointer). The drawing, 16 units square:
+   *   <circle cx='8' cy='8' r='6.5' fill='none' stroke='black' stroke-width='1'/>   the circle
+   *   <circle cx='8' cy='5.1' r='0.85'/>                                            the dot of the i
+   *   <rect x='7.4' y='7' width='1.2' height='4.3'/>                                its stem
+   * The class is the app's own (components/dashboard/MetricInfoTip.tsx puts it on every info icon). */
+  html.new-dashboard .info-tip-glyph {
+    --info-glyph: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%3E%3Ccircle%20cx%3D'8'%20cy%3D'8'%20r%3D'6.5'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'1'%2F%3E%3Ccircle%20cx%3D'8'%20cy%3D'5.1'%20r%3D'0.85'%2F%3E%3Crect%20x%3D'7.4'%20y%3D'7'%20width%3D'1.2'%20height%3D'4.3'%2F%3E%3C%2Fsvg%3E");
+  }
+  html.new-dashboard .info-tip-glyph > svg {
+    display: none;
+  }
+  html.new-dashboard .info-tip-glyph::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    -webkit-mask: var(--info-glyph) center / contain no-repeat;
+    mask: var(--info-glyph) center / contain no-repeat;
   }
 
   /* * The skeleton's dither (the new look, 15-11-2026). lib/skeleton/dither.ts holds what it is made of, and

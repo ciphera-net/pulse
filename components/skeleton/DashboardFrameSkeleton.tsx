@@ -1,4 +1,4 @@
-import { FRAME_CARD, FRAME_SURFACE } from '@/lib/dashboard/frame'
+import { FRAME_CARD, FRAME_SURFACE } from '@/lib/dashboard/frameClasses'
 import { HeatMapSkeletonBody } from './HeatMapSkeletonBody'
 import { SkeletonLine } from './primitives'
 
@@ -6,7 +6,8 @@ import { SkeletonLine } from './primitives'
 // The dashboard's skeleton in the NEW frame's shape (components/surfaces/DashboardFrame.tsx).
 //
 // Every box stands where the real thing lands, so nothing moves when the data arrives: the toolbar's three
-// controls, the chart with its rail of five tiles, six blocks of one size with seven row slots each, the heat map.
+// controls, the chart with its rail of five tiles, five blocks of one height with seven row slots each (the last
+// one, Events, across both columns), the heat map.
 // Measured on the built page from 390 to 1920 px wide: the page is as tall on this skeleton as on its data. The
 // one part whose height follows its width is the heat map (square cells), and its body is built on the grid's own
 // arithmetic (HeatMapSkeletonBody). Today's skeleton is 640 px shorter than the new page and still draws a
@@ -16,14 +17,17 @@ import { SkeletonLine } from './primitives'
 // lib/skeleton/look.ts says why). No state, nothing read: the server and the browser draw the same thing.
 // ---------------------------------------------------------------------------
 
-/** How wide each block's tab row is, and how far its seven rows reach, so six blocks do not look like one stamp. */
-const BLOCKS: { tabs: number; shares: number[] }[] = [
-  { tabs: 244, shares: [76, 62, 51, 43, 34, 27, 19] }, // Sources
-  { tabs: 176, shares: [72, 66, 48, 41, 30, 22, 15] }, // Pages
+/**
+ * How wide each block's tab row is (measured on the built page), and how far its seven rows reach, so five blocks
+ * do not look like one stamp. A member's Pages block has four tabs: Outbound's links are its fourth (15-11-2026),
+ * and Outbound is no block of its own. Events closes the grid across both columns, as on the page.
+ */
+const BLOCKS: { tabs: number; shares: number[]; wide?: boolean }[] = [
+  { tabs: 246, shares: [76, 62, 51, 43, 34, 27, 19] }, // Sources: Referrers, Channels, the campaign view and its caret
+  { tabs: 258, shares: [72, 66, 48, 41, 30, 22, 15] }, // Pages: Pages, Entries, Exits, Outbound
   { tabs: 380, shares: [80, 55, 47, 36, 31, 20, 12] }, // Locations
-  { tabs: 262, shares: [68, 60, 52, 39, 28, 24, 17] }, // Technology
-  { tabs: 300, shares: [74, 58, 44, 40, 26, 18, 10] }, // Outbound
-  { tabs: 64, shares: [70, 64, 50, 37, 33, 21, 14] }, // Events: a name, no tabs
+  { tabs: 260, shares: [68, 60, 52, 39, 28, 24, 17] }, // Technology
+  { tabs: 44, shares: [70, 64, 50, 37, 33, 21, 14], wide: true }, // Events: a name, no tabs, both columns
 ]
 
 /** One tile of the chart's rail: the metric's name, its figure, its note. */
@@ -38,9 +42,9 @@ function Tile() {
 }
 
 /** A block of the frame: its tab row (38 px with what is under it), seven row slots, its foot. 442 px, as the real one. */
-function Block({ tabs, shares }: { tabs: number; shares: number[] }) {
+function Block({ tabs, shares, wide = false }: { tabs: number; shares: number[]; wide?: boolean }) {
   return (
-    <div className={FRAME_CARD}>
+    <div className={wide ? `${FRAME_CARD} lg:col-span-2` : FRAME_CARD} data-skeleton-block={wide ? 'wide' : ''}>
       <div className="mb-4 flex h-[38px] shrink-0 items-center justify-between gap-2">
         <SkeletonLine className="h-[34px] max-w-[70%]" style={{ width: tabs }} />
         <SkeletonLine className="h-3 w-9 shrink-0" />
@@ -89,7 +93,7 @@ export function DashboardFrameSkeleton({ className = '' }: { className?: string 
           </div>
         </div>
 
-        {/* The six blocks, one size, 12 px apart. */}
+        {/* The five blocks, one height, 12 px apart; the last across both columns. */}
         <div className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0">
           {BLOCKS.map((block, i) => (
             <Block key={i} {...block} />

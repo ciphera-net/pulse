@@ -13,42 +13,51 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
   it('passes the true totals and the page\'s filters to every block that takes them', () => {
     // Four blocks take totals (Sources, Pages, Locations, Technology), as on today's page.
     expect(frame.match(/totals=\{totals\}/g)?.length).toBe(4)
-    // Sources, Pages, Locations, Technology, Outbound and the heat map thread the filters.
-    expect(frame.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
+    // Sources, Pages, Locations, Technology and the heat map thread the filters. (Outbound's links ride in the
+    // Pages block and get its filters from there: they say they are whole-site clicks under one.)
+    expect(frame.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(5)
   })
 
   it('turns the full lists and drill-downs off from the one flag, and keeps a share link\'s campaigns on its payload', () => {
     expect(frame.match(/memberFeatures=\{caps\.fullReads\}/g)?.length).toBe(5)
     expect(frame).toContain('campaigns={caps.fullReads ? undefined : (dashboard?.campaigns ?? [])}')
-    // No Outbound on a share link, as today.
-    expect(frame).toContain('{caps.fullReads && (\n            <Outbound')
+    // No Outbound on a share link, as today: its links are the Pages block's fourth tab, and the block is handed
+    // them only where their read is served.
+    expect(frame).toContain('outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff } : undefined}')
+    // And the Outbound block itself is not in the frame any more.
+    expect(frame).not.toContain('<Outbound')
+    expect(frame).not.toContain("from '@/components/dashboard/Outbound'")
   })
 
   it('hands every block the live window, so a block never describes the calendar day in realtime', () => {
-    // Sources, Pages, Locations, Technology, Outbound, Events.
-    expect(frame.match(/liveMinutes=\{liveMinutes\}/g)?.length).toBe(6)
+    // Sources, Pages (and its Outbound tab through it), Locations, Technology, Events.
+    expect(frame.match(/liveMinutes=\{liveMinutes\}/g)?.length).toBe(5)
   })
 
-  it('orders the blocks Sources, Pages / Locations, Technology / Outbound, Events, then the heat map', () => {
+  it('orders the blocks Sources, Pages / Locations, Technology / Events, then the heat map', () => {
     const at = (tag: string) => frame.indexOf(`<${tag}\n`)
-    const order = ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'Outbound', 'ContentSignals'].map(at)
+    const order = ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals'].map(at)
     expect(order.every((i) => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     expect(frame.indexOf('<PeakHours ')).toBeGreaterThan(order[order.length - 1])
   })
 
-  it('puts the six blocks in ONE grid and draws no section title', () => {
+  it('puts the five blocks in ONE grid, the fifth across both columns, and draws no section title', () => {
     expect(frame.match(/grid gap-3 lg:grid-cols-2/g)?.length).toBe(1)
     expect(frame).not.toContain('SectionHeader')
+    // Events is alone in the last row: a half-wide block beside an empty cell would read as a missing one.
+    expect(frame).toContain('<div className="lg:col-span-2" data-frame-events="">\n            <ContentSignals\n')
+    expect(frame.match(/lg:col-span-2/g)?.length).toBe(1)
   })
 
   it('hands the Events block no scroll depth: it left the dashboard', () => {
     expect(frame).not.toContain('scrollDepth=')
   })
 
-  it('tells Outbound when the site has its outbound links switched off, as today\'s page does', () => {
-    // Without it the block of a site that switched the option off reads "Try a longer range." for ever.
-    expect(frame.match(/trackingOff=\{outboundOff\}/g)?.length).toBe(1)
+  it('tells the Outbound tab when the site has its outbound links switched off, as today\'s page tells its card', () => {
+    // Without it the tab of a site that switched the option off reads "Try a longer range." for ever.
+    expect(frame.match(/trackingOff: outboundOff/g)?.length).toBe(1)
+    expect(frame).not.toContain('trackingOff={outboundOff}')
     const page = read('components/surfaces/DashboardSurface.tsx')
     // Today's arrangement hands it to its own Outbound, and the surface hands the same value to the frame.
     expect(page.match(/trackingOff=\{outboundOff\}/g)?.length).toBe(1)
@@ -111,8 +120,9 @@ describe('glass lives in the stylesheet, on tokens both themes define', () => {
 
   it('draws its hairlines in the ink, which follows the theme', () => {
     expect(css).toContain('border-bottom: 1px solid rgb(var(--white) / 0.06)')
-    const frame = read('lib/dashboard/frame.tsx')
-    expect(frame).toContain("'glass-block rounded-none border border-white/[0.08]'")
-    expect(frame).toContain("'glass-panel border border-white/[0.08]'")
+    // A block's surface is one of the frame's class names, which are plain strings in a module the server can read
+    // too (lib/dashboard/frameClasses.ts); a pop-up's surface is chosen in the client-only module.
+    expect(read('lib/dashboard/frameClasses.ts')).toContain("'glass-block rounded-none border border-white/[0.08]'")
+    expect(read('lib/dashboard/frame.tsx')).toContain("'glass-panel border border-white/[0.08]'")
   })
 })

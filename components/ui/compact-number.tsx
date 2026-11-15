@@ -3,6 +3,7 @@
 import { Tooltip, type TooltipProps } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { EM_DASH, formatCompactNumber, formatNumber } from '@/lib/utils/format'
+import { TOOLTIP_PANEL_CLASS } from '@/lib/ui/popupSurface'
 
 interface CompactNumberProps {
   /** The raw count. Null/undefined renders the em dash — never a fabricated 0. */
@@ -50,7 +51,7 @@ export function CompactNumber({ value, className, side = 'top', align = 'center'
   }
 
   return (
-    <Tooltip content={exact} side={side} align={align}>
+    <Tooltip content={exact} side={side} align={align} className={TOOLTIP_PANEL_CLASS}>
       <span tabIndex={0} aria-label={exact} className={cn('tabular-nums cursor-help', className)}>
         {content}
       </span>

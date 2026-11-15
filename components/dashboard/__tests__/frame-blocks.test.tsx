@@ -5,7 +5,6 @@ import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import ContentStats from '@/components/dashboard/ContentStats'
-import Outbound from '@/components/dashboard/Outbound'
 import ContentSignals from '@/components/dashboard/ContentSignals'
 import GoalStats from '@/components/dashboard/GoalStats'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
@@ -23,7 +22,6 @@ import { SiteScopeProvider, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteS
 const h = vi.hoisted(() => ({
   useFullDimensionList: vi.fn(),
   useCampaignsList: vi.fn(),
-  useOutboundLinks: vi.fn(),
   usePagePreview: vi.fn(),
   getEventPropertyKeys: vi.fn(),
   getEventPropertyValues: vi.fn(),
@@ -33,7 +31,6 @@ const h = vi.hoisted(() => ({
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...a: unknown[]) => h.useFullDimensionList(...a),
   useCampaignsList: (...a: unknown[]) => h.useCampaignsList(...a),
-  useOutboundLinks: (...a: unknown[]) => h.useOutboundLinks(...a),
   usePagePreview: (...a: unknown[]) => h.usePagePreview(...a),
 }))
 vi.mock('@/lib/api/stats', async (importOriginal) => ({
@@ -71,7 +68,6 @@ const referrers = ['google.com', 'linkedin.com', 'chatgpt.com', 'bing.com', 'ddg
 const pages = Array.from({ length: 8 }, (_, i) => ({ path: `/page-${i}`, pageviews: 100 - i, visitors: 80 - i, bounce_rate: null, avg_duration: null }))
 const countries = [{ country: 'BE', pageviews: 40, visitors: 30 }, { country: 'NO', pageviews: 20, visitors: 12 }]
 const browsers = [{ browser: 'Firefox', pageviews: 40, visitors: 30 }, { browser: 'Safari', pageviews: 20, visitors: 12 }]
-const outbound = { urls: Array.from({ length: 8 }, (_, i) => ({ value: `https://site-${i}.example/`, count: 20 - i })), paths: [{ value: '/pricing', count: 9 }] }
 const NAMES = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india']
 const events = NAMES.map((event_name, i) => ({ event_name, count: 90 - i * 10 }))
 
@@ -80,14 +76,12 @@ const BLOCKS: Array<[string, () => React.ReactElement]> = [
   ['Pages', () => <ContentStats topPages={pages} entryPages={[]} exitPages={[]} domain="example.com" siteId="site-1" dateRange={dateRange} totals={totals} />],
   ['Locations', () => <Audience countries={countries} cities={[]} regions={[]} languages={[]} timezones={[]} siteId="site-1" dateRange={dateRange} totals={totals} />],
   ['Technology', () => <TechSpecs browsers={browsers} os={[]} devices={[]} screenResolutions={[]} siteId="site-1" dateRange={dateRange} totals={totals} />],
-  ['Outbound', () => <Outbound siteId="site-1" dateRange={dateRange} goalCounts={[]} />],
   ['Events', () => <ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} />],
 ]
 
 beforeEach(() => {
   h.useFullDimensionList.mockReset().mockReturnValue(idle)
   h.useCampaignsList.mockReset().mockReturnValue(idle)
-  h.useOutboundLinks.mockReset().mockReturnValue({ data: outbound, error: undefined, isLoading: false })
   h.usePagePreview.mockReset().mockReturnValue({ data: null })
   h.getEventPropertyKeys.mockReset().mockResolvedValue([])
   h.getEventPropertyValues.mockReset().mockResolvedValue([])
@@ -176,42 +170,7 @@ describe('the footer: a block\'s note and its pager share ONE row in the frame',
   })
 })
 
-describe('Outbound: its name before its tabs, its footnote on the footer row', () => {
-  it('says its name in the frame, where no section title does', () => {
-    inFrame(<Outbound siteId="site-1" dateRange={dateRange} goalCounts={[]} />)
-    const name = screen.getByRole('heading', { name: 'Outbound' })
-    // Before the tabs, in the header row.
-    const header = card().children[0]
-    expect(header.firstElementChild).toBe(name)
-    expect(header.querySelector('[role="radiogroup"]')).toBeTruthy()
-  })
-
-  it('has no name of its own outside the frame (the section title names it there)', () => {
-    render(<Outbound siteId="site-1" dateRange={dateRange} goalCounts={[]} />)
-    expect(screen.queryByRole('heading', { name: 'Outbound' })).toBeNull()
-  })
-
-  it('moves its footnote from under the rows to the footer row, beside the pager', () => {
-    inFrame(<Outbound siteId="site-1" dateRange={dateRange} goalCounts={[]} filters="page:is:/" />)
-    const footer = screen.getByTestId('card-footer')
-    const note = screen.getByTestId('outbound-footnote')
-    expect(footer.contains(note)).toBe(true)
-    expect(within(footer).getByRole('navigation', { name: 'Pages of domains' })).toBeTruthy()
-    expect(note.getAttribute('title')).toBe(note.textContent)
-    expect(note.className).not.toContain('mt-3')
-    // Once, not in both places.
-    expect(screen.getAllByTestId('outbound-footnote')).toHaveLength(1)
-  })
-
-  it('keeps the footnote under the rows outside the frame', () => {
-    render(<Outbound siteId="site-1" dateRange={dateRange} goalCounts={[]} filters="page:is:/" />)
-    const note = screen.getByTestId('outbound-footnote')
-    expect(note.className).toBe('mt-3 text-[11px] text-neutral-500')
-    expect(card().children[1].contains(note)).toBe(true)
-  })
-})
-
-describe('Events: the sixth block alone', () => {
+describe('Events: the last block, alone', () => {
   it('has no tabs in the frame: its name stands where they were, and it says its unit', () => {
     inFrame(<ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} scrollDepth={{ total_sessions: 12, buckets: [] } as never} />)
     expect(screen.queryAllByRole('radio')).toHaveLength(0)
@@ -464,6 +423,36 @@ describe('Sources: the Campaigns tab is its own menu in the frame', () => {
       fireEvent.click(name())
       expect(tabReads()).toBe('Medium')
       expect(rowNames()).toEqual(['cpc', 'social'])
+    })
+
+    it('reads the memory in the layout phase, so no frame can show "Source" first, whatever update mounted the block', () => {
+      // What the tab shows cannot tell an early read from a late one, here or on a hard load in a browser.
+      // Measured 15-11-2026 in Chromium and WebKit: a block mounted by an urgent update (its data arriving) has
+      // its passive effects run before the task ends, so "Source" is replaced before any frame either way. The
+      // two differ when the block mounts inside an update that is not urgent (a move between pages with the data
+      // already held): there a passive effect runs after the paint, and the tab would show "Source" for a frame.
+      // So this pins WHEN the read happens. A beacon drawn before the block notes each phase as React reaches it:
+      // its layout effect runs before the block's, and its passive effect before the block's passive effects.
+      window.localStorage.setItem(CAMPAIGN_VIEW_KEY, 'term')
+      let phase = 'render'
+      function Beacon() {
+        React.useLayoutEffect(() => { phase = 'layout' }, [])
+        React.useEffect(() => { phase = 'passive' }, [])
+        return null
+      }
+      const readIn: string[] = []
+      const real = Storage.prototype.getItem
+      const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+        if (key === CAMPAIGN_VIEW_KEY) readIn.push(phase)
+        return real.call(this, key)
+      })
+      try {
+        inFrame(<><Beacon />{block()}</>)
+      } finally {
+        getItem.mockRestore()
+      }
+      expect(readIn).toEqual(['layout'])
+      expect(tabReads()).toBe('Term')
     })
 
     it('opening the list writes nothing: only a pick does', () => {

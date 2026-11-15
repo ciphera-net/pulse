@@ -1239,6 +1239,21 @@ export function useOutboundLinks(siteId: string, start: string, end: string, per
   )
 }
 
+// * The outbound links ALONE, for the Pages block's Outbound tab in the new dashboard frame (15-11-2026): one read
+// * where the Outbound card makes two, and only while the tab is open (`enabled`), as the campaigns list is armed.
+// * The same key rules as useOutboundLinks above (the period token is part of the key and is sent). Route class `demo`.
+export function useOutboundUrls(siteId: string, start: string, end: string, period?: string, liveMinutes?: number, enabled = true) {
+  const live = liveMinutes != null
+  return useSiteSWR<EventPropertyValue[]>(
+    siteId, 'demo',
+    (siteKey) => !enabled || !siteId ? null
+      : live ? ['outboundUrls', siteKey, LIVE_LIST_KEY, liveMinutes]
+        : start && end ? ['outboundUrls', siteKey, start, end, period ?? ''] : null,
+    (ref) => getEventPropertyValues(ref, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, live ? undefined : period, liveMinutes),
+    { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : { refreshInterval: 60_000, dedupingInterval: 10_000 }) }
+  )
+}
+
 // * The scroll-depth card's full-page backdrop. null data = no capture exists
 // * (a state the card renders via its rails fallback); errors are real
 // * failures and also fall back. The image changes at most once per

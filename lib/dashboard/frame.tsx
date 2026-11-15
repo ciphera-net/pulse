@@ -26,26 +26,10 @@ export function useDashboardFrame(): boolean {
   return useContext(DashboardFrameContext)
 }
 
-/** Glass on a surface of the frame (styles/globals.css, `.glass-block`). The hairline is the ink at 8%, so it follows the theme. */
-export const FRAME_SURFACE = 'glass-block rounded-none border border-white/[0.08]'
-
-/** A block in the frame: glass, and ONE size (442 px, today's height of a block with seven rows and its pager). */
-export const FRAME_CARD = `${FRAME_SURFACE} p-6 h-[442px] flex flex-col min-w-0`
-
-/**
- * A block's body in the frame. `min-h-0` on purpose: the block's height is fixed, so the body takes what the
- * header and the footer leave (300 px with a pager, which is exactly seven rows; 338 px without one) and must
- * never push back.
- */
-export const FRAME_CARD_BODY = 'flex-1 min-h-0'
-
-/**
- * A block's name where its tabs do not say it (Outbound), or stand in for it (Events). 34 px and 4 px under it:
- * the box of a tab row as measured (the small Switcher is 34 px, its wrapper adds `pb-1`), so every block's header
- * is the same 38 px and the rows of two blocks side by side start on one line. At 32 px the Events block's rows sat
- * 2 px above Outbound's.
- */
-export const FRAME_CARD_NAME = 'mb-1 inline-flex h-[34px] shrink-0 items-center whitespace-nowrap text-sm font-medium text-white'
+// The frame's class names are plain strings in a module of their own (./frameClasses), because a file the SERVER
+// draws needs them too (the dashboard's skeleton), and the server cannot read a value out of a client-only module
+// such as this one. They are passed on here, so a block imports everything about the frame from one place.
+export { FRAME_SURFACE, FRAME_CARD, FRAME_CARD_BODY, FRAME_CARD_NAME, FRAME_CARD_NOTE } from './frameClasses'
 
 /**
  * The foot of a block in the frame: its note and its pager on ONE row. Stacked, as outside the frame, a block
@@ -60,9 +44,6 @@ export function CardFooter({ children }: { children: ReactNode }) {
     </div>
   )
 }
-
-/** A note in the frame's footer row: one line, cut with an ellipsis when the pager needs the room. */
-export const FRAME_CARD_NOTE = 'min-w-0 flex-1 truncate text-[11px] text-neutral-500'
 
 /**
  * True when pop-ups and menus are glass: for a team that has the new dashboard. It reads the FLAG, not the frame's

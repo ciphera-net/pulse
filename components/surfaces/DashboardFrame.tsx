@@ -6,7 +6,6 @@ import ContentStats from '@/components/dashboard/ContentStats'
 import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
-import Outbound from '@/components/dashboard/Outbound'
 import type { DashboardData } from '@/lib/api/stats'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import type { DashboardCapabilities } from '@/lib/dashboard/capabilities'
@@ -21,9 +20,10 @@ const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 //
 // The same blocks as today's page, arranged anew and told so through DashboardFrameProvider:
 //   * tight cards, 12 px apart, and no section titles (R1, R12);
-//   * Sources beside Pages, then Locations and Technology, then Outbound and Events (R2);
+//   * Sources beside Pages, then Locations and Technology, then Events across both columns (R2; Outbound's
+//     links became the Pages block's fourth tab on 15-11-2026, so Outbound is no block of its own);
 //   * every block ONE size, the map inside it (lib/dashboard/frame.tsx, FRAME_CARD);
-//   * the sixth block is Events alone: scroll depth leaves the dashboard (R5);
+//   * the last block is Events alone: scroll depth leaves the dashboard (R5);
 //   * glass on the deck, the blocks and the heat map (R3, R15).
 // The toolbar that stays, the chart's missing bucket picker and the install banner are the surface's
 // (components/surfaces/DashboardSurface.tsx), which mounts this in place of its own arrangement.
@@ -51,7 +51,7 @@ interface DashboardFrameProps {
   previousVisitors: number | null
   filtersParam: string
   onCardFilter: ((filter: DimensionFilter) => void) | undefined
-  /** The site's "Outbound links" option is switched off: the Outbound block then says so in place of its rows. */
+  /** The site's "Outbound links" option is switched off: the Pages block's Outbound tab then says so in place of its rows. */
   outboundOff: boolean
 }
 
@@ -76,9 +76,9 @@ export default function DashboardFrame({
       <div className="flex flex-col gap-3" data-dashboard-frame="">
         {deck}
 
-        {/* ONE grid for the six blocks: no titles stand between its rows, so nothing has to keep a pair
-            together, and below `lg` it is one column in the same order. A share link has no Outbound (its lists
-            are event-property reads a public-scoped read is not served): Events then closes the grid alone. */}
+        {/* ONE grid for the five blocks: no titles stand between its rows, so nothing has to keep a pair
+            together, and below `lg` it is one column in the same order. Outbound is no block of its own any
+            more (15-11-2026): its links are the Pages block's fourth tab. */}
         <div className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0">
           <Sources
             referrers={dashboard?.top_referrers ?? []}
@@ -112,6 +112,9 @@ export default function DashboardFrame({
             onFilter={onCardFilter}
             memberFeatures={caps.fullReads}
             importedCards={dashboard?.imported_cards}
+            // Outbound's links are this block's fourth tab (15-11-2026). A share link is not served their read
+            // (event-property reads are outside a public-scoped read) and gets no tab.
+            outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff } : undefined}
           />
           <Audience
             countries={dashboard?.countries ?? []}
@@ -150,30 +153,19 @@ export default function DashboardFrame({
             memberFeatures={caps.fullReads}
             importedCards={dashboard?.imported_cards}
           />
-          {caps.fullReads && (
-            <Outbound
-              siteId={siteId}
-              live={isLive}
-              liveMinutes={liveMinutes}
-              dateRange={dateRange}
-              period={period}
+          {/* Events alone (the block switches its scroll depth tab off inside the frame). The scroll depth
+              numbers still arrive on the payload and are simply not handed on. It is the fifth block, so it
+              closes the grid across both columns. */}
+          <div className="lg:col-span-2" data-frame-events="">
+            <ContentSignals
               goalCounts={dashboard?.goal_counts ?? []}
               goalsImported={dashboard?.imported_goals}
-              filters={filtersParam || undefined}
-              onFilter={onCardFilter}
-              trackingOff={outboundOff}
+              siteId={siteId}
+              dateRange={dateRange}
+              liveMinutes={liveMinutes}
+              memberFeatures={caps.fullReads}
             />
-          )}
-          {/* Events alone (the block switches its scroll depth tab off inside the frame). The scroll depth
-              numbers still arrive on the payload and are simply not handed on. */}
-          <ContentSignals
-            goalCounts={dashboard?.goal_counts ?? []}
-            goalsImported={dashboard?.imported_goals}
-            siteId={siteId}
-            dateRange={dateRange}
-            liveMinutes={liveMinutes}
-            memberFeatures={caps.fullReads}
-          />
+          </div>
         </div>
 
         {/* The heat map keeps its place under the blocks until its own round. Hidden in realtime (one instant

@@ -5,6 +5,7 @@ import { Tooltip, toast } from '@ciphera-net/facet'
 import { usePreferences } from '@/lib/hooks/usePreferences'
 import { DEFAULT_THEME, THEMES, type Theme } from '@/lib/theme'
 import { THEME_LABEL } from './ThemePicker'
+import { TOOLTIP_PANEL_CLASS } from '@/lib/ui/popupSurface'
 
 const ICON: Record<Theme, typeof Sun> = { dark: Moon, light: Sun, system: Monitor }
 
@@ -38,7 +39,7 @@ export default function ThemeMenuSwitch() {
           const Icon = ICON[t]
           const on = t === selected
           return (
-            <Tooltip key={t} content={THEME_LABEL[t]}>
+            <Tooltip key={t} content={THEME_LABEL[t]} className={TOOLTIP_PANEL_CLASS}>
               <button
                 type="button"
                 role="radio"

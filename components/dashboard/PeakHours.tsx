@@ -248,8 +248,8 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
       </div>
 
       {isLoading && frame ? (
-        // In the new frame the heat map loads at the size its data will take, so the page under the six blocks
-        // does not grow when the week arrives (it grew by about 100 px at 1440).
+        // In the new frame the heat map loads at the size its data will take, so the page under the blocks does
+        // not grow when the week arrives (it grew by about 100 px at 1440).
         <HeatMapSkeletonBody />
       ) : isLoading ? (
         <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-1.5">

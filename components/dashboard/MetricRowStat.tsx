@@ -34,6 +34,12 @@ export const DIMENSION_ROW =
   'w-[calc(100%+1rem)] text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2'
 /** One number column, and the label over it. */
 const STAT_COLUMN = 'w-12 text-right'
+/** A row's number, and the share that slides in beside it under the pointer (see MetricRowStat for its timing). */
+export const ROW_NUMBER = 'text-sm font-semibold text-neutral-400'
+export const ROW_SHARE =
+  'text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-3 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-fast md:group-hover:duration-slow ease-in-out'
+/** The cluster's own box, at a row's right end. */
+export const ROW_STAT = 'relative flex items-center ml-4'
 /** The space between two number columns, and between their two labels. */
 const STAT_GAP = 'gap-2'
 
@@ -52,7 +58,7 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
   const denom = totals?.visitors ?? 0
   const pct = denom > 0 ? `${Math.round((visitors / denom) * 100)}%` : ''
   return (
-    <div className={cn('relative flex items-center ml-4', STAT_GAP, className)}>
+    <div className={cn(ROW_STAT, STAT_GAP, className)}>
       {pct && (
         // The hover % SLIDES in where it can be seen (PUL-20, owner pick B,
         // 12-10-2026): 12 px over 400 ms on an even curve. It was 8 px / 250 ms
@@ -60,13 +66,13 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
         // 100 ms, so it read as appearing, not sliding. It LEAVES in 150 ms
         // (the resting state's duration), so moving down a list leaves no
         // trail of fading numbers.
-        <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-3 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-fast md:group-hover:duration-slow ease-in-out">
+        <span className={ROW_SHARE}>
           {pct}
         </span>
       )}
-      <CompactNumber value={visitors} className={cn('text-sm font-semibold text-neutral-400', views && STAT_COLUMN)} />
+      <CompactNumber value={visitors} className={cn(ROW_NUMBER, views && STAT_COLUMN)} />
       {views && (
-        <CompactNumber value={row.pageviews} className={cn('text-sm font-semibold text-neutral-400', STAT_COLUMN)} />
+        <CompactNumber value={row.pageviews} className={cn(ROW_NUMBER, STAT_COLUMN)} />
       )}
     </div>
   )
@@ -81,7 +87,7 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
  * glyph explains the CARD (see DimensionInfoTip); the unit label is just a
  * label again.
  */
-export function MetricUnitLabel({ views }: { views?: boolean }) {
+export function MetricUnitLabel({ views, unit = 'visitors' }: { views?: boolean; /** What a single column counts, where it is not visitors (an outbound link's clicks). */ unit?: string }) {
   return views ? (
     // The same columns and the same gap as the numbers under them. A plain string, not cn(): the two `text-`
     // utilities here are a size and a colour, and a class merger may take them for one group.
@@ -91,7 +97,7 @@ export function MetricUnitLabel({ views }: { views?: boolean }) {
     </span>
   ) : (
     <span className="shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">
-      visitors
+      {unit}
     </span>
   )
 }

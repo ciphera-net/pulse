@@ -219,10 +219,15 @@ describe('while the dashboard loads', () => {
 })
 
 describe('the flag on: the new frame', () => {
-  it('orders the blocks Sources, Pages, Locations, Technology, Outbound, Events and draws no section title', async () => {
+  it('orders the blocks Sources, Pages, Locations, Technology, Events and draws no section title', async () => {
     await mount()
     expect(sectionTitles()).toEqual([])
-    expect(blockOrder()).toEqual(['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'Outbound', 'ContentSignals'])
+    // Five blocks: Outbound is no block of its own in the frame, its links are the Pages block's fourth tab.
+    expect(blockOrder()).toEqual(['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals'])
+    // Events closes the grid across both columns.
+    const events = document.querySelector('[data-frame-events]') as HTMLElement
+    expect(events.className).toBe('lg:col-span-2')
+    expect(events.querySelector('[data-block="ContentSignals"]')).toBeTruthy()
     // The deck first, the heat map last, all inside the frame.
     const frame = document.querySelector('[data-dashboard-frame]') as HTMLElement
     expect(frame).toBeTruthy()
@@ -234,7 +239,7 @@ describe('the flag on: the new frame', () => {
   it('tells the deck, every block and the heat map that they are in the frame', async () => {
     await mount()
     expect(h.inFrame).toEqual({
-      CommandDeck: true, Sources: true, ContentStats: true, Audience: true, TechSpecs: true, Outbound: true, ContentSignals: true, PeakHours: true,
+      CommandDeck: true, Sources: true, ContentStats: true, Audience: true, TechSpecs: true, ContentSignals: true, PeakHours: true,
     })
   })
 
@@ -273,7 +278,10 @@ describe('the flag on: the new frame', () => {
     }
     expect(h.captured.Audience.previousVisitors).toBe(400)
     expect(h.captured.Sources.campaigns).toBeUndefined()
-    expect(h.captured.Outbound.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
+    // Outbound's links ride in the Pages block: it is handed what their tab needs, and no Outbound block is drawn.
+    expect(h.captured.ContentStats.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
+    expect(h.captured.ContentStats.outbound).toMatchObject({ goalCounts: [], trackingOff: false })
+    expect(h.captured.Outbound).toBeUndefined()
     expect(h.captured.PeakHours.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
   })
 
@@ -282,7 +290,7 @@ describe('the flag on: the new frame', () => {
     // that matches nothing would read "Try a longer range." and offer no way to clear it.
     mockSearchParams = new URLSearchParams({ filters: serializeFilters([{ dimension: 'country', operator: 'is', values: ['NO'] }]) })
     await mount()
-    const blocks = ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'Outbound', 'ContentSignals']
+    const blocks = ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals']
     for (const name of blocks) {
       expect(h.facts[name]?.filtered, name).toBe(true)
       expect(typeof h.facts[name]?.clearFilters, name).toBe('function')
@@ -304,10 +312,10 @@ describe('the flag on: the new frame', () => {
     ['switched off', { outbound: false }, true],
     ['switched on', { outbound: true }, false],
     ['never set (on by default)', {}, false],
-  ])('tells Outbound that the site\'s outbound links are %s', async (_name, script_features, off) => {
+  ])('tells the Pages block\'s Outbound tab that the site\'s outbound links are %s', async (_name, script_features, off) => {
     siteRecord = { ...SITE, script_features }
     await mount()
-    expect(h.captured.Outbound.trackingOff).toBe(off)
+    expect((h.captured.ContentStats.outbound as { trackingOff: boolean }).trackingOff).toBe(off)
   })
 
   it('keeps what belongs to a member: the tour and the install banner', async () => {
@@ -321,8 +329,8 @@ describe('the flag on: the new frame', () => {
     mockSearchParams = new URLSearchParams('period=realtime')
     await mount()
     expect(screen.queryByTestId('peak-hours')).toBeNull()
-    expect(blockOrder()).toEqual(['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'Outbound', 'ContentSignals'])
-    for (const name of ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'Outbound', 'ContentSignals']) {
+    expect(blockOrder()).toEqual(['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals'])
+    for (const name of ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals']) {
       expect(typeof h.captured[name].liveMinutes, name).toBe('number')
     }
   })
