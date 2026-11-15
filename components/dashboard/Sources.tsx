@@ -376,6 +376,9 @@ export default function Sources({
                 const label = referrerRowLabel(ref)
                 const faviconKey = showReferrerDomains && ref.address ? ref.address : ref.referrer
                 const openHostname = getOpenHostname(faviconKey)
+                // The row's one action: its overlay button's, and a press on its number's (which takes the pointer
+                // back from the overlay so its exact count can open).
+                const filterRow = onFilter ? () => onFilter({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }) : undefined
                 return (
                   <CascadeRow key={ref.referrer} index={i}>
                     {/* A click anywhere on the row FILTERS; a website row opens its
@@ -402,7 +405,7 @@ export default function Sources({
                           type="button"
                           className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
                           aria-label={`Filter by referrer: ${label}`}
-                          onClick={() => onFilter({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] })}
+                          onClick={filterRow}
                         />
                       )}
                       <RowBar width={rowBarWidth(ref, allReferrers)} index={i} className="pointer-events-none" />
@@ -427,7 +430,7 @@ export default function Sources({
                           </a>
                         )}
                       </div>
-                      <MetricRowStat row={ref} totals={totals} className="pointer-events-none" />
+                      <MetricRowStat row={ref} totals={totals} overlay={{ onPress: filterRow }} />
                     </div>
                   </CascadeRow>
                 )

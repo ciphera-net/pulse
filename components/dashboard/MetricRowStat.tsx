@@ -48,17 +48,29 @@ interface MetricRowStatProps {
   totals?: { pageviews: number; visitors: number }
   /** Twin-column mode (the Pages card): visitors + views, equal weight. */
   views?: boolean
-  /** Appended to the root's classes (PULSE-197: `pointer-events-none` for a
-   *  row whose click target is a separate overlay sibling, not an ancestor). */
+  /** Appended to the root's classes. */
   className?: string
+  /**
+   * Set for a row whose click target is an overlay SIBLING and not an ancestor (PULSE-197: a row that holds a
+   * link cannot be one button). The cluster then gives the pointer up, so a press anywhere on it reaches the
+   * overlay, and each NUMBER takes it back for its own box: under the overlay the exact count behind a rounded
+   * number could never open for a pointer (measured on production in the Sources and Pages lists, 15-11-2026;
+   * a keyboard could always reach it). `onPress` is the row's own action, so a press on a number does what a
+   * press on the row does; a row that cannot filter passes none.
+   */
+  overlay?: { onPress?: () => void }
 }
 
-export function MetricRowStat({ row, totals, views, className }: MetricRowStatProps) {
+/** The cluster in a row with an overlay, and a number inside it. */
+const UNDER_OVERLAY = 'pointer-events-none'
+const NUMBER_OVER_OVERLAY = 'pointer-events-auto'
+
+export function MetricRowStat({ row, totals, views, className, overlay }: MetricRowStatProps) {
   const visitors = row.visitors ?? 0
   const denom = totals?.visitors ?? 0
   const pct = denom > 0 ? `${Math.round((visitors / denom) * 100)}%` : ''
   return (
-    <div className={cn(ROW_STAT, STAT_GAP, className)}>
+    <div className={cn(ROW_STAT, STAT_GAP, overlay && UNDER_OVERLAY, className)}>
       {pct && (
         // The hover % SLIDES in where it can be seen (PUL-20, owner pick B,
         // 12-10-2026): 12 px over 400 ms on an even curve. It was 8 px / 250 ms
@@ -70,9 +82,9 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
           {pct}
         </span>
       )}
-      <CompactNumber value={visitors} className={cn(ROW_NUMBER, views && STAT_COLUMN)} />
+      <CompactNumber value={visitors} className={cn(ROW_NUMBER, views && STAT_COLUMN, overlay && NUMBER_OVER_OVERLAY)} onClick={overlay?.onPress} />
       {views && (
-        <CompactNumber value={row.pageviews} className={cn(ROW_NUMBER, STAT_COLUMN)} />
+        <CompactNumber value={row.pageviews} className={cn(ROW_NUMBER, STAT_COLUMN, overlay && NUMBER_OVER_OVERLAY)} onClick={overlay?.onPress} />
       )}
     </div>
   )
