@@ -53,9 +53,25 @@ export function chatWhenLabel(iso: string, zone: string, now: Date = new Date())
 export function chatMessages(conversation: AnalystConversation): ThreadMessageLike[] {
   return conversation.turns.flatMap((turn): ThreadMessageLike[] => {
     const createdAt = new Date(turn.created_at)
+    // * A question Analyst asked itself (a change it noticed, O2) is marked on both messages: the page draws it as a
+    // * heading, never as the person's question, and says under the answer that it used none of the team's questions.
+    const asked = turn.asked_by_analyst === true
+    const meta = turnMetadata(turn)
     return [
-      { id: `${turn.id}-question`, role: 'user', content: [{ type: 'text', text: turn.question }], createdAt },
-      { id: `${turn.id}-answer`, role: 'assistant', content: turnParts(turn), createdAt, metadata: turnMetadata(turn) },
+      {
+        id: `${turn.id}-question`,
+        role: 'user',
+        content: [{ type: 'text', text: turn.question }],
+        createdAt,
+        ...(asked ? { metadata: { custom: { askedByAnalyst: true } } } : {}),
+      },
+      {
+        id: `${turn.id}-answer`,
+        role: 'assistant',
+        content: turnParts(turn),
+        createdAt,
+        metadata: asked ? { custom: { ...meta.custom, askedByAnalyst: true } } : meta,
+      },
     ]
   })
 }

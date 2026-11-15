@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FC, type ReactNode } from 'react'
+import { useSearchParams } from 'next/navigation'
 import useSWR, { useSWRConfig } from 'swr'
 import {
   ActionBarPrimitive,
@@ -32,6 +33,7 @@ import {
   NotePencil,
   StarFour,
   Stop,
+  TrendDown,
   TrendUp,
   Warning,
 } from '@phosphor-icons/react'
@@ -39,13 +41,17 @@ import { RailDelta } from '@/components/funnels/FunnelRail'
 import {
   askAnalystStream,
   getAnalystConversations,
+  getAnalystFinding,
+  getAnalystFindings,
   getAnalystTurn,
   getAnalystUsage,
   type AnalystConversation,
+  type AnalystFinding,
   type AnalystStep,
   type AnalystUsage,
 } from '@/lib/api/analyst'
 import { ApiError } from '@/lib/api/client'
+import { useFeature } from '@/lib/features'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useSite } from '@/lib/swr/dashboard'
 import { cn } from '@/lib/utils'
@@ -53,6 +59,7 @@ import { getReferrerIcon } from '@/lib/utils/icons'
 import { pctChange } from '@/lib/utils/pctChange'
 import { FooterHorizon, WelcomeHorizon } from './AnalystHorizon'
 import { AnswerMemory, MemorySite } from './AnswerMemory'
+import { findingConversation, findingFigures, findingHeading, findingNoticed, findingTitle, findingWeekLabel } from './findings'
 import { RECENT_SHOWN, chatMessages, chatWhenLabel, recentChats } from './history'
 import { answerLinkAllowed, webResultURLs } from './links'
 import { RAISED } from './raised'
@@ -117,8 +124,40 @@ export default function AnalystPage({ siteId }: { siteId: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<{ height: number; reach: number } | null>(null)
   // * A new chat, or a past one reopened, is a new runtime: the key remounts the thread with that chat's turns in it.
-  const [thread, setThread] = useState<{ key: number; chat: AnalystConversation | null }>({ key: 0, chat: null })
-  const openChat = useCallback((chat: AnalystConversation | null) => setThread((t) => ({ key: t.key + 1, chat })), [])
+  const [thread, setThread] = useState<{ key: number; chat: AnalystConversation | null; finding: AnalystFinding | null }>({
+    key: 0,
+    chat: null,
+    finding: null,
+  })
+  const openChat = useCallback(
+    (chat: AnalystConversation | null) => setThread((t) => ({ key: t.key + 1, chat, finding: null })),
+    [],
+  )
+  // * A change Analyst noticed (design §12, O2) opens as a chat of one turn; a question asked there starts the person's
+  // * own chat, with the change as its first answer.
+  const openFinding = useCallback(
+    (finding: AnalystFinding) => setThread((t) => ({ key: t.key + 1, chat: findingConversation(finding), finding })),
+    [],
+  )
+  // * The Monday summary's link lands on ?finding=<id>: the change opens once it is read. One that is gone (kept 90 days)
+  // * says so under the welcome instead of leaving the page as if nothing had been asked for.
+  const findingParam = useSearchParams()?.get('finding') ?? null
+  const watchers = useFeature('barry-watchers')
+  const [findingGone, setFindingGone] = useState(false)
+  useEffect(() => {
+    if (!findingParam || watchers !== true) return
+    let stale = false
+    getAnalystFinding(siteId, findingParam)
+      .then(({ finding }) => {
+        if (!stale) openFinding(finding)
+      })
+      .catch(() => {
+        if (!stale) setFindingGone(true)
+      })
+    return () => {
+      stale = true
+    }
+  }, [findingParam, watchers, siteId, openFinding])
 
   // * The shell's <main> scrolls and gives a page no height of its own; a chat needs one, so its viewport scrolls and
   // * the question box stays at the bottom. The page fills <main> from where it starts down to main's bottom edge, and
@@ -164,8 +203,11 @@ export default function AnalystPage({ siteId }: { siteId: string }) {
           siteName={site.domain}
           siteTimezone={site.timezone ?? null}
           chat={thread.chat}
+          finding={thread.finding}
+          findingGone={findingGone && !thread.finding}
           reach={box?.reach ?? 0}
           onOpenChat={openChat}
+          onOpenFinding={openFinding}
         />
       )}
     </div>
@@ -178,18 +220,38 @@ interface ThreadProps {
   siteTimezone: string | null
   /** A past chat to carry on with, or null for a new one. */
   chat: AnalystConversation | null
+  /** The change Analyst noticed that `chat` was opened from (O2), or null. */
+  finding: AnalystFinding | null
+  /** The summary's link named a change that is no longer there. */
+  findingGone: boolean
   reach: number
   onOpenChat: (chat: AnalystConversation) => void
+  onOpenFinding: (finding: AnalystFinding) => void
 }
 
-const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, reach, onOpenChat }) => {
+const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, finding, findingGone, reach, onOpenChat, onOpenFinding }) => {
   const { mutate } = useSWRConfig()
   const { data: usage, mutate: setUsage } = useSWR(['analyst-usage', siteId], () => getAnalystUsage(), {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
-  // * A reopened chat's follow-ups go to that conversation, so its earlier turns go with them.
-  const conversation = useRef<string | null>(chat?.id ?? null)
+  // * A reopened chat's follow-ups go to that conversation, so its earlier turns go with them. A change Analyst noticed
+  // * is no conversation of the person's: its first question names the finding instead, and `start` names the chat the
+  // * server began for it.
+  const conversation = useRef<string | null>(finding ? null : (chat?.id ?? null))
+  const fromFinding = useRef<string | null>(finding?.id ?? null)
+  const { zone } = useDisplayZone(siteTimezone)
+  const heading = useMemo<FindingHeadingText | null>(
+    () =>
+      finding
+        ? {
+            title: findingHeading(finding),
+            sub: `${findingFigures(finding)} · ${findingNoticed(finding.created_at, zone)}`,
+            direction: finding.direction,
+          }
+        : null,
+    [finding, zone],
+  )
   const keepUsage = useCallback((u: AnalystUsage | undefined) => {
     if (u) void setUsage(u, { revalidate: false })
   }, [setUsage])
@@ -211,11 +273,12 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
         let turnId: string | null = null
         const askedAt = Date.now()
         try {
-          for await (const ev of askAnalystStream(siteId, question, conversation.current, abortSignal)) {
+          for await (const ev of askAnalystStream(siteId, question, conversation.current, abortSignal, fromFinding.current)) {
             switch (ev.type) {
               case 'start':
                 // * Known from the first event, so a question stopped halfway still carries on its conversation.
                 conversation.current = ev.conversation_id
+                fromFinding.current = null
                 turnId = ev.turn_id
                 continue
               case 'step':
@@ -237,6 +300,7 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
                 break
               case 'done':
                 conversation.current = ev.answer.conversation_id
+                fromFinding.current = null
                 keepUsage(ev.answer.usage)
                 // * The past chats list this one now (seen after New chat).
                 void mutate(chatsKey(siteId))
@@ -291,13 +355,17 @@ const AnalystThread: FC<ThreadProps> = ({ siteId, siteName, siteTimezone, chat, 
       <ThreadHorizon reach={reach} />
       <AnswerSite.Provider value={siteName}>
         <MemorySite.Provider value={memorySite}>
-          <PageThread
-            siteId={siteId}
-            siteName={siteName}
-            siteTimezone={siteTimezone}
-            usage={usage ?? null}
-            onOpenChat={onOpenChat}
-          />
+          <FindingHeadingContext.Provider value={heading}>
+            <PageThread
+              siteId={siteId}
+              siteName={siteName}
+              siteTimezone={siteTimezone}
+              usage={usage ?? null}
+              findingGone={findingGone}
+              onOpenChat={onOpenChat}
+              onOpenFinding={onOpenFinding}
+            />
+          </FindingHeadingContext.Provider>
         </MemorySite.Provider>
       </AnswerSite.Provider>
     </AssistantRuntimeProvider>
@@ -310,12 +378,14 @@ const ThreadHorizon: FC<{ reach: number }> = ({ reach }) => {
   return empty ? <WelcomeHorizon reach={reach} /> : null
 }
 
-const PageThread: FC<Omit<ThreadProps, 'chat' | 'reach'> & { usage: AnalystUsage | null }> = ({
+const PageThread: FC<Omit<ThreadProps, 'chat' | 'finding' | 'reach'> & { usage: AnalystUsage | null }> = ({
   siteId,
   siteName,
   siteTimezone,
   usage,
+  findingGone,
   onOpenChat,
+  onOpenFinding,
 }) => {
   const empty = useAuiState((s) => s.thread.messages.length === 0)
   const running = useAuiState((s) => s.thread.isRunning)
@@ -356,6 +426,12 @@ const PageThread: FC<Omit<ThreadProps, 'chat' | 'reach'> & { usage: AnalystUsage
             <PageComposer siteName={siteName} usage={usage} />
             <AuiIf condition={(s) => s.thread.messages.length === 0}>
               <PageSuggestions />
+              {findingGone && (
+                <p className="px-2.5 text-[13px] text-neutral-500">
+                  That change is no longer here. Analyst keeps the changes it noticed for 90 days.
+                </p>
+              )}
+              <PageNoticed siteId={siteId} onOpen={onOpenFinding} />
               <PageRecent siteId={siteId} siteTimezone={siteTimezone} onOpen={onOpenChat} />
             </AuiIf>
           </ThreadPrimitive.ViewportFooter>
@@ -414,6 +490,115 @@ const PageSuggestions: FC = () => (
     ))}
   </div>
 )
+
+// * Changes Analyst noticed (design §12, A1, picked 14-11-2026): the team's, newest first, in Recent chats' rows,
+// * between the suggestions and the person's own chats. Only for a team in the barry-watchers beta, and nothing at all
+// * while there are none. Picking one reads it whole and opens it (O2).
+const findingsKey = (siteId: string) => ['analyst-findings', siteId] as const
+
+const PageNoticed: FC<{ siteId: string; onOpen: (finding: AnalystFinding) => void }> = ({ siteId, onOpen }) => {
+  const on = useFeature('barry-watchers')
+  const { data, error, mutate } = useSWR(on === true ? findingsKey(siteId) : null, () => getAnalystFindings(siteId), {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  })
+  const [opening, setOpening] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const open = async (id: string) => {
+    setOpening(id)
+    setFailed(false)
+    try {
+      const { finding } = await getAnalystFinding(siteId, id)
+      onOpen(finding)
+    } catch {
+      setFailed(true)
+    } finally {
+      setOpening(null)
+    }
+  }
+
+  if (on !== true) return null
+  if (error && !data) {
+    return (
+      <p className="flex flex-wrap items-baseline gap-x-3 px-2.5 text-[13px] text-neutral-500">
+        The changes Analyst noticed did not load.
+        <button type="button" onClick={() => void mutate()} className="text-neutral-300 transition-colors hover:text-white">
+          Try again
+        </button>
+      </p>
+    )
+  }
+  const rows = data?.findings ?? []
+  if (!rows.length) return null
+  return (
+    <section aria-labelledby="analyst-noticed" className="mt-2 flex flex-col">
+      <div className="flex items-baseline justify-between gap-4 px-2.5 pb-1.5">
+        <h2 id="analyst-noticed" className="text-[13px] text-neutral-400">
+          Changes Analyst noticed
+        </h2>
+      </div>
+      <ul className="flex flex-col border-t border-white/[0.06]">
+        {rows.map((f) => {
+          const Icon = f.direction === 'rise' ? TrendUp : TrendDown
+          return (
+            <li key={f.id} className="border-b border-white/[0.06]">
+              <button
+                type="button"
+                onClick={() => void open(f.id)}
+                disabled={opening !== null}
+                aria-busy={opening === f.id}
+                className="group flex w-full items-center gap-3 p-2.5 text-left text-sm text-neutral-400 transition-colors hover:bg-white/[0.03] hover:text-white disabled:cursor-wait"
+              >
+                <Icon className="h-[15px] w-[15px] shrink-0 text-brand-orange" />
+                {/* * One line on a wide screen; on a phone the figures go under the change, so neither is cut off. */}
+                <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+                  <span className="truncate text-neutral-200 sm:shrink-0">{findingTitle(f)}</span>
+                  <span className="truncate text-xs text-neutral-500 sm:text-sm">
+                    <span aria-hidden="true" className="hidden sm:inline">
+                      ·{' '}
+                    </span>
+                    {findingFigures(f)}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-neutral-500">{findingWeekLabel(f.week)}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      {failed && <p className="px-2.5 pt-2 text-[13px] text-neutral-500">That change did not open. Try again.</p>}
+    </section>
+  )
+}
+
+/** The heading of a change Analyst noticed, opened from the list or the summary's link (O2). */
+interface FindingHeadingText {
+  title: string
+  sub: string
+  direction: 'fall' | 'rise'
+}
+
+const FindingHeadingContext = createContext<FindingHeadingText | null>(null)
+
+// * A question Analyst asked itself is drawn as a heading, never as the person's bubble (O2: the right side is where the
+// * person's own questions go). Opened from a change, it names the change and its figures; in a chat reopened later
+// * from Recent chats it is the question's own words.
+const FindingHeading: FC = () => {
+  const heading = useContext(FindingHeadingContext)
+  const question = useAuiState((s) => s.message.content.map((p) => (p.type === 'text' ? p.text : '')).join('').trim())
+  const Icon = !heading ? StarFour : heading.direction === 'rise' ? TrendUp : TrendDown
+  return (
+    <MessagePrimitive.Root data-analyst="finding-heading" className="flex items-start gap-3 border-b border-white/[0.06] pb-5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-white/[0.08] bg-neutral-900 text-brand-orange">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-[15px] font-medium text-neutral-100">{heading?.title ?? question}</span>
+        <span className="text-[13px] text-neutral-500">{heading?.sub ?? 'Noticed by Analyst'}</span>
+      </span>
+    </MessagePrimitive.Root>
+  )
+}
 
 // * Past chats (round 6, pick 3): the newest under the suggestions, all of them a click away. Picking one reopens it,
 // * and a question asked there carries on that chat. Times follow Account › Profile › Show times in.
@@ -485,6 +670,8 @@ const QuestionText: TextMessagePartComponent = ({ text }) => <p className="white
 
 const PageMessage: FC = () => {
   const role = useAuiState((s) => s.message.role)
+  const askedByAnalyst = useAuiState((s) => s.message.metadata?.custom?.askedByAnalyst === true)
+  if (role === 'user' && askedByAnalyst) return <FindingHeading />
   if (role === 'user') {
     return (
       <MessagePrimitive.Root className="flex justify-end">
@@ -520,6 +707,11 @@ const PageMessage: FC = () => {
           }}
         </MessagePrimitive.GroupedParts>
         <PageConnectionDropped />
+        {askedByAnalyst && (
+          <p data-analyst="noticed-note" className="pt-3 text-xs text-neutral-500">
+            Analyst noticed this by itself, so it did not use one of your team&apos;s questions.
+          </p>
+        )}
         <MessagePrimitive.Error>
           <ErrorPrimitive.Root className="flex items-start gap-2.5 border border-white/[0.08] px-4 py-3 text-sm text-neutral-300">
             <Warning className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
