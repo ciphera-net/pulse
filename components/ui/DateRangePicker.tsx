@@ -66,6 +66,12 @@ export interface DateRangePickerProps {
   now: Date
 }
 
+// A MENU'S ROWS REACH ITS EDGES. The list holds no padding of its own and a divider no margin, so the
+// highlight of the row under the pointer runs to the menu's top or bottom edge, or to the divider beside it.
+// With padding on the list, the first and the last row left a strip of the menu's own ground between their
+// highlight and the edge (15-11-2026: `py-2` here, and `mt-1.5 … pt-1.5` at every divider).
+// Every menu's list carries `data-menu-list`, and components/ui/__tests__/menu-rows-reach-the-edge.test.ts reads each
+// one's classes: a new menu takes the mark, and the rule with it.
 const ROW = 'flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors'
 const ROW_ON = `${ROW} text-foreground`
 const ROW_OFF = `${ROW} text-muted-foreground hover:text-foreground hover:bg-accent`
@@ -397,13 +403,13 @@ export default function DateRangePicker({
   }
 
   const list = (
-    <div ref={listRef} className={`w-full shrink-0 py-2 ${LIST_COLUMN}`} data-view-list="">
+    <div ref={listRef} className={`w-full shrink-0 ${LIST_COLUMN}`} data-view-list="" data-menu-list="">
       {sections.map((section, i) => (
-        <div key={i} className={i > 0 ? 'mt-1.5 border-t border-border pt-1.5' : undefined}>
+        <div key={i} className={i > 0 ? 'border-t border-border' : undefined}>
           {section.map(renderRow)}
         </div>
       ))}
-      <div className="mt-1.5 border-t border-border pt-1.5">
+      <div className="border-t border-border">
         {customAvailable ? (
           <button
             type="button"
@@ -433,8 +439,10 @@ export default function DateRangePicker({
         )}
       </div>
       {footnote && (
-        <div className="px-3">
-          <p id={footnoteId} className="mt-3 border-t border-border pt-3 text-[11px] leading-snug text-muted-foreground/70">
+        // The note's own room is the note's (it is not a row): its hairline runs the menu's width, straight
+        // under the last row, as every divider of the list does.
+        <div className="border-t border-border px-3 py-3">
+          <p id={footnoteId} className="text-[11px] leading-snug text-muted-foreground/70">
             {footnote}
           </p>
         </div>

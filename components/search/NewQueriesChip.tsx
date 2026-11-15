@@ -54,7 +54,8 @@ export function NewQueriesChip({ siteId, start, end, onPick }: NewQueriesChipPro
         contentKey="new-queries"
         onClose={() => setOpen(false)}
       >
-        <div className="max-h-72 overflow-y-auto p-1.5" role="listbox" aria-label="New queries">
+        {/* No padding: a menu's rows reach its edges (the rule is written at the date picker's rows). */}
+        <div className="max-h-72 overflow-y-auto" role="listbox" aria-label="New queries" data-menu-list="">
           {queries.length > 0 ? (
             queries.map((q) => (
               <button
@@ -64,13 +65,13 @@ export function NewQueriesChip({ siteId, start, end, onPick }: NewQueriesChipPro
                 aria-selected={false}
                 title={q}
                 onClick={() => { onPick(q); setOpen(false) }}
-                className="flex w-full items-center rounded-none px-2.5 py-2 text-left text-sm text-neutral-300 transition-colors duration-fast ease-apple hover:bg-neutral-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+                className="flex w-full items-center rounded-none px-3 py-2 text-left text-sm text-neutral-300 transition-colors duration-fast ease-apple hover:bg-neutral-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
               >
                 <span className="truncate">{q}</span>
               </button>
             ))
           ) : (
-            <div className="px-2.5 py-3 text-sm text-neutral-500">No new queries to list.</div>
+            <div className="px-3 py-3 text-sm text-neutral-500">No new queries to list.</div>
           )}
         </div>
       </FilterPopover>

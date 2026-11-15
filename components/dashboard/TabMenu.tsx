@@ -271,7 +271,9 @@ export function TabMenu<V extends string>({ open, anchorRef, label, options, val
       role="menu"
       aria-label={label}
       onKeyDown={onKeyDown}
-      className={`fixed z-50 flex flex-col overflow-hidden rounded-none py-2 shadow-lg ${panelSurface(glass)}`}
+      // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
+      data-menu-list=""
+      className={`fixed z-50 flex flex-col overflow-hidden rounded-none shadow-lg ${panelSurface(glass)}`}
       // Off-screen until the measure before the first paint has placed it: never a frame at 0, 0.
       style={{ width: WIDTH, ...(pos ?? { left: -9999, top: -9999 }) }}
     >

@@ -182,7 +182,10 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
         id="filter-dimension-list"
         role="listbox"
         aria-label="Filter dimensions"
-        className="max-h-[320px] overflow-y-auto py-1"
+        // No padding, and no margin between two groups: a menu's rows reach its edges (the rule is written at
+        // the date picker's rows). A group's heading keeps its own room over its first row.
+        className="max-h-[320px] overflow-y-auto"
+        data-menu-list=""
       >
         {flat.length === 0 ? (
           <div className="px-3 py-3 text-sm text-neutral-500 text-center">
@@ -196,7 +199,7 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
           })
         ) : (
           groups.map(group => (
-            <div key={group.label} className="mb-1 last:mb-0">
+            <div key={group.label}>
               <div className="px-3 pt-2 pb-1 text-micro-label font-semibold text-neutral-500 uppercase tracking-wider">
                 {group.label}
               </div>

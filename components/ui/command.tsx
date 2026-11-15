@@ -34,7 +34,11 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
       <DialogTitle className="sr-only">Command Palette</DialogTitle>
       <DialogDescription className="sr-only">Search sites, pages, and actions</DialogDescription>
       <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-card border border-neutral-800 [&>button:last-child]:hidden">
-        <Command className="bg-transparent [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2">
+        {/* A row runs the dialog's width (the rule is written at the date picker's rows,
+            components/ui/DateRangePicker.tsx): a group holds no padding, and a row's own `px-5` puts its icon
+            under the search field's. With `px-2` on a group and `p-2` in it, a row's highlight floated 16 px
+            inside the dialog on both sides, and the last row's 8 px over the dialog's edge. */}
+        <Command className="bg-transparent [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input]]:h-12">
           {children}
         </Command>
       </DialogContent>
@@ -89,8 +93,9 @@ const CommandGroup = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Group
     ref={ref}
+    data-menu-list=""
     className={cn(
-      "overflow-hidden p-2 text-foreground [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground",
+      "overflow-hidden text-foreground [&_[cmdk-group-heading]]:px-5 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:pt-4 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground",
       className,
     )}
     {...props}
@@ -105,7 +110,7 @@ const CommandSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 h-px bg-white/[0.06]", className)}
+    className={cn("h-px bg-white/[0.06]", className)}
     {...props}
   />
 ));
@@ -118,7 +123,7 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center gap-3 rounded-none px-2 py-1.5 text-sm outline-none transition-colors duration-fast ease-apple data-[disabled=true]:pointer-events-none data-[selected=true]:bg-white/[0.05] data-[selected=true]:text-white data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+      "relative flex cursor-pointer select-none items-center gap-3 rounded-none px-5 py-2 text-sm outline-none transition-colors duration-fast ease-apple data-[disabled=true]:pointer-events-none data-[selected=true]:bg-white/[0.05] data-[selected=true]:text-white data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
       className,
     )}
     {...props}

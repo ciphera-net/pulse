@@ -123,7 +123,10 @@ export default function OnboardingChip() {
             />
           </div>
 
-          <div className="p-3 space-y-1">
+          {/* No padding and no space between two steps: a menu's rows reach its edges (the rule is written at the
+              date picker's rows, components/ui/DateRangePicker.tsx). A step's own `px-4` keeps its mark under the
+              heading's first letter. */}
+          <div data-menu-list="">
             {items.map((item) => {
               // A step with nowhere to go is LOCKED, not merely unfinished.
               // It used to render identically to a live row — same colour,
@@ -132,7 +135,7 @@ export default function OnboardingChip() {
               const locked = !item.completed && !item.href
               const optional = item.countsTowardCompletion === false && !item.completed
               const inner = (
-                <div className={`flex items-center gap-2.5 px-2 py-2 rounded-none text-sm transition-colors ${
+                <div className={`flex items-center gap-2.5 px-4 py-2 rounded-none text-sm transition-colors ${
                   item.completed
                     ? 'text-neutral-500'
                     : locked

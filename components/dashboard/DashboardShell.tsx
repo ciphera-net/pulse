@@ -230,7 +230,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
               autoFocus
             />
           </div>
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-64 overflow-y-auto" data-menu-list="">
             {filtered.map((site) => (
               <button
                 key={site.id}
@@ -257,8 +257,10 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
               <p className="text-sm text-neutral-500 text-center py-4">No sites match your search</p>
             )}
           </div>
-          <div className="border-t border-neutral-800/60 p-2">
-            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-ink hover:bg-white/[0.06] rounded-none">
+          {/* A row like the sites over it: its highlight runs the picker's width and down to its edge. In a
+              padded box of its own (`p-2`) the highlight floated inside the box, a strip of ground on every side. */}
+          <div className="border-t border-neutral-800/60" data-menu-list="">
+            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-ink hover:bg-white/[0.06] rounded-none">
               <PlusIcon className="w-4 h-4" />
               Add new site
             </Link>

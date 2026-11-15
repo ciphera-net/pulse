@@ -82,7 +82,9 @@ export default function OperatorChip({ operator, onChange, dimension }: Operator
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 4, scale: 0.97 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-none shadow-lg py-1 origin-top-left"
+          // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
+          data-menu-list=""
+          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-none shadow-lg origin-top-left"
         >
           {operators.map(op => (
             <button
