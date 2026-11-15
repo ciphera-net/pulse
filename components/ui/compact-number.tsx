@@ -18,6 +18,11 @@ interface CompactNumberProps {
    * Tooltip and `aria-label` carry, because those are read once, at rest.
    */
   children?: React.ReactNode
+  /**
+   * A press on the number, for a caller whose number sits over a click target of its own (a list row with an
+   * overlay button): the number then has to take the pointer for its tooltip, and hands the press on with this.
+   */
+  onClick?: React.MouseEventHandler<HTMLSpanElement>
 }
 
 /**
@@ -37,9 +42,9 @@ interface CompactNumberProps {
  * NAME ("never on repeated value rows") — this is exactly a repeated value
  * row. `Tooltip` is Facet's stated general primitive for this shape.
  */
-export function CompactNumber({ value, className, side = 'top', align = 'center', children }: CompactNumberProps) {
+export function CompactNumber({ value, className, side = 'top', align = 'center', children, onClick }: CompactNumberProps) {
   if (value === null || value === undefined) {
-    return <span className={cn('tabular-nums', className)}>{EM_DASH}</span>
+    return <span className={cn('tabular-nums', className)} onClick={onClick}>{EM_DASH}</span>
   }
 
   const exact = formatNumber(value)
@@ -47,12 +52,12 @@ export function CompactNumber({ value, className, side = 'top', align = 'center'
   const content = children ?? compact
 
   if (compact === exact) {
-    return <span className={cn('tabular-nums', className)}>{content}</span>
+    return <span className={cn('tabular-nums', className)} onClick={onClick}>{content}</span>
   }
 
   return (
     <Tooltip content={exact} side={side} align={align} className={TOOLTIP_PANEL_CLASS}>
-      <span tabIndex={0} aria-label={exact} className={cn('tabular-nums cursor-help', className)}>
+      <span tabIndex={0} aria-label={exact} className={cn('tabular-nums cursor-help', className)} onClick={onClick}>
         {content}
       </span>
     </Tooltip>

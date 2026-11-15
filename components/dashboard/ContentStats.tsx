@@ -191,6 +191,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
               {displayedData.map((row, i) => {
                 const barWidth = rowBarWidth(row, allData)
+                // The row's one action: its overlay button's, and a press on a number's (which takes the pointer back
+                // from the overlay so its exact count can open).
+                const filterRow = onFilter ? () => onFilter({ dimension: 'page', operator: 'is', values: [row.path] }) : undefined
                 return (
                   <CascadeRow key={row.path} index={i}>
                   {/* The Referrers row's device (PUL-20), ported here (PUL-22):
@@ -208,7 +211,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                         type="button"
                         className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
                         aria-label={`Filter by page: ${row.path}`}
-                        onClick={() => onFilter({ dimension: 'page', operator: 'is', values: [row.path] })}
+                        onClick={filterRow}
                       />
                     )}
                     <RowBar width={barWidth} index={i} className="pointer-events-none" />
@@ -229,7 +232,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                         <ArrowSquareOut className="h-3.5 w-3.5" aria-hidden="true" />
                       </a>
                     </div>
-                    <MetricRowStat row={row} totals={totals} views={twinColumns} className="pointer-events-none" />
+                    <MetricRowStat row={row} totals={totals} views={twinColumns} overlay={{ onPress: filterRow }} />
                   </div>
                   </CascadeRow>
                 )
