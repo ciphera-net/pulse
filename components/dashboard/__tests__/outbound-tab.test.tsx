@@ -2,8 +2,9 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within, waitFor, act } from '@testing-library/react'
 import ContentStats from '@/components/dashboard/ContentStats'
-import { OUTBOUND_NATIVE_ONLY, OUTBOUND_NOT_FILTERED } from '@/components/dashboard/OutboundLinksTab'
+import { OUTBOUND_NATIVE_ONLY } from '@/components/dashboard/OutboundLinksTab'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
+import { EmptyFactsProvider } from '@/lib/dashboard/emptyFacts'
 
 // ---------------------------------------------------------------------------
 // Outbound's links as the Pages block's fourth tab (the new dashboard frame, 15-11-2026).
@@ -99,13 +100,24 @@ describe('what it reads', () => {
     inFrame(block({ period: '7d', goalCounts: goalCounts as Outbound['goalCounts'] }, { liveMinutes: undefined }))
     expect(h.useOutboundUrls).not.toHaveBeenCalled()
     openOutbound()
-    expect(h.useOutboundUrls).toHaveBeenCalledWith('site-1', '2026-11-08', '2026-11-14', '7d', undefined)
+    expect(h.useOutboundUrls).toHaveBeenCalledWith('site-1', '2026-11-08', '2026-11-14', '7d', undefined, undefined)
   })
 
   it('in realtime it reads the live window', () => {
     inFrame(block(undefined as never, { live: true, liveMinutes: 5, outbound: { goalCounts: [] } }))
     openOutbound()
-    expect(h.useOutboundUrls).toHaveBeenCalledWith('site-1', '2026-11-08', '2026-11-14', undefined, 5)
+    expect(h.useOutboundUrls).toHaveBeenCalledWith('site-1', '2026-11-08', '2026-11-14', undefined, 5, undefined)
+  })
+
+  it('hands the page\'s filters to the read, so the rows are the clicks that fit them', () => {
+    const filters = 'v2:country|is|NO,device|is|desktop'
+    inFrame(block(undefined as never, { filters, outbound: { period: '7d', goalCounts: goalCounts as Outbound['goalCounts'] } }))
+    openOutbound()
+    expect(h.useOutboundUrls).toHaveBeenLastCalledWith('site-1', '2026-11-08', '2026-11-14', '7d', undefined, filters)
+    // Match any travels inside the same string, so it reaches the read with no code of its own.
+    inFrame(block(undefined as never, { filters: 'any:' + filters, outbound: { period: '7d', goalCounts: goalCounts as Outbound['goalCounts'] } }))
+    fireEvent.click(screen.getAllByRole('radio', { name: 'Outbound' }).at(-1) as HTMLElement)
+    expect(h.useOutboundUrls).toHaveBeenLastCalledWith('site-1', '2026-11-08', '2026-11-14', '7d', undefined, 'any:' + filters)
   })
 
   it('does not ask for the pages\' full list while it is open', () => {
@@ -313,12 +325,19 @@ describe('what the footer says', () => {
     expect(screen.queryByTestId('outbound-footnote')).toBeNull()
   })
 
-  it('under a page filter: these are whole-site clicks (the read takes no filter)', () => {
-    inFrame(block(undefined as never, { filters: 'country:is:NO', outbound: { goalCounts: goalCounts as Outbound['goalCounts'] } }))
+  it('under a page filter: nothing, because the rows follow the filter', () => {
+    inFrame(block(undefined as never, { filters: 'v2:country|is|NO', outbound: { goalCounts: goalCounts as Outbound['goalCounts'] } }))
+    openOutbound()
+    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
+    // The line the tab carried while its read took no filter is gone from the block.
+    expect(card().textContent).not.toMatch(/not filtered|whole-site/i)
+  })
+
+  it('with imported days in range: the rows are Pulse\'s own', () => {
+    inFrame(block({ goalCounts: goalCounts as Outbound['goalCounts'], goalsImported: { included: true } as Outbound['goalsImported'] }))
     openOutbound()
     const note = screen.getByTestId('outbound-footnote')
-    expect(note.textContent).toBe('Outbound is not filtered yet: these are whole-site clicks.')
-    expect(OUTBOUND_NOT_FILTERED).toBe(note.textContent)
+    expect(note.textContent).toBe(OUTBOUND_NATIVE_ONLY)
     // On the footer row, on one line with its whole text in the title, so the block keeps its height.
     expect(screen.getByTestId('card-footer').contains(note)).toBe(true)
     expect(note.getAttribute('title')).toBe(note.textContent)
@@ -326,17 +345,10 @@ describe('what the footer says', () => {
     expect(note.textContent).not.toMatch(/[–—‘’“”]/)
   })
 
-  it('with imported days in range: the rows are Pulse\'s own', () => {
-    inFrame(block({ goalCounts: goalCounts as Outbound['goalCounts'], goalsImported: { included: true } as Outbound['goalsImported'] }))
+  it('under a filter with imported days in range: nothing, since a filtered page merges nothing imported', () => {
+    inFrame(block(undefined as never, { filters: 'v2:country|is|NO', outbound: { goalCounts: goalCounts as Outbound['goalCounts'], goalsImported: { included: true } as Outbound['goalsImported'] } }))
     openOutbound()
-    expect(screen.getByTestId('outbound-footnote').textContent).toBe(OUTBOUND_NATIVE_ONLY)
-  })
-
-  it('never both: under a filter nothing imported is merged in, so the filter\'s note is the true one', () => {
-    inFrame(block(undefined as never, { filters: 'country:is:NO', outbound: { goalCounts: goalCounts as Outbound['goalCounts'], goalsImported: { included: true } as Outbound['goalsImported'] } }))
-    openOutbound()
-    expect(screen.getAllByTestId('outbound-footnote')).toHaveLength(1)
-    expect(screen.getByTestId('outbound-footnote').textContent).toBe(OUTBOUND_NOT_FILTERED)
+    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
   })
 
   it('the pages\' own imported note does not show under Outbound', () => {
@@ -358,14 +370,30 @@ describe('when there is nothing to list', () => {
     expect(card().querySelectorAll('[aria-busy="true"] > div')).toHaveLength(7)
   })
 
-  it('says the range has no outbound clicks, and never blames the page\'s filter', () => {
+  it('says the range has no outbound clicks', () => {
     h.useOutboundUrls.mockReturnValue({ data: [], error: undefined, isLoading: false })
-    inFrame(block(undefined as never, { filters: 'country:is:NO', outbound: { goalCounts: [] } }))
+    inFrame(block({ goalCounts: [] }))
     openOutbound()
     expect(card().textContent).toContain('No outbound clicks in this range')
     expect(card().textContent).not.toContain('Nothing matches this filter')
-    // And no footnote about a filter beside an empty list.
     expect(screen.queryByTestId('outbound-footnote')).toBeNull()
+  })
+
+  it('under a filter that leaves no click: nothing matches, with the way to clear it', () => {
+    // The page's filters reach this read now, so an empty tab under one is the filter's doing, as in every other
+    // block: the cards' own state, with their one action.
+    h.useOutboundUrls.mockReturnValue({ data: [], error: undefined, isLoading: false })
+    const clearFilters = vi.fn()
+    inFrame(
+      <EmptyFactsProvider value={{ filtered: true, clearFilters, neverVisited: false, canWiden: true, nobodyLive: false }}>
+        {block(undefined as never, { filters: 'v2:country|is|NO', outbound: { goalCounts: [] } })}
+      </EmptyFactsProvider>,
+    )
+    openOutbound()
+    expect(card().textContent).toContain('Nothing matches this filter')
+    expect(card().textContent).not.toContain('No outbound clicks in this range')
+    fireEvent.click(within(card()).getByRole('button', { name: 'Clear filter' }))
+    expect(clearFilters).toHaveBeenCalledTimes(1)
   })
 
   it('says the site has outbound links switched off, where it would say there are none', () => {

@@ -25,7 +25,7 @@ vi.mock('@/lib/api/stats', async (importOriginal) => {
   return { ...mod, ...api }
 })
 
-import { useFullDimensionList, useCampaignsList, useEventPropertyKeys, useEventPropertyValues, isLiveListKey, LIVE_LIST_KEY } from '../dashboard'
+import { useFullDimensionList, useCampaignsList, useEventPropertyKeys, useEventPropertyValues, useOutboundUrls, isLiveListKey, LIVE_LIST_KEY } from '../dashboard'
 
 const lastCall = () => swrSpy.mock.calls[swrSpy.mock.calls.length - 1]
 const keyOf = () => lastCall()[0] as unknown[] | null
@@ -149,11 +149,48 @@ describe('useEventPropertyKeys and useEventPropertyValues: the page\'s filters, 
   })
 })
 
+describe('useOutboundUrls: the Outbound tab follows the page\'s filters (16-11-2026)', () => {
+  const F = 'v2:country|is|NO,device|is|desktop'
+
+  it('sends the page\'s filters with the read, and files the answer under them', async () => {
+    renderHook(() => useOutboundUrls('site-1', '2026-10-01', '2026-10-07', '7d', undefined, F))
+    const filtered = keyOf()
+    expect(filtered).toEqual(['outboundUrls', 'site-1', '2026-10-01', '2026-10-07', '7d', F])
+    await fetcherOf()()
+    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'outbound_link', 'url', '2026-10-01', '2026-10-07', 1000, '7d', undefined, F)
+
+    // Another set of filters, or none, is another cache entry: rows read under one are never shown under another.
+    renderHook(() => useOutboundUrls('site-1', '2026-10-01', '2026-10-07', '7d', undefined, 'any:' + F))
+    expect(JSON.stringify(keyOf())).not.toBe(JSON.stringify(filtered))
+    renderHook(() => useOutboundUrls('site-1', '2026-10-01', '2026-10-07', '7d'))
+    expect(JSON.stringify(keyOf())).not.toBe(JSON.stringify(filtered))
+    await fetcherOf()()
+    expect(api.getEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'outbound_link', 'url', '2026-10-01', '2026-10-07', 1000, '7d', undefined, undefined)
+  })
+
+  it('in a live window: keyed on the window and the filters, fetched with minutes and no period', async () => {
+    renderHook(() => useOutboundUrls('site-1', '2026-10-01', '2026-10-01', 'today', 5, F))
+    expect(keyOf()).toEqual(['outboundUrls', 'site-1', LIVE_LIST_KEY, 5, F])
+    await fetcherOf()()
+    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'outbound_link', 'url', '2026-10-01', '2026-10-01', 1000, undefined, 5, F)
+    // The page's live signal revalidates it with every other live list.
+    expect(isLiveListKey('site-1')(keyOf())).toBe(true)
+  })
+
+  it('reads nothing while its tab is closed', () => {
+    renderHook(() => useOutboundUrls('site-1', '2026-10-01', '2026-10-07', '7d', undefined, F, false))
+    expect(keyOf()).toBeNull()
+  })
+})
+
 describe('isLiveListKey: what the page revalidates on its live signal', () => {
   it('matches every live list of the site, and nothing dated or foreign', () => {
     const match = isLiveListKey('site-1')
     expect(match(['fullList', 'countries', 'site-1', LIVE_LIST_KEY, 5, 250, undefined])).toBe(true)
-    expect(match(['outbound', 'site-1', LIVE_LIST_KEY, 5])).toBe(true)
+    // The Outbound tab's list, by the name its key really carries (useOutboundUrls); the old Outbound card's
+    // `outbound` key left with that card and matches nothing.
+    expect(match(['outboundUrls', 'site-1', LIVE_LIST_KEY, 5, undefined])).toBe(true)
+    expect(match(['outbound', 'site-1', LIVE_LIST_KEY, 5])).toBe(false)
     expect(match(['campaignsList', 'site-1', LIVE_LIST_KEY, 5, 10, undefined])).toBe(true)
     // The Events block's pane follows the live window like the rows it belongs to.
     expect(match(['eventKeys', 'site-1', 'signup', LIVE_LIST_KEY, 5, undefined])).toBe(true)

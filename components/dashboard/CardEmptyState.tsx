@@ -68,14 +68,12 @@ interface CardEmptyStateProps {
   docs?: { label: string; href: string; whenFresh?: boolean }
   /** The kind is switched off for this site: said in place of everything else. */
   off?: { title: string; description: string } | null
-  /** False for a block the page's filter does not reach (Outbound): it must never blame the filter. */
-  filterable?: boolean
   /** Realtime mode: the one realtime line, or the block's own while somebody is on the site. */
   live?: boolean
   className?: string
 }
 
-export default function CardEmptyState({ icon, kind, fresh, docs, off, filterable = true, live = false, className }: CardEmptyStateProps) {
+export default function CardEmptyState({ icon, kind, fresh, docs, off, live = false, className }: CardEmptyStateProps) {
   const scope = useOptionalSiteScope()
   const facts = useEmptyFacts()
   const canEdit = useCan('sites.edit')
@@ -91,7 +89,7 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
   const title = emptyRangeTitle(kind)
 
   const reader = Boolean(scope && !canWrite(scope))
-  const filtered = facts.filtered && filterable
+  const filtered = facts.filtered
 
   if (off && !reader) {
     const siteId = scope?.siteId
