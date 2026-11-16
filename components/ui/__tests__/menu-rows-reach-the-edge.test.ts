@@ -88,16 +88,17 @@ for (const file of [...sources('components'), ...sources('app')]) {
 
 describe("a menu's rows reach its edges", () => {
   it('finds every menu list the app has', () => {
-    // Fourteen lists in twelve files (the site picker has two: its sites, and the row under them; the filters box
+    // Fifteen lists in thirteen files (the site picker has two: its sites, and the row under them; the filters box
     // has two: its "3 filters" list, and a single filter's save menu). A list that loses its mark leaves the rule;
     // a new menu's list takes it. The new dashboard's "3 filters" list joined on 15-11-2026 (R46), the save menu on
-    // 16-11-2026 (saved filters, R59).
+    // 16-11-2026 (saved filters, R59), the older picker's "Event property" steps the same day (R45).
     expect(marked.map((m) => m.file).sort()).toEqual([
       'components/dashboard/DashboardShell.tsx',
       'components/dashboard/DashboardShell.tsx',
       'components/dashboard/TabMenu.tsx',
       'components/dashboard/filter/DimensionStage.tsx',
       'components/dashboard/filter/OperatorChip.tsx',
+      'components/dashboard/filter/PropertyStep.tsx',
       'components/dashboard/filter/search/FiltersBox.tsx',
       'components/dashboard/filter/search/FiltersBox.tsx',
       'components/funnels/FunnelModal.tsx',

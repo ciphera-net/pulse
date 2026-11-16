@@ -275,13 +275,14 @@ describe('SearchFilter with the event-filters beta (R45)', () => {
 })
 
 describe('the page\'s own events for the event kind (R45: "Events come from the page\'s own answer")', () => {
-  it('lists the dashboard\'s events under the event kind exactly as under event_name, with the owner\'s names', async () => {
+  it('lists the dashboard\'s events under the event kind with the owner\'s names, else the Events block\'s', async () => {
     const { pageValuesFrom } = await import('../values')
     const values = pageValuesFrom({ goal_counts: [{ event_name: 'signup', display_name: 'Sign-ups', count: 12 }, { event_name: 'add_to_cart', count: 3 }] } as never)
     expect(values.event).toEqual([
       { value: 'signup', label: 'Sign-ups', count: 12 },
-      { value: 'add_to_cart', label: 'add to cart', count: 3 },
+      { value: 'add_to_cart', label: 'Add to cart', count: 3 },
     ])
-    expect(values.event).toEqual(values.event_name)
+    // The same events, with the same counts, as the row test's list.
+    expect(values.event.map((e) => [e.value, e.count])).toEqual(values.event_name.map((e) => [e.value, e.count]))
   })
 })

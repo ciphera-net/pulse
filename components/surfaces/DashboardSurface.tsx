@@ -39,7 +39,7 @@ import FrameToolbar from '@/components/dashboard/FrameToolbar'
 // Client-only and off the critical path: driver.js only matters once the
 // dashboard is interactive, and the controller waits for the anchors anyway.
 const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
-import { type DimensionFilter, serializeFilters, parseFiltersFromURL, EVENT_FILTERS_FLAG, readEventNameAsEvent } from '@/lib/filters'
+import { type DimensionFilter, serializeFilters, parseFiltersFromURL, EVENT_FILTERS_FLAG, readEventNameAsEvent, eventFilterRoomFor, TOO_MANY_EVENT_FILTERS } from '@/lib/filters'
 import { useFeature } from '@/lib/features'
 import {
   useDashboard,
@@ -296,6 +296,12 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
 
 
   const handleAddFilter = useCallback((filter: DimensionFilter) => {
+    // The server reads at most two event filters (each is one more read of the range), and a row's press comes here
+    // without passing the Search filter's own check: refused with its words, never sent to be refused.
+    if (!eventFilterRoomFor(filter, filters)) {
+      toast.error(TOO_MANY_EVENT_FILTERS)
+      return
+    }
     setFilters(prev => {
       const isDuplicate = prev.some(
         f => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';')
@@ -303,7 +309,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
       if (isDuplicate) return prev
       return [...prev, filter]
     })
-  }, [])
+  }, [filters])
 
   const handleRemoveFilter = useCallback((index: number) => {
     setFilters(prev => prev.filter((_, i) => i !== index))

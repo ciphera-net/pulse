@@ -58,6 +58,7 @@ export default function FilterBuilder({ builder, filters, onApply, allowedDimens
           onPick={dimension => dispatch({ type: 'pick_dimension', dimension })}
           onClose={close}
           allowed={allowedDimensions}
+          fetchSuggestions={fetchSuggestions}
         />
       ) : (
         <ValueStage

@@ -30,6 +30,10 @@ const CARDS = [
   'components/dashboard/ContentStats.tsx',
   // The new frame's Events list: its rows hold numbers with their own tooltips, so the press is an overlay button.
   'components/dashboard/events/EventsBlock.tsx',
+  // Its values filter under the event-filters beta, the same device (16-11-2026).
+  'components/dashboard/events/EventProperties.tsx',
+  // The Outbound tab's rows filter under the same beta, an overlay button beside the link's arrow (16-11-2026).
+  'components/dashboard/OutboundLinksTab.tsx',
 ]
 
 /** The opening tag of every element carrying `interactive-row`. */

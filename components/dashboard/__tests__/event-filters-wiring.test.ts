@@ -36,6 +36,24 @@ describe('the event filter beta is wired where the filter is offered', () => {
     expect(read('components/dashboard/filter/DimensionStage.tsx')).toContain('categoriesFor(eventFilters)')
   })
 
+  it('hands the Events block the page\'s card filter only under the beta, through its card', () => {
+    expect(read('components/surfaces/DashboardFrame.tsx')).toContain('onFilter={eventFilters ? onCardFilter : undefined}')
+    expect(read('components/dashboard/ContentSignals.tsx')).toContain('onFilter={props.onFilter}')
+    expect(read('components/dashboard/events/EventsBlock.tsx')).toContain('onFilter={onFilter}')
+  })
+
+  it('keeps a row\'s press on the dashboard to two event filters, as the pickers are kept', () => {
+    const page = read('components/surfaces/DashboardSurface.tsx')
+    expect(page).toContain('if (!eventFilterRoomFor(filter, filters)) {')
+    expect(page).toContain('toast.error(TOO_MANY_EVENT_FILTERS)')
+    expect(page).toMatch(/const handleAddFilter = useCallback\(\(filter: DimensionFilter\) => \{[\s\S]*?\}, \[filters\]\)/)
+  })
+
+  it('offers Journeys Event property under the beta, and hands the older picker the reads its steps need', () => {
+    expect(read('lib/hooks/useJourneyFilters.ts')).toContain('[...JOURNEY_FILTER_DIMENSIONS, EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND]')
+    expect(read('components/dashboard/filter/FilterBuilder.tsx')).toContain('fetchSuggestions={fetchSuggestions}\n        />\n      ) : (')
+  })
+
   it('lists the beta for the Beta tab under the flag the pickers read', () => {
     expect(read('lib/betas.ts')).toContain("{ flag: 'event-filters', name: 'Event filters', revalidates: [] }")
     expect(read('lib/filters.ts')).toContain("export const EVENT_FILTERS_FLAG = 'event-filters'")

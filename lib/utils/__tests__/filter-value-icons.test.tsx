@@ -113,3 +113,20 @@ describe('the event filter kinds (R45): an event its mark, an outbound link its 
     }
   })
 })
+
+describe('an event property\'s value: a link draws its destination, anything else the event\'s mark (R45)', () => {
+  it('draws a link value\'s favicon, as the Events block draws its link values', async () => {
+    const { eventPropertyKind } = await import('@/lib/filters')
+    const el = draw(getFilterValueIcon(eventPropertyKind('file_download', 'url'), 'https://www.example.org/a.pdf'))
+    expect(el.querySelector('img')?.getAttribute('src')).toContain('domain=example.org')
+  })
+
+  it('draws the event\'s mark for a value that is no link, and never a globe', async () => {
+    const { eventPropertyKind, OUTBOUND_KIND } = await import('@/lib/filters')
+    const plain = draw(getFilterValueIcon(eventPropertyKind('signup', 'plan'), 'pro'))
+    expect(plain.querySelector('img')).toBeNull()
+    expect(plain.innerHTML).not.toBe(markup(<Globe className="text-neutral-500" />))
+    // An outbound link that opens no page keeps the globe it had.
+    expect(markup(getFilterValueIcon(OUTBOUND_KIND, 'javascript:void(0)'))).toBe(markup(<Globe className="text-neutral-500" />))
+  })
+})

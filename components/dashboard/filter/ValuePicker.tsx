@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { motion } from 'framer-motion'
-import { kindLabel, type FilterSuggestion } from '@/lib/filters'
+import { type FilterSuggestion } from '@/lib/filters'
+import { labelOf } from './search/values'
 import { getFilterValueIcon } from '@/lib/utils/icons'
 import { formatCompactNumber } from '@/lib/utils/format'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -82,19 +83,26 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
     s.value.toLowerCase().includes(search.toLowerCase())
   )
 
+  // * Every stored value a suggestion stands for: a merged row (two stored
+  // * addresses that read the same) is one row, and takes all of them.
+  const valuesOf = (s: FilterSuggestion) => s.values ?? [s.value]
+  const listed = new Set(suggestions.flatMap(valuesOf))
+
   // * Chosen values missing from the suggestion list (custom entries, values
   // * outside the top 100, or a failed fetch) must stay visible and removable.
   const selectedExtras = values.filter(v =>
-    !suggestions.some(s => s.value === v) &&
+    !listed.has(v) &&
     v.toLowerCase().includes(search.toLowerCase())
   )
 
-  function toggle(val: string) {
+  /** A row is on while every value it stands for is chosen; a press chooses or drops all of them. */
+  const isOn = (row: string[]) => row.every(v => values.includes(v))
+  function toggle(row: string[]) {
     if (single) {
-      onChange(values.includes(val) ? [] : [val])
+      onChange(isOn(row) ? [] : row.slice(0, 1))
       return
     }
-    onChange(values.includes(val) ? values.filter(v => v !== val) : [...values, val])
+    onChange(isOn(row) ? values.filter(v => !row.includes(v)) : [...values, ...row.filter(v => !values.includes(v))])
   }
 
   function handleAddCustom() {
@@ -104,13 +112,13 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
     setSearch('')
   }
 
-  const dimLabel = dimension ? kindLabel(dimension) : 'value'
+  const dimLabel = dimension ? labelOf(dimension) : 'value'
 
-  const renderRow = (value: string, label: string, checked: boolean, count?: number, country?: string) => (
+  const renderRow = (value: string, row: string[], label: string, checked: boolean, count?: number, country?: string) => (
     <button
       key={value}
       type="button"
-      onClick={() => toggle(value)}
+      onClick={() => toggle(row)}
       className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-neutral-800 transition-colors cursor-pointer ease-apple"
     >
       <span className={`flex items-center justify-center w-3.5 h-3.5 rounded-none border flex-shrink-0 transition-colors ${
@@ -157,8 +165,8 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
               e.preventDefault()
               if (search.trim() === '') {
                 onSubmit?.()
-              } else if (filtered.length === 1 && !values.includes(filtered[0].value)) {
-                toggle(filtered[0].value)
+              } else if (filtered.length === 1 && !isOn(valuesOf(filtered[0]))) {
+                toggle(valuesOf(filtered[0]))
                 setSearch('')
               } else {
                 handleAddCustom()
@@ -195,8 +203,8 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
           className="max-h-52 overflow-y-auto border-t border-neutral-800"
         >
-          {selectedExtras.map(v => renderRow(v, v, true))}
-          {filtered.map(s => renderRow(s.value, s.label, values.includes(s.value), s.count, s.country))}
+          {selectedExtras.map(v => renderRow(v, [v], v, true))}
+          {filtered.map(s => renderRow(s.value, valuesOf(s), s.label, isOn(valuesOf(s)), s.count, s.country))}
           {fetchFailed && (
             <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-red-400/90 border-t border-neutral-800">
               Suggestions unavailable

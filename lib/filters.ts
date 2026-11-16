@@ -13,6 +13,12 @@ export interface FilterSuggestion {
   count?: number
   /** A city's or a region's country (ISO code), for its flag in the Filter menu; the reads of the two carry it. */
   country?: string
+  /**
+   * Every stored value the suggestion stands for, most counted first, where stored values that read the same are
+   * one row (a list never draws the same row twice, plan section 10ab): `http` beside `https`, `www.` beside the
+   * bare host. Its filter takes all of them. Absent when the row is one stored value, `value`.
+   */
+  values?: string[]
 }
 
 export const DIMENSION_LABELS: Record<string, string> = {
@@ -183,11 +189,14 @@ export function eventFilterRoomFor(filter: DimensionFilter, filters: DimensionFi
   return filters.filter((f) => isEventKind(f.dimension)).length < MAX_EVENT_FILTERS
 }
 
-/** The Events category while the event-filters beta is on: an event and an outbound link in place of `event_name`. */
+/**
+ * The Events category while the event-filters beta is on: an event, an event's property and an outbound link in place of
+ * `event_name`.
+ */
 export function categoriesFor(eventFilters: boolean): { label: string; dimensions: readonly string[] }[] {
   return DIMENSION_CATEGORIES.map((c) =>
     eventFilters && c.dimensions.includes('event_name' as never)
-      ? { label: c.label, dimensions: c.dimensions.flatMap((d) => (d === 'event_name' ? [EVENT_KIND, OUTBOUND_KIND] : [d])) }
+      ? { label: c.label, dimensions: c.dimensions.flatMap((d) => (d === 'event_name' ? [EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND] : [d])) }
       : { label: c.label, dimensions: c.dimensions },
   )
 }
@@ -218,6 +227,30 @@ export function isEventKind(dimension: string): boolean {
 }
 
 /**
+ * "Event property" (R45; design section 8: "a property is picked as event, then key, then value"). A kind a picker
+ * offers that is no filter of its own: it lists the page's events, an event lists its keys (`propertyKeysScope`),
+ * and a key lists the values of the kind `event_property:<event>:<key>`. Never serialised: without a colon it cannot
+ * be read as a property kind.
+ */
+export const EVENT_PROPERTY_SCOPE = 'event_property'
+
+// The keys of one event, as a list a picker reads on its way to a property ("Event property": an event, then one of
+// its keys, then a value). Never a filter: the server knows no such kind, and nothing serialises one.
+// `event_property_keys:` cannot be read as a property kind, whose prefix ends in a colon right after "property".
+const PROPERTY_KEYS_PREFIX = 'event_property_keys:'
+
+/** The read of an event's keys, as useFilterSuggestions takes it. */
+export function propertyKeysScope(event: string): string {
+  return `${PROPERTY_KEYS_PREFIX}${event.toLowerCase()}`
+}
+
+/** The event whose keys a scope reads, or null for any other scope. */
+export function propertyKeysEvent(scope: string): string | null {
+  if (!scope.startsWith(PROPERTY_KEYS_PREFIX)) return null
+  return scope.slice(PROPERTY_KEYS_PREFIX.length) || null
+}
+
+/**
  * An old address's `event_name` filters, read as `event` (R45: an old Event link takes the new meaning), the names
  * lower-cased as ingest stores every name. Only while the event-filters beta is on; every other filter passes as is.
  */
@@ -228,11 +261,16 @@ export function readEventNameAsEvent(filters: DimensionFilter[]): DimensionFilte
 
 /**
  * A kind as a reader names it: "Event", "Outbound link", or a property as its event's name and its key
- * ("Signup: plan"). `eventLabel` names an event (the Events block's names); without it the stored name is used.
+ * ("Signup: Plan"). `eventLabel` names an event (the Events block's names) and `keyLabel` a key (the names of the
+ * Events block's property tabs); without them the stored names are used.
  */
-export function kindLabel(dimension: string, eventLabel: (event: string) => string = (e) => e): string {
+export function kindLabel(
+  dimension: string,
+  eventLabel: (event: string) => string = (e) => e,
+  keyLabel: (event: string, key: string) => string = (_e, k) => k,
+): string {
   if (dimension === OUTBOUND_KIND) return 'Outbound link'
   const property = eventPropertyOf(dimension)
-  if (property) return `${eventLabel(property.event)}: ${property.key}`
+  if (property) return `${eventLabel(property.event)}: ${keyLabel(property.event, property.key)}`
   return DIMENSION_LABELS[dimension] || dimension
 }

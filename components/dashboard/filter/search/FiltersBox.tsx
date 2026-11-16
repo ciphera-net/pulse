@@ -153,7 +153,7 @@ function SaveRow({ filters, saved, savedFilters, pageValues }: { filters: Dimens
 /** One filter as a pill: its kind, its operator (a press flips it), its values, its x, and the bookmark that saves it. */
 function Pill({ f, i, onApply, onRemove, pageValues, places, savedFilters }: { f: DimensionFilter; i: number; savedFilters: SavedFilters } & Omit<FiltersBoxProps, 'filters'>) {
   const out = excluded(f)
-  const kind = labelOf(f.dimension)
+  const kind = labelOf(f.dimension, pageValues)
   const pillRef = useRef<HTMLSpanElement>(null)
   const [menu, setMenu] = useState(false)
   const saved = savedFilters.on ? setFor([f], savedFilters.sets) : null
@@ -228,7 +228,7 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, o
       <div data-menu-list="" className="divide-y divide-white/[0.06]">
         {filters.map((f, i) => {
           const out = excluded(f)
-          const kind = labelOf(f.dimension)
+          const kind = labelOf(f.dimension, pageValues)
           return (
             <div key={`${f.dimension}-${i}`} className="flex h-11 items-center gap-2 ps-4 text-sm" data-testid="filters-menu-row">
               <Icon f={f} places={places} />

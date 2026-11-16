@@ -5,6 +5,7 @@ import { CompactNumber } from '@/components/ui/compact-number'
 import { usePagePreview } from '@/lib/swr/dashboard'
 import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 import type { GoalCountStat, ImportedProvenance, ScrollDepthDistribution } from '@/lib/api/stats'
+import type { DimensionFilter } from '@/lib/filters'
 import ScrollDepthBars from './ScrollDepthBars'
 import GoalStats from './GoalStats'
 import EventsBlock from './events/EventsBlock'
@@ -53,6 +54,8 @@ interface ContentSignalsProps {
    * over these visitors. Today's card shows no share and takes none.
    */
   totals?: { pageviews: number; visitors: number }
+  /** The new frame only, under the event-filters beta (R45): a press on one of the Events block's values filters the page. */
+  onFilter?: (filter: DimensionFilter) => void
 }
 
 /** W-M12-5: the Events card's header word, the rail's own vocabulary (M11). */
@@ -77,6 +80,7 @@ export default function ContentSignals(props: ContentSignalsProps) {
           totals={props.totals}
           memberFeatures={props.memberFeatures}
           filters={props.filters}
+          onFilter={props.onFilter}
         />
       ) : (
         <TodaysContentSignals {...props} />
