@@ -5,16 +5,19 @@ import { API_URL } from '@/lib/api/client'
  * became the Developers page's AI assistants in the settings overhaul, copy deck §11.3).
  *
  * The wording follows the MCP docs page (docs.ciphera.net/pulse/mcp) so the two never disagree.
- * Claude (web), Claude Code, Cursor and VS Code were driven end to end against Pulse in M4.
- * ChatGPT, Le Chat and Copilot Studio follow their vendors' documentation until the owner's
- * hosted run (M4, PULSE-42).
+ * Claude (web), Claude Code, Cursor and VS Code were driven end to end against Pulse in M4, and
+ * Cline's CLI on 15-11-2026. Claude's steps start in its connector directory, where Pulse Analytics
+ * is listed since 15-11-2026, with the custom connector as the alternative. ChatGPT, Le Chat and
+ * Copilot Studio follow their vendors' documentation until the owner's hosted run (M4, PULSE-42).
+ * Any other client has no tile: the line under the tiles says it can connect with the server URL
+ * (owner's pick A1, 16-11-2026).
  *
  * A mark here is the VENDOR's, drawn on a picker tile to say where the steps apply. It is not a
  * claim about a connecting client's identity: rows in the connection list still draw a logo only
  * for a client Pulse has verified (AppMark).
  */
 
-export type McpClientId = 'claude' | 'claude-code' | 'chatgpt' | 'cursor' | 'vscode' | 'lechat' | 'copilot' | 'other'
+export type McpClientId = 'claude' | 'claude-code' | 'chatgpt' | 'cursor' | 'vscode' | 'lechat' | 'copilot' | 'cline'
 
 export interface McpStep {
   title: string
@@ -26,8 +29,8 @@ export interface McpStep {
 export interface McpClient {
   id: McpClientId
   name: string
-  /** A CDN path under /connect (versioned file names), or null for the "Other" tile's icon. */
-  mark: string | null
+  /** A CDN path under /connect (versioned file names). */
+  mark: string
   steps: (url: string) => McpStep[]
 }
 
@@ -53,10 +56,9 @@ export const MCP_CLIENTS: McpClient[] = [
     name: 'Claude',
     mark: '/connect/claude-v1.svg',
     steps: (url) => [
-      { title: 'Add a custom connector', text: 'In Claude, open Customize → Connectors, click +, then Add custom connector.' },
-      { title: 'Paste the server URL', text: 'Leave Advanced settings empty.', copy: { label: 'Server URL', code: url } },
-      { title: 'Connect', text: `Click Add, then Connect. ${allow}` },
-      done('Claude'),
+      { title: "Find it in Claude's directory", text: 'In Claude, open Customize → Connectors and select Discover. Search for Pulse Analytics.' },
+      { title: 'Connect', text: 'Select Connect to Claude. Pulse opens: choose your sites and click Allow.' },
+      { title: 'Or add it by its address', text: 'Under Customize → Connectors, click +, then Add custom connector, and paste this URL.', copy: { label: 'Server URL', code: url } },
     ],
   },
   {
@@ -128,12 +130,12 @@ export const MCP_CLIENTS: McpClient[] = [
     ],
   },
   {
-    id: 'other',
-    name: 'Other',
-    mark: null,
+    id: 'cline',
+    name: 'Cline',
+    mark: '/connect/cline-v1.png',
     steps: (url) => [
-      { title: 'Use the server URL', text: 'Any MCP client that supports remote servers over HTTP with sign-in can connect. It sends you to Pulse to approve.', copy: { label: 'Server URL', code: url } },
-      { title: 'Or use an API key', text: 'For scripts and clients without sign-in, send an API key from this page in the Authorization header.', copy: { label: 'Header', code: 'Authorization: Bearer pulse_sk_live_…' } },
+      { title: 'Add Pulse Analytics', text: 'Run this in your terminal.', copy: { label: 'Terminal', code: `cline mcp add pulse ${url} --transport streamableHttp --yes` } },
+      { title: 'Sign in', text: 'Run cline mcp, choose Authorize OAuth, then pulse. Pulse opens in your browser: click Allow.', copy: { label: 'Terminal', code: 'cline mcp' } },
     ],
   },
 ]

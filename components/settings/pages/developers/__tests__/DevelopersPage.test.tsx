@@ -516,13 +516,17 @@ describe('DevelopersPage: AI assistants', () => {
     await screen.findByText('No API keys yet')
   })
 
-  it('points Other at an API key from this page (copy deck §11.3)', async () => {
+  it('shows Cline in Other\'s old tile and the line for every other client under the tiles (pick A1)', async () => {
     render(<DevelopersPage />)
-    fireEvent.click(screen.getByRole('button', { name: 'Other' }))
-    expect(screen.getByRole('list', { name: 'Connect Other' }).textContent).toContain(
-      'For scripts and clients without sign-in, send an API key from this page in the Authorization header.',
+    expect(screen.queryByRole('button', { name: 'Other' })).toBeNull()
+    expect(
+      screen.getByText('Using another assistant? Any MCP client that supports remote servers with sign-in can connect with the server URL.'),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cline' }))
+    expect(screen.getByRole('list', { name: 'Connect Cline' }).textContent).toContain(
+      'cline mcp add pulse https://pulse-api-staging.ciphera.net/mcp --transport streamableHttp --yes',
     )
-    expect(document.querySelectorAll('[data-railgrid] img[data-client]').length).toBe(7)
+    expect(document.querySelectorAll('[data-railgrid] img[data-client]').length).toBe(8)
     await screen.findByText('No API keys yet')
   })
 })
