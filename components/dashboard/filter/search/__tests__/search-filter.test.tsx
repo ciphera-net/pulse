@@ -111,6 +111,19 @@ describe('SearchFilter', () => {
     outside.remove()
   })
 
+  // `g f` goes to Funnels: ShortcutHandler (on the document) marks the F handled, and the filter must not open as well.
+  // Until 16-11-2026 it did, because its listener never asked.
+  it('does not open on an F already handled, as the F of `g f`', () => {
+    renderFilter()
+    const handle = (e: KeyboardEvent) => e.preventDefault()
+    document.addEventListener('keydown', handle)
+    fireEvent.keyDown(document.body, { key: 'f' })
+    document.removeEventListener('keydown', handle)
+    expect(panel()).toBeNull()
+    fireEvent.keyDown(document.body, { key: 'f' })
+    expect(panel()).toBeTruthy()
+  })
+
   it('carries the date button\'s caret, a quarter turn while open (R48)', () => {
     const { button } = renderFilter()
     const caret = () => button.querySelectorAll('svg')[1]

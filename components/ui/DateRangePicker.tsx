@@ -10,6 +10,9 @@ import type { Period } from '@/lib/hooks/periodUrl'
 import { buttonVariants } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
+import { CUSTOM_RANGE_KEY, KEYBOARD_SHORTCUTS_FLAG, RANGE_KEYS, isPageShortcut, keyCap, ownsArrows, rowForKey } from '@/lib/keyboard/shortcuts'
+import { useFeature } from '@/lib/features'
+import KeyCap from '@/components/ui/KeyCap'
 
 // ─── The view switcher (PULSE-20, owner decisions 25-09-2026) ────────────────
 //
@@ -35,6 +38,14 @@ import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 // (placePanel), so nothing is measured again when the calendar appears. Below `sm` there
 // is no room for two columns: the calendar opens under the list and the panel scrolls to
 // it.
+//
+// ─── Its keys (16-11-2026, R13) ──────────────────────────────────────────────
+//
+// Every page draws one switcher, so the switcher owns the range's keys: a row's letter
+// (lib/keyboard/shortcuts.ts, Plausible's) picks it from anywhere on the page, C opens the
+// calendar, and the left and right arrows do what the two arrows beside the button do. A
+// greyed row's letter does nothing, as its press does nothing. Each row shows its letter
+// in the Filter button's cap, from `sm` up (a phone has no keyboard to press it on).
 
 export interface DateRangePickerProps {
   /** The closed button's label — the APPLIED view ("Last 7 days", "23 Sep"). */
@@ -138,6 +149,14 @@ function matchesMedia(query: string, fallback: boolean): boolean {
   return window.matchMedia(query).matches
 }
 
+/** How the calendar arrives, read when it is asked for: under the list below `sm`, at once with reduced motion. */
+function calendarArrival() {
+  return {
+    stacked: !matchesMedia(WIDE_QUERY, true),
+    instant: matchesMedia('(prefers-reduced-motion: reduce)', false),
+  }
+}
+
 function formatYMD(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
@@ -212,6 +231,10 @@ export default function DateRangePicker({
   })
   const [rangeStart, setRangeStart] = useState<string | null>(null)
   const [hoverDate, setHoverDate] = useState<string | null>(null)
+  // C opened the menu: it opens with its calendar.
+  const calendarOnOpen = useRef(false)
+  // The keys and the letters are a beta (KEYBOARD_SHORTCUTS_FLAG). A public page (the demo, a share link) offers none.
+  const keys = useFeature(KEYBOARD_SHORTCUTS_FLAG) === true
 
   const todayStr = formatYMD(now.getFullYear(), now.getMonth(), now.getDate())
 
@@ -249,7 +272,13 @@ export default function DateRangePicker({
 
   useEffect(() => {
     if (isOpen) {
-      setCalendarOpen(false)
+      if (calendarOnOpen.current) {
+        calendarOnOpen.current = false
+        setArrival(calendarArrival())
+        setCalendarOpen(true)
+      } else {
+        setCalendarOpen(false)
+      }
       setRangeStart(null)
       const d = new Date(initial + 'T00:00:00')
       setViewMonth({ year: d.getFullYear(), month: d.getMonth() })
@@ -269,10 +298,7 @@ export default function DateRangePicker({
       setCalendarOpen(false)
       return
     }
-    setArrival({
-      stacked: !matchesMedia(WIDE_QUERY, true),
-      instant: matchesMedia('(prefers-reduced-motion: reduce)', false),
-    })
+    setArrival(calendarArrival())
     setCalendarOpen(true)
   }
 
@@ -305,6 +331,45 @@ export default function DateRangePicker({
       document.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen])
+
+  const customAvailable = Boolean(onCustom && calendar)
+
+  // The range's keys, from anywhere on the page (the comment at the top of this file).
+  useEffect(() => {
+    if (!keys) return
+    function onKey(e: KeyboardEvent) {
+      if (!isPageShortcut(e)) return
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        // With the menu open the arrows would move a range nobody is looking at.
+        if (isOpen || !onShift || ownsArrows(e.target)) return
+        const direction = e.key === 'ArrowLeft' ? -1 : 1
+        if (direction < 0 ? shiftBackDisabled : shiftForwardDisabled) return
+        e.preventDefault()
+        onShift(direction)
+        return
+      }
+      if (e.key.toLowerCase() === CUSTOM_RANGE_KEY) {
+        if (!customAvailable) return
+        e.preventDefault()
+        if (!isOpen) {
+          calendarOnOpen.current = true
+          setIsOpen(true)
+        } else if (!calendarOpen) {
+          setArrival(calendarArrival())
+          setCalendarOpen(true)
+        }
+        return
+      }
+      const key = rowForKey(e.key)
+      const row = key ? rows.find((r) => r.key === key) : undefined
+      if (!row || !row.available) return
+      e.preventDefault()
+      setIsOpen(false)
+      onPick(row.key)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [keys, rows, onPick, onShift, shiftBackDisabled, shiftForwardDisabled, customAvailable, isOpen, calendarOpen])
 
   function prevMonth() {
     setViewMonth((v) => (v.month === 0 ? { year: v.year - 1, month: 11 } : { year: v.year, month: v.month - 1 }))
@@ -366,7 +431,10 @@ export default function DateRangePicker({
     rows.filter((r) => r.section === 'relative'),
     rows.filter((r) => r.section === 'calendar'),
   ]
-  const customAvailable = Boolean(onCustom && calendar)
+
+  // A row's letter, as a cap at its end. Only on a row the letter can pick, and from `sm` up.
+  const cap = (letter: string | undefined) =>
+    keys && letter ? <KeyCap className="ml-auto hidden sm:inline-flex">{keyCap(letter)}</KeyCap> : null
 
   const renderRow = (row: RowState) => {
     const ticked = tick === row.key
@@ -387,17 +455,20 @@ export default function DateRangePicker({
         </button>
       )
     }
+    const letter = keys ? RANGE_KEYS[row.key] : undefined
     return (
       <button
         key={row.key}
         type="button"
         onClick={() => handleRowClick(row)}
         aria-pressed={ticked}
+        aria-keyshortcuts={letter ? keyCap(letter) : undefined}
         data-row={row.key}
         className={ticked ? ROW_ON : ROW_OFF}
       >
         <Check weight="bold" className={`w-3.5 h-3.5 shrink-0 ${ticked ? 'opacity-100' : 'opacity-0'}`} />
         {row.label}
+        {cap(letter)}
       </button>
     )
   }
@@ -417,11 +488,13 @@ export default function DateRangePicker({
             aria-pressed={tick === 'custom'}
             aria-expanded={calendarOpen}
             aria-controls={calendarOpen ? calendarId : undefined}
+            aria-keyshortcuts={keys ? keyCap(CUSTOM_RANGE_KEY) : undefined}
             data-row="custom"
             className={calendarOpen ? ROW_OPEN : tick === 'custom' ? ROW_ON : ROW_OFF}
           >
             <Check weight="bold" className={`w-3.5 h-3.5 shrink-0 ${tick === 'custom' ? 'opacity-100' : 'opacity-0'}`} />
             {CUSTOM_RANGE_LABEL}
+            {cap(CUSTOM_RANGE_KEY)}
           </button>
         ) : (
           <button

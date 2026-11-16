@@ -32,4 +32,7 @@ export const BETAS: readonly Beta[] = [
   // Journeys and Settings, Export. Their pickers read useFeature (lib/filters.ts EVENT_FILTERS_FLAG); the server
   // answers a condition for every team.
   { flag: 'event-filters', name: 'Event filters', revalidates: [] },
+  // Keyboard shortcuts (R13): a letter for each date range, C for the calendar, R for realtime and the arrows to step
+  // the range. The date menu, the orb and the ? list read useFeature (lib/keyboard/shortcuts.ts KEYBOARD_SHORTCUTS_FLAG).
+  { flag: 'keyboard-shortcuts', name: 'Keyboard shortcuts', revalidates: [] },
 ]
