@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import { usePathname } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
@@ -176,7 +176,7 @@ function NavLink({
   const active = matchesPathname || matchesPending
 
   const link = (
-    <Link
+    <AppLink
       href={href}
       onClick={() => { onNavigate(href); onClick?.() }}
       data-sidebar-active={active ? '' : undefined}
@@ -207,7 +207,7 @@ function NavLink({
           ))}
         </span>
       )}
-    </Link>
+    </AppLink>
   )
 
   if (collapsed) return <SidebarTooltip label={item.label}>{link}</SidebarTooltip>
@@ -246,7 +246,7 @@ function HomeNavLink({
   const active = !external && (matchPrefix ? pathname.startsWith(href) : pathname === href)
 
   const link = (
-    <Link
+    <AppLink
       href={href}
       onClick={onClick}
       data-sidebar-active={active ? '' : undefined}
@@ -264,7 +264,7 @@ function HomeNavLink({
         <Icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
       </span>
       <Label collapsed={collapsed}>{label}</Label>
-    </Link>
+    </AppLink>
   )
 
   if (collapsed) return <SidebarTooltip label={label}>{link}</SidebarTooltip>
@@ -283,7 +283,7 @@ function HomeSiteLink({
   const active = pathname.startsWith(href)
 
   const link = (
-    <Link
+    <AppLink
       href={href}
       onClick={onClick}
       data-sidebar-active={active ? '' : undefined}
@@ -305,7 +305,7 @@ function HomeSiteLink({
         />
       </span>
       <Label collapsed={collapsed}>{site.name}</Label>
-    </Link>
+    </AppLink>
   )
 
   if (collapsed) return <SidebarTooltip label={site.name}>{link}</SidebarTooltip>
@@ -368,9 +368,9 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Logo — fixed layout, text fades */}
-      <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
+      <AppLink href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
         <SidebarLogoMark collapsed={c} />
-      </Link>
+      </AppLink>
 
       {/* Search trigger — opens ⌘K command palette */}
       <div className="px-2 mb-2 shrink-0">
@@ -548,20 +548,20 @@ function EventsMeter({ meter, collapsed, onNavigate }: {
     return (
       <SidebarTooltip label={meter.label}>
         <div className="mb-0.5 flex justify-center">
-          <Link
+          <AppLink
             href={BILLING_HREF}
             onClick={onNavigate}
             aria-label={meter.label}
             className="w-9 h-9 flex items-center justify-center rounded-none hover:bg-white/[0.06] transition-colors ease-apple"
           >
             <ProgressRing progress={meter.progress} size={16} arcClassName={arc} />
-          </Link>
+          </AppLink>
         </div>
       </SidebarTooltip>
     )
   }
   return (
-    <Link
+    <AppLink
       href={BILLING_HREF}
       onClick={onNavigate}
       data-sidebar-events=""
@@ -579,7 +579,7 @@ function EventsMeter({ meter, collapsed, onNavigate }: {
         </span>
         <span className="mt-0.5 block text-caption tabular-nums text-neutral-500 whitespace-nowrap">{meter.line}</span>
       </span>
-    </Link>
+    </AppLink>
   )
 }
 

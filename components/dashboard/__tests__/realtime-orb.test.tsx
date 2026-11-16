@@ -1,6 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+const flag = vi.hoisted(() => ({ on: false }))
+vi.mock('@/lib/features', () => ({ useFeature: () => flag.on }))
 import RealtimeOrb, { describeLiveCount } from '../RealtimeOrb'
+
+afterEach(() => { flag.on = false })
 
 // * The count and the realtime view are the SAME five minutes now (owner, 25-09-2026),
 // * so the phrase names its window rather than leaving "current visitors" to imply a
@@ -99,5 +103,34 @@ describe('RealtimeOrb on the share page (display-only)', () => {
     const status = screen.getByRole('status')
     expect(status).toHaveAttribute('data-live-orb', 'display')
     expect(status).toHaveAttribute('aria-label', describeLiveCount(4))
+  })
+})
+
+// R does what a press on the orb does (16-11-2026, R13), while the keyboard shortcuts' beta is on.
+describe('RealtimeOrb and R', () => {
+  it('R switches realtime where the orb is a switch', () => {
+    flag.on = true
+    const onToggle = vi.fn()
+    render(<RealtimeOrb count={3} live={false} onToggle={onToggle} />)
+    fireEvent.keyDown(document.body, { key: 'r' })
+    fireEvent.keyDown(document.body, { key: 'R', shiftKey: true })
+    expect(onToggle).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button')).toHaveAttribute('aria-keyshortcuts', 'R')
+  })
+
+  it('R does nothing with ⌘, in a field, or with the beta off', () => {
+    flag.on = true
+    const onToggle = vi.fn()
+    const { unmount } = render(<RealtimeOrb count={3} live={false} onToggle={onToggle} />)
+    fireEvent.keyDown(document.body, { key: 'r', metaKey: true })
+    const field = document.body.appendChild(document.createElement('input'))
+    fireEvent.keyDown(field, { key: 'r' })
+    field.remove()
+    unmount()
+    flag.on = false
+    render(<RealtimeOrb count={3} live={false} onToggle={onToggle} />)
+    fireEvent.keyDown(document.body, { key: 'r' })
+    expect(onToggle).not.toHaveBeenCalled()
+    expect(screen.getByRole('button')).not.toHaveAttribute('aria-keyshortcuts')
   })
 })

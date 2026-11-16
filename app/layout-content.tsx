@@ -6,7 +6,7 @@ import { Footer } from '@/components/Footer'
 import { Header as MarketingHeader } from '@/components/marketing/Header'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import { usePathname } from 'next/navigation'
 import DashboardChrome from '@/components/dashboard/DashboardChrome'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -154,7 +154,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
-      <Footer LinkComponent={Link} />
+      <Footer LinkComponent={AppLink} />
     </div>
   )
 }

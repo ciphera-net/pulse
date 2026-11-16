@@ -26,7 +26,7 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * outbound, downloads, interactions and its kinds), flat: each changed switch and its `previous_` value. Since
  * tracker v1.9.0 (14-11-2026) a save takes effect on the site at once, so the row dates the change.
  * `saved_filter_created` and `saved_filter_deleted` are one row each time a team saves the filters that are on under
- * a name, or deletes such a set (16-11-2026, the saved-filters beta): `site_id`, `saved_filter_id` and `name`.
+ * a name, or deletes such a set (16-11-2026, saved filters): `site_id`, `saved_filter_id` and `name`.
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.

@@ -23,7 +23,7 @@ import { NameField, SavedAs, suggestName, valueText } from './saved'
 // 16-11-2026, "an x on the box", which supersedes the earlier "the clear all button needs to be removed": that was a
 // "Clear all" row in the list).
 //
-// Saved filters (R59 and R60, the saved-filters beta): the box's list ends with "Save these filters", which names
+// Saved filters (R59 and R60; for every team since 16-11-2026): the box's list ends with "Save these filters", which names
 // the set in place; a single filter's pill has a bookmark beside its x that opens the same field. While the filters
 // on are a saved set, both say "Saved as …" instead. The sets themselves are listed in the Filter panel.
 // ---------------------------------------------------------------------------

@@ -8,6 +8,8 @@ import { buttonVariants, toast } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { SkeletonLine } from '@/components/skeleton/primitives'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
+import { FILTER_KEY, isPageShortcut } from '@/lib/keyboard/shortcuts'
+import KeyCap from '@/components/ui/KeyCap'
 import { formatCompactNumber } from '@/lib/utils/format'
 import { getFilterValueIcon } from '@/lib/utils/icons'
 import { EVENT_KIND, TOO_MANY_EVENT_FILTERS, eventFilterRoomFor, propertyKeysEvent, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
@@ -69,10 +71,6 @@ export function valueIcon(dimension: string, value: string, country?: string): R
   return getFilterValueIcon(dimension, value, country)
 }
 
-function Key({ children }: { children: ReactNode }) {
-  return <kbd className="inline-flex h-[18px] min-w-[18px] items-center justify-center border border-white/[0.12] px-1 font-sans text-[10px] text-neutral-400">{children}</kbd>
-}
-
 /** The typed part of a label, a little brighter than the rest. */
 function Marked({ text, query }: { text: string; query: string }) {
   const at = query ? text.toLowerCase().indexOf(query.toLowerCase()) : -1
@@ -104,7 +102,7 @@ export interface SearchFilterProps {
   /** What the page's own answer lists for the kinds with no value read (events, channels, screens, languages, timezones). */
   pageValues: PageValues
   /**
-   * Puts a saved set on the page IN PLACE of the filters that are on, in one change (the saved-filters beta, R59).
+   * Puts a saved set on the page IN PLACE of the filters that are on, in one change (saved filters, R59).
    * Without it the panel lists no saved set.
    */
   onApplySet?: (filters: DimensionFilter[]) => void
@@ -136,7 +134,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   const groups = groupsFor(eventFilters)
   const dimensions = useMemo(() => dimensionsFor(eventFilters), [eventFilters])
   const { values, ready } = useFilterValues({ on: open || warm, fetchSuggestions, pageValues, filters, dimensions })
-  // Saved filters (the saved-filters beta): listed at the top of the first view while the page can put one on.
+  // Saved filters: listed at the top of the first view while the page can put one on.
   const savedFilters = useSavedFilters()
   const sets = useMemo(() => (savedFilters.on && onApplySet ? savedFilters.sets : []), [savedFilters.on, savedFilters.sets, onApplySet])
   const current = setFor(filters, sets)
@@ -162,13 +160,11 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
     setIndex(0)
   }, [])
 
-  // F opens it from anywhere, unless something is being typed.
+  // F opens it from anywhere, unless something is being typed. Not after `g`: `g f` goes to Funnels, and the press
+  // that navigates is marked handled before it reaches the window (isPageShortcut).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'f' && e.key !== 'F') return
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      const t = e.target as HTMLElement | null
-      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
+      if (e.key.toLowerCase() !== FILTER_KEY || !isPageShortcut(e)) return
       e.preventDefault()
       setOpen(true)
     }
@@ -442,7 +438,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
       >
         <MagnifyingGlass className="h-3.5 w-3.5" weight="bold" aria-hidden="true" />
         Filter
-        <Key>F</Key>
+        <KeyCap>F</KeyCap>
         <CaretRight weight="bold" className={cn('text-muted-foreground/70 transition-transform', open && 'rotate-90')} aria-hidden="true" />
       </button>
       {typeof document !== 'undefined' && createPortal(
@@ -490,7 +486,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
                   aria-controls="search-filter-list"
                   className="h-11 min-w-0 flex-1 bg-transparent text-sm text-white placeholder-neutral-500 focus:outline-none"
                 />
-                <Key>esc</Key>
+                <KeyCap>esc</KeyCap>
               </div>
               <div
                 id="search-filter-list"
@@ -505,11 +501,11 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
               </div>
               <div className="flex items-center gap-3 border-t border-white/[0.08] px-3 py-2 text-[11px] text-neutral-500">
                 {drilling ? (
-                  <span className="inline-flex items-center gap-1.5"><Key>↵</Key> open</span>
+                  <span className="inline-flex items-center gap-1.5"><KeyCap>↵</KeyCap> open</span>
                 ) : (
                   <>
-                    <span className="inline-flex items-center gap-1.5"><Key>↵</Key> add</span>
-                    <span className="inline-flex items-center gap-1.5"><Key>⌥</Key><Key>↵</Key> exclude</span>
+                    <span className="inline-flex items-center gap-1.5"><KeyCap>↵</KeyCap> add</span>
+                    <span className="inline-flex items-center gap-1.5"><KeyCap>⌥</KeyCap><KeyCap>↵</KeyCap> exclude</span>
                   </>
                 )}
               </div>

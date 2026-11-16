@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { Button, toast } from '@ciphera-net/facet'
-import { Code, WarningCircle } from '@phosphor-icons/react'
+import { CheckCircle, Code, WarningCircle } from '@phosphor-icons/react'
 import { KitBlock, KitRow, KitRows, KitSection } from '@/components/settings/kit/Kit'
 import { CopyBlock } from '@/components/ui/CopyBlock'
 import { LiveDot } from '@/components/dashboard/RealtimeOrb'
@@ -13,6 +14,13 @@ import { setSiteFramework } from '@/lib/api/sites'
 import { useIngestHealth, useInstallStatus } from '@/lib/swr/dashboard'
 import { CSP_DIRECTIVES, trackingScript } from '@/lib/tracking-script'
 import { scriptState, turnedAwayLine } from './status'
+import { checkView, type CheckLine } from './install-check'
+import { getInstallCheck, startInstallCheck } from '@/lib/api/install-check'
+import { useFeature } from '@/lib/features'
+import { useCan } from '@/lib/auth/permissions'
+
+/** The install check's beta (pulse-backend features.InstallCheck). */
+export const INSTALL_CHECK_FLAG = 'install-check'
 
 /** The picker in the settings copy deck's words (§3.3); onboarding keeps its own. */
 const SETTINGS_PICKER_WORDS: PlatformPickerWords = {
@@ -30,6 +38,37 @@ const SETTINGS_PICKER_WORDS: PlatformPickerWords = {
 }
 
 const LINK = 'text-xs font-medium text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+
+const LINE_INK: Record<CheckLine['tone'], string> = {
+  pass: 'text-primary',
+  fail: 'text-destructive',
+  waiting: 'text-muted-foreground',
+}
+
+/** One step of the install check: KitRow's state row, closer together (option B, 16-11-2026). */
+function CheckLineRow({ line }: { line: CheckLine }) {
+  return (
+    <div data-install-check-step={line.key} data-tone={line.tone} className="flex items-start gap-3 py-2">
+      <span className={`flex h-5 w-4 shrink-0 items-center justify-center [&_svg]:h-4 [&_svg]:w-4 ${LINE_INK[line.tone]}`}>
+        {line.tone === 'pass' ? <CheckCircle weight="fill" /> : line.tone === 'fail' ? <WarningCircle weight="fill" /> : <LiveDot live={false} />}
+      </span>
+      <div className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">{line.label}</span>
+        <p className="mt-0.5 max-w-[56ch] text-xs text-muted-foreground">
+          {line.caption}
+          {line.fix && (
+            <>
+              {' '}
+              <a href={docsUrl(line.fix)} target="_blank" rel="noopener noreferrer" className={LINK}>
+                How to fix it
+              </a>
+            </>
+          )}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 /**
  * General's "Tracking script" (settings overhaul R9, R7, R12; copy deck §3.3): a checklist of two lines, each a state
@@ -58,6 +97,29 @@ export function TrackingScriptSection({
   useEffect(() => setPlatformId(framework ?? ''), [framework])
   const platform = platformId ? getIntegration(platformId) : undefined
 
+  // The install check (beta): "Check now" opens the homepage in a test browser and lists four steps.
+  const installCheckOn = useFeature(INSTALL_CHECK_FLAG) === true
+  const canEdit = useCan('sites.edit')
+  const { data: check, mutate: mutateCheck } = useSWR(
+    installCheckOn ? ['install-check', siteId] : null,
+    () => getInstallCheck(siteId),
+    { refreshInterval: (latest) => (latest?.status === 'running' ? 2000 : 0), revalidateOnFocus: false },
+  )
+  const [starting, setStarting] = useState(false)
+  const runCheck = useCallback(async () => {
+    setStarting(true)
+    try {
+      const st = await startInstallCheck(siteId)
+      await mutateCheck(st, { revalidate: false })
+    } catch {
+      toast.error("Couldn't start the check. Try again.")
+    } finally {
+      setStarting(false)
+    }
+  }, [siteId, mutateCheck])
+  const checkLines = checkView(check, domain)
+  const checking = starting || check?.status === 'running'
+
   const state = scriptState(install, !!installError, domain)
   const waiting = state.kind === 'waiting'
   const [scriptOpen, setScriptOpen] = useState(false)
@@ -66,6 +128,11 @@ export function TrackingScriptSection({
   useEffect(() => {
     if (waiting) setScriptOpen(true)
   }, [waiting])
+  // A failed check that points at the script or its directives opens them.
+  const openForCheck = checkLines?.openScript ?? false
+  useEffect(() => {
+    if (openForCheck) setScriptOpen(true)
+  }, [openForCheck])
 
   // Picking a platform is saved at once rather than joining the save bar's draft: it rewrites the script on screen,
   // so a pick that waited for Save would show one platform's steps while the site recorded another. A failed write
@@ -101,14 +168,21 @@ export function TrackingScriptSection({
   const caveat =
     platform && (platform.supportTier === 'plan-gated' || platform.supportTier === 'special-handling') ? platform.snippet?.note : undefined
 
+  const checkButton =
+    installCheckOn && canEdit ? (
+      <Button variant="outline" size="sm" onClick={() => void runCheck()} disabled={checking}>
+        {checking ? 'Checking…' : 'Check now'}
+      </Button>
+    ) : undefined
+
   const stateRow = (() => {
     switch (state.kind) {
       case 'receiving':
-        return <KitRow state icon={<LiveDot live here={state.here} />} tone="orange" label="Receiving data" caption={state.caption} />
+        return <KitRow state icon={<LiveDot live here={state.here} />} tone="orange" label="Receiving data" caption={state.caption} control={checkButton} />
       case 'waiting':
-        return <KitRow state icon={<LiveDot live={false} />} label="Waiting for the first visit" caption={state.caption} />
+        return <KitRow state icon={<LiveDot live={false} />} label="Waiting for the first visit" caption={state.caption} control={checkButton} />
       case 'quiet':
-        return <KitRow state icon={<LiveDot live={false} />} label={state.label} />
+        return <KitRow state icon={<LiveDot live={false} />} label={state.label} control={checkButton} />
       case 'stopped':
         return (
           <KitRow
@@ -116,6 +190,7 @@ export function TrackingScriptSection({
             icon={<WarningCircle weight="fill" />}
             tone="orange"
             label={state.label}
+            control={checkButton}
             caption={
               <>
                 The script may have been removed, or an ad blocker or a Content Security Policy is stopping it.{' '}
@@ -145,6 +220,20 @@ export function TrackingScriptSection({
     <KitSection title="Tracking script" description="Add this script to your site to start counting visits." icon={<Code />}>
       <KitRows>
         {stateRow}
+        {installCheckOn && checkLines && (
+          <KitBlock>
+            <div data-install-check="" className="space-y-3">
+              <p className="text-xs text-muted-foreground">{checkLines.head}</p>
+              {checkLines.lines.length > 0 && (
+                <div>
+                  {checkLines.lines.map((line) => (
+                    <CheckLineRow key={line.key} line={line} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </KitBlock>
+        )}
         {turnedAway && (
           <KitRow state icon={<WarningCircle weight="fill" />} tone="orange" label="Some events turned away" caption={turnedAway} />
         )}

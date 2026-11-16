@@ -20,14 +20,14 @@ export const BETAS: readonly Beta[] = [
   // The server lists GA4 among a site's import sources only while this flag is on for the team
   // (lib/import/useImportSources.ts).
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
-  // The email on the 1st with each site's last month (pulse-backend's monthly summary job). Its settings row reads
-  // useFeature.
-  { flag: 'monthly-summary', name: 'Monthly summary email', revalidates: [] },
-  // Saved filters (R59, R60 of 16-11-2026): the filters box's save row and the Filter panel's list read useFeature
-  // (lib/swr/savedFilters.ts).
-  { flag: 'saved-filters', name: 'Saved filters', revalidates: [] },
   // The event filter (R45 of 15-11-2026): an event and an outbound link as a filter on the dashboard, a funnel's page,
   // Journeys and Settings, Export. Their pickers read useFeature (lib/filters.ts EVENT_FILTERS_FLAG); the server
   // answers a condition for every team.
   { flag: 'event-filters', name: 'Event filters', revalidates: [] },
+  // Keyboard shortcuts (R13): a letter for each date range, C for the calendar, R for realtime and the arrows to step
+  // the range. The date menu, the orb and the ? list read useFeature (lib/keyboard/shortcuts.ts KEYBOARD_SHORTCUTS_FLAG).
+  { flag: 'keyboard-shortcuts', name: 'Keyboard shortcuts', revalidates: [] },
+  // The installation check (16-11-2026): "Check now" on Settings → General → Tracking script opens the homepage in a test
+  // browser and lists four steps. The section reads useFeature (TrackingScriptSection INSTALL_CHECK_FLAG).
+  { flag: 'install-check', name: 'Installation check', revalidates: [] },
 ]

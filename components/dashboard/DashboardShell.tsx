@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import { usePathname, useRouter } from 'next/navigation'
 import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
 import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
@@ -260,10 +260,10 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
           {/* A row like the sites over it: its highlight runs the picker's width and down to its edge. In a
               padded box of its own (`p-2`) the highlight floated inside the box, a strip of ground on every side. */}
           <div className="border-t border-neutral-800/60" data-menu-list="">
-            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-ink hover:bg-white/[0.06] rounded-none">
+            <AppLink href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-ink hover:bg-white/[0.06] rounded-none">
               <PlusIcon className="w-4 h-4" />
               Add new site
-            </Link>
+            </AppLink>
           </div>
         </motion.div>
       )}
@@ -369,10 +369,10 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
               {/* "Your Sites" does not depend on the site: while the name loads, and
                   for a site this session cannot read (PULSE-87), the trail ends here
                   instead of trailing off after "Pulse ›". */}
-              <Link href="/" className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+              <AppLink href="/" className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
                 <GlobeIcon className="w-3.5 h-3.5" />
                 Your Sites
-              </Link>
+              </AppLink>
               {siteName ? (
               <>
                 <CaretRight className="w-3 h-3 text-neutral-600" />
@@ -380,10 +380,10 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
                 <CaretRight className="w-3 h-3 text-neutral-600" />
                 {currentMeta.parent && (
                   <>
-                    <Link href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                    <AppLink href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
                       <currentMeta.parent.icon className="w-3.5 h-3.5" />
                       {currentMeta.parent.title}
-                    </Link>
+                    </AppLink>
                     <CaretRight className="w-3 h-3 text-neutral-600" />
                   </>
                 )}
@@ -396,10 +396,10 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
             </>
           ) : currentMeta.parent ? (
             <>
-              <Link href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+              <AppLink href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
                 <currentMeta.parent.icon className="w-3.5 h-3.5" />
                 {currentMeta.parent.title}
-              </Link>
+              </AppLink>
               <CaretRight className="w-3 h-3 text-neutral-600" />
               <span className="inline-flex items-center gap-1 text-neutral-400">
                 <PageIcon className="w-3.5 h-3.5" />
@@ -427,7 +427,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
           // The person's generated avatar (PUL-21): their stored seed, else the user id.
           avatar={auth.user ? <Avatar seed={personAvatarSeed({ userId: auth.user.id, avatarSeed: auth.user.avatar_seed })} size={28} /> : undefined}
-          LinkComponent={Link}
+          LinkComponent={AppLink}
           // The container props (switcher or "Invite people", team labels,
           // team settings) come from the team-state signal (PULSE-59).
           {...teamMenuProps}
@@ -522,10 +522,10 @@ function PublicTopBar({ scope }: { scope: SiteScope }) {
               <CaretRight className="w-3 h-3 text-neutral-600" />
               {meta.parent && (
                 <>
-                  <Link href={meta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                  <AppLink href={meta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
                     <meta.parent.icon className="w-3.5 h-3.5" />
                     {meta.parent.title}
-                  </Link>
+                  </AppLink>
                   <CaretRight className="w-3 h-3 text-neutral-600" />
                 </>
               )}

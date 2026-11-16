@@ -15,7 +15,7 @@ type SitePage = 'dashboard' | 'pages' | 'journeys' | 'visitors' | 'funnels' | 's
 // 🔴 THIS TABLE HAS THREE SIBLINGS AND NOTHING CROSS-CHECKS THEM: Sidebar's
 // NAV_GROUPS and NAV_SHORTCUTS, and CommandPalette's SITE_PAGES. A key added
 // here and nowhere else silently disagrees with the label the user was shown.
-const SITE_KEY_MAP: Record<string, SitePage> = {
+export const SITE_KEY_MAP: Record<string, SitePage> = {
   d: 'dashboard',
   p: 'pages',
   j: 'journeys',

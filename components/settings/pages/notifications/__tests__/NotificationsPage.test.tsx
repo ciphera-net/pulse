@@ -29,7 +29,6 @@ const h = vi.hoisted(() => ({
     preferences?: { email_notifications?: Record<string, boolean> }
   },
   teamState: 'team' as 'alone' | 'team' | null,
-  monthlyBeta: false as boolean | null,
   perms: new Set<string>(),
 }))
 
@@ -43,8 +42,6 @@ vi.mock('@/lib/api/sites', () => ({ listSites: () => h.listSites() }))
 vi.mock('@/lib/api/reports', () => ({ getScheduleSummary: () => h.getScheduleSummary() }))
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: h.user, refresh: h.refresh }) }))
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => h.teamState }))
-// The monthly summary's row follows its beta (useFeature('monthly-summary')): null until /me answers.
-vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'monthly-summary' ? h.monthlyBeta : false) }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: (perm: string) => h.perms.has(perm) }))
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -106,7 +103,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   h.user = { id: 'u1', email: '', totp_enabled: false, org_id: 'org-1', role: 'owner' }
   h.teamState = 'team'
-  h.monthlyBeta = false
   h.perms = new Set(['analytics.export', 'billing.view'])
   h.getPrefsDocument.mockResolvedValue(doc())
   // The PUT answers with the stored truth re-read: the fixture applies the write to a fresh document, as Iris does.
@@ -191,7 +187,7 @@ describe('NotificationsPage: Pulse emails', () => {
     renderPage()
     await ready()
     const ids = [...document.querySelectorAll('[data-notif-email-group]')].map((el) => el.getAttribute('data-notif-email-group'))
-    expect(ids).toEqual(['billing', 'security', 'account', 'uptime', 'site', 'team', 'system', 'lifecycle', 'summary'])
+    expect(ids).toEqual(['billing', 'security', 'account', 'uptime', 'site', 'team', 'system', 'lifecycle', 'summary', 'summary_monthly'])
     expect(screen.queryByText('Account & sign-in')).toBeNull()
     expect(screen.queryByText('Operator')).toBeNull()
   })
@@ -296,31 +292,22 @@ describe('NotificationsPage: Pulse emails', () => {
     await waitFor(() => expect(switchFor('System')).not.toBeDisabled())
   })
 
-  it('draws the weekly summary row for every team, last', async () => {
+  it('draws the weekly summary row for every team', async () => {
     renderPage()
     await ready()
     expect(switchFor('Weekly summary')).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByText("Every Monday: last week's visitors, top pages and top sources for each site that had visits.")).toBeInTheDocument()
     const ids = [...document.querySelectorAll('[data-notif-email-group]')].map((el) => el.getAttribute('data-notif-email-group'))
-    expect(ids.at(-1)).toBe('summary')
+    expect(ids.slice(-2)).toEqual(['summary', 'summary_monthly'])
   })
 
-  it.each([
-    { state: 'on', beta: true, shows: true },
-    { state: 'off', beta: false, shows: false },
-    { state: 'not known yet', beta: null, shows: false },
-  ] as const)('the monthly summary row follows its beta ($state)', async ({ beta, shows }) => {
-    h.monthlyBeta = beta
+  it('draws the monthly summary row for every team, after the weekly one', async () => {
     renderPage()
     await ready()
-    if (shows) {
-      expect(switchFor('Monthly summary')).toHaveAttribute('aria-checked', 'true')
-      expect(screen.getByText("On the 1st of each month: last month's visitors, top pages and top sources for each site that had visits.")).toBeInTheDocument()
-      const ids = [...document.querySelectorAll('[data-notif-email-group]')].map((el) => el.getAttribute('data-notif-email-group'))
-      expect(ids.slice(-2)).toEqual(['summary', 'summary_monthly'])
-    } else {
-      expect(screen.queryByText('Monthly summary')).toBeNull()
-    }
+    expect(switchFor('Monthly summary')).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText("On the 1st of each month: last month's visitors, top pages and top sources for each site that had visits.")).toBeInTheDocument()
+    const ids = [...document.querySelectorAll('[data-notif-email-group]')].map((el) => el.getAttribute('data-notif-email-group'))
+    expect(ids.slice(-2)).toEqual(['summary', 'summary_monthly'])
   })
 
   it('says there is nothing to set up when the document has no group the page knows', async () => {

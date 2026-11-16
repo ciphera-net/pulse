@@ -6,14 +6,15 @@ import type { DimensionFilter } from '@/lib/filters'
 import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
-// Saved filters (R59 and R60 of 16-11-2026, option A "In the filters box"): the team's sets, per site, behind the
-// saved-filters beta. The box's list saves the filters on under a name typed in place; a single filter's bookmark
+// Saved filters (R59 and R60 of 16-11-2026, option A "In the filters box"): the team's sets, per site, for every team
+// since the same day (no flag). The box's list saves the filters on under a name typed in place; a single filter's bookmark
 // does the same; the Filter panel lists the sets at the top of its first view and puts one on in a single change.
 // Whoever may edit the site saves and deletes; every member reads; a public page shows nothing and asks nothing.
 // ---------------------------------------------------------------------------
 
-const state = vi.hoisted(() => ({ beta: true as boolean | null, canEdit: true }))
-vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'saved-filters' ? state.beta : false) }))
+const state = vi.hoisted(() => ({ canEdit: true }))
+// Saved filters read no flag since 16-11-2026: every other beta stays off here.
+vi.mock('@/lib/features', () => ({ useFeature: () => false }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: (perm: string) => (perm === 'sites.edit' ? state.canEdit : false) }))
 
 const api = vi.hoisted(() => ({
@@ -50,7 +51,6 @@ const box = (filters: DimensionFilter[], scope: SiteScope = memberScope('site-1'
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)) })
 
 beforeEach(() => {
-  state.beta = true
   state.canEdit = true
   api.listSavedFilters.mockReset().mockResolvedValue([])
   api.createSavedFilter.mockReset().mockImplementation(async (_site: string, body: { name: string; filters: string }) => ({ id: 'new', ...body, created_at: '2026-11-16T02:00:00Z' }))
@@ -155,16 +155,7 @@ describe('the filters box saves the filters on (R59: option A)', () => {
     expect(within(screen.getByTestId('filter-pill')).queryByTestId('filter-pill-save')).toBeNull()
   })
 
-  it('shows nothing and asks nothing while the beta is off, still loading, or on a public page', async () => {
-    for (const beta of [false, null]) {
-      state.beta = beta
-      box([NORWAY, NOT_MOBILE])
-      await settle()
-      fireEvent.click(screen.getByTestId('filters-box'))
-      expect(screen.queryByTestId('filters-save-row')).toBeNull()
-      cleanup()
-    }
-    state.beta = true
+  it('shows nothing and asks nothing on a public page', async () => {
     box([NORWAY], publicScope)
     await settle()
     expect(screen.queryByTestId('filter-pill-save')).toBeNull()
@@ -229,15 +220,8 @@ describe('the Filter panel lists the sets (R59)', () => {
     expect(screen.queryByRole('button', { name: /^Delete / })).toBeNull()
   })
 
-  it('lists no set while the beta is off, and none without a way to put one on', async () => {
+  it('lists no set without a way to put one on', async () => {
     api.listSavedFilters.mockResolvedValue(SAVED)
-    state.beta = false
-    panel()
-    await settle()
-    fireEvent.click(screen.getByTestId('search-filter-button'))
-    expect(screen.queryByTestId('saved-filters-heading')).toBeNull()
-    cleanup()
-    state.beta = true
     within_(memberScope('site-1'), <SearchFilter filters={[]} onApply={vi.fn()} fetchSuggestions={async () => []} pageValues={PAGE} />)
     await settle()
     fireEvent.click(screen.getByTestId('search-filter-button'))
