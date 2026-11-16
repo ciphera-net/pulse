@@ -33,7 +33,8 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
     // report actions (PULSE-133/134), plus site_privacy_signals_changed
     // (PULSE-164, one row per save of the DNT/GPC toggles), plus
     // org_beta_features_changed (PUL-40, one row per switch of Settings → Beta), plus
-    // site_analyst_memories_changed (14-11-2026, Analyst's memories turned on or off).
+    // site_analyst_memories_changed (14-11-2026, Analyst's memories turned on or off), plus
+    // saved_filter_created and saved_filter_deleted (16-11-2026, the saved-filters beta).
     const writtenToday = [
       'admin_plan_granted', 'admin_refund_failed', 'admin_refund_issued', 'admin_verdict_revoked',
       'billing_checkout_started', 'billing_payment_method_update_started', 'billing_refund_failed',
@@ -49,13 +50,14 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'oss_application_claimed', 'oss_application_decided', 'oss_application_link_resent',
       'ownership_transferred',
       'report_created', 'report_revoked', 'report_schedule_created', 'report_schedule_stopped',
+      'saved_filter_created', 'saved_filter_deleted',
       'site_analyst_memories_changed', 'site_created', 'site_exported', 'site_identity_window_changed', 'site_permanently_deleted',
       'site_privacy_signals_changed', 'site_restored', 'site_script_features_changed',
       'site_soft_deleted', 'site_timezone_changed', 'site_visitor_views_disabled', 'site_visitor_views_enabled',
       'subscription_cancel_at_period_end', 'subscription_canceled_immediate', 'subscription_plan_changed',
       'subscription_resumed',
     ]
-    expect(writtenToday).toHaveLength(56)
+    expect(writtenToday).toHaveLength(58)
     // History only (9): no code writes these any more, but production still
     // holds rows carrying them.
     const historyOnly = [
