@@ -8,6 +8,7 @@ import { TopPage } from '@/lib/api/stats'
 import { ArrowSquareOut, FileText } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
@@ -205,9 +206,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         <>
         <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
           {!collectPagePaths ? (
-            <div className="h-full flex flex-col items-center justify-center text-center px-4">
-              <p className="text-neutral-400 text-sm">Page path tracking is disabled in site settings</p>
-            </div>
+            // Not collected for this site, in Pulse's one empty state (R57); its switch left settings by ruling (R2).
+            <EmptyState icon={<FileText />} title="Pages are off" description="This site does not collect page addresses." className="h-full py-6" />
           ) : hasData ? (
             <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
               {displayedData.map((row, i) => {

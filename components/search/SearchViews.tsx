@@ -285,7 +285,7 @@ function DaysView({ siteId, dateRange, page, setPage, sort, onSort }: DaysProps)
         hasData={!!data}
         error={error}
         isEmpty={rows.length === 0}
-        emptyNode={<EmptyState icon={<CalendarBlank />} title="No days in this period" description="Google reports Search data with a ~2-day delay — try a wider range." className="py-10" />}
+        emptyNode={<EmptyState icon={<CalendarBlank />} title="No days in this period" description="Google reports Search data about two days late. Try a wider range." className="py-10" />}
         footer={<Pagination page={page} pageSize={PAGE_SIZE} total={rows.length} onPage={setPage} />}
         onRetry={() => { void mutate() }}
       >

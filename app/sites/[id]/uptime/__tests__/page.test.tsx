@@ -55,7 +55,9 @@ vi.mock('@/components/skeletons', () => ({
   useMinimumLoading: (v: boolean) => v,
   useSkeletonFade: () => '',
 }))
-vi.mock('@ciphera-net/facet', () => ({
+vi.mock('@ciphera-net/facet', async () => ({
+  // EmptyState draws with Facet's own button classes and cn; anything stubbed below wins.
+  ...(await vi.importActual<typeof import('@ciphera-net/facet')>('@ciphera-net/facet').then((f) => ({ buttonVariants: f.buttonVariants, cn: f.cn }))),
   toast: { success: () => {}, error: () => {} },
   Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
@@ -229,7 +231,7 @@ describe('Uptime page — a member', () => {
 
   it('keeps the enabling hint in the panel\'s empty note', () => {
     const { container } = render(<UptimePage />)
-    expect(container.textContent).toContain('No checks in this period yet.')
+    expect(container.textContent).toContain('No checks in this period yet')
     expect(container.textContent).toContain('The first check lands within a minute of enabling.')
   })
 })
@@ -286,7 +288,7 @@ describe('Uptime page — a public scope writes nothing', () => {
     const { container, queryByRole } = renderUnder(publicScope())
     const text = container.textContent ?? ''
     expect(text).toContain('Uptime')
-    expect(text).toContain('No uptime data yet.')
+    expect(text).toContain('No uptime data yet')
     expect(text).toContain('Uptime monitoring is off for this site.')
     // Nothing to enable, no way to ask for it, and not the member's off state at all.
     expect(queryByRole('button', { name: /enable/i })).toBeNull()
@@ -300,7 +302,7 @@ describe('Uptime page — a public scope writes nothing', () => {
     mockStatus.mockReturnValue(swr(status({ monitors: [], total_monitors: 0 })))
     const { container } = renderUnder(publicScope())
     const text = container.textContent ?? ''
-    expect(text).toContain('No uptime data yet.')
+    expect(text).toContain('No uptime data yet')
     expect(text).toContain('No monitor has reported for this site.')
     expect(text).not.toContain('Setting up the monitor')
   })
@@ -339,12 +341,12 @@ describe('Uptime page — a public scope writes nothing', () => {
     mockStatus.mockReturnValue(swr(status({ monitors: [], total_monitors: 0 })))
     const known = renderUnder(publicScope())
     expect(known.queryByTestId('uptime-skeleton')).toBeNull()
-    expect(known.container.textContent).toContain('No uptime data yet.')
+    expect(known.container.textContent).toContain('No uptime data yet')
   })
 
   it('drops the enabling hint from the panel\'s empty note', () => {
     const { container } = renderUnder(publicScope())
-    expect(container.textContent).toContain('No checks in this period yet.')
+    expect(container.textContent).toContain('No checks in this period yet')
     expect(container.textContent).not.toContain('of enabling')
   })
 

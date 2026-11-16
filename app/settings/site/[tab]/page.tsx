@@ -85,11 +85,7 @@ export default function SiteSettingsTabPage() {
 
   if (requiredPerm && !hasAccess) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <ShieldWarning className="mb-4 h-12 w-12 text-neutral-600" />
-        <h3 className="mb-1 text-base font-semibold text-neutral-300">Owners and admins only</h3>
-        <p className="max-w-sm text-sm text-neutral-500">Ask an owner or admin of your team to change this page.</p>
-      </div>
+      <EmptyState icon={<ShieldWarning />} title="Owners and admins only" description="Ask an owner or admin of your team to change this page." className="py-20" />
     )
   }
 

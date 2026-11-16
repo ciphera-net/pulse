@@ -226,11 +226,19 @@ describe('how it is drawn', () => {
     expect(box.className.split(' ')).not.toContain('py-6')
   })
 
-  it('draws every link as a quiet text link, never the filled orange button', () => {
-    show({ filtered: true, clearFilters: () => {} })
-    const link = screen.getByRole('button', { name: 'Clear filter' })
-    expect(link.className).toContain('text-brand-ink')
-    expect(link.className).not.toContain('bg-brand-orange')
+  it('is Pulse\'s one empty state: the icon without a tile, the action in the bordered button (R57)', () => {
+    const { container } = show({ filtered: true, clearFilters: () => {} }, { icon: <svg data-testid="icon" /> })
+    const box = container.firstElementChild as HTMLElement
+    expect(box.hasAttribute('data-empty-state')).toBe(true)
+    expect(container.querySelector('.bg-brand-orange\\/10')).toBeNull()
+    expect(screen.getByTestId('icon').parentElement?.className).toContain('text-brand-ink')
+    // The action is the date button's and the funnel picker's look (Facet's chrome): a hairline box on the card's
+    // ground. Never the filled orange button, and never the bare orange link it replaced.
+    const action = screen.getByRole('button', { name: 'Clear filter' })
+    const classes = action.className.split(' ')
+    expect(classes).toEqual(expect.arrayContaining(['border', 'border-input', 'bg-card', 'hover:border-line-hover']))
+    expect(classes).not.toContain('bg-brand-orange')
+    expect(classes).not.toContain('text-brand-ink')
   })
 })
 

@@ -5,9 +5,10 @@ import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { CaretRight, CaretDown } from '@phosphor-icons/react'
+import { CaretRight, CaretDown, Footprints } from '@phosphor-icons/react'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Pagination } from '@/components/search/rowPrimitives'
 import { JourneyStrand } from '@/components/visitors/JourneyStrand'
 import { VisitTrail } from '@/components/visitors/VisitTrail'
@@ -217,9 +218,11 @@ export default function VisitorDetailPage() {
             ))}
           </div>
         ) : visits.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-neutral-500">
-            {isLoading ? 'Loading…' : 'No visits in this range.'}
-          </p>
+          isLoading ? (
+            <p className="px-4 py-10 text-center text-sm text-neutral-500">Loading…</p>
+          ) : (
+            <EmptyState icon={<Footprints />} title="No visits in this range" />
+          )
         ) : (
           <>
             {visits.map((v) => (

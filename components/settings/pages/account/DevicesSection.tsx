@@ -10,6 +10,7 @@ import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 import { KitBlock, KitRow, KitRows, KitSection, KitStatus } from '@/components/settings/kit/Kit'
 import { agoLabel, dayLabel } from './format'
 import { LoadingRows } from './parts'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /** R39: this device, then the five used most recently; the rest behind "Show all". */
 export const DEVICES_SHOWN = 6
@@ -119,11 +120,7 @@ export default function DevicesSection() {
   } else if (devices === null) {
     body = <LoadingRows rows={3} />
   } else if (devices.length === 0) {
-    body = (
-      <KitRows>
-        <KitRow label="No devices" caption="Signing in adds one." />
-      </KitRows>
-    )
+    body = <EmptyState icon={<Devices />} title="No devices" description="Signing in adds one." />
   } else {
     const now = Date.now()
     body = (

@@ -81,7 +81,7 @@ describe('a site in another of your teams', () => {
     team = { data: { organization_id: 'B' } }
     render(<SiteInAnotherTeam siteId="s1" />)
     expect(screen.getByRole('heading', { name: 'This site is in Marketing' })).toBeInTheDocument()
-    expect(screen.getByText("You're signed in to Ciphera. Switch teams to open it — you'll come straight back to this page.")).toBeInTheDocument()
+    expect(screen.getByText("You're signed in to Ciphera. Switch teams to open it. You'll come straight back to this page.")).toBeInTheDocument()
     const button = screen.getByRole('button', { name: 'Switch to Marketing' })
     fireEvent.click(button)
     await waitFor(() => expect(switchSession).toHaveBeenCalledTimes(1))

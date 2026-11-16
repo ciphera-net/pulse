@@ -76,6 +76,8 @@ vi.mock('@ciphera-net/facet', async () => {
       asChild && R.isValidElement(children) ? children : <button {...props}>{children}</button>,
     Input: R.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>((props, ref) => <input ref={ref} {...props} />),
     toast: { success: vi.fn(), error: vi.fn() },
+    // EmptyState draws its action with Facet's own button classes.
+    buttonVariants: (await vi.importActual<typeof import('@ciphera-net/facet')>('@ciphera-net/facet')).buttonVariants,
   }
 })
 
@@ -171,24 +173,17 @@ describe('GoalsPage: the list', () => {
     }
   })
 
-  it('shows no goals as the title, the caption, the guide link, and a dimmed example led by its status', () => {
+  it('shows no goals as Pulse\'s one empty state: the title, the caption and the guide link (R57)', () => {
     useGoals.mockReturnValue(goalsState({ data: [] }))
     renderPage()
     expect(screen.getByText('No goals yet')).toBeInTheDocument()
     expect(screen.getByText('Send an event from your site, like a sign-up or a purchase, then add it here.')).toBeInTheDocument()
+    expect(document.querySelector('[data-goals-empty] [data-empty-state]')).not.toBeNull()
 
     const guide = screen.getByRole('link', { name: 'How to send an event' })
     expect(guide.getAttribute('href')).toMatch(/custom-events$/)
     expect(guide).toHaveAttribute('target', '_blank')
-    expect(guide).toHaveAttribute('rel', 'noopener noreferrer')
-
-    // The example is inert and dimmed; its status (R24: a dot and a word, no chip) is real, legible content.
-    const preview = screen.getByText('Sign up').closest('[aria-hidden="true"]')
-    expect(preview?.className).toMatch(/opacity-40/)
-    const status = screen.getByText('Example')
-    expect(status.closest('[data-kit-status="off"]')).not.toBeNull()
-    expect(status.closest('[aria-hidden="true"]')).toBeNull()
-    expect(status.closest('.opacity-40')).toBeNull()
+    expect(guide.getAttribute('rel')).toMatch(/noreferrer/)
     // The masthead's Add goal stays the page's one call to action.
     expect(screen.getAllByRole('button', { name: 'Add goal' })).toHaveLength(1)
   })

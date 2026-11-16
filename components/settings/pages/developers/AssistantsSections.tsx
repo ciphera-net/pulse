@@ -21,6 +21,7 @@ import { useRemoveLater } from './useRemoveLater'
 import { PersonInline } from '@/components/settings/names/people'
 import { lineWithNotYet } from '@/components/settings/names/prompt'
 import { usePeopleNames } from '@/components/settings/names/useNames'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * AI assistants (copy deck §11.3): today's MCP page in the kit. Pick an assistant, then follow its steps (the steps
@@ -164,7 +165,7 @@ export function ConnectedAssistantsSection() {
           {list.status === 'failed' && <LoadErrorRow title="Couldn't load connected assistants" onRetry={retry} retrying={retrying} />}
           {list.status === 'ready' &&
             (shown.length === 0 ? (
-              <KitRow label="No assistants connected" caption="Pick yours above and follow its steps." />
+              <EmptyState icon={<Plugs />} title="No assistants connected" description="Pick yours above and follow its steps." />
             ) : (
               shown.map((c) => (
                 <div key={c.id} data-testid={`connection-row-${c.id}`}>

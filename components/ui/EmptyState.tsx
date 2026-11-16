@@ -2,12 +2,13 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import { buttonVariants } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 
 interface EmptyStateProps {
   icon?: React.ReactNode
   title: string
-  description?: string
+  description?: React.ReactNode
   /**
    * The one thing to do next. `href` navigates, `onClick` acts — and they may
    * now be given TOGETHER: the in-app install links have to record which site
@@ -21,23 +22,29 @@ interface EmptyStateProps {
     href?: string
     onClick?: () => void
     external?: boolean
-    /**
-     * `link`: a quiet text link in the brand's ink instead of the filled button. For a place where the thing to do
-     * is small and optional (the dashboard's empty blocks: "Clear filter", one docs link), and a filled orange
-     * button in every empty block would shout six times on one screen.
-     */
-    variant?: 'button' | 'link'
+    /** An action that acts in place, held while it runs (enabling a monitor). */
+    disabled?: boolean
   }
+  /**
+   * What a state needs between its line and its action: a setting to choose before enabling (Performance's check
+   * frequency), or the line that says who can act when this reader cannot.
+   */
+  children?: React.ReactNode
   className?: string
 }
 
-const ACTION_BUTTON =
-  'mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]'
-const ACTION_LINK =
-  'inline-flex items-center rounded-none text-sm font-medium text-brand-ink underline-offset-4 transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange'
+/**
+ * The action: the app's bordered button (Facet's `chrome`, the look of the date button and the funnel picker), the
+ * border brightening under the pointer. Asked of Facet when an empty state has an action, never when this module
+ * loads: tests that replace Facet with a stub of the parts they use import this module too.
+ */
+const actionClass = () => cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 'mt-2 font-normal ease-apple')
 
 /**
- * Empty state — use in place of inline "No X" fallbacks.
+ * Pulse's one empty state (ruling R57, 16-11-2026: one format everywhere). The icon alone in the brand's ink, a
+ * title, a short line, and at most one action in the bordered button. A page, a settings section and a dashboard
+ * block all draw this one, so the product has one kind of empty, and no action shouts in orange from every empty
+ * corner of a screen. Use it in place of any inline "No X" fallback.
  *
  * Tonal rule: warm, specific, actionable. Never just "No data".
  * Describe what's missing and what the user can do next.
@@ -45,15 +52,14 @@ const ACTION_LINK =
  * Good: "No visitors yet — share your site and check back"
  * Bad: "No data available"
  */
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
-  const actionClass = action?.variant === 'link' ? ACTION_LINK : ACTION_BUTTON
+export function EmptyState({ icon, title, description, action, children, className }: EmptyStateProps) {
   const actionButton = action ? (
     action.href ? (
       <Link
         href={action.href}
         onClick={action.onClick}
         {...(action.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-        className={actionClass}
+        className={actionClass()}
       >
         {action.label}
       </Link>
@@ -61,7 +67,8 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       <button
         type="button"
         onClick={action.onClick}
-        className={actionClass}
+        disabled={action.disabled}
+        className={actionClass()}
       >
         {action.label}
       </button>
@@ -69,16 +76,13 @@ export function EmptyState({ icon, title, description, action, className }: Empt
   ) : null
 
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 py-12 px-6 text-center', className)}>
-      {icon && (
-        <div className="flex h-20 w-20 items-center justify-center rounded-none bg-brand-orange/10 text-brand-ink [&_svg]:h-10 [&_svg]:w-10 ring-1 ring-brand-orange/10">
-          {icon}
-        </div>
-      )}
-      <h3 className="text-title-2 font-semibold text-neutral-100">{title}</h3>
+    <div className={cn('flex flex-col items-center justify-center gap-2 py-12 px-6 text-center', className)} data-empty-state="">
+      {icon && <span className="mb-1 text-brand-ink [&_svg]:h-8 [&_svg]:w-8">{icon}</span>}
+      <h3 className="text-base font-semibold text-neutral-100">{title}</h3>
       {description && (
         <p className="max-w-sm text-caption text-neutral-400">{description}</p>
       )}
+      {children}
       {actionButton}
     </div>
   )

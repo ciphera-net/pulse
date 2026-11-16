@@ -7,6 +7,8 @@ import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { useGSCDailyTotals } from '@/lib/swr/dashboard'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { MagnifyingGlass } from '@phosphor-icons/react'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { CompactNumber } from '@/components/ui/compact-number'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip } from '@/components/ui/area-chart'
@@ -353,9 +355,9 @@ export function InstrumentCore({
             <ErrorCard title={errorTitle} onRetry={onRetry} className="py-4" />
           </div>
         ) : !isLoading && series.length === 0 ? (
-          <div className="pointer-events-none absolute inset-y-0 left-40 right-0 flex flex-col items-center justify-center sm:left-48">
-            <p className="text-sm text-neutral-400">{emptyTitle}</p>
-            <p className="mt-1 text-xs text-neutral-500">{emptyHint}</p>
+          // Pulse's one empty state (R57), over the band area: the rails stay visible.
+          <div className="pointer-events-none absolute inset-y-0 left-40 right-0 flex items-center justify-center sm:left-48">
+            <EmptyState icon={<MagnifyingGlass />} title={emptyTitle} description={emptyHint} />
           </div>
         ) : null}
       </div>
@@ -419,8 +421,8 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
       error={!!error}
       onRetry={() => { void mutate() }}
       errorTitle="Couldn't load search traffic"
-      emptyTitle="No search data in this period."
-      emptyHint="Google reports with a ~2-day delay — try a wider range."
+      emptyTitle="No search data in this period"
+      emptyHint="Google reports about two days late. Try a wider range."
       termFor={(key) => GOOGLE_METRIC_TERM[key]}
     />
   )

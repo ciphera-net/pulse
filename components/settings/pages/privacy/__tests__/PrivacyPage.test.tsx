@@ -280,14 +280,13 @@ describe('PrivacyPage: Advanced', () => {
     expect(screen.getByText(line)).toBeInTheDocument()
   })
 
-  it('the empty rules row, with its example', () => {
+  it('the empty rules state, Pulse\'s one empty state (R57)', () => {
     mount()
     openAdvanced()
     const empty = document.querySelector('[data-privacy-rules-empty]') as HTMLElement
+    expect(empty.querySelector('[data-empty-state]')).not.toBeNull()
     expect(empty.textContent).toContain('No rules')
     expect(empty.textContent).toContain('Leave pages out of your stats, or show several addresses as one page.')
-    expect(empty.textContent).toContain('Leave out · /admin/*')
-    expect(within(empty).getByText('Example')).toBeInTheDocument()
     expect(screen.queryByRole('table', { name: 'Rules' })).not.toBeInTheDocument()
   })
 

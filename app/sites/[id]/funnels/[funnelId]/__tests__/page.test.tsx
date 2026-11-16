@@ -83,7 +83,9 @@ vi.mock('framer-motion', () => ({
 }))
 
 const toastError = vi.fn()
-vi.mock('@ciphera-net/facet', () => ({
+vi.mock('@ciphera-net/facet', async () => ({
+  // EmptyState draws with Facet's own button classes and cn; anything stubbed below wins.
+  ...(await vi.importActual<typeof import('@ciphera-net/facet')>('@ciphera-net/facet').then((f) => ({ buttonVariants: f.buttonVariants, cn: f.cn }))),
   toast: { success: () => {}, error: (...a: unknown[]) => toastError(...a) },
   Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>

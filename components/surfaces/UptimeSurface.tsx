@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { Heartbeat } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useCan } from '@/lib/auth/permissions'
 import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import { useSite, useUptimeStatus, useUptimeIncidents, useUptimeChecks, useDataWindow } from '@/lib/swr/dashboard'
@@ -158,12 +159,11 @@ function UptimeTitle() {
   )
 }
 
-/** Where a visitor's page has nothing to draw. Plain: nothing here can be set up from this view. */
+/** Where a visitor's page has nothing to draw, in Pulse's one empty state (R57). Nothing here can be set up from this view. */
 function UptimeNothingYet({ reason }: { reason: string }) {
   return (
-    <div className="rounded-none border border-border bg-card px-6 py-10 text-center">
-      <p className="text-sm text-neutral-400">No uptime data yet.</p>
-      <p className="mt-1 text-xs text-neutral-500">{reason}</p>
+    <div className="rounded-none border border-border bg-card">
+      <EmptyState icon={<Heartbeat />} title="No uptime data yet" description={reason} />
     </div>
   )
 }
@@ -390,9 +390,8 @@ function UptimePage({ scope }: { scope: SiteScope }) {
       ) : (
         // * Enabled moments ago — the monitor row exists after the toggle's
         // * auto-create, but a fresh SWR read may not carry it yet.
-        <div className="rounded-none border border-border bg-card px-6 py-10 text-center">
-          <p className="text-sm text-neutral-400">Setting up the monitor…</p>
-          <p className="mt-1 text-xs text-neutral-500">The first check lands within a minute.</p>
+        <div className="rounded-none border border-border bg-card">
+          <EmptyState icon={<Heartbeat />} title="Setting up the monitor…" description="The first check lands within a minute." />
         </div>
       )}
     </div>

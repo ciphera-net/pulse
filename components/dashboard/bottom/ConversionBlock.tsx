@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, CaretRight, Funnel as FunnelIcon, Path } from '@phosphor-icons/react'
 import { buttonVariants, Switcher } from '@ciphera-net/facet'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { SkeletonLine } from '@/components/skeleton/primitives'
 import { MetricUnitLabel } from '@/components/dashboard/MetricRowStat'
@@ -386,15 +387,17 @@ export default function ConversionBlock({ siteId, dateRange, period, filters }: 
             <ErrorCard title={failed.title} description="The rest of the dashboard is unaffected." onRetry={failed.retry} />
           </div>
         ) : empty ? (
-          <div className="flex h-full flex-col items-center justify-center px-4 text-center" data-testid="conversion-empty">
-            <span className="mb-3 text-2xl text-neutral-600">{empty.icon}</span>
-            <p className="text-sm font-medium text-white">{empty.title}</p>
-            <p className="mt-1 max-w-sm text-sm text-neutral-500">{empty.line}</p>
-            {empty.action && (
-              <Link href={empty.action.href} className="mt-4 inline-flex h-9 items-center border border-neutral-800 px-4 text-sm text-neutral-200 transition-colors duration-fast ease-apple hover:border-neutral-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange">
-                {empty.action.text}
-              </Link>
-            )}
+          // One empty state across Pulse (ruling R57, 16-11-2026): the shared EmptyState, as CardEmptyState draws it in
+          // every other block. This block's states are its own (a funnel nobody entered, a filter Journeys cannot
+          // follow), so it draws EmptyState itself rather than CardEmptyState.
+          <div className="h-full" data-testid="conversion-empty">
+            <EmptyState
+              icon={empty.icon}
+              title={empty.title}
+              description={empty.line}
+              action={empty.action ? { label: empty.action.text, href: empty.action.href } : undefined}
+              className="h-full py-6"
+            />
           </div>
         ) : (
           body

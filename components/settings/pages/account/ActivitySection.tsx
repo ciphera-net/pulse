@@ -10,6 +10,7 @@ import { formatDateTimeFull } from '@/lib/utils/formatDate'
 import { KitBlock, KitRow, KitRows, KitSection, KitStatus } from '@/components/settings/kit/Kit'
 import { dayGroupLabel, dayKey, timeLabel } from './format'
 import { LoadingRows } from './parts'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /** R40: the latest 8 on the page, then Show more. */
 export const ACTIVITY_SHOWN = 8
@@ -152,11 +153,7 @@ export default function ActivitySection() {
   } else if (entries === null) {
     body = <LoadingRows rows={3} />
   } else if (entries.length === 0) {
-    body = (
-      <KitRows>
-        <KitRow label="No activity yet" caption="Sign-ins and changes to your password, two-factor and devices show here." />
-      </KitRows>
-    )
+    body = <EmptyState icon={<ClockCounterClockwise />} title="No activity yet" description="Sign-ins and changes to your password, two-factor and devices show here." />
   } else {
     const visible = entries.slice(0, shown)
     body = (

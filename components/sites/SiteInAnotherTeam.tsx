@@ -86,7 +86,7 @@ export function SiteInAnotherTeam({ siteId }: { siteId: string }) {
         <EmptyState
           icon={<Globe />}
           title={`This site is in ${targetName}`}
-          description={`${signedIn}Switch teams to open it — you'll come straight back to this page.`}
+          description={`${signedIn}Switch teams to open it. You'll come straight back to this page.`}
           action={{ label: `Switch to ${targetName}`, onClick: () => { void switchTeams() } }}
         />
       </div>

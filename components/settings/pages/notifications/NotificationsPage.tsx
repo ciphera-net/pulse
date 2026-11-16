@@ -17,6 +17,7 @@ import { KitPage, KitRow, KitRows, KitSection } from '@/components/settings/kit/
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SignInEmails } from './SignInEmails'
 import { ReportsAndInvoices } from './ReportsAndInvoices'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * Settings → Notifications (settings overhaul P11, PUL-42): every email switch on a page of its own (R41), only the
@@ -146,7 +147,7 @@ export default function NotificationsPage() {
               }
             />
           ) : groups.length === 0 ? (
-            <KitRow label="No emails to set up yet" caption="They show here once Pulse has some for your account." />
+            <EmptyState icon={<EnvelopeSimple />} title="No emails to set up yet" description="They show here once Pulse has some for your account." />
           ) : (
             groups.map((c) => (
               <div key={c.category_id} data-notif-email-group={c.category_id}>

@@ -18,6 +18,7 @@ import { ApiError } from '@/lib/api/client'
 import { useFeature } from '@/lib/features'
 import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { SkeletonBar } from '@/components/skeletons'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * Site Settings, Analyst (P1, picked 14-11-2026): one Memories section, the switch as its first row, then the memories,
@@ -253,9 +254,10 @@ function MemoriesForSite({ siteId }: { siteId: string }) {
               control={<Toggle id="analyst-memories-switch" checked={on} onChange={() => void toggle()} disabled={switching} />}
             />
             {memories.length === 0 ? (
-              <KitRow
-                label="No memories yet"
-                caption={'Tell Analyst something worth keeping in a chat, like "Shared Link is our newsletter", and it shows here.'}
+              <EmptyState
+                icon={<StarFour />}
+                title="No memories yet"
+                description={'Tell Analyst something worth keeping in a chat, like "Shared Link is our newsletter", and it shows here.'}
               />
             ) : (
               memories.map((m) => (

@@ -19,6 +19,7 @@ const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import { GlobeIcon, Switcher } from '@ciphera-net/facet'
 import { GlobeHemisphereWest } from '@phosphor-icons/react'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
@@ -396,17 +397,13 @@ export default function Audience({ countries, cities, regions, languages, langua
   )
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
-  const getDisabledMessage = () => {
-    if (activeTab === 'languages' || activeTab === 'timezones') {
-      return 'Audience data collection is disabled in site settings'
-    }
-    if (geoDataLevel === 'none') {
-      return 'Geographic data collection is disabled in site settings'
-    }
-    if (geoDataLevel === 'country' && (activeTab === 'regions' || activeTab === 'cities')) {
-      return `${activeTab === 'regions' ? 'Region' : 'City'} tracking is disabled. Only country-level data is collected.`
-    }
-    return 'No data available'
+  // What is not collected for this site, in Pulse's one empty state (R57, 16-11-2026). The switches behind it left
+  // settings by ruling (R2) and their stored values stay, so the block says what is off and offers no setting.
+  const offState = (): { title: string; description: string } => {
+    if (activeTab === 'languages' || activeTab === 'timezones') return { title: 'Languages and timezones are off', description: 'This site does not collect them.' }
+    if (geoDataLevel === 'none') return { title: 'Locations are off', description: 'This site does not collect where its visitors are.' }
+    // Countries only: the regions and cities tabs.
+    return { title: `${activeTab === 'regions' ? 'Regions' : 'Cities'} are off`, description: 'This site collects countries only.' }
   }
 
   return (
@@ -439,9 +436,7 @@ export default function Audience({ countries, cities, regions, languages, langua
 
         <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
           {isTabDisabled() ? (
-            <div className="h-full flex flex-col items-center justify-center text-center px-4">
-              <p className="text-neutral-400 text-sm">{getDisabledMessage()}</p>
-            </div>
+            <EmptyState icon={<GlobeHemisphereWest />} {...offState()} className="h-full py-6" />
           ) : isVisualTab ? (
             hasData ? (
               inView ? (

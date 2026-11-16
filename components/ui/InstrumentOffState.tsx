@@ -1,17 +1,16 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { Button, buttonVariants } from '@ciphera-net/facet'
-import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * The one instrument-off state (closeout ruling 1b, variant V2) — every
  * instrument page renders its off/not-connected state through this shell:
- * ghost rails naming what the page becomes, the standardized icon tile, one
- * heading + sentence, an optional configure-before-enable slot, and ONE CTA
- * device — the primary Button, enabling in place where the page can enable
- * and navigating where the connection lives in Settings.
+ * ghost rails naming what the page becomes, then Pulse's one empty state
+ * (R57, 16-11-2026: the icon alone, the heading and sentence, an optional
+ * configure-before-enable slot, and ONE action in the bordered button),
+ * enabling in place where the page can enable and navigating where the
+ * connection lives in Settings.
  *
  * Permission is part of the component: without the required capability the
  * action is not offered, and the fallback line says who can (the uptime
@@ -20,7 +19,7 @@ import { cn } from '@/lib/utils'
 export interface InstrumentOffStateProps {
   /** Ghost rail labels — the page's own metric names, in rail order. */
   rails: string[]
-  /** The instrument's glyph (the sidebar's identity), rendered in the tile. */
+  /** The instrument's glyph (the sidebar's identity). */
   icon: ReactNode
   heading: string
   body: ReactNode
@@ -58,25 +57,16 @@ export function InstrumentOffState({
           </div>
         ))}
       </div>
-      <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-        <div className="mb-6 rounded-none bg-neutral-800 p-5 text-neutral-500">{icon}</div>
-        <h2 className="mb-2 text-xl font-semibold text-white">{heading}</h2>
-        <p className="mb-6 max-w-md text-sm text-neutral-400">{body}</p>
-        {config && <div className="mb-6">{config}</div>}
-        {canAct ? (
-          'href' in action && action.href ? (
-            <Link href={action.href} className={cn(buttonVariants(), 'ease-apple')}>
-              {action.label}
-            </Link>
-          ) : (
-            <Button onClick={action.onClick} disabled={action.disabled}>
-              {action.label}
-            </Button>
-          )
-        ) : (
-          <p className="text-xs text-neutral-500">{fallback}</p>
-        )}
-      </div>
+      <EmptyState
+        icon={icon}
+        title={heading}
+        description={body}
+        action={canAct ? ('href' in action && action.href ? { label: action.label, href: action.href } : { label: action.label, onClick: action.onClick, disabled: action.disabled }) : undefined}
+        className="min-h-[360px] flex-1"
+      >
+        {config && <div className="mt-2">{config}</div>}
+        {!canAct && <p className="mt-2 text-xs text-neutral-500">{fallback}</p>}
+      </EmptyState>
     </div>
   )
 }

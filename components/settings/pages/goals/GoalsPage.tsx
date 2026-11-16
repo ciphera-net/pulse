@@ -5,8 +5,8 @@ import { flushSync } from 'react-dom'
 import { useReducedMotion } from 'framer-motion'
 import { Button, toast } from '@ciphera-net/facet'
 import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
-import { ArrowSquareOut, LockSimple, PencilSimple, Plus, Trash, WarningCircle } from '@phosphor-icons/react'
-import { KitDialogTitle, KitPage, KitRow, KitRows, KitSection, KitStatus } from '@/components/settings/kit/Kit'
+import { LockSimple, PencilSimple, Plus, Trash, WarningCircle, Target } from '@phosphor-icons/react'
+import { KitDialogTitle, KitPage, KitRow, KitRows, KitSection } from '@/components/settings/kit/Kit'
 import { MastheadAction } from '@/components/settings/shell-slots'
 import { ApiError } from '@/lib/api/client'
 import { createGoal, deleteGoal, updateGoal, type Goal } from '@/lib/api/goals'
@@ -17,6 +17,7 @@ import { useGoals } from '@/lib/swr/dashboard'
 import { checkGoal, hasProblems, NO_PROBLEMS, type GoalProblems } from './checkGoal'
 import { GoalForm } from './GoalForm'
 import { SkeletonBar } from '@/components/skeletons'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * Goals (settings overhaul P3), from its approved drawing and the copy deck's §5. The page has no section heading: the
@@ -238,36 +239,16 @@ function GoalsForSite({ siteId }: { siteId: string }) {
     />
   )
 
-  // No goals yet: the title and caption, the guide that shows how to send an event (§5.2), and an example of a goal,
-  // drawn as a row and dimmed, its status leading the caption as a dot and a word (R24: no chip).
+  // No goals yet: Pulse's one empty state (R57, 16-11-2026), its action the guide that shows how to send an event
+  // (§5.2). The masthead's Add goal stays the page's one way to add a goal.
   const empty = (
     <div data-goals-empty="">
-      <KitRow label="No goals yet" caption="Send an event from your site, like a sign-up or a purchase, then add it here." />
-      <div className="-mt-1 pb-4">
-        <Button variant="outline" size="sm" asChild className="gap-1.5">
-          <a href={docsUrl('custom-events')} target="_blank" rel="noopener noreferrer" className="group">
-            How to send an event
-            <ArrowSquareOut className="h-3.5 w-3.5 transition-colors group-hover:text-brand-ink" aria-hidden="true" />
-          </a>
-        </Button>
-      </div>
-      <div data-goals-example="" className="border-t border-border">
-        <KitRow
-          label={
-            <span aria-hidden="true" className="pointer-events-none select-none opacity-40">
-              Sign up
-            </span>
-          }
-          caption={
-            <>
-              <KitStatus tone="off">Example</KitStatus>
-              <span aria-hidden="true" className="pointer-events-none select-none opacity-40">
-                {' · '}Counts the <code className="font-mono">signup_click</code> event.
-              </span>
-            </>
-          }
-        />
-      </div>
+      <EmptyState
+        icon={<Target />}
+        title="No goals yet"
+        description="Send an event from your site, like a sign-up or a purchase, then add it here."
+        action={{ label: 'How to send an event', href: docsUrl('custom-events'), external: true }}
+      />
     </div>
   )
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CaretLeft } from '@phosphor-icons/react'
+import { CaretLeft, Tag } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
@@ -10,6 +10,7 @@ import { DIMENSION_ROW, ROW_NUMBER } from '@/components/dashboard/MetricRowStat'
 import { SortHead, sortRows, type Sort, type SortColumn } from '@/components/dashboard/SortHead'
 import { SkeletonLine } from '@/components/skeleton/primitives'
 import { CompactNumber } from '@/components/ui/compact-number'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { CardFooter, FRAME_CARD_BODY } from '@/lib/dashboard/frame'
 import { orderKeys, percent, propertyName, propertyValueRows, type PropertyValueRow } from '@/lib/dashboard/events'
@@ -141,13 +142,14 @@ export function EventProperties({ siteId, row, name, windowKey, dateRange, liveM
 
       <div className={FRAME_CARD_BODY}>
         {!readable ? (
-          <PaneLine>Imported days carry no properties.</PaneLine>
+          // An empty pane is Pulse's one empty state (R57); the prompt and the error stay quiet lines.
+          <EmptyState icon={<Tag />} title="Imported days carry no properties" className="h-full py-6" />
         ) : keysError || valuesError ? (
           <PaneLine>The properties of this event could not be loaded. Reload the page to try again.</PaneLine>
         ) : !keys ? (
           <SkeletonRows />
         ) : keys.length === 0 ? (
-          <PaneLine>No properties were sent with this event.</PaneLine>
+          <EmptyState icon={<Tag />} title="No properties were sent with this event" className="h-full py-6" />
         ) : !rows ? (
           <SkeletonRows />
         ) : (

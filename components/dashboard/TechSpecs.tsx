@@ -9,6 +9,7 @@ import { mergeSameRows } from '@/lib/dashboard/sameRows'
 import { Monitor } from '@phosphor-icons/react'
 import { DeviceMobile } from '@phosphor-icons/react'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { CardFooter, FRAME_CARD, FRAME_CARD_BODY, useDashboardFrame } from '@/lib/dashboard/frame'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
@@ -117,15 +118,12 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
     return false
   }
 
-  const getDisabledMessage = () => {
-    if (!collectDeviceInfo && (activeTab === 'browsers' || activeTab === 'os' || activeTab === 'devices')) {
-      return 'Device info collection is disabled in site settings'
-    }
-    if (!collectScreenResolution && activeTab === 'screens') {
-      return 'Screen resolution collection is disabled in site settings'
-    }
-    return 'No data available'
-  }
+  // What is not collected for this site, in Pulse's one empty state (R57, 16-11-2026). The switches behind it left
+  // settings by ruling (R2) and their stored values stay, so the block says what is off and offers no setting.
+  const offState = (): { title: string; description: string } =>
+    activeTab === 'screens'
+      ? { title: 'Screen sizes are off', description: 'This site does not collect them.' }
+      : { title: 'Browsers and devices are off', description: 'This site does not collect browsers, operating systems or devices.' }
 
   const rawData = getRawData()
   const data = sameRows(filterUnknown(rawData) as TechItem[])
@@ -192,9 +190,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
       <div className={frame ? FRAME_CARD_BODY : 'flex-1 min-h-[270px]'}>
         {isTabDisabled() ? (
-          <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <p className="text-neutral-400 text-sm">{getDisabledMessage()}</p>
-          </div>
+          <EmptyState icon={<DeviceMobile />} {...offState()} className="h-full py-6" />
         ) : hasData ? (
           <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
             {displayedData.map((item, i) => {

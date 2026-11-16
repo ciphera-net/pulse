@@ -123,8 +123,8 @@ export default function BingPanel({
         error={!!(overviewError || dailyError)}
         onRetry={() => { void retryOverview(); void retryDaily() }}
         errorTitle="Couldn't load Bing data"
-        emptyTitle="No Bing data in this period."
-        emptyHint="Bing syncs daily site totals — try a wider range."
+        emptyTitle="No Bing data in this period"
+        emptyHint="Bing sends daily totals for the whole site. Try a wider range."
         // * One registry entry, all three rows — Bing's daily endpoint returns
         // * clicks/impressions/CTR as one site-level payload, not three
         // * independently-sourced metrics the way Google's four are.

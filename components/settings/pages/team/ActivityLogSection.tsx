@@ -3,8 +3,8 @@
 import { Fragment, useState, type ChangeEvent, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { Button, Input, Select } from '@ciphera-net/facet'
-import { CalendarBlank, CaretDown, CaretRight, ClockCounterClockwise } from '@phosphor-icons/react'
-import { KitBlock, KitRow, KitRows, KitSection } from '@/components/settings/kit/Kit'
+import { CalendarBlank, CaretDown, CaretRight, ClockCounterClockwise, FunnelSimple } from '@phosphor-icons/react'
+import { KitBlock, KitRows, KitSection } from '@/components/settings/kit/Kit'
 import { getAuditLog, type AuditLogEntry, type GetAuditLogResponse } from '@/lib/api/audit'
 import { useAuth } from '@/lib/auth/context'
 import { AUDIT_ACTIONS, actionLabelFor } from '@/lib/audit/actions'
@@ -17,6 +17,7 @@ import { useMembers } from '@/lib/swr/members'
 import { PersonAvatar, PersonInline } from '@/components/settings/names/people'
 import { usePeopleEmails } from '@/components/settings/names/useEmails'
 import { usePeopleNames } from '@/components/settings/names/useNames'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const PAGE_SIZE = 20
 
@@ -245,9 +246,9 @@ export function ActivityLogSection() {
           <KitLoadError title="Couldn't load the activity log. Try again." onRetry={retry} />
         ) : entries.length === 0 ? (
           filtersOn ? (
-            <KitRow label="Nothing matches these filters." />
+            <EmptyState icon={<FunnelSimple />} title="Nothing matches these filters" />
           ) : (
-            <KitRow label="No activity yet" caption="Changes to sites, people and billing show here." />
+            <EmptyState icon={<ClockCounterClockwise />} title="No activity yet" description="Changes to sites, people and billing show here." />
           )
         ) : (
           <KitBlock>

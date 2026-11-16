@@ -25,8 +25,9 @@ import { cn } from '@/lib/utils'
 //   range       The site has visits and this range has none of the kind: the block's own heading, and a longer
 //               range to try where there is one.
 //
-// At most ONE link, a quiet text link and never a filled button, and only where there is something to do: clear the
-// filter, open the setting, or read how to send what the block counts (Events, Campaigns).
+// At most ONE action, and only where there is something to do: clear the filter, open the setting, or read how to send
+// what the block counts (Events, Campaigns). EmptyState draws it in the app's bordered button (ruling R57 of
+// 16-11-2026: one empty state format across Pulse).
 //
 // In a public view (the demo, a share link) the reader is not the site's owner: a block says its heading and
 // nothing else, with no way into settings (PUL-34). A filter the reader set themselves is the one exception: the
@@ -103,7 +104,6 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
           label: EMPTY_OFF_ACTION,
           href: SITE_SETTINGS,
           onClick: siteId ? () => sessionStorage.setItem('pulse_active_site', siteId) : undefined,
-          variant: 'link',
         } : undefined}
         className={box}
       />
@@ -116,7 +116,7 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
         icon={icon}
         title={EMPTY_FRESH_TITLE}
         description={fresh}
-        action={docs?.whenFresh ? { label: docs.label, href: docs.href, external: true, variant: 'link' } : undefined}
+        action={docs?.whenFresh ? { label: docs.label, href: docs.href, external: true } : undefined}
         className={box}
       />
     )
@@ -128,7 +128,7 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
         icon={icon}
         title={EMPTY_FILTER_TITLE}
         description={EMPTY_FILTER_LINE}
-        action={facts.clearFilters ? { label: EMPTY_FILTER_ACTION, onClick: facts.clearFilters, variant: 'link' } : undefined}
+        action={facts.clearFilters ? { label: EMPTY_FILTER_ACTION, onClick: facts.clearFilters } : undefined}
         className={box}
       />
     )
@@ -142,7 +142,7 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
       icon={icon}
       title={title}
       description={facts.canWiden ? EMPTY_RANGE_LINE : undefined}
-      action={docs ? { label: docs.label, href: docs.href, external: true, variant: 'link' } : undefined}
+      action={docs ? { label: docs.label, href: docs.href, external: true } : undefined}
       className={box}
     />
   )
