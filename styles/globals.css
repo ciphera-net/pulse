@@ -239,6 +239,16 @@
     -webkit-backdrop-filter: blur(24px) saturate(1.5);
     backdrop-filter: blur(24px) saturate(1.5);
   }
+  /* * A list that scrolls INSIDE a box of a fixed height: the Filter menu's list (components/dashboard/filter/search/
+   * SearchFilter). A thin bar in the ink's colour, and the page under it does not take over the scroll at either end.
+   * #1034 deleted it with the Events block's list, its first user, and the Filter menu's rows ran out of the menu over
+   * the page (16-11-2026); components/dashboard/__tests__/frame-scroll.test.ts holds it while anything uses it. */
+  .frame-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--white) / 0.18) transparent;
+  }
   /* * A pop-up or a menu, drawn outside the blocks (a portal), where there is a page behind it to blur.
    *
    * The second selector is the INFO pop-up (Facet's InfoTip, which components/dashboard/MetricInfoTip.tsx places
