@@ -278,6 +278,9 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
                       aria-pressed={selectedStep === i + 1}
                       onClick={() => onSelectStep(i + 1)}
                       onKeyDown={(e) => onKeyDown(e, i)}
+                      // The arrows step between the funnel's steps, and an end lets a press go by: the page's range
+                      // keys leave them alone here, so the range never moves under somebody stepping through.
+                      data-own-arrows=""
                       className="absolute bottom-0 top-0 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                       style={{ left: `${(i / n) * 100}%`, width: `${100 / n}%` }}
                     />

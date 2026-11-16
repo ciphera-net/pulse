@@ -221,6 +221,8 @@ export default function SankeyJourney({
           role="group"
           aria-label="Visitor flow between pages"
           onKeyDown={onKeyDown}
+          // The arrows move between the flow's pages: the page's range keys leave them alone here.
+          data-own-arrows=""
         >
           {/* Links */}
           {layout.links.map((l, i) => {

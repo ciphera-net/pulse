@@ -64,6 +64,8 @@ export default function OperatorChip({ operator, onChange, dimension }: Operator
         aria-label={`Operator: ${OPERATOR_LABELS[operator]}`}
         onClick={() => { if (!locked) setOpen(o => !o) }}
         onKeyDown={handleKeyDown}
+        // The arrows cycle the operator: the page's range keys leave them alone here (lib/keyboard/shortcuts.ts).
+        data-own-arrows=""
         className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-none border transition-colors cursor-pointer ease-apple ${
           open
             ? 'bg-neutral-800 border-brand-orange/40 text-white'

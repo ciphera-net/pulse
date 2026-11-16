@@ -1,8 +1,11 @@
 'use client'
 
+import { useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { formatNumber, formatCompactNumber } from '@/lib/utils/format'
 import { DASHBOARD_REALTIME_MINUTES } from '@/lib/dashboard/realtimeRange'
+import { KEYBOARD_SHORTCUTS_FLAG, REALTIME_KEY, isPageShortcut, keyCap } from '@/lib/keyboard/shortcuts'
+import { useFeature } from '@/lib/features'
 
 /**
  * The live-visitor orb, and the one way into realtime mode.
@@ -68,6 +71,20 @@ export default function RealtimeOrb({
   const here = count > 0
   const phrase = describeLiveCount(count)
 
+  // R does what a press on the orb does, wherever the orb is a switch (16-11-2026, R13), while the keyboard shortcuts'
+  // beta is on. Not on the share page's display-only orb: there a press does nothing, and so does R.
+  const keys = useFeature(KEYBOARD_SHORTCUTS_FLAG) === true
+  useEffect(() => {
+    if (!onToggle || !keys) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== REALTIME_KEY || !isPageShortcut(e)) return
+      e.preventDefault()
+      onToggle()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onToggle, keys])
+
   if (!onToggle) {
     return (
       <span
@@ -91,6 +108,7 @@ export default function RealtimeOrb({
       data-tour="realtime-trigger"
       data-live-orb="toggle"
       aria-pressed={live}
+      aria-keyshortcuts={keys ? keyCap(REALTIME_KEY) : undefined}
       aria-label={live ? `${phrase}. Leave realtime view` : `${phrase}. Show realtime view`}
       title={phrase}
       onClick={onToggle}
