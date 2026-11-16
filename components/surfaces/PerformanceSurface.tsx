@@ -15,6 +15,7 @@ import {
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { toast, Button, Switcher } from '@ciphera-net/facet'
 import { Gauge } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import Select from '@/components/ui/select'
 import ScoreGauge from '@/components/performance/ScoreGauge'
@@ -458,9 +459,8 @@ function PerformancePage({ scope }: { scope: SiteScope }) {
       return (
         <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
           <PageHeader domain={site.domain} frequency={null} />
-          <div className={`${CARD} p-6 text-center md:p-12`}>
-            <h3 className="mb-2 font-semibold text-white">No performance checks yet</h3>
-            <p className="mx-auto max-w-md text-sm text-neutral-400">Performance monitoring is off for this site.</p>
+          <div className={CARD}>
+            <EmptyState icon={<Gauge />} title="No performance checks yet" description="Performance monitoring is off for this site." />
           </div>
         </div>
       )
@@ -631,12 +631,12 @@ function PerformancePage({ scope }: { scope: SiteScope }) {
           }}
         />
       ) : noChecksYet ? (
-        <div className={`${CARD} p-6 text-center md:p-12`}>
-          <h3 className="mb-2 font-semibold text-white">First check queued</h3>
-          <p className="mx-auto max-w-md text-sm text-neutral-400">
-            Results appear within a few minutes. Each check runs Lighthouse three times per device and stores the
-            median.
-          </p>
+        <div className={CARD}>
+          <EmptyState
+            icon={<Gauge />}
+            title="First check queued"
+            description="Results appear within a few minutes. Each check runs Lighthouse three times per device and stores the median."
+          />
         </div>
       ) : (
         <div className="grid gap-4">

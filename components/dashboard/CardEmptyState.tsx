@@ -26,8 +26,8 @@ import { cn } from '@/lib/utils'
 //               range to try where there is one.
 //
 // At most ONE action, and only where there is something to do: clear the filter, open the setting, or read how to send
-// what the block counts (Events, Campaigns). It is the dashboard's own bordered button, never the filled orange one
-// (EmptyState's `block` look, ruling R57 of 16-11-2026: every empty block shows the one kind).
+// what the block counts (Events, Campaigns). EmptyState draws it in the app's bordered button (ruling R57 of
+// 16-11-2026: one empty state format across Pulse).
 //
 // In a public view (the demo, a share link) the reader is not the site's owner: a block says its heading and
 // nothing else, with no way into settings (PUL-34). A filter the reader set themselves is the one exception: the
@@ -86,7 +86,7 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
   // "Nobody on the site" is a claim about the whole site, so it is made only on a live count that is known and at
   // zero. Otherwise the block says what it has none of, which is true whoever is on the site, and true while the
   // count has not arrived.
-  if (live) return <EmptyState variant="block" icon={icon} title={facts.nobodyLive ? REALTIME_EMPTY_LINE : emptyLiveTitle(kind)} className={box} />
+  if (live) return <EmptyState icon={icon} title={facts.nobodyLive ? REALTIME_EMPTY_LINE : emptyLiveTitle(kind)} className={box} />
 
   const title = emptyRangeTitle(kind)
 
@@ -97,7 +97,6 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
     const siteId = scope?.siteId
     return (
       <EmptyState
-        variant="block"
         icon={icon}
         title={off.title}
         description={off.description}
@@ -114,7 +113,6 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
   if (facts.neverVisited && !reader) {
     return (
       <EmptyState
-        variant="block"
         icon={icon}
         title={EMPTY_FRESH_TITLE}
         description={fresh}
@@ -127,7 +125,6 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
   if (filtered) {
     return (
       <EmptyState
-        variant="block"
         icon={icon}
         title={EMPTY_FILTER_TITLE}
         description={EMPTY_FILTER_LINE}
@@ -138,11 +135,10 @@ export default function CardEmptyState({ icon, kind, fresh, docs, off, filterabl
   }
 
   // A public reader: the heading alone.
-  if (reader) return <EmptyState variant="block" icon={icon} title={title} className={box} />
+  if (reader) return <EmptyState icon={icon} title={title} className={box} />
 
   return (
     <EmptyState
-      variant="block"
       icon={icon}
       title={title}
       description={facts.canWiden ? EMPTY_RANGE_LINE : undefined}

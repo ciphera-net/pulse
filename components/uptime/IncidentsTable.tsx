@@ -9,6 +9,8 @@ import {
   UPTIME_NEG,
 } from './uptimeMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { CheckCircle } from '@phosphor-icons/react'
 
 // ---------------------------------------------------------------------------
 // The incident ledger — episodes the checker confirmed, newest first. An
@@ -60,7 +62,7 @@ export default function IncidentsTable({ incidents, error, timeoutSeconds, timez
   } else if (incidents === undefined) {
     body = <div className="px-4 py-6 text-sm text-neutral-500">Loading incidents…</div>
   } else if (incidents.length === 0) {
-    body = <div className="px-4 py-6 text-sm text-neutral-500">No incidents in this range.</div>
+    body = <EmptyState icon={<CheckCircle />} title="No incidents in this range" className="py-8" />
   } else {
     body = (
       <>

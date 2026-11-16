@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   UserFocus,
   WarningCircle,
+  ListDashes,
 } from '@phosphor-icons/react'
 import { useCan } from '@/lib/auth/permissions'
 import { useSite, useSubscription } from '@/lib/swr/dashboard'
@@ -25,10 +26,10 @@ import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { StatusChip } from '@/components/settings/StatusChip'
 import { KitBlock, KitPage, KitRow, KitRows, KitSection, KitStatus } from '@/components/settings/kit/Kit'
 import { RulesEditor } from './RulesEditor'
 import { cleanRules, keepPatternFor, learnedPathFor, parseParams, rulesHaveProblems } from './rules'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
  * Privacy (settings overhaul P5; copy deck §7, drawn in round 5). Visitor views · Data retention · Your own visits ·
@@ -407,18 +408,7 @@ export default function PrivacyPage({ siteId }: { siteId: string }) {
               />
               {draft.rules.length === 0 ? (
                 <div data-privacy-rules-empty="">
-                  <KitRow
-                    label="No rules"
-                    caption="Leave pages out of your stats, or show several addresses as one page."
-                    control={
-                      <span className="flex items-center gap-3">
-                        <span aria-hidden="true" className="pointer-events-none select-none text-xs text-muted-foreground opacity-60">
-                          Leave out · <code className="font-mono">/admin/*</code>
-                        </span>
-                        <StatusChip tone="neutral">Example</StatusChip>
-                      </span>
-                    }
-                  />
+                  <EmptyState icon={<ListDashes />} title="No rules" description="Leave pages out of your stats, or show several addresses as one page." />
                 </div>
               ) : (
                 <KitBlock>

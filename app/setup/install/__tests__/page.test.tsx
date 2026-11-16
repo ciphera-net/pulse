@@ -28,7 +28,9 @@ vi.mock('@/lib/api/sites', () => ({ verifySite: vi.fn().mockResolvedValue(undefi
 vi.mock('@/components/sites/ScriptSetupBlock', () => ({ default: () => <div data-testid="script-block" /> }))
 vi.mock('@/components/setup/InstallStateBlock', () => ({ default: () => <div data-testid="install-state" /> }))
 vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: () => <span data-testid="favicon" /> }))
-vi.mock('@ciphera-net/facet', () => ({
+vi.mock('@ciphera-net/facet', async () => ({
+  // EmptyState draws with Facet's own button classes and cn; anything stubbed below wins.
+  ...(await vi.importActual<typeof import('@ciphera-net/facet')>('@ciphera-net/facet').then((f) => ({ buttonVariants: f.buttonVariants, cn: f.cn }))),
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Spinner: (props: any) => <div data-testid="spinner" {...props} />,
 }))

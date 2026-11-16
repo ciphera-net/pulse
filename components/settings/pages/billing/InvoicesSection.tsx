@@ -10,6 +10,7 @@ import { downloadInvoicePDF, type Invoice } from '@/lib/api/billing'
 import { ApiError } from '@/lib/api/client'
 import { formatMoneyCents } from '@/lib/utils/money'
 import { invoiceStatus, utcDay } from './planState'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 function download(id: string) {
   downloadInvoicePDF(id).catch((err: unknown) => {
@@ -55,11 +56,7 @@ export function InvoicesSection({
       </KitBlock>
     )
   } else if (invoices.length === 0) {
-    body = (
-      <KitRows>
-        <KitRow label="No invoices yet" caption="Your first one shows here after your first payment." />
-      </KitRows>
-    )
+    body = <EmptyState icon={<Receipt />} title="No invoices yet" description="Your first one shows here after your first payment." />
   } else {
     const newestFirst = [...invoices].sort((a, b) => b.created_at.localeCompare(a.created_at))
     body = (

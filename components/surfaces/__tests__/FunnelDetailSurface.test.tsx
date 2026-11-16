@@ -81,7 +81,9 @@ vi.mock('framer-motion', () => ({
   motion: { div: ({ className }: { className?: string }) => <div className={className} /> },
 }))
 
-vi.mock('@ciphera-net/facet', () => ({
+vi.mock('@ciphera-net/facet', async () => ({
+  // EmptyState draws with Facet's own button classes and cn; anything stubbed below wins.
+  ...(await vi.importActual<typeof import('@ciphera-net/facet')>('@ciphera-net/facet').then((f) => ({ buttonVariants: f.buttonVariants, cn: f.cn }))),
   toast: { success: () => {}, error: () => {} },
   Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => <button onClick={onClick}>{children}</button>,
   cn: (...parts: unknown[]) => parts.filter(Boolean).join(' '),

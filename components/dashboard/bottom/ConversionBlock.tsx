@@ -387,12 +387,11 @@ export default function ConversionBlock({ siteId, dateRange, period, filters }: 
             <ErrorCard title={failed.title} description="The rest of the dashboard is unaffected." onRetry={failed.retry} />
           </div>
         ) : empty ? (
-          // One kind of empty for every block (ruling R57, 16-11-2026): the shared block look, the one CardEmptyState
-          // draws in every other block. This block's states are its own (a funnel nobody entered, a filter Journeys
-          // cannot follow), so it draws EmptyState itself rather than CardEmptyState.
+          // One empty state across Pulse (ruling R57, 16-11-2026): the shared EmptyState, as CardEmptyState draws it in
+          // every other block. This block's states are its own (a funnel nobody entered, a filter Journeys cannot
+          // follow), so it draws EmptyState itself rather than CardEmptyState.
           <div className="h-full" data-testid="conversion-empty">
             <EmptyState
-              variant="block"
               icon={empty.icon}
               title={empty.title}
               description={empty.line}

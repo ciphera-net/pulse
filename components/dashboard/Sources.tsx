@@ -9,6 +9,7 @@ import { getOpenHostname, getReferrerDisplayName, getReferrerFavicon, getReferre
 import { Megaphone, Globe, ArrowSquareOut } from '@phosphor-icons/react'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
 import { type CampaignStat, type TopReferrer } from '@/lib/api/stats'
@@ -328,9 +329,8 @@ export default function Sources({
         {view === 'referrers' ? (
           /* ── Referrers ── */
           !collectReferrers ? (
-            <div className="h-full flex flex-col items-center justify-center text-center px-4">
-              <p className="text-neutral-400 text-sm">Referrer tracking is disabled in site settings</p>
-            </div>
+            // Not collected for this site, in Pulse's one empty state (R57); its switch left settings by ruling (R2).
+            <EmptyState icon={<Globe />} title="Referrers are off" description="This site does not collect where its visits come from." className="h-full py-6" />
           ) : hasReferrerData ? (
             <CascadeGroup flipKey={`referrers-${page}`} className="space-y-2">
               {displayedReferrers.map((ref, i) => {

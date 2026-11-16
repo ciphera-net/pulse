@@ -8,6 +8,7 @@ import { reportLinkOpen } from '@/components/settings/export/reportFields'
 import type { Report } from '@/lib/api/reports'
 import { siteDay } from '@/lib/reports/format'
 import { SkeletonBar } from '@/components/skeletons'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 // The pieces Sharing's two lists and two forms share (settings overhaul round 4: R22, R24, R25; copy deck §6.5).
 
@@ -101,7 +102,8 @@ export function ListBody({
   rows: ReactNode[] | null
   failed: boolean
   onRetry: () => Promise<void>
-  empty: string
+  /** Said when the list has nothing: the title, and the icon of what the list holds. */
+  empty: { title: string; icon: ReactNode }
 }) {
   const [retrying, setRetrying] = useState(false)
   const retry = async () => {
@@ -155,7 +157,7 @@ export function ListBody({
         {rows !== null && rows.length > 0 && rows}
         {rows !== null && rows.length === 0 && !failed && (
           <div data-sharing-empty="">
-            <KitRow label={empty} />
+            <EmptyState icon={empty.icon} title={empty.title} />
           </div>
         )}
         {failure}

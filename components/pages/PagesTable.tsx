@@ -1,10 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CaretDown, CaretUp } from '@phosphor-icons/react'
+import { ArrowDown, ArrowUp, CaretDown, CaretUp, FileText } from '@phosphor-icons/react'
 import { formatNumber, formatCompactNumber } from '@/lib/utils/format'
 import { CompactNumber } from '@/components/ui/compact-number'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { PageTableRow } from '@/lib/api/stats'
 
 // ---------------------------------------------------------------------------
@@ -320,9 +321,7 @@ export default function PagesTable({ rows, total, rangeLabel, showTitle = true }
       </div>
 
       {shown.length === 0 && (
-        <div className="px-4 py-8 text-center text-sm text-neutral-500">
-          {query ? `No pages match “${query}”.` : 'No pages in this range.'}
-        </div>
+        <EmptyState icon={<FileText />} title={query ? `No pages match "${query}"` : 'No pages in this range'} className="py-8" />
       )}
     </div>
   )

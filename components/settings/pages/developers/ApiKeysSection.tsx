@@ -15,6 +15,7 @@ import { createKeyError } from './errors'
 import { shortDate, sitesWord } from './format'
 import { LastUsed, LoadErrorRow, LoadingRows } from './parts'
 import { useRemoveLater } from './useRemoveLater'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const EXPIRY: { value: string; label: string; days: ApiKeyExpiry }[] = [
   { value: '30', label: '30 days', days: 30 },
@@ -149,7 +150,7 @@ export function ApiKeysSection() {
           {list.status === 'failed' && <LoadErrorRow title="Couldn't load your API keys" onRetry={retry} retrying={retrying} />}
           {list.status === 'ready' &&
             (shown.length === 0 ? (
-              <KitRow label="No API keys yet" caption="Create one to read your stats from a script, a dashboard or a spreadsheet." />
+              <EmptyState icon={<Key />} title="No API keys yet" description="Create one to read your stats from a script, a dashboard or a spreadsheet." />
             ) : (
               shown.map((k) => {
                 const live = apiKeyStatus(k) === 'live'

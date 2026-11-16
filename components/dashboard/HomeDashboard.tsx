@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getLastSiteId, markSessionEntered, entryRedirectTarget } from '@/lib/last-site'
 import { restoreSite, type Site } from '@/lib/api/sites'
@@ -11,10 +10,11 @@ import FleetDeck from '@/components/sites/FleetDeck'
 import FleetHeader from '@/components/sites/FleetHeader'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Badge, toast, getAuthErrorMessage } from '@ciphera-net/facet'
-import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Globe } from '@phosphor-icons/react'
 
 export default function HomeDashboard() {
   const router = useRouter()
@@ -109,22 +109,14 @@ export default function HomeDashboard() {
            list never flashes before navigation */
         <SitesListSkeleton rows={4} />
       ) : sites.length === 0 ? (
-        <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-none border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
-          <img
-            src={cdnUrl('/illustrations/no-sites.png')}
-            alt=""
-            className="w-80 h-auto"
+        // Pulse's one empty state (R57, 16-11-2026), in a card like the sites it waits for.
+        <div className="mb-8 rounded-none border border-border bg-card">
+          <EmptyState
+            icon={<Globe />}
+            title="No sites yet"
+            description="Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard."
+            action={canCreateSite ? { label: 'New site', href: '/sites/new' } : undefined}
           />
-          <h3 className="text-title-2 font-semibold text-neutral-100">No sites yet</h3>
-          <p className="max-w-sm text-caption text-neutral-400">
-            Connect a domain to start collecting privacy-friendly analytics. You can add more sites later from the dashboard.
-          </p>
-          {canCreateSite && <Link
-            href="/sites/new"
-            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
-          >
-            New site
-          </Link>}
         </div>
       ) : (
         <FleetDeck

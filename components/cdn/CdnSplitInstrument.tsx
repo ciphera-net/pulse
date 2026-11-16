@@ -13,6 +13,8 @@ import type { BunnyOverview, BunnyRegionEntry } from '@/lib/api/bunny'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { GlobeHemisphereWest } from '@phosphor-icons/react'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
@@ -569,9 +571,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
             <span className="text-xs text-neutral-600">Loading regions…</span>
           </div>
         ) : regions.length === 0 ? (
-          <div className="flex h-40 items-center justify-center">
-            <span className="text-xs text-neutral-600">No traffic in this range</span>
-          </div>
+          <EmptyState icon={<GlobeHemisphereWest />} title="No traffic in this range" className="h-40 py-0" />
         ) : (
           <RegionRows regions={regions} total={regionsTotal} />
         )}

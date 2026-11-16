@@ -11,6 +11,8 @@ import { Button, Spinner } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import InstallStateBlock from '@/components/setup/InstallStateBlock'
 import SiteChip from '@/components/setup/SiteChip'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Code } from '@phosphor-icons/react'
 
 export default function SetupInstallPage() {
   const router = useRouter()
@@ -116,11 +118,13 @@ export default function SetupInstallPage() {
          * setup session there is none to show, so say that instead of a
          * silent empty gap above a bare Continue button. */
         <div className="space-y-3">
-          <div className="p-4 border border-neutral-800 bg-neutral-900 rounded-none text-center">
-            <p className="text-sm text-neutral-400">
-              No site is attached to this setup session, so there&apos;s no snippet to
-              show yet. Create your site first and the snippet will appear here.
-            </p>
+          <div className="border border-neutral-800 bg-neutral-900 rounded-none">
+            <EmptyState
+              icon={<Code />}
+              title="No snippet to show yet"
+              description="No site is attached to this setup session. Create your site first and its snippet shows here."
+              className="py-8"
+            />
           </div>
           {/* Direct hop — the old '/setup' target took three redirects to end
               up on the site step anyway. */}

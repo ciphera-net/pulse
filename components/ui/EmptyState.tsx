@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 interface EmptyStateProps {
   icon?: React.ReactNode
   title: string
-  description?: string
+  description?: React.ReactNode
   /**
    * The one thing to do next. `href` navigates, `onClick` acts — and they may
    * now be given TOGETHER: the in-app install links have to record which site
@@ -22,32 +22,29 @@ interface EmptyStateProps {
     href?: string
     onClick?: () => void
     external?: boolean
+    /** An action that acts in place, held while it runs (enabling a monitor). */
+    disabled?: boolean
   }
   /**
-   * Which kind of empty this is (ruling R57, 16-11-2026: one kind for every dashboard block).
-   *
-   *   page    The default. A whole page with nothing to show yet (no funnels, a site in another team): the icon in
-   *           a tinted tile, a large title, the action as the filled orange button.
-   *   block   One block among many on the dashboard: the icon alone in the brand's ink, a smaller title, and the
-   *           action in the dashboard's own bordered button (Facet's `chrome`, the look of the date button and the
-   *           funnel picker). Every empty block draws this one, so a page of empty blocks shows one kind, and no
-   *           action shouts in orange six times on one screen.
+   * What a state needs between its line and its action: a setting to choose before enabling (Performance's check
+   * frequency), or the line that says who can act when this reader cannot.
    */
-  variant?: 'page' | 'block'
+  children?: React.ReactNode
   className?: string
 }
 
-const ACTION_BUTTON =
-  'mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]'
 /**
- * The block's action: the dashboard's bordered button, the border brightening under the pointer. Asked of Facet when
- * a block draws one, never when this module loads: a page's empty state must not depend on it (tests that replace
- * Facet with a stub of the parts a page uses import this module too).
+ * The action: the app's bordered button (Facet's `chrome`, the look of the date button and the funnel picker), the
+ * border brightening under the pointer. Asked of Facet when an empty state has an action, never when this module
+ * loads: tests that replace Facet with a stub of the parts they use import this module too.
  */
-const blockAction = () => cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 'mt-2 font-normal ease-apple')
+const actionClass = () => cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 'mt-2 font-normal ease-apple')
 
 /**
- * Empty state — use in place of inline "No X" fallbacks.
+ * Pulse's one empty state (ruling R57, 16-11-2026: one format everywhere). The icon alone in the brand's ink, a
+ * title, a short line, and at most one action in the bordered button. A page, a settings section and a dashboard
+ * block all draw this one, so the product has one kind of empty, and no action shouts in orange from every empty
+ * corner of a screen. Use it in place of any inline "No X" fallback.
  *
  * Tonal rule: warm, specific, actionable. Never just "No data".
  * Describe what's missing and what the user can do next.
@@ -55,16 +52,14 @@ const blockAction = () => cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 
  * Good: "No visitors yet — share your site and check back"
  * Bad: "No data available"
  */
-export function EmptyState({ icon, title, description, action, variant = 'page', className }: EmptyStateProps) {
-  const block = variant === 'block'
-  const actionClass = action ? (block ? blockAction() : ACTION_BUTTON) : undefined
+export function EmptyState({ icon, title, description, action, children, className }: EmptyStateProps) {
   const actionButton = action ? (
     action.href ? (
       <Link
         href={action.href}
         onClick={action.onClick}
         {...(action.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-        className={actionClass}
+        className={actionClass()}
       >
         {action.label}
       </Link>
@@ -72,37 +67,22 @@ export function EmptyState({ icon, title, description, action, variant = 'page',
       <button
         type="button"
         onClick={action.onClick}
-        className={actionClass}
+        disabled={action.disabled}
+        className={actionClass()}
       >
         {action.label}
       </button>
     )
   ) : null
 
-  if (block) {
-    return (
-      <div className={cn('flex flex-col items-center justify-center gap-2 py-12 px-6 text-center', className)} data-empty-state="block">
-        {icon && <span className="mb-1 text-brand-ink [&_svg]:h-8 [&_svg]:w-8">{icon}</span>}
-        <h3 className="text-base font-semibold text-neutral-100">{title}</h3>
-        {description && (
-          <p className="max-w-sm text-caption text-neutral-400">{description}</p>
-        )}
-        {actionButton}
-      </div>
-    )
-  }
-
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 py-12 px-6 text-center', className)} data-empty-state="page">
-      {icon && (
-        <div className="flex h-20 w-20 items-center justify-center rounded-none bg-brand-orange/10 text-brand-ink [&_svg]:h-10 [&_svg]:w-10 ring-1 ring-brand-orange/10">
-          {icon}
-        </div>
-      )}
-      <h3 className="text-title-2 font-semibold text-neutral-100">{title}</h3>
+    <div className={cn('flex flex-col items-center justify-center gap-2 py-12 px-6 text-center', className)} data-empty-state="">
+      {icon && <span className="mb-1 text-brand-ink [&_svg]:h-8 [&_svg]:w-8">{icon}</span>}
+      <h3 className="text-base font-semibold text-neutral-100">{title}</h3>
       {description && (
         <p className="max-w-sm text-caption text-neutral-400">{description}</p>
       )}
+      {children}
       {actionButton}
     </div>
   )

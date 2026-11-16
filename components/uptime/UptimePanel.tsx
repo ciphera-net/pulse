@@ -9,6 +9,8 @@ import { formatCompactNumber } from '@/lib/utils/format'
 import { useUptimeResponseTimes } from '@/lib/swr/dashboard'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Heartbeat } from '@phosphor-icons/react'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
@@ -476,9 +478,13 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
             <ErrorCard title="Couldn't load uptime data" onRetry={() => { void mutate() }} className="py-4" />
           </div>
         ) : !isLoading && series.length === 0 ? (
-          <div className="pointer-events-none absolute inset-y-0 left-40 right-0 flex flex-col items-center justify-center sm:left-48">
-            <p className="text-sm text-neutral-400">No checks in this period yet.</p>
-            {!publicView && <p className="mt-1 text-xs text-neutral-500">The first check lands within a minute of enabling.</p>}
+          // Pulse's one empty state (R57), over the band area: the rails stay visible.
+          <div className="pointer-events-none absolute inset-y-0 left-40 right-0 flex items-center justify-center sm:left-48">
+            <EmptyState
+              icon={<Heartbeat />}
+              title="No checks in this period yet"
+              description={publicView ? undefined : 'The first check lands within a minute of enabling.'}
+            />
           </div>
         ) : null}
       </div>

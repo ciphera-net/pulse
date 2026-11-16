@@ -301,7 +301,7 @@ describe('the Events block in the new frame: the list beside the picked event\'s
 
   it('says an event counted from imported days alone carries no properties, and asks for none', () => {
     inFrame(block({ goalCounts: [{ event_name: 'signup', count: 50, visitors: 40, instrument: 'imported' }] }))
-    expect(propsPane().textContent).toContain('Imported days carry no properties.')
+    expect(propsPane().textContent).toContain('Imported days carry no properties')
     expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', null, dateRange.start, dateRange.end, undefined, undefined)
     expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', null, dateRange.start, dateRange.end, 100, undefined, undefined)
   })
@@ -314,7 +314,7 @@ describe('the Events block in the new frame: the list beside the picked event\'s
 
     h.useEventPropertyKeys.mockImplementation(() => answer([]))
     const none = inFrame(block())
-    expect(propsPane().textContent).toContain('No properties were sent with this event.')
+    expect(propsPane().textContent).toContain('No properties were sent with this event')
     none.unmount()
 
     h.useEventPropertyKeys.mockImplementation(() => ({ ...answer(undefined), error: new Error('boom') }))

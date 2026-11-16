@@ -191,7 +191,7 @@ export function GrowthReportsSection({ site, canEdit }: { site: Site; canEdit: b
           />
         )}
         <div className={cn(formShown && 'border-t border-border')}>
-          <ListBody kind="reports" rows={rows} failed={list.failed} onRetry={list.reload} empty="No growth reports yet" />
+          <ListBody kind="reports" rows={rows} failed={list.failed} onRetry={list.reload} empty={{ title: 'No growth reports yet', icon: <PresentationChart /> }} />
         </div>
       </KitSection>
 

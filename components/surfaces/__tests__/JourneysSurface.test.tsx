@@ -57,7 +57,9 @@ vi.mock('@/components/dashboard/filter/FilterBuilder', () => ({ default: () => n
 vi.mock('@/components/ui/DateRangePicker', () => ({ default: () => null }))
 vi.mock('@/components/ui/UpdatingChip', () => ({ UpdatingChip: () => null }))
 
-vi.mock('@ciphera-net/facet', () => ({
+vi.mock('@ciphera-net/facet', async () => ({
+  // EmptyState draws with Facet's own button classes and cn; anything stubbed below wins.
+  ...(await vi.importActual<typeof import('@ciphera-net/facet')>('@ciphera-net/facet').then((f) => ({ buttonVariants: f.buttonVariants, cn: f.cn }))),
   Switcher: () => null,
   cn: (...parts: unknown[]) => parts.flat(Infinity).filter(Boolean).join(' '),
 }))

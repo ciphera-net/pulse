@@ -389,7 +389,7 @@ describe('TeamPage, an owner in a team', () => {
     await waitFor(() => expect(document.querySelector('[data-team-audit]')).not.toBeNull())
     getAuditLog.mockResolvedValue({ entries: [], total: 0, avatar_seeds: {} })
     fireEvent.change(screen.getByLabelText('Filter by action'), { target: { value: 'goal_deleted' } })
-    expect(await screen.findByText('Nothing matches these filters.')).toBeInTheDocument()
+    expect(await screen.findByText('Nothing matches these filters')).toBeInTheDocument()
     expect(getAuditLog).toHaveBeenLastCalledWith({ limit: 20, offset: 0, action: 'goal_deleted' })
   })
 

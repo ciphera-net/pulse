@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { EnvelopeSimple, Prohibit, Trash } from '@phosphor-icons/react'
+import { EnvelopeSimple, Prohibit, Trash, CalendarBlank } from '@phosphor-icons/react'
 import { Button, toast } from '@ciphera-net/facet'
 import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
 import { listSchedules, stopSchedule, type ReportSchedule } from '@/lib/api/reports'
@@ -134,7 +134,7 @@ export function ScheduledEmailsSection({ site, canEdit }: { site: Site; canEdit:
           />
         )}
         <div className={cn(formShown && 'border-t border-border')}>
-          <ListBody kind="schedules" rows={rows} failed={list.failed} onRetry={list.reload} empty="No scheduled emails yet" />
+          <ListBody kind="schedules" rows={rows} failed={list.failed} onRetry={list.reload} empty={{ title: 'No scheduled emails yet', icon: <CalendarBlank /> }} />
         </div>
       </KitSection>
 

@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useCan, type Permission } from '@/lib/auth/permissions'
 import { ShieldWarning } from '@phosphor-icons/react'
 import { useTeamState } from '@/lib/hooks/useTeamState'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 // The team's three pages of the settings overhaul (PUL-42), each on today's route. Emails already sent link to billing
 // and api-keys, so those routes never change.
@@ -42,13 +43,12 @@ function AccessDenied() {
   // Somebody alone owns their account, so there is nobody to ask (PULSE-59).
   const alone = useTeamState() === 'alone'
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <ShieldWarning className="mb-4 h-12 w-12 text-neutral-600" />
-      <h3 className="mb-1 text-base font-semibold text-neutral-300">Owners and admins only</h3>
-      <p className="max-w-sm text-sm text-neutral-500">
-        {alone ? 'This page is not available on your account.' : 'Ask the owner of your team to open it for you.'}
-      </p>
-    </div>
+    <EmptyState
+      icon={<ShieldWarning />}
+      title="Owners and admins only"
+      description={alone ? 'This page is not available on your account.' : 'Ask the owner of your team to open it for you.'}
+      className="py-20"
+    />
   )
 }
 
