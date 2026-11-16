@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaretRight, MagnifyingGlass, X } from '@phosphor-icons/react'
-import { buttonVariants } from '@ciphera-net/facet'
+import { buttonVariants, toast } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { SkeletonLine } from '@/components/skeleton/primitives'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
@@ -12,6 +12,8 @@ import { formatCompactNumber } from '@/lib/utils/format'
 import { getFilterValueIcon } from '@/lib/utils/icons'
 import { type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
 import { DIMENSION_ICONS } from '../dimensionIcons'
+import { setFor, useSavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
+import { SavedRow } from './saved'
 import { GROUPS, TEXT_DIMENSIONS, labelOf, search, useFilterValues, type Found, type PageValues } from './values'
 
 // ---------------------------------------------------------------------------
@@ -32,21 +34,8 @@ import { GROUPS, TEXT_DIMENSIONS, labelOf, search, useFilterValues, type Found, 
 // link as a filter. Each comes with its own server work.
 // ---------------------------------------------------------------------------
 
-const regions = (() => {
-  try {
-    return new Intl.DisplayNames(['en'], { type: 'region' })
-  } catch {
-    return null
-  }
-})()
-
-/** A value as a reader names it: a country by its name, an event by the name its list gives it, the rest as stored. */
-export function valueName(dimension: string, value: string, pageValues?: PageValues): string {
-  if (dimension === 'country' && /^[A-Z]{2}$/.test(value)) return regions?.of(value) ?? value
-  const listed = pageValues?.[dimension]?.find((s) => s.value === value)?.label
-  if (listed) return listed
-  return dimension === 'event_name' ? value.replace(/_/g, ' ') : value
-}
+// A value's reader name lives in ./values (saved filters' rows read it too); re-exported for this file's importers.
+export { valueName } from './values'
 
 /** A kind's own icon. */
 export function DimensionIcon({ dimension, className = 'h-3.5 w-3.5' }: { dimension: string; className?: string }) {
@@ -71,7 +60,7 @@ function Marked({ text, query }: { text: string; query: string }) {
   return <>{text.slice(0, at)}<span className="font-medium text-white">{text.slice(at, at + query.length)}</span>{text.slice(at + query.length)}</>
 }
 
-type Item = { kind: 'value'; found: Found } | { kind: 'contains'; dimension: string; text: string } | { kind: 'dimension'; dimension: string }
+type Item = { kind: 'value'; found: Found } | { kind: 'contains'; dimension: string; text: string } | { kind: 'set'; set: SavedSet } | { kind: 'dimension'; dimension: string }
 
 export interface SearchFilterProps {
   filters: DimensionFilter[]
@@ -81,10 +70,15 @@ export interface SearchFilterProps {
   fetchSuggestions: ((dimension: string) => Promise<FilterSuggestion[]>) | undefined
   /** What the page's own answer lists for the kinds with no value read (events, channels, screens, languages, timezones). */
   pageValues: PageValues
+  /**
+   * Puts a saved set on the page IN PLACE of the filters that are on, in one change (the saved-filters beta, R59).
+   * Without it the panel lists no saved set.
+   */
+  onApplySet?: (filters: DimensionFilter[]) => void
 }
 
 /** The Filter button and its panel. The panel is drawn in a portal, so it outlives the page's loading states. */
-export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues }: SearchFilterProps) {
+export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues, onApplySet }: SearchFilterProps) {
   const glass = useGlassPanels()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -99,6 +93,10 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   const [scope, setScope] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
   const { values, ready } = useFilterValues({ on: open || warm, fetchSuggestions, pageValues, filters })
+  // Saved filters (the saved-filters beta): listed at the top of the first view while the page can put one on.
+  const savedFilters = useSavedFilters()
+  const sets = useMemo(() => (savedFilters.on && onApplySet ? savedFilters.sets : []), [savedFilters.on, savedFilters.sets, onApplySet])
+  const current = setFor(filters, sets)
 
   const close = useCallback(() => {
     setOpen(false)
@@ -161,13 +159,18 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   const searching = text !== '' || scope !== null
   const loading = searching && !ready
   const items: Item[] = useMemo(() => {
-    // The first view (every kind) needs no value: drawn at once, at its full size.
-    if (!searching) return GROUPS.flatMap((g) => g.dimensions.map((dimension): Item => ({ kind: 'dimension', dimension })))
+    // The first view (the saved sets, then every kind) needs no value: drawn at once, at its full size.
+    if (!searching) {
+      return [
+        ...sets.map((set): Item => ({ kind: 'set', set })),
+        ...GROUPS.flatMap((g) => g.dimensions.map((dimension): Item => ({ kind: 'dimension', dimension }))),
+      ]
+    }
     if (!ready) return []
     const found = search(values, text, scope, 4).map((f): Item => ({ kind: 'value', found: f }))
     const typed: Item[] = text === '' ? [] : (scope ? [scope] : ['page', 'referrer']).filter((d) => TEXT_DIMENSIONS.has(d)).map((dimension) => ({ kind: 'contains', dimension, text }))
     return [...found, ...typed]
-  }, [searching, ready, values, text, scope])
+  }, [searching, ready, values, text, scope, sets])
   const picked = Math.min(index, Math.max(0, items.length - 1))
 
   // While values are still being read for what was typed, the list keeps the height it had.
@@ -186,7 +189,11 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
     if (!item) return
     if (item.kind === 'value') add({ dimension: item.found.dimension, operator: exclude ? 'is_not' : 'is', values: [item.found.value] })
     else if (item.kind === 'contains') add({ dimension: item.dimension, operator: exclude ? 'not_contains' : 'contains', values: [item.text] })
-    else {
+    else if (item.kind === 'set') {
+      // One press: the set in place of the filters on. The page reads again, so the panel closes first.
+      close()
+      onApplySet?.(item.set.filters)
+    } else {
       setScope(item.dimension)
       setQuery('')
       setIndex(0)
@@ -223,7 +230,30 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
       let i = -1
       return (
         <>
-          <div className="px-3 pb-1 pt-1.5 text-[11px] text-neutral-500">Filter on</div>
+          {sets.length > 0 && (
+            <>
+              <div className="px-3 pb-1 pt-1.5 text-[11px] text-neutral-500" data-testid="saved-filters-heading">Saved</div>
+              {sets.map((set) => {
+                const mine = ++i
+                return (
+                  <SavedRow
+                    key={set.id}
+                    set={set}
+                    on={current?.id === set.id}
+                    picked={mine === picked}
+                    onPick={() => { if (mine !== picked) setIndex(mine) }}
+                    onApply={() => act({ kind: 'set', set }, false)}
+                    onDelete={savedFilters.canEdit ? () => {
+                      savedFilters.remove(set.id).catch(() => toast.error('This saved filter could not be deleted. Try again.'))
+                      inputRef.current?.focus()
+                    } : undefined}
+                    pageValues={pageValues}
+                  />
+                )
+              })}
+            </>
+          )}
+          <div className={cn('px-3 pb-1 text-[11px] text-neutral-500', sets.length > 0 ? 'mt-1.5 border-t border-white/[0.08] pt-2.5' : 'pt-1.5')}>Filter on</div>
           {GROUPS.map((group) => (
             <div key={group.label} className="flex items-center gap-3 px-3 py-1">
               <span className="w-[84px] shrink-0 text-[11px] text-neutral-500">{group.label}</span>

@@ -1,14 +1,16 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, useEffect } from 'react'
+import { useLayoutEffect, useRef, useState, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CaretRight, X } from '@phosphor-icons/react'
+import { BookmarkSimple, CaretRight, X } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 import { OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
+import { setFor, useSavedFilters, type SavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
 import { labelOf, type PageValues } from './values'
-import { valueIcon, valueName } from './SearchFilter'
+import { valueIcon } from './SearchFilter'
+import { NameField, SavedAs, suggestName, valueText } from './saved'
 
 // ---------------------------------------------------------------------------
 // The filters now on, in the toolbar (owner rulings R46 and R48 of 15-11-2026, option "One box"). One filter shows
@@ -20,6 +22,10 @@ import { valueIcon, valueName } from './SearchFilter'
 // has an x of its own at its right end, as a single filter's pill has, and it takes every filter away (R59 of
 // 16-11-2026, "an x on the box", which supersedes the earlier "the clear all button needs to be removed": that was a
 // "Clear all" row in the list).
+//
+// Saved filters (R59 and R60, the saved-filters beta): the box's list ends with "Save these filters", which names
+// the set in place; a single filter's pill has a bookmark beside its x that opens the same field. While the filters
+// on are a saved set, both say "Saved as …" instead. The sets themselves are listed in the Filter panel.
 // ---------------------------------------------------------------------------
 
 /** The one-press opposite of an operator. */
@@ -31,11 +37,6 @@ export const OPPOSITE: Record<DimensionFilter['operator'], DimensionFilter['oper
 }
 
 const excluded = (f: DimensionFilter) => f.operator === 'is_not' || f.operator === 'not_contains'
-/** "Norway", "Norway or Sweden", "Norway, Sweden or 2 more": several values of one kind are an "or". */
-function valueText(f: DimensionFilter, pageValues: PageValues): string {
-  const names = f.values.map((v) => valueName(f.dimension, v, pageValues))
-  return names.length <= 2 ? names.join(' or ') : `${names.slice(0, 2).join(', ')} or ${names.length - 2} more`
-}
 const tone = (out: boolean) => (out ? 'border-white/[0.12] bg-white/[0.04] text-neutral-200' : 'border-brand-orange/20 bg-brand-orange/10 text-brand-ink')
 function Icon({ f }: { f: DimensionFilter }) {
   return <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.values[0])}</span>
@@ -54,43 +55,26 @@ interface BoxProps extends FiltersBoxProps {
   onClearAll: () => void
 }
 
-/** One filter as a pill: its kind, its operator (a press flips it), its values, its x. */
-function Pill({ f, i, onApply, onRemove, pageValues }: { f: DimensionFilter; i: number } & Omit<FiltersBoxProps, 'filters'>) {
-  const out = excluded(f)
-  const kind = labelOf(f.dimension)
-  return (
-    <span className={cn('inline-flex h-10 shrink-0 items-center border text-sm font-medium', tone(out))} data-testid="filter-pill">
-      <span className="flex h-full items-center gap-1.5 ps-3 pe-1.5">
-        <Icon f={f} />
-        <span className={out ? 'text-neutral-400' : 'text-brand-ink/70'}>{kind}</span>
-      </span>
-      <button
-        type="button"
-        onClick={() => onApply({ ...f, operator: OPPOSITE[f.operator] }, i)}
-        title={`Press for "${OPERATOR_LABELS[OPPOSITE[f.operator]]}"`}
-        aria-label={`${kind} ${OPERATOR_LABELS[f.operator]}: press to switch to ${OPERATOR_LABELS[OPPOSITE[f.operator]]}`}
-        className={cn('h-full px-1.5 underline decoration-dotted underline-offset-4 hover:decoration-solid', out ? 'text-white' : 'text-brand-ink/60 hover:text-brand-ink')}
-      >
-        {OPERATOR_LABELS[f.operator]}
-      </button>
-      <span className="max-w-[220px] truncate ps-1.5 pe-3">{valueText(f, pageValues)}</span>
-      <button type="button" onClick={() => onRemove(i)} aria-label={`Remove ${kind} filter`} className={cn('flex h-full w-8 items-center justify-center border-s hover:text-white', out ? 'border-white/[0.12] text-neutral-500' : 'border-brand-orange/20')}>
-        <X className="h-3.5 w-3.5" weight="bold" />
-      </button>
-    </span>
-  )
-}
-
-/** The list behind the box: each filter a row of its own, reaching the menu's edges. */
-function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void }) {
+/**
+ * A menu under its anchor, its right edge on the anchor's, kept inside the window. It enters and leaves as the date
+ * menu does (components/ui/DateRangePicker); a press outside it and its anchor, or Escape, closes it.
+ */
+function AnchoredMenu({ anchor, width, label, onClose, testid, children }: {
+  anchor: HTMLElement
+  width: number
+  label: string
+  onClose: () => void
+  testid: string
+  children: ReactNode
+}) {
   const glass = useGlassPanels()
   const ref = useRef<HTMLDivElement>(null)
-  const [at, setAt] = useState<{ top: number; left: number } | null>(null)
+  const [at, setAt] = useState<{ top: number; left: number; width: number } | null>(null)
   useLayoutEffect(() => {
     const place = () => {
       const r = anchor.getBoundingClientRect()
-      const width = Math.min(340, window.innerWidth - 16)
-      setAt({ top: r.bottom + 8, left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)) })
+      const w = Math.min(width, window.innerWidth - 16)
+      setAt({ top: r.bottom + 8, left: Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)), width: w })
     }
     place()
     window.addEventListener('resize', place)
@@ -99,7 +83,7 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose }
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [anchor])
+  }, [anchor, width])
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node
@@ -116,19 +100,129 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose }
   }, [anchor, onClose])
   if (!at) return null
   return (
-    // It enters and leaves as the date menu does (components/ui/DateRangePicker).
     <motion.div
       ref={ref}
       role="dialog"
-      aria-label="Filters on"
+      aria-label={label}
       initial={{ opacity: 0, y: 4, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 4, scale: 0.98 }}
       transition={{ duration: 0.15 }}
-      style={{ top: at.top, left: at.left, width: Math.min(340, typeof window === 'undefined' ? 340 : window.innerWidth - 16) }}
+      style={{ top: at.top, left: at.left, width: at.width }}
       className={cn(panelSurface(glass), 'fixed z-[100] shadow-lg')}
-      data-testid="filters-menu"
+      data-testid={testid}
     >
+      {children}
+    </motion.div>
+  )
+}
+
+/** The box list's last row: saves the filters on under a name typed in place; once saved, says under which. */
+function SaveRow({ filters, saved, savedFilters, pageValues }: { filters: DimensionFilter[]; saved: SavedSet | null; savedFilters: SavedFilters; pageValues: PageValues }) {
+  const [naming, setNaming] = useState(false)
+  if (saved) return <SavedAs name={saved.name} />
+  if (!savedFilters.canEdit) return null
+  if (naming) {
+    return (
+      <NameField
+        initial={suggestName(filters, pageValues)}
+        placeholder="Name these filters"
+        label="Name for these filters"
+        onSave={async (name) => { await savedFilters.save(name, filters); setNaming(false) }}
+        onCancel={() => setNaming(false)}
+      />
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setNaming(true)}
+      className="flex h-11 w-full items-center gap-2 px-4 text-left text-sm text-neutral-300 hover:bg-white/[0.06] hover:text-white"
+      data-testid="filters-save-row"
+    >
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+        <BookmarkSimple className="h-4 w-4 text-neutral-500" weight="bold" aria-hidden="true" />
+      </span>
+      Save these filters
+    </button>
+  )
+}
+
+/** One filter as a pill: its kind, its operator (a press flips it), its values, its x, and the bookmark that saves it. */
+function Pill({ f, i, onApply, onRemove, pageValues, savedFilters }: { f: DimensionFilter; i: number; savedFilters: SavedFilters } & Omit<FiltersBoxProps, 'filters'>) {
+  const out = excluded(f)
+  const kind = labelOf(f.dimension)
+  const pillRef = useRef<HTMLSpanElement>(null)
+  const [menu, setMenu] = useState(false)
+  const saved = savedFilters.on ? setFor([f], savedFilters.sets) : null
+  // The bookmark: for whoever may save, and for anyone once the filter is a saved set (to say under which name).
+  const bookmark = savedFilters.on && (savedFilters.canEdit || saved !== null)
+  return (
+    <>
+      <span ref={pillRef} className={cn('inline-flex h-10 shrink-0 items-center border text-sm font-medium', tone(out))} data-testid="filter-pill">
+        <span className="flex h-full items-center gap-1.5 ps-3 pe-1.5">
+          <Icon f={f} />
+          <span className={out ? 'text-neutral-400' : 'text-brand-ink/70'}>{kind}</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => onApply({ ...f, operator: OPPOSITE[f.operator] }, i)}
+          title={`Press for "${OPERATOR_LABELS[OPPOSITE[f.operator]]}"`}
+          aria-label={`${kind} ${OPERATOR_LABELS[f.operator]}: press to switch to ${OPERATOR_LABELS[OPPOSITE[f.operator]]}`}
+          className={cn('h-full px-1.5 underline decoration-dotted underline-offset-4 hover:decoration-solid', out ? 'text-white' : 'text-brand-ink/60 hover:text-brand-ink')}
+        >
+          {OPERATOR_LABELS[f.operator]}
+        </button>
+        <span className="max-w-[220px] truncate ps-1.5 pe-3">{valueText(f, pageValues)}</span>
+        {bookmark && (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={menu}
+            onClick={() => setMenu((m) => !m)}
+            aria-label={saved ? `Saved as ${saved.name}` : 'Save this filter'}
+            className={cn('flex h-full w-8 items-center justify-center border-s hover:text-white', out ? 'border-white/[0.12] text-neutral-500' : 'border-brand-orange/20')}
+            data-testid="filter-pill-save"
+            data-saved={saved ? 'true' : 'false'}
+          >
+            <BookmarkSimple className="h-3.5 w-3.5" weight={saved ? 'fill' : 'bold'} aria-hidden="true" />
+          </button>
+        )}
+        <button type="button" onClick={() => onRemove(i)} aria-label={`Remove ${kind} filter`} className={cn('flex h-full w-8 items-center justify-center border-s hover:text-white', out ? 'border-white/[0.12] text-neutral-500' : 'border-brand-orange/20')}>
+          <X className="h-3.5 w-3.5" weight="bold" />
+        </button>
+      </span>
+      {bookmark && typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {menu && pillRef.current && (
+            <AnchoredMenu key="pill-save" anchor={pillRef.current} width={320} label="Save this filter" onClose={() => setMenu(false)} testid="filter-pill-save-menu">
+              <div data-menu-list="">
+                {saved ? (
+                  <SavedAs name={saved.name} />
+                ) : (
+                  <NameField
+                    initial={suggestName([f], pageValues)}
+                    placeholder="Name this filter"
+                    label="Name for this filter"
+                    onSave={async (name) => { await savedFilters.save(name, [f]); setMenu(false) }}
+                    onCancel={() => setMenu(false)}
+                  />
+                )}
+              </div>
+            </AnchoredMenu>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
+  )
+}
+
+/** The list behind the box: each filter a row of its own, reaching the menu's edges, then the row that saves them. */
+function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose, savedFilters }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
+  const saved = savedFilters.on ? setFor(filters, savedFilters.sets) : null
+  return (
+    <AnchoredMenu anchor={anchor} width={340} label="Filters on" onClose={onClose} testid="filters-menu">
       <div data-menu-list="" className="divide-y divide-white/[0.06]">
         {filters.map((f, i) => {
           const out = excluded(f)
@@ -153,12 +247,14 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose }
             </div>
           )
         })}
+        {savedFilters.on && <SaveRow filters={filters} saved={saved} savedFilters={savedFilters} pageValues={pageValues} />}
       </div>
-    </motion.div>
+    </AnchoredMenu>
   )
 }
 
 export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues }: BoxProps) {
+  const savedFilters = useSavedFilters()
   // The list hangs from the whole box: the box and its x together.
   const ref = useRef<HTMLSpanElement>(null)
   const [open, setOpen] = useState(false)
@@ -166,7 +262,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
   const many = filters.length > 1
   useEffect(() => { if (!many) setOpen(false) }, [many])
   if (filters.length === 0) return null
-  if (!many) return <Pill f={filters[0]} i={0} onApply={onApply} onRemove={onRemove} pageValues={pageValues} />
+  if (!many) return <Pill f={filters[0]} i={0} onApply={onApply} onRemove={onRemove} pageValues={pageValues} savedFilters={savedFilters} />
   return (
     <>
       {/* The box and its x are one bordered control, as a single filter's pill and its x are. */}
@@ -201,7 +297,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {open && ref.current && (
-            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} onClose={() => setOpen(false)} />
+            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} onClose={() => setOpen(false)} savedFilters={savedFilters} />
           )}
         </AnimatePresence>,
         document.body,

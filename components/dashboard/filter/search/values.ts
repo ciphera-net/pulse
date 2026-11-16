@@ -118,3 +118,19 @@ export function useFilterValues({
   }, [on, fetchSuggestions, pageKey, filtersKey])
   return { values, ready }
 }
+
+const regions = (() => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' })
+  } catch {
+    return null
+  }
+})()
+
+/** A value as a reader names it: a country by its name, an event by the name its list gives it, the rest as stored. */
+export function valueName(dimension: string, value: string, pageValues?: PageValues): string {
+  if (dimension === 'country' && /^[A-Z]{2}$/.test(value)) return regions?.of(value) ?? value
+  const listed = pageValues?.[dimension]?.find((s) => s.value === value)?.label
+  if (listed) return listed
+  return dimension === 'event_name' ? value.replace(/_/g, ' ') : value
+}
