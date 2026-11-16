@@ -48,7 +48,7 @@ function renderPicker(overrides: Partial<DateRangePickerProps> = {}) {
 
 // A press on the page goes to the body and bubbles through the document to the window, as in a browser with nothing
 // focused: a listener on the document (ShortcutHandler's) hears it before the switcher's on the window.
-const key = (k: string, init: KeyboardEventInit = {}, target: EventTarget = document.body) => fireEvent.keyDown(target, { key: k, ...init })
+const key = (k: string, init: KeyboardEventInit = {}, target: Element | Document | Window = document.body) => fireEvent.keyDown(target, { key: k, ...init })
 const open = () => fireEvent.click(document.querySelector('[data-tour="date-range-picker"]')!)
 
 // Elements a test adds beside the picker; testing-library unmounts the picker (and its portal) on its own.
