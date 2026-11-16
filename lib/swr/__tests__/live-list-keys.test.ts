@@ -25,7 +25,7 @@ vi.mock('@/lib/api/stats', async (importOriginal) => {
   return { ...mod, ...api }
 })
 
-import { useFullDimensionList, useOutboundLinks, useCampaignsList, useEventPropertyKeys, useEventPropertyValues, isLiveListKey, LIVE_LIST_KEY } from '../dashboard'
+import { useFullDimensionList, useCampaignsList, useEventPropertyKeys, useEventPropertyValues, isLiveListKey, LIVE_LIST_KEY } from '../dashboard'
 
 const lastCall = () => swrSpy.mock.calls[swrSpy.mock.calls.length - 1]
 const keyOf = () => lastCall()[0] as unknown[] | null
@@ -66,27 +66,6 @@ describe('useFullDimensionList in realtime mode (PULSE-192)', () => {
   it('still fetches nothing for a null kind (the frozen-blocks contract)', () => {
     renderHook(() => useFullDimensionList(null, 'site-1', '2026-10-01', '2026-10-01', 250, undefined, 5))
     expect(keyOf()).toBeNull()
-  })
-})
-
-describe('useOutboundLinks in realtime mode (PULSE-192)', () => {
-  it('keys on the window and fetches both lists with minutes and no period', async () => {
-    renderHook(() => useOutboundLinks('site-1', '2026-10-01', '2026-10-01', 'today', 5))
-    const live = keyOf()
-    expect(live).toContain(LIVE_LIST_KEY)
-    expect(live).not.toContain('2026-10-01')
-    await fetcherOf()()
-    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'outbound_link', 'url', '2026-10-01', '2026-10-01', 1000, undefined, 5)
-    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'outbound_link', 'page_path', '2026-10-01', '2026-10-01', 1000, undefined, 5)
-    expect(configOf().refreshInterval).toBe(15_000)
-  })
-
-  it('is unchanged without a live window', async () => {
-    renderHook(() => useOutboundLinks('site-1', '2026-10-01', '2026-10-01', 'today'))
-    expect(keyOf()).toEqual(['outbound', 'site-1', '2026-10-01', '2026-10-01', 'today'])
-    await fetcherOf()()
-    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'outbound_link', 'url', '2026-10-01', '2026-10-01', 1000, 'today', undefined)
-    expect(configOf().refreshInterval).toBe(60_000)
   })
 })
 

@@ -98,10 +98,9 @@ describe('the onboarding wall exempts /join in BOTH branches', () => {
 // and the one way it still leads to settings is for a kind that is switched off.
 // ---------------------------------------------------------------------------
 describe('the install prompt points at the real snippet, from one place', () => {
-  // The six blocks that carried an install button of their own.
+  // The blocks that carried an install button of their own (the sixth, the Outbound card, left on 16-11-2026).
   const panels = [
     'components/dashboard/Sources.tsx',
-    'components/dashboard/Outbound.tsx',
     'components/dashboard/TechSpecs.tsx',
     'components/dashboard/Locations.tsx',
     'components/dashboard/ContentStats.tsx',

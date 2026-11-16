@@ -187,8 +187,8 @@ export function formatCalendarDate(isoDate: string | null | undefined): string |
  * reads the digits out of the string and never lets a runtime timezone (the
  * viewer's, or the offset itself) shift what is shown. Read the result with UTC
  * getters (getUTCHours/getUTCDay) or the *UTC formatters; local getters would
- * re-apply the VIEWER's offset, which is the exact bug (PeakHours shifted +2h
- * for a Brussels owner, a whole weekday for Auckland) this replaces.
+ * re-apply the VIEWER's offset, which is the exact bug (the old Peak hours heat map
+ * shifted +2h for a Brussels owner, a whole weekday for Auckland) this replaces.
  *
  * Returns null for a malformed value; callers fall back rather than fabricate.
  */

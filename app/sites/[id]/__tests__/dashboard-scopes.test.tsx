@@ -99,12 +99,6 @@ vi.mock('@/components/dashboard/ContentStats', () => ({
 vi.mock('@/components/dashboard/ContentSignals', () => ({
   default: (p: Record<string, unknown>) => { h.captured.ContentSignals = p; return <div data-testid="card-content-signals" /> },
 }))
-vi.mock('@/components/dashboard/Outbound', () => ({
-  default: (p: Record<string, unknown>) => { h.captured.Outbound = p; return <div data-testid="card-outbound" /> },
-}))
-vi.mock('@/components/dashboard/PeakHours', () => ({
-  default: (p: Record<string, unknown>) => { h.captured.PeakHours = p; return <div data-testid="card-peak-hours" /> },
-}))
 // The frame's bottom (what converts, the week, the three tiles): today's heat map is today's arrangement's alone.
 vi.mock('@/components/dashboard/DashboardBottom', () => ({
   default: (p: Record<string, unknown>) => { h.captured.DashboardBottom = p; return <div data-testid="dashboard-bottom" /> },
@@ -178,7 +172,6 @@ beforeAll(async () => {
   await Promise.all([
     import('@/components/dashboard/CommandDeck'),
     import('@/components/dashboard/ContentSignals'),
-    import('@/components/dashboard/PeakHours'),
     import('@/components/dashboard/DashboardBottom'),
     import('@/lib/tour/TourController'),
   ])
@@ -244,7 +237,6 @@ describe('the member dashboard is the product, with the member\'s own affordance
     expect(sectionTitles()).toEqual([])
     expect(screen.queryByTestId('filter-button')).toBeNull()
     expect(screen.queryByTestId('filter-builder')).toBeNull()
-    expect(screen.queryByTestId('card-peak-hours')).toBeNull()
   })
 
   it('stays silent to the hero: a member page is never framed by it', async () => {
@@ -285,9 +277,6 @@ describe('the demo (public, full): the whole member dashboard without the member
     }
     expect(h.captured.ContentStats.outbound).toBeDefined()
     expect(h.captured.DashboardBottom.siteId).toBe('site-1')
-    // Outbound is no block of its own in the frame, and today's heat map is not drawn in it.
-    expect(screen.queryByTestId('card-outbound')).toBeNull()
-    expect(screen.queryByTestId('card-peak-hours')).toBeNull()
   })
 
   it('filters like a member: the controls are there, the rows filter, a filtered URL is read and sent', async () => {
@@ -528,10 +517,8 @@ describe('a share link (public, scoped): the share page\'s rules, inside the sur
     // The Pages block is drawn, without the Outbound tab: a share link is not served its read.
     expect(screen.getByTestId('card-content-stats')).toBeTruthy()
     expect(h.captured.ContentStats.outbound).toBeUndefined()
-    expect(screen.queryByTestId('card-outbound')).toBeNull()
     // Nor the bottom's reads (funnels, journeys, hour buckets, search, uptime, performance).
     expect(screen.queryByTestId('dashboard-bottom')).toBeNull()
-    expect(screen.queryByTestId('card-peak-hours')).toBeNull()
     expect(screen.queryByTestId('install-banner')).toBeNull()
     expect(screen.queryByTestId('tour')).toBeNull()
   })
@@ -546,7 +533,7 @@ describe('a share link (public, scoped): the share page\'s rules, inside the sur
 
   it('draws the deck without an interval picker and without a comparison', async () => {
     await mount(shareScope)
-    expect(h.captured.CommandDeck.intervalPicker).toBe(false)
+    expect(h.captured.CommandDeck).not.toHaveProperty('intervalPicker')
     expect(h.captured.CommandDeck.interval).toBe('day')
     expect(h.captured.CommandDeck.prevStats).toBeUndefined()
     expect(h.captured.CommandDeck.prevData).toBeNull()

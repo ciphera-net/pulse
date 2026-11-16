@@ -61,15 +61,15 @@ export function tourSelector(anchor: TourAnchor): string {
 }
 
 /**
- * The six dimension cards share one anchor and are told apart by this second
+ * The five dimension blocks share one anchor and are told apart by this second
  * attribute — a tour can box "the Acquisition card" without depending on DOM
- * order or on the card's tab labels.
+ * order or on the card's tab labels. (The Outbound card's key left with that card
+ * on 16-11-2026: its links are the Pages block's tab.)
  */
 export const DIMENSION_CARD_KEYS = [
   'referrers',
   'locations',
   'tech',
-  'outbound',
   'content',
   'content-signals',
 ] as const

@@ -2,8 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within, waitFor, act } from '@testing-library/react'
 import ContentStats from '@/components/dashboard/ContentStats'
-import { OUTBOUND_NOT_FILTERED } from '@/components/dashboard/OutboundLinksTab'
-import { OUTBOUND_NATIVE_ONLY } from '@/components/dashboard/Outbound'
+import { OUTBOUND_NATIVE_ONLY, OUTBOUND_NOT_FILTERED } from '@/components/dashboard/OutboundLinksTab'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
 
 // ---------------------------------------------------------------------------
@@ -17,15 +16,12 @@ import { DashboardFrameProvider } from '@/lib/dashboard/frame'
 const h = vi.hoisted(() => ({
   useFullDimensionList: vi.fn(),
   useOutboundUrls: vi.fn(),
-  useOutboundLinks: vi.fn(),
   preload: vi.fn(),
 }))
 
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...a: unknown[]) => h.useFullDimensionList(...a),
   useOutboundUrls: (...a: unknown[]) => h.useOutboundUrls(...a),
-  // The Outbound CARD's read. This block must never make it: the tab reads the links alone.
-  useOutboundLinks: (...a: unknown[]) => h.useOutboundLinks(...a),
 }))
 vi.mock('@/lib/hooks/usePreloadImages', () => ({ usePreloadImages: (...a: unknown[]) => h.preload(...a) }))
 // Data behaviour, not motion: the cascade renders plain so no exit animation holds a row in jsdom.
@@ -62,7 +58,6 @@ const unit = () => (card().querySelector('[data-testid="metric-unit"], [data-sor
 beforeEach(() => {
   h.useFullDimensionList.mockReset().mockReturnValue(idle)
   h.useOutboundUrls.mockReset().mockReturnValue({ data: urls, error: undefined, isLoading: false })
-  h.useOutboundLinks.mockReset().mockReturnValue({ data: { urls, paths: [] }, error: undefined, isLoading: false })
   h.preload.mockReset()
 })
 
@@ -105,8 +100,6 @@ describe('what it reads', () => {
     expect(h.useOutboundUrls).not.toHaveBeenCalled()
     openOutbound()
     expect(h.useOutboundUrls).toHaveBeenCalledWith('site-1', '2026-11-08', '2026-11-14', '7d', undefined)
-    // Never the card's two-list read.
-    expect(h.useOutboundLinks).not.toHaveBeenCalled()
   })
 
   it('in realtime it reads the live window', () => {

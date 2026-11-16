@@ -59,8 +59,6 @@ const baseProps = {
   onMetricChange: noop,
   interval: 'day' as const,
   dateRange: { start: '2026-08-16', end: '2026-08-17' },
-  multiDayInterval: 'day' as const,
-  setMultiDayInterval: noop,
 }
 
 describe('CommandDeck rail', () => {
@@ -101,42 +99,22 @@ describe('CommandDeck hourly tooltip span', () => {
   })
 })
 
-describe('CommandDeck interval selector scope', () => {
-  it('offers NO minute interval on a single-day range — and no one-option selector', () => {
-    const { container } = render(
-      <CommandDeck
-        {...baseProps}
-        interval="hour"
-        dateRange={{ start: '2026-08-16', end: '2026-08-16' }}
-      />,
-    )
-    // Minute granularity belongs to the 1h range alone (owner ruling
-    // 02-09-2026); a single-day range is fixed hourly, so the selector —
-    // which would have exactly one option left — does not render at all.
-    // Structural pin: the deck header carries NO listbox trigger (a closed
-    // Select hides its option labels, so text queries alone cannot tell a
-    // removed selector from a merely closed one).
-    expect(container.querySelectorAll('[aria-haspopup="listbox"]').length).toBe(0)
-    expect(screen.queryByText('1 min')).toBeNull()
-  })
-
-  it('keeps the hour/day selector on multi-day ranges', () => {
-    const { container } = render(<CommandDeck {...baseProps} />)
-    expect(container.querySelectorAll('[aria-haspopup="listbox"]').length).toBe(1)
-    expect(screen.getByText('1 day')).toBeTruthy()
-    expect(screen.queryByText('1 min')).toBeNull()
-  })
-
-  // Found verifying on staging 26-09-2026: All time past a year is served in WEEK
-  // buckets (the server's choice, echoed as `interval`), and the selector still
-  // read "1 day" over weekly points. It cannot offer a week, so it goes.
-  it('drops the selector when the server drew the chart in weeks or months', () => {
-    for (const served of ['week', 'month'] as const) {
-      const { container, unmount } = render(
-        <CommandDeck {...baseProps} interval={served} period="all" dateRange={{ start: '2025-07-20', end: '2026-09-26' }} />,
-      )
-      expect(container.querySelectorAll('[aria-haspopup="listbox"]').length).toBe(0)
+describe('CommandDeck has no bucket picker (16-11-2026)', () => {
+  // The buckets follow the range for every reader (the frame's ruling); the hour/day selector left with today's
+  // arrangement. Structural pin: no listbox trigger in the deck (a closed Select hides its option labels, so text
+  // queries alone cannot tell a removed selector from a merely closed one).
+  it('draws no selector on a single day, on several days, or in the server\'s weeks and months', () => {
+    const cases = [
+      { interval: 'hour' as const, dateRange: { start: '2026-08-16', end: '2026-08-16' } },
+      { interval: 'day' as const, dateRange: { start: '2026-08-16', end: '2026-08-17' } },
+      { interval: 'week' as const, dateRange: { start: '2025-07-20', end: '2026-09-26' }, period: 'all' },
+      { interval: 'month' as const, dateRange: { start: '2023-07-20', end: '2026-09-26' }, period: 'all' },
+    ]
+    for (const c of cases) {
+      const { container, unmount } = render(<CommandDeck {...baseProps} {...c} />)
+      expect(container.querySelectorAll('[aria-haspopup="listbox"]').length, c.interval).toBe(0)
       expect(screen.queryByText('1 day')).toBeNull()
+      expect(screen.queryByText('1 hour')).toBeNull()
       unmount()
     }
   })

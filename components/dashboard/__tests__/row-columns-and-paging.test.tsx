@@ -21,7 +21,8 @@ import { DIMENSION_ROW, MetricRowStat, MetricUnitLabel } from '@/components/dash
 // ---------------------------------------------------------------------------
 
 const ROOT = path.resolve(__dirname, '../../..')
-const CARDS = ['Sources', 'GoalStats', 'Locations', 'TechSpecs', 'ContentStats', 'Outbound', 'events/EventsBlock'].map(
+// The Pages block's Outbound tab draws the rows the Outbound card drew (the card left on 16-11-2026).
+const CARDS = ['Sources', 'GoalStats', 'Locations', 'TechSpecs', 'ContentStats', 'OutboundLinksTab', 'events/EventsBlock'].map(
   (name) => `components/dashboard/${name}.tsx`,
 )
 const classesOf = (el: Element) => new Set(el.className.split(/\s+/).filter(Boolean))
@@ -36,7 +37,7 @@ describe('a dimension row has one definition', () => {
     expect(classes.has('w-full')).toBe(false)
   })
 
-  it('every interactive row of the six cards is written with it', () => {
+  it('every interactive row of the blocks is written with it', () => {
     const found: string[] = []
     const strays: string[] = []
     for (const file of CARDS) {
@@ -48,7 +49,7 @@ describe('a dimension row has one definition', () => {
         if (!line.includes('interactive-row ${DIMENSION_ROW}')) strays.push(`${file}:${i + 1}`)
       })
     }
-    // A scan that matches nothing proves nothing: the six cards hold seven rows.
+    // A scan that matches nothing proves nothing: the blocks hold at least seven rows.
     expect(found.length).toBeGreaterThanOrEqual(7)
     expect(strays, strays.join(' · ')).toEqual([])
   })

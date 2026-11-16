@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-// Source-level pins for the NEW DASHBOARD FRAME (every reader's since 15-11-2026; the beta `new-dashboard` until
-// then), the idiom of phase3-wiring.test.ts: the page still holds today's arrangement, no longer drawn, until its
-// removal, and the frame's repeats each block's props. Dropping one there leaves every component test green while
-// the page silently loses a filter, a denominator or a share link's diet.
+// Source-level pins for the DASHBOARD FRAME (every reader's since 15-11-2026; the beta `new-dashboard` until then),
+// the idiom of phase3-wiring.test.ts: the frame hands each block its props, and the surface mounts the frame alone
+// (the arrangement it replaced left the surface on 16-11-2026). Dropping a prop leaves every component test green
+// while the page silently loses a filter, a denominator or a share link's diet.
 const read = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
 
 describe('the new dashboard frame: every block is wired as on today\'s page', () => {
@@ -72,8 +72,8 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
     expect(frame.match(/trackingOff: outboundOff/g)?.length).toBe(1)
     expect(frame).not.toContain('trackingOff={outboundOff}')
     const page = read('components/surfaces/DashboardSurface.tsx')
-    // Today's arrangement hands it to its own Outbound, and the surface hands the same value to the frame.
-    expect(page.match(/trackingOff=\{outboundOff\}/g)?.length).toBe(1)
+    // The surface hands the value to the frame, and to nothing else: the Outbound card left with today's arrangement.
+    expect(page).not.toContain('trackingOff={outboundOff}')
     expect(page.match(/outboundOff=\{outboundOff\}/g)?.length).toBe(1)
   })
 
@@ -82,25 +82,29 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
   })
 })
 
-describe('the surface mounts the frame for every reader, and nothing of today\'s page moved', () => {
+describe('the surface mounts the frame for every reader, and holds nothing of the arrangement it replaced', () => {
   const page = read('components/surfaces/DashboardSurface.tsx')
 
   it('mounts the frame for every reader: no flag is read, public pages included (15-11-2026)', () => {
-    expect(page).toContain('const frame: boolean = true')
+    expect(page).not.toMatch(/const frame\b/)
     expect(page).not.toContain('useFeature(')
     expect(page).not.toContain('NEW_DASHBOARD_FLAG')
   })
 
-  it('mounts the frame in place of its own arrangement, with the one deck', () => {
+  it('mounts the frame alone, with the one deck', () => {
     expect(page.match(/<CommandDeck\n/g)?.length).toBe(1)
-    expect(page).toContain('if (frame) {')
-    expect(page).toContain('<DashboardFrame\n')
-    expect(page).toContain('deck={deck}')
+    expect(page.match(/<DashboardFrame\n/g)?.length).toBe(1)
+    expect(page).toContain('deck={\n')
+    // Nothing of today's arrangement: no section titles, no blocks of its own, no Peak hours, no old filter.
+    for (const gone of ['SectionHeader', '<Sources', '<Audience', '<TechSpecs', '<ContentStats', '<ContentSignals', '<Outbound', 'PeakHours', 'FilterPills', 'FilterButton', 'FilterBuilder', 'useFilterBuilder', 'if (frame)']) {
+      expect(page, gone).not.toContain(gone)
+    }
   })
 
-  it('takes the chart\'s bucket picker away in the frame and asks a range of several days in days', () => {
-    expect(page).toContain('intervalPicker={caps.hourlyBuckets && !frame}')
-    expect(page).toContain("(frame ? 'day' : multiDayInterval)")
+  it('has no bucket picker and asks a range of several days in days', () => {
+    expect(page).not.toContain('intervalPicker')
+    expect(page).not.toContain('multiDayInterval')
+    expect(page).toContain("(dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : 'day')")
   })
 
   it('keeps the toolbar at the top in the frame, on the failed-load page too', () => {

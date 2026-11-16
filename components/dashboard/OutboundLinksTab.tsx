@@ -10,7 +10,6 @@ import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { CompactNumber } from '@/components/ui/compact-number'
 import { DIMENSION_ROW, ROW_NUMBER, ROW_SHARE, ROW_STAT } from '@/components/dashboard/MetricRowStat'
-import { OUTBOUND_NATIVE_ONLY } from '@/components/dashboard/Outbound'
 import { outboundLinkRows } from '@/lib/dashboard/outbound'
 import { useOutboundUrls } from '@/lib/swr/dashboard'
 import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
@@ -22,12 +21,13 @@ import { sortRows, type Sort } from '@/components/dashboard/SortHead'
 // The Pages block's fourth tab in the new dashboard frame: Outbound (15-11-2026).
 //
 // Where people go when they leave stands beside where they leave from (Exits), in the block's own rows: the link
-// as one line of text, the bar, the share under the pointer, the number. It is the Outbound card's Links list and
-// nothing else of that card: no dimmed path, and its Domains and From page lists are not here. A row carries its
+// as one line of text, the bar, the share under the pointer, the number. It is the old Outbound card's Links list
+// (the card left with the old arrangement on 16-11-2026) and nothing else of it: no dimmed path, no Domains or From
+// page lists. A row carries its
 // destination's icon, drawn as a referrer's is in Sources (the owner, 15-11-2026: "like we do everywhere else"):
 // the house's own artwork for a site it knows (Instagram, YouTube), the site's favicon through the app's proxy
-// for any other, the globe where there is none. The Outbound card asks the proxy for every host, which has no
-// icon for some of the sites the house draws itself.
+// for any other, the globe where there is none. The card asked the proxy for every host, which has no icon for
+// some of the sites the house draws itself.
 //
 // What it keeps from that card, because each is a fact and not a style:
 //   - the number is CLICKS (a visitor who clicked twice counts twice), and the block's header says so;
@@ -45,6 +45,9 @@ const BAR_CAP = 75
 
 /** The tab's first order: clicks, high to low, the order the server sends. */
 const CLICKS_DESC: Sort<'clicks'> = { key: 'clicks', dir: 'desc' }
+
+/** With imported days in range: the rows are Pulse's own (W-M12-6, owner pick A, 28-09-2026; the Outbound card's line). */
+export const OUTBOUND_NATIVE_ONLY = 'Pulse-measured clicks only. Imported outbound clicks count in Events.'
 
 /** Under a page filter. The Outbound card's line, with a colon where it has a dash. */
 export const OUTBOUND_NOT_FILTERED = 'Outbound is not filtered yet: these are whole-site clicks.'

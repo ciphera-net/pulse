@@ -32,7 +32,7 @@ export const EM_DASH = '—'
  *   - null/undefined → the em dash, never 0 — a value we never measured is
  *     not a measured zero.
  *   - always `en-US`, never the browser's own locale (same rule `formatNumber`
- *     already holds — see PeakHours.tsx and filter/ValuePicker.tsx, which
+ *     already holds — Peak hours, the old heat map, and filter/ValuePicker.tsx
  *     used to read the VIEWER's locale instead).
  */
 export function formatCompactNumber(num: number | null | undefined): string {

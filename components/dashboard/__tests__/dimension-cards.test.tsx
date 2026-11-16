@@ -1,11 +1,10 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import GoalStats from '@/components/dashboard/GoalStats'
-import Outbound from '@/components/dashboard/Outbound'
 
 // Campaigns gets its rows from SWR like every other card in the row (it was
 // the last one still on a bare useEffect fetch). Pin the HOOK, not the
@@ -20,13 +19,9 @@ const useCampaignsList = vi.fn()
 // its own file; this one pins the same contract on TopReferrers, Audience,
 // TechSpecs — and GoalStats' deliberate absence of percentages.
 const useFullDimensionList = vi.fn()
-// Outbound reads two property lists through one hook; pin the hook so the
-// card's grouping, share denominator and honesty labels are testable offline.
-const useOutboundLinks = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...args: unknown[]) => useFullDimensionList(...args),
   useCampaignsList: (...args: unknown[]) => useCampaignsList(...args),
-  useOutboundLinks: (...args: unknown[]) => useOutboundLinks(...args),
 }))
 // Pin data behaviour, not motion: the cascade renders plain in tests so
 // AnimatePresence exit timing can never make a page flip flaky in jsdom.
@@ -572,188 +567,8 @@ describe('GoalStats', () => {
   })
 })
 
-describe('Outbound', () => {
-  const lists = {
-    urls: [
-      { value: 'https://pulse.ciphera.net/', count: 12 },
-      { value: 'https://www.linkedin.com/company/ciphera/', count: 3 },
-      { value: 'https://pulse.ciphera.net/login', count: 2 },
-      { value: 'https://github.com/ciphera-net/pulse', count: 2 },
-      { value: 'https://github.com/ciphera-net', count: 1 },
-    ],
-    paths: [
-      { value: '/products/pulse', count: 13 },
-      { value: '/', count: 5 },
-    ],
-  }
-  const goalCounts = [{ event_name: 'outbound_link', count: 20, visitors: 14 }]
-  const baseProps = { siteId: 'site-1', dateRange, goalCounts }
-
-  it('groups links by host (www stripped) and shows CLICKS, with the share of ALL clicks on hover', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} />)
-    // pulse.ciphera.net = 12 + 2, github.com = 2 + 1, linkedin.com = 3 (www. stripped)
-    expect(screen.getByText('pulse.ciphera.net')).toBeTruthy()
-    expect(screen.getByText('14')).toBeTruthy()
-    expect(screen.getByText('github.com')).toBeTruthy()
-    expect(screen.getByText('linkedin.com')).toBeTruthy()
-    expect(screen.queryByText('www.linkedin.com')).toBeNull()
-    // 14 of 20 clicks = 70% — the denominator is every click, not the visible rows.
-    expect(screen.getByText('70%')).toBeTruthy()
-    expect(screen.getByTestId('metric-unit').textContent).toBe('clicks')
-    // The unit lives in the header. There is no footnote restating it — see the
-    // dedicated test below.
-    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
-  })
-
-  it('divides by the goal count (every click in the range), not by the capped rows it received', () => {
-    // 20 clicks in the rows, 25 on the goal count: a site with more distinct
-    // destinations than the row limit must not inflate every share.
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} goalCounts={[{ event_name: 'outbound_link', count: 25, visitors: 14 }]} />)
-    expect(screen.getByText('56%')).toBeTruthy() // 14 / 25
-    expect(screen.queryByText('70%')).toBeNull()
-  })
-
-  it('falls back to the summed rows when the goal count is not on the payload', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} goalCounts={[]} />)
-    expect(screen.getByText('70%')).toBeTruthy() // 14 / 20
-    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
-  })
-
-  it('the Links view keeps one row per link, opens it in a new tab, and dims the path', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Links' }))
-    const link = screen.getByTitle('https://github.com/ciphera-net/pulse') as HTMLElement
-    const anchor = link.closest('a') as HTMLAnchorElement
-    expect(anchor.getAttribute('href')).toBe('https://github.com/ciphera-net/pulse')
-    expect(anchor.getAttribute('target')).toBe('_blank')
-    expect(anchor.getAttribute('rel')).toContain('noopener')
-    expect(link.textContent).toBe('github.com/ciphera-net/pulse')
-    expect(screen.getAllByText('12')).toHaveLength(1)
-  })
-
-  it('the From page view filters the dashboard by the page the click happened on', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    const onFilter = vi.fn()
-    render(<Outbound {...baseProps} onFilter={onFilter} />)
-    fireEvent.click(screen.getByRole('radio', { name: 'From page' }))
-    fireEvent.click(screen.getByText('/products/pulse'))
-    expect(onFilter).toHaveBeenCalledWith({ dimension: 'page', operator: 'is', values: ['/products/pulse'] })
-  })
-
-  it('says it is whole-site under page filters instead of pretending the rows are filtered', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} filters="country:is:DE" />)
-    expect(screen.getByTestId('outbound-footnote').textContent).toMatch(/not filtered yet/)
-    expect(screen.queryByText(/of visitors left through a link/)).toBeNull()
-  })
-
-  // ── The footnote (owner, 10-09-2026) ──────────────────────────────────────
-  // "i wanna get rid of 4% of visitors left through a link · clicks, not people
-  // — a visitor who clicked twice counts twice". The unit is stated once, in the
-  // header, and the paragraph under the rows is gone.
-  it('shows NO footnote when the card is answering the question that was asked', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} />)
-    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
-    expect(screen.queryByText(/of visitors left through a link/)).toBeNull()
-    expect(screen.queryByText(/clicks, not people/i)).toBeNull()
-    expect(screen.queryByText(/counts twice/i)).toBeNull()
-    // The unit still has exactly one home.
-    expect(screen.getByTestId('metric-unit').textContent).toBe('clicks')
-  })
-
-  // ── Pagination (owner, 10-09-2026: "make sure the users can also click through
-  // multiple pages of options in the outbound block like the other blocks") ────
-  // The card pages at 7 rows like every other dimension card. It was never
-  // broken — the pager correctly renders nothing at a single page, and the sites
-  // it was looked at had 7 destinations or fewer. These pin it so a regression
-  // is a red test rather than another report.
-  const manyLists = {
-    urls: Array.from({ length: 18 }, (_, i) => ({ value: `https://dest-${i}.example/x`, count: 18 - i })),
-    paths: Array.from({ length: 12 }, (_, i) => ({ value: `/page-${i}`, count: 12 - i })),
-  }
-
-  it('pages through the rows, seven at a time, on every view', () => {
-    useOutboundLinks.mockReturnValue({ data: manyLists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} />)
-
-    // Domains: 18 distinct hosts → 3 pages.
-    const pager = screen.getByRole('navigation', { name: /Pages of domains/i })
-    expect(pager).toBeTruthy()
-    expect(screen.getByText('dest-0.example')).toBeTruthy()
-    expect(screen.queryByText('dest-7.example')).toBeNull()
-
-    fireEvent.click(within(pager).getByRole('button', { name: 'Page 2' }))
-    expect(screen.getByText('dest-7.example')).toBeTruthy()
-    expect(screen.queryByText('dest-0.example')).toBeNull()
-
-    // From page: 12 paths → 2 pages, and switching views starts at page 1.
-    fireEvent.click(screen.getByRole('radio', { name: 'From page' }))
-    expect(screen.getByText('/page-0')).toBeTruthy()
-    const pagesPager = screen.getByRole('navigation', { name: /Pages of pages/i })
-    fireEvent.click(within(pagesPager).getByRole('button', { name: 'Next page' }))
-    expect(screen.getByText('/page-7')).toBeTruthy()
-  })
-
-  it('renders no pager when everything fits on one page', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} />)
-    // 3 hosts — a pager here would be chrome with nothing to do.
-    expect(screen.queryByRole('navigation', { name: /Pages of/i })).toBeNull()
-  })
-
-  it('states an ERROR rather than claiming there are no clicks', () => {
-    useOutboundLinks.mockReturnValue({ data: undefined, error: new Error('500'), isLoading: false })
-    const { unmount } = render(<Outbound {...baseProps} />)
-    expect(screen.getByText(/Couldn’t load outbound links/)).toBeTruthy()
-    expect(screen.queryByText(/No outbound clicks in this range/)).toBeNull()
-    unmount()
-    // A failed revalidation after an EMPTY first fetch leaves stale empty
-    // lists behind — still an error, never the empty state.
-    useOutboundLinks.mockReturnValue({ data: { urls: [], paths: [] }, error: new Error('502'), isLoading: false })
-    render(<Outbound {...baseProps} />)
-    expect(screen.getByText(/Couldn’t load outbound links/)).toBeTruthy()
-    expect(screen.queryByText(/No outbound clicks in this range/)).toBeNull()
-  })
-
-  it('keeps stale rows on screen through a failed revalidation', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: new Error('502'), isLoading: false })
-    render(<Outbound {...baseProps} />)
-    expect(screen.getByText('pulse.ciphera.net')).toBeTruthy()
-    expect(screen.queryByText(/Couldn’t load outbound links/)).toBeNull()
-  })
-
-  it('shows the empty state for a range with no outbound clicks, and nothing while loading', () => {
-    useOutboundLinks.mockReturnValue({ data: undefined, error: undefined, isLoading: true })
-    const { unmount } = render(<Outbound {...baseProps} />)
-    expect(screen.queryByText(/No outbound clicks in this range/)).toBeNull()
-    unmount()
-    useOutboundLinks.mockReturnValue({ data: { urls: [], paths: [] }, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} />)
-    expect(screen.getByText(/No outbound clicks in this range/)).toBeTruthy()
-  })
-
-  it('keys its request on the resolved dates AND the period token', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} period="30d" />)
-    expect(useOutboundLinks).toHaveBeenCalledWith('site-1', dateRange.start, dateRange.end, '30d', undefined)
-  })
-
-  it('reads its lists for the live window in realtime mode (PULSE-192)', () => {
-    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-    render(<Outbound {...baseProps} live liveMinutes={5} />)
-    expect(useOutboundLinks.mock.calls.at(-1)?.[4]).toBe(5)
-  })
-})
-
-// ─── M12: imported events on the Events and Outbound cards (owner pick A) ──
+// ─── M12: imported events on the Events card (owner pick A) ──
 describe('M12: imported events', () => {
-  const imported = { included: true, from: '2026-08-30', through: '2026-09-14', source: 'plausible', reason: null }
-
   describe('GoalStats', () => {
     const rows = [
       { event_name: 'outbound_link', count: 249, native_count: 120, instrument: 'mixed' as const },
@@ -793,49 +608,6 @@ describe('M12: imported events', () => {
     it('a pre-M12 row (no instrument) still expands', () => {
       render(<GoalStats goalCounts={[{ event_name: 'signup', count: 3 }]} siteId="site-1" dateRange={dateRange} />)
       expect(screen.getByTestId('goal-row').tagName).toBe('BUTTON')
-    })
-  })
-
-  describe('Outbound', () => {
-    const lists = {
-      urls: [
-        { value: 'https://pulse.ciphera.net/', count: 12 },
-        { value: 'https://github.com/ciphera-net', count: 8 },
-      ],
-      paths: [{ value: '/', count: 20 }],
-    }
-    const base = { siteId: 'site-1', dateRange }
-
-    it('divides by the NATIVE outbound count: an imported outbound_link leaves every share unchanged (M12-e)', () => {
-      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-      const { unmount } = render(<Outbound {...base} goalCounts={[{ event_name: 'outbound_link', count: 20, native_count: 20, instrument: 'measured' }]} />)
-      expect(screen.getByText('60%')).toBeTruthy() // 12 / 20
-      unmount()
-      // The same range with 4,812 imported clicks merged into outbound_link.
-      render(<Outbound {...base} goalCounts={[{ event_name: 'outbound_link', count: 4832, native_count: 20, instrument: 'mixed' }]} goalsImported={imported} />)
-      expect(screen.getByText('60%')).toBeTruthy()
-      expect(screen.queryByText('0%')).toBeNull()
-    })
-
-    it('says its clicks are Pulse-measured when imported days are in range (W-M12-6)', () => {
-      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-      render(<Outbound {...base} goalCounts={[{ event_name: 'outbound_link', count: 4832, native_count: 20, instrument: 'mixed' }]} goalsImported={imported} />)
-      expect(screen.getByTestId('outbound-footnote').textContent).toBe('Pulse-measured clicks only. Imported outbound clicks count in Events.')
-    })
-
-    it('under a filter, the filter note wins and the two never stack (constraint 2)', () => {
-      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-      render(<Outbound {...base} goalCounts={[]} goalsImported={imported} filters="country:is:DE" />)
-      const notes = screen.getAllByTestId('outbound-footnote')
-      expect(notes).toHaveLength(1)
-      expect(notes[0].textContent).toMatch(/not filtered yet/)
-      expect(screen.queryByText(/Pulse-measured clicks only/)).toBeNull()
-    })
-
-    it('says nothing when the range holds no imported day', () => {
-      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
-      render(<Outbound {...base} goalCounts={[]} goalsImported={{ included: false, from: null, through: null, source: null, reason: null }} />)
-      expect(screen.queryByTestId('outbound-footnote')).toBeNull()
     })
   })
 })

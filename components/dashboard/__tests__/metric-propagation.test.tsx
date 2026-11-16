@@ -54,7 +54,6 @@ describe('dimension blocks are decoupled from the selected metric', () => {
 })
 
 describe('CommandDeck is controlled', () => {
-  const noop = () => {}
   const stats: Stats = { pageviews: 300, visitors: 120, visits: 122, bounce_rate: 50, avg_duration: 60, avg_scroll_depth: null, avg_visible_duration: null }
   const data: DailyStat[] = [
     { date: '2026-08-21T00:00:00+02:00', pageviews: 10, visitors: 5, visits: 7, bounce_rate: 40, avg_duration: 50, avg_scroll_depth: null, avg_visible_duration: null },
@@ -68,8 +67,6 @@ describe('CommandDeck is controlled', () => {
       onMetricChange={onMetricChange}
       interval="day"
       dateRange={{ start: '2026-08-21', end: '2026-08-21' }}
-      multiDayInterval="day"
-      setMultiDayInterval={noop}
     />
   )
 

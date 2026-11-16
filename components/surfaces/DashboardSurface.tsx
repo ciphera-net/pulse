@@ -13,7 +13,7 @@ import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
-import { DEFAULT_GEO_DATA_LEVEL, type Site } from '@/lib/api/sites'
+import { type Site } from '@/lib/api/sites'
 import { formatDate } from '@/lib/utils/format'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
@@ -21,7 +21,6 @@ import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { resolveDashboardRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import FilterButton from '@/components/dashboard/FilterButton'
 import RealtimeOrb from '@/components/dashboard/RealtimeOrb'
 import {
   REALTIME_MODES,
@@ -29,25 +28,14 @@ import {
   isRealtimePeriod,
 } from '@/lib/dashboard/realtimeRange'
 import { PollLiveSync, SocketLiveSync } from '@/components/dashboard/LiveSync'
-import FilterPills from '@/components/dashboard/FilterPills'
-import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
-import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 // The new dashboard's filter (owner rulings R36, R46, R48 of 15-11-2026): one field, the filters on in one box.
 import SearchFilter from '@/components/dashboard/filter/search/SearchFilter'
 import FiltersBox from '@/components/dashboard/filter/search/FiltersBox'
 import { pageValuesFrom, placeCountriesFrom } from '@/components/dashboard/filter/search/values'
 const CommandDeck = dynamic(() => import('@/components/dashboard/CommandDeck'), { ssr: false })
-import ContentStats from '@/components/dashboard/ContentStats'
-import Sources from '@/components/dashboard/Sources'
-import Audience from '@/components/dashboard/Locations'
-import TechSpecs from '@/components/dashboard/TechSpecs'
-import Outbound from '@/components/dashboard/Outbound'
-import SectionHeader from '@/components/dashboard/SectionHeader'
 import DashboardFrame from '@/components/surfaces/DashboardFrame'
 import FrameToolbar from '@/components/dashboard/FrameToolbar'
 
-const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
-const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 // Client-only and off the critical path: driver.js only matters once the
 // dashboard is interactive, and the controller waits for the anchors anyway.
 const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
@@ -130,10 +118,10 @@ function SiteDashboardWithRecord({ scope, caps }: { scope: SiteScope; caps: Dash
 
 function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: DashboardCapabilities; facts: SiteFacts | null }) {
   const siteId = scope.siteId
-  // The new dashboard frame (lib/dashboard/frame.tsx says what it is) is every reader's since 15-11-2026: every
-  // team (the `new-dashboard` flag went to everyone at 20:32 UTC), and public pages too (the demo, a share link),
-  // which no beta ever reached. Today's arrangement below is no longer drawn; its removal follows on its own.
-  const frame: boolean = true
+  // The dashboard is the frame (lib/dashboard/frame.tsx says what it is) for every reader since 15-11-2026: every
+  // team (the `new-dashboard` flag went to everyone at 20:32 UTC), and public pages too (the demo, a share link).
+  // The arrangement it replaced (section headers over a card grid, the old filter pills and builder, the chart's
+  // bucket picker, the Outbound card, Peak hours) left this file on 16-11-2026.
   const siteRecord = facts?.siteRecord
   const siteError = facts?.siteError
   const refetchSite = facts?.refetchSite
@@ -166,7 +154,6 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // fan-out sends it as minutes=, and so must every card list, Outbound, Campaigns, the
   // goal breakdowns and the filter suggestions, or they describe the calendar day.
   const liveMinutes = isLive ? (rollingMinutes ?? undefined) : undefined
-  const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
   // Dimension filters state. A share link carries none: a filtered public-scoped read is
   // refused (400), so a `?filters=` in its URL is never parsed, let alone sent.
@@ -258,10 +245,9 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
     dateRange.start === formatDate(urlRange.siteNow) &&
     urlRange.siteNow.getHours() * 60 + urlRange.siteNow.getMinutes() < 3 * 60
   //
-  // In the new frame the chart has no bucket picker: the buckets follow the range (minutes live and for a young
-  // day, hours for one day, days beyond, and past a year whatever the server picks), so a range of several days
-  // is always asked for in days, whatever the picker was left on before the frame arrived.
-  const interval = !caps.hourlyBuckets ? 'day' : isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : (frame ? 'day' : multiDayInterval))
+  // The chart has no bucket picker: the buckets follow the range (minutes live and for a young day, hours for one
+  // day, days beyond, and past a year whatever the server picks).
+  const interval = !caps.hourlyBuckets ? 'day' : isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : 'day')
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -379,9 +365,6 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
     window.history.replaceState({}, '', url.toString())
   }, [filtersParam])
 
-  // Single-surface filter popover (create anchored to the Filter button,
-  // edit anchored to the clicked pill).
-  const filterBuilder = useFilterBuilder(handleFetchSuggestions)
   // The kinds with no value read of their own, from the page's own answer (the Search filter offers them).
   const pageValues = useMemo(() => pageValuesFrom(dashboard), [dashboard])
   const places = useMemo(() => placeCountriesFrom(dashboard), [dashboard])
@@ -577,10 +560,12 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           In a wrapped mobile row a flex-1 spacer would claim a whole line and
           strand the controls, so it only exists at sm+. */}
       <div className="hidden flex-1 sm:block" />
-      {caps.filters && (frame ? (
-        // The new dashboard: the filters on in one box, then the Search filter's button (its panel is a portal).
+      {caps.filters && (
+        // The filters on in one box, then the Search filter's button (its panel is a portal).
         <>
           <FiltersBox filters={filters} onApply={handleFilterApply} onRemove={handleRemoveFilter} onClearAll={handleClearFilters} pageValues={pageValues} places={places} />
+          {/* A filtered view leaves imported days out: filters select visits, and an imported day holds totals
+              (M11-h). Said beside the control that did it, from the response's own provenance. */}
           {importLeftOutByFilter(dashboard?.imported) && (
             <span className="inline-flex items-center gap-1 text-xs text-neutral-500" data-testid="imported-filtered-note">
               Pulse-measured days only
@@ -589,49 +574,13 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           )}
           <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} onApplySet={handleApplySavedFilters} />
         </>
-      ) : (
-        <>
-          <FilterPills
-            filters={filters}
-            onEdit={(index, anchor) => filterBuilder.openEdit(filters[index], index, anchor)}
-            onRemove={handleRemoveFilter}
-            onClear={handleClearFilters}
-          />
-          {/* A filtered view leaves imported days out: filters select visits, and an
-              imported day holds totals (M11-h). Said beside the control that did it,
-              from the response's own provenance. */}
-          {importLeftOutByFilter(dashboard?.imported) && (
-            <span className="inline-flex items-center gap-1 text-xs text-neutral-500" data-testid="imported-filtered-note">
-              Pulse-measured days only
-              <TermInfoTip term="imported_history" />
-            </span>
-          )}
-          <FilterButton
-            hasActiveFilters={filters.length > 0}
-            active={filterBuilder.open}
-            onClick={anchor => filterBuilder.openCreate(anchor)}
-          />
-        </>
-      ))}
+      )}
       <DateRangePicker {...picker} />
     </>
   )
 
-  // In the new frame the toolbar stays at the top while the page moves under it (components/dashboard/FrameToolbar).
-  const toolbarRow = () => frame ? (
-    <FrameToolbar>{toolbarControls()}</FrameToolbar>
-  ) : (
-    <div className="mb-3">
-      {/* flex-wrap, not a single row: the five controls measure ~414px of
-          intrinsic width, so on a 390px phone the row overflowed and the
-          content panel's overflow-x-hidden SLICED the date picker in half —
-          its forward-shift arrow was unreachable. Wrapping costs desktop
-          nothing (there the row has ~1100px and never wraps). */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        {toolbarControls()}
-      </div>
-    </div>
-  )
+  // The toolbar stays at the top while the page moves under it (components/dashboard/FrameToolbar).
+  const toolbarRow = () => <FrameToolbar>{toolbarControls()}</FrameToolbar>
 
   // PULSE-87: the view waits for the SITE's timezone before it can resolve a
   // range, and a site that failed to load never supplies one — so that failure
@@ -674,13 +623,6 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
         {liveSync}
         {toolbarRow()}
         {failureCard(dashboardError, () => refetchDashboard())}
-        {caps.filters && !frame && (
-          <FilterBuilder
-            builder={filterBuilder}
-            filters={filters}
-            onApply={handleFilterApply}
-          />
-        )}
       </div>
     )
   }
@@ -706,232 +648,43 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           a public reader has nothing to install. */}
       {caps.member && <InstallBanner siteId={siteId} />}
 
-      {/* The command deck: provenance strip + KPI rail + full-height chart,
-          then the sectioned briefing IA (Acquisition · Audience · Content ·
-          Behaviour) — each section header states which population its cards
-          describe (F14). */}
-      {resolvedDateRange && (() => {
-        // One denominator for every card % (F9): the range's true totals,
-        // filtered exactly as the rows are.
-        const totals = { pageviews: stats.pageviews, visitors: stats.visitors }
-        // The deck is built ONCE and placed by whichever arrangement is on.
-        const deck = (
-        <CommandDeck
-          data={dailyStats}
-          stats={deckStats}
-          prevStats={prevStats}
-          metric={metric}
-          onMetricChange={handleMetricChange}
-          // The bucket the series is IN: past a year of All time the server picks it.
-          interval={dashboard?.interval ?? interval}
-          live={isLive}
-          dateRange={resolvedDateRange}
-          period={period}
-          multiDayInterval={multiDayInterval}
-          setMultiDayInterval={setMultiDayInterval}
-          // False on a share link, where the backend clamps every read to day buckets
-          // and a selector would be a control wired to nothing. False in the new frame
-          // too, where the buckets follow the range and there is no picker at all.
-          intervalPicker={caps.hourlyBuckets && !frame}
-          imported={dashboard?.imported}
-          prevImported={prevStats?.imported}
-          prevData={comparesSeries ? (prevDaily ?? null) : null}
-          prevRange={prevRange}
-          prevFloor={dataWindow?.from ?? null}
-        />
-        )
-        // The new frame: the same deck and the same blocks, arranged by DashboardFrame. Everything below this
-        // line is today's arrangement and is not mounted while the frame is on.
-        if (frame) {
-          return (
-            <DashboardFrame
-              deck={deck}
-              dashboard={dashboard}
-              site={site}
-              siteId={siteId}
-              caps={caps}
-              isLive={isLive}
-              liveMinutes={liveMinutes}
+      {/* The command deck (provenance strip, KPI rail, full-height chart) and the blocks, arranged by
+          DashboardFrame. */}
+      {resolvedDateRange && (
+        <DashboardFrame
+          deck={
+            <CommandDeck
+              data={dailyStats}
+              stats={deckStats}
+              prevStats={prevStats}
+              metric={metric}
+              onMetricChange={handleMetricChange}
+              // The bucket the series is IN: past a year of All time the server picks it.
+              interval={dashboard?.interval ?? interval}
+              live={isLive}
               dateRange={resolvedDateRange}
-              period={apiPeriod || undefined}
-              rangeTotals={totals}
-              previousVisitors={prevStats?.visitors ?? null}
-              filtersParam={filtersParam}
-              onCardFilter={onCardFilter}
-              outboundOff={outboundOff}
+              period={period}
+              imported={dashboard?.imported}
+              prevImported={prevStats?.imported}
+              prevData={comparesSeries ? (prevDaily ?? null) : null}
+              prevRange={prevRange}
+              prevFloor={dataWindow?.from ?? null}
             />
-          )
-        }
-        return <><div className="mb-3 space-y-2">
-        {deck}
-      </div>
-
-      <SectionHeader title="Acquisition" />
-      {/* One Sources card (owner pick BH, 06-09-2026): Referrers · Channels ·
-          Campaigns, the UTM dimension behind a Select. The Locations card moved
-          up to fill the row the Campaigns card left. A share link's Campaigns
-          rows arrive ON its payload (capped), which also keeps the
-          campaigns fetch unarmed: that read is not served to it. */}
-      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <Sources
-          referrers={dashboard?.top_referrers ?? []}
-          channels={dashboard?.channels ?? []}
-          collectReferrers={site.collect_referrers ?? true}
-          showReferrerDomains={site.show_referrer_domains ?? false}
+          }
+          dashboard={dashboard}
+          site={site}
           siteId={siteId}
-          live={isLive}
+          caps={caps}
+          isLive={isLive}
           liveMinutes={liveMinutes}
           dateRange={resolvedDateRange}
           period={apiPeriod || undefined}
-          totals={totals}
-          filters={filtersParam || undefined}
-          onFilter={onCardFilter}
-          memberFeatures={caps.fullReads}
-          campaigns={caps.fullReads ? undefined : (dashboard?.campaigns ?? [])}
-          importedCards={dashboard?.imported_cards}
-        />
-        <Audience
-          countries={dashboard?.countries ?? []}
-          cities={dashboard?.cities ?? []}
-          regions={dashboard?.regions ?? []}
-          languages={dashboard?.languages ?? []}
-          languageGroups={dashboard?.language_groups}
-          timezones={dashboard?.timezones ?? []}
-          geoDataLevel={site.collect_geo_data || DEFAULT_GEO_DATA_LEVEL}
-          collectAudienceData={site.collect_audience_data ?? true}
-          siteId={siteId}
-          live={isLive}
-          liveMinutes={liveMinutes}
-          dateRange={resolvedDateRange}
-          totals={totals}
+          // One denominator for every block's % (F9): the range's true totals, filtered exactly as the rows are.
+          rangeTotals={{ pageviews: stats.pageviews, visitors: stats.visitors }}
           previousVisitors={prevStats?.visitors ?? null}
-          filters={filtersParam || undefined}
-          onFilter={onCardFilter}
-          memberFeatures={caps.fullReads}
-          importedCards={dashboard?.imported_cards}
-        />
-      </div>
-
-      {/* 🔑 THE ONLY ROW WITH A HEADER PER COLUMN (owner, 10-09-2026).
-          Everywhere else the two cards in a row genuinely share one heading —
-          Sources and Locations are both Acquisition, Pages and Content signals
-          are both Content. Technology and Outbound do not: one is who visited,
-          the other is where they went. So this row carries "Audience" over the
-          left card and "Outbound" over the right.
-
-          It got there the long way. Outbound first became a section of its own,
-          which named it but left both rows half empty (seen on staging); then
-          the titles were nearly moved INSIDE the cards. The owner's answer is
-          better than either: keep the full row, and put the two titles outside
-          the cards, each above its own column.
-
-          ⚠️ The header lives INSIDE the grid cell, not in a header row of its
-          own. Below `lg` this grid collapses to one column, and a separate
-          two-title row would then stack both titles above both cards — every
-          title detached from the card it names. This way each title stays glued
-          to its own card at every width.
-
-          The card is wrapped in `flex-1 min-h-0` because it sets `h-full`: with
-          the header as a sibling, 100% of the cell would overflow by exactly the
-          header's height.
-
-          A share link has no Outbound: its two lists are the event-property reads,
-          which a public-scoped read is not served. Its row is the left card alone. */}
-      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <div className="flex flex-col">
-          <SectionHeader title="Audience" />
-          <div className="flex-1 min-h-0">
-            <TechSpecs
-              browsers={dashboard?.browsers ?? []}
-              os={dashboard?.os ?? []}
-              devices={dashboard?.devices ?? []}
-              screenResolutions={dashboard?.screen_resolutions ?? []}
-              collectDeviceInfo={site.collect_device_info ?? true}
-              collectScreenResolution={site.collect_screen_resolution ?? true}
-              siteId={siteId}
-          live={isLive}
-          liveMinutes={liveMinutes}
-              dateRange={resolvedDateRange}
-              totals={totals}
-              filters={filtersParam || undefined}
-              onFilter={onCardFilter}
-              memberFeatures={caps.fullReads}
-              importedCards={dashboard?.imported_cards}
-            />
-          </div>
-        </div>
-        {caps.fullReads && (
-        <div className="flex flex-col">
-          <SectionHeader title="Outbound" />
-          <div className="flex-1 min-h-0">
-            <Outbound
-              siteId={siteId}
-          live={isLive}
-          liveMinutes={liveMinutes}
-              dateRange={resolvedDateRange}
-              period={apiPeriod || undefined}
-              goalCounts={dashboard?.goal_counts ?? []}
-              goalsImported={dashboard?.imported_goals}
-              filters={filtersParam || undefined}
-              onFilter={onCardFilter}
-              trackingOff={outboundOff}
-            />
-          </div>
-        </div>
-        )}
-      </div>
-
-      <SectionHeader title="Content" />
-      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <ContentStats
-          topPages={dashboard?.top_pages ?? []}
-          entryPages={dashboard?.entry_pages ?? []}
-          exitPages={dashboard?.exit_pages ?? []}
-          domain={site.domain}
-          collectPagePaths={site.collect_page_paths ?? true}
-          siteId={siteId}
-          live={isLive}
-          liveMinutes={liveMinutes}
-          dateRange={resolvedDateRange}
-          totals={totals}
-          filters={filtersParam || undefined}
-          onFilter={onCardFilter}
-          memberFeatures={caps.fullReads}
-          importedCards={dashboard?.imported_cards}
-        />
-        {/* Scroll depth arrives on the dashboard payload (computed in
-            GetDashboardHandler's fan-out); events likewise. One tabbed card,
-            per the approved C mockup. */}
-        <ContentSignals
-          scrollDepth={dashboard?.scroll_depth}
-          goalCounts={dashboard?.goal_counts ?? []}
-          goalsImported={dashboard?.imported_goals}
-          siteId={siteId}
-          dateRange={resolvedDateRange}
-          liveMinutes={liveMinutes}
-          memberFeatures={caps.fullReads}
-          filters={filtersParam || undefined}
-        />
-      </div>
-
-      {/* Peak hours is a weekly hour-of-day heatmap: a single live instant has no
-          day-of-week distribution to draw, so it is HIDDEN in realtime rather
-          than rendered as an almost-empty grid that looks like missing data. A
-          share link has none either: hour buckets are refused on a public-scoped
-          read by design (an hourly bucket with one visitor is that person's
-          arrival time). */}
-      {!isLive && caps.hourlyBuckets && (<>
-      <SectionHeader title="Behaviour" />
-      <div className="grid gap-3 mb-3 [&>*]:min-w-0">
-        <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
-      </div></>)}</>
-      })()}
-
-      {caps.filters && !frame && (
-        <FilterBuilder
-          builder={filterBuilder}
-          filters={filters}
-          onApply={handleFilterApply}
+          filtersParam={filtersParam}
+          onCardFilter={onCardFilter}
+          outboundOff={outboundOff}
         />
       )}
       </EmptyFactsProvider>

@@ -46,8 +46,6 @@ const baseProps = {
   interval: 'day' as const,
   dateRange: { start: '2026-09-15', end: '2026-09-17' },
   period: '7',
-  multiDayInterval: 'day' as const,
-  setMultiDayInterval: noop,
 }
 const withPrev = { ...baseProps, prevData: previous, prevRange: { start: '2026-08-16', end: '2026-08-18' } }
 
@@ -183,5 +181,14 @@ describe('CommandDeck previous period (PUL-19)', () => {
     const title = captured.tooltip.title as Title
     expect(title({ dateObj: new Date(Date.UTC(2026, 8, 17)), isPartial: true })).toBe('Thu, 17/09/2026 (so far)')
     expect(title({ dateObj: new Date(Date.UTC(2026, 8, 16)), isPartial: false })).toBe('Wed, 16/09/2026')
+  })
+})
+
+describe('the legend keeps its place when the bucket picker left (16-11-2026)', () => {
+  it('ends 16 px before the chart header\'s end on a computer, the gap the picker\'s empty slot left after it', () => {
+    const { container } = render(<CommandDeck {...withPrev} />)
+    const legend = [...container.querySelectorAll('div')].find((d) => d.className.includes('order-last') && d.textContent?.includes('Previous period'))
+    expect(legend?.className.split(' ')).toEqual(expect.arrayContaining(['md:ml-auto', 'md:mr-4']))
+    expect(container.querySelectorAll('[aria-haspopup="listbox"]').length).toBe(0)
   })
 })

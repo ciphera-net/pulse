@@ -86,8 +86,6 @@ vi.mock('@/components/dashboard/Locations', () => stub('Audience', 'card'))
 vi.mock('@/components/dashboard/TechSpecs', () => stub('TechSpecs', 'card'))
 vi.mock('@/components/dashboard/ContentStats', () => stub('ContentStats', 'card'))
 vi.mock('@/components/dashboard/ContentSignals', () => stub('ContentSignals', 'card'))
-vi.mock('@/components/dashboard/Outbound', () => stub('Outbound', 'card'))
-vi.mock('@/components/dashboard/PeakHours', () => stub('PeakHours', 'peak-hours'))
 // The new frame's bottom (what converts, the week, the three tiles): today's heat map is today's arrangement's alone.
 vi.mock('@/components/dashboard/DashboardBottom', () => stub('DashboardBottom', 'bottom'))
 vi.mock('@/components/dashboard/SectionHeader', () => ({
@@ -141,7 +139,6 @@ beforeAll(async () => {
   await Promise.all([
     import('@/components/dashboard/CommandDeck'),
     import('@/components/dashboard/ContentSignals'),
-    import('@/components/dashboard/PeakHours'),
     import('@/components/dashboard/DashboardBottom'),
     import('@/lib/tour/TourController'),
   ])
@@ -199,7 +196,7 @@ describe('every reader gets the frame, whatever /me says (15-11-2026)', () => {
     expect(document.querySelector('[data-dashboard-frame]')).toBeTruthy()
     expect(sectionTitles()).toEqual([])
     expect(blockOrder()).toEqual(['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals'])
-    expect(h.captured.CommandDeck.intervalPicker).toBe(false)
+    expect(h.captured.CommandDeck).not.toHaveProperty('intervalPicker')
   })
 })
 
@@ -221,13 +218,12 @@ describe('the new frame', () => {
     const events = document.querySelector('[data-frame-events]') as HTMLElement
     expect(events.className).toBe('lg:col-span-2')
     expect(events.querySelector('[data-block="ContentSignals"]')).toBeTruthy()
-    // The deck first, the bottom last, all inside the frame; today's heat map is not drawn in it.
+    // The deck first, the bottom last, all inside the frame.
     const frame = document.querySelector('[data-dashboard-frame]') as HTMLElement
     expect(frame).toBeTruthy()
-    const marks = [...frame.querySelectorAll('[data-testid="deck"], [data-testid="card"], [data-testid="peak-hours"], [data-testid="bottom"]')].map((n) => n.getAttribute('data-block'))
+    const marks = [...frame.querySelectorAll('[data-testid="deck"], [data-testid="card"], [data-testid="bottom"]')].map((n) => n.getAttribute('data-block'))
     expect(marks[0]).toBe('CommandDeck')
     expect(marks[marks.length - 1]).toBe('DashboardBottom')
-    expect(marks).not.toContain('PeakHours')
   })
 
   it('tells the deck, every block and the bottom that they are in the frame', async () => {
@@ -254,7 +250,7 @@ describe('the new frame', () => {
 
   it('takes the bucket picker off the chart and asks a range of several days in days', async () => {
     await mount()
-    expect(h.captured.CommandDeck.intervalPicker).toBe(false)
+    expect(h.captured.CommandDeck).not.toHaveProperty('intervalPicker')
     expect(intervals.length).toBeGreaterThan(0)
     expect(new Set(intervals)).toEqual(new Set(['day']))
   })
@@ -279,10 +275,9 @@ describe('the new frame', () => {
     }
     expect(h.captured.Audience.previousVisitors).toBe(400)
     expect(h.captured.Sources.campaigns).toBeUndefined()
-    // Outbound's links ride in the Pages block: it is handed what their tab needs, and no Outbound block is drawn.
+    // Outbound's links ride in the Pages block: it is handed what their tab needs.
     expect(h.captured.ContentStats.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
     expect(h.captured.ContentStats.outbound).toMatchObject({ goalCounts: [], trackingOff: false })
-    expect(h.captured.Outbound).toBeUndefined()
     expect(h.captured.DashboardBottom.dateRange).toEqual({ start: '2026-09-21', end: '2026-10-20' })
     expect(h.captured.DashboardBottom.siteId).toBe('site-1')
   })
@@ -332,7 +327,8 @@ describe('the new frame', () => {
   it('draws no heat map in realtime, as today', async () => {
     mockSearchParams = new URLSearchParams('period=realtime')
     await mount()
-    expect(screen.queryByTestId('peak-hours')).toBeNull()
+    // The frame's heat map is the bottom's week, which a live window has no hours for.
+    expect(screen.queryByTestId('bottom')).toBeNull()
     expect(blockOrder()).toEqual(['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals'])
     for (const name of ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals']) {
       expect(typeof h.captured[name].liveMinutes, name).toBe('number')
