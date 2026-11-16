@@ -11,7 +11,7 @@ import { MapHeadline } from './MapHeadline'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { flagUrl, hasFlag } from '@/lib/flags'
 import iso3166 from 'iso-3166-2'
-import { TIMEZONE_COUNTRY } from '@/lib/timezone-countries.gen'
+import { getGroupFlagCode, getTimezoneCountry } from '@/lib/dashboard/placeFlags'
 import { formatLanguage } from '@/lib/dashboard/language'
 import { mergeSameRows } from '@/lib/dashboard/sameRows'
 
@@ -29,6 +29,7 @@ import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { SortHead, VISITORS_COLUMN, VISITORS_DESC, byVisitors, sortRows, type Sort } from '@/components/dashboard/SortHead'
 
 interface AudienceProps {
   countries: Array<{ country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
@@ -80,36 +81,7 @@ const LIMIT = 7
 const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions: 'region', cities: 'city', languages: 'language', timezones: 'timezone' }
 const TAB_TO_KIND: Partial<Record<Tab, FullListKind>> = { countries: 'countries', regions: 'regions', cities: 'cities', languages: 'languages', timezones: 'timezones' }
 
-// * IANA timezone → ISO country code, from IANA tzdata's own zone.tab + backward links
-// * (lib/timezone-countries.gen.ts, regenerate with scripts/generate-timezone-countries.mjs).
-// * It was a hand-written list of ~45 zones, so most rows had no flag (PULSE-170). A zone that
-// * belongs to no country (UTC, Etc/*, the Etc/Unknown placeholder) returns '' and the row shows
-// * the same grey globe the Languages tab uses for "no country" (PULSE-179, the owner's T-A).
-export function getTimezoneCountry(tz: string): string {
-  if (!tz || tz === 'Unknown') return ''
-  return TIMEZONE_COUNTRY[tz] ?? ''
-}
-
-// * A grouped language row's flag code (PULSE-173): the server-computed
-// * `flag_region` when it names a code we have art for, else the group key's
-// * CLDR likely-subtag region (e.g. "ja" -> "JP") when THAT has art, else ''
-// * (globe). `flag_region` already encodes "which member, if any, earned the
-// * flag" (the most-visited member that carries a region) — this function only ever adds the
-// * bare-key fallback and the hasFlag gate, never re-picks a member.
-function getGroupFlagCode(item: { language?: string; flag_region?: string | null }): string {
-  const key = item.language ?? ''
-  if (!key || key === 'Unknown') return ''
-  const region = (item.flag_region ?? '').toUpperCase()
-  if (region && hasFlag(region)) return region
-  try {
-    const likely = new Intl.Locale(key).maximize().region
-    if (likely && hasFlag(likely)) return likely
-  } catch {
-    // Not a resolvable BCP47 primary subtag — no fallback flag, same as an
-    // unresolvable code anywhere else on this card.
-  }
-  return ''
-}
+// The timezone and grouped-language flag rules live in lib/dashboard/placeFlags.ts, shared with the Filter menu.
 
 // * Get the country code to show a flag for any item in any tab. `grouped`
 // * (PULSE-173) is true only for the Languages tab's grouped-by-base rows,
@@ -151,6 +123,8 @@ function formatTimezone(tz: string): string {
 export default function Audience({ countries, cities, regions, languages, languageGroups, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, previousVisitors, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: AudienceProps) {
   const frame = useDashboardFrame()
   const [activeTab, setActiveTab] = useState<Tab>('countries')
+  // In the frame the column's name sorts every list tab, high to low and low to high (the Pages tab's device, R41).
+  const [sort, setSort] = useState<Sort<'visitors'>>(VISITORS_DESC)
   type AudienceItem = {
     country?: string; city?: string; region?: string; language?: string; timezone?: string
     pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null
@@ -379,11 +353,15 @@ export default function Audience({ countries, cities, regions, languages, langua
   // Gate on wantsFullList: stale hook-state from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
   const fullClean = wantsFullList && fullData ? sameRows(filterUnknown(fullData)) : null
-  const allData = fullClean && fullClean.length >= data.length ? fullClean : data
+  const fetched = fullClean && fullClean.length >= data.length ? fullClean : data
+  // Sorted before paging, so a page (and the flags read ahead for its neighbours) is a slice of the asked order.
+  // Ties keep the server's order; the bars still measure against the largest row, whatever the order.
+  const sortable = frame && !isVisualTab
+  const allData = sortable ? sortRows(fetched, sort, byVisitors) : fetched
   const pageCount = isVisualTab ? 1 : Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,
-  // and a shrinking list clamps at read time.
-  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
+  // and a shrinking list clamps at read time. In the frame a new order does too.
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}${sortable ? `|${sort.key}:${sort.dir}` : ''}`, pageCount)
 
   const displayedData = (!isVisualTab && hasData) ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   // The flags of this page and of the pages on either side, asked for before a page flip needs them.
@@ -430,7 +408,7 @@ export default function Audience({ countries, cities, regions, languages, langua
           </div>
           <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <MetricUnitLabel />
+            {sortable ? <SortHead columns={VISITORS_COLUMN} sort={sort} onSort={setSort} /> : <MetricUnitLabel />}
           </div>
         </div>
 

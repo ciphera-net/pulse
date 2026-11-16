@@ -101,7 +101,7 @@ describe('the Events block in the new frame: the list beside the picked event\'s
     for (const c of FRAME_CARD.split(' ')) expect(classes(card()).has(c), c).toBe(true)
     expect(card().getAttribute('data-tour')).toBe('dimension-card')
     const grid = card().firstElementChild as HTMLElement
-    expect(classes(grid).has('lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]')).toBe(true)
+    expect(classes(grid).has('lg:grid-cols-2')).toBe(true)
     expect([...grid.children].map((s) => s.getAttribute('data-events-pane'))).toEqual(['list', 'properties'])
   })
 
@@ -328,7 +328,7 @@ describe('the Events block in the new frame: the list beside the picked event\'s
     expect(within(card()).queryAllByRole('button', { name: /^Show the properties/ })).toHaveLength(0)
     expect(card().querySelector('[data-cue]')).toBeNull()
     expect(propsPane()).toBeNull()
-    expect(classes(card().firstElementChild as HTMLElement).has('lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]')).toBe(false)
+    expect(classes(card().firstElementChild as HTMLElement).has('lg:grid-cols-2')).toBe(false)
     expect(rows().some((r) => classes(r).has('interactive-row'))).toBe(false)
     expect(h.useEventPropertyKeys).not.toHaveBeenCalled()
     expect(h.useEventPropertyValues).not.toHaveBeenCalled()
@@ -416,13 +416,19 @@ describe('the Pages block in the new frame: the Pages tab sorts by its two colum
     for (const b of head.querySelectorAll('[data-sort]')) expect(classes(b).has('w-12'), b.textContent ?? '').toBe(true)
   })
 
-  it('leaves the Entries tab with its one plain label and the server\'s order', () => {
+  it('sorts the Entries tab by its one column, in an order of its own (16-11-2026)', () => {
     inFrame(pagesBlock())
     sortBy(pagesCard(), 'views')
     fireEvent.click(within(pagesCard()).getByRole('radio', { name: 'Entries' }))
-    expect(pagesCard().querySelector('[data-sort-head]')).toBeNull()
-    expect(within(pagesCard()).getByTestId('metric-unit').textContent).toBe('visitors')
+    // One name, visitors, as the plain label was; the Pages tab's views order does not follow it here.
+    expect([...pagesCard().querySelectorAll('[data-sort]')].map((b) => b.getAttribute('aria-label'))).toEqual(['Sort by visitors, low to high'])
+    expect(within(pagesCard()).queryByTestId('metric-unit')).toBeNull()
     expect(paths()).toEqual(['/a', '/b', '/c', '/d'])
+    sortBy(pagesCard(), 'visitors')
+    expect(paths()).toEqual(['/c', '/d', '/b', '/a'])
+    // Back on Pages, its own order is still views, high to low.
+    fireEvent.click(within(pagesCard()).getByRole('radio', { name: 'Pages' }))
+    expect(paths()).toEqual(['/b', '/a', '/c', '/d'])
   })
 })
 

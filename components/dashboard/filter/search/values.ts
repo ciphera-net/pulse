@@ -38,6 +38,26 @@ export function pageValuesFrom(dashboard: DashboardData | null | undefined): Pag
   }
 }
 
+/** The country of each city and of each region, by kind then value: a filter's pill draws that country's flag. */
+export type PlaceCountries = Record<string, Record<string, string>>
+
+/**
+ * The countries of the cities and regions the page's own answer lists (16-11-2026). A pill has only the stored value
+ * ("Oslo"), and under that filter the page's cities are that city's rows, so the page knows its country. Kept apart
+ * from pageValuesFrom on purpose: a kind listed there is read as a complete list and is never asked for again, which
+ * would freeze the Filter menu's cities and regions at the page's top ten.
+ */
+export function placeCountriesFrom(dashboard: DashboardData | null | undefined): PlaceCountries {
+  if (!dashboard) return {}
+  const index = <T extends { country?: string }>(rows: T[] | null | undefined, name: (row: T) => string) => {
+    const out: Record<string, string> = {}
+    // The first row wins: the page ranks by visitors, so a name two countries share draws the busier one's flag.
+    for (const row of rows ?? []) if (name(row) && row.country && !(name(row) in out)) out[name(row)] = row.country
+    return out
+  }
+  return { city: index(dashboard.cities, (c) => c.city), region: index(dashboard.regions, (r) => r.region) }
+}
+
 /** One found value, with the kind it belongs to. */
 export interface Found extends FilterSuggestion {
   dimension: string

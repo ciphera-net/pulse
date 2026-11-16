@@ -27,6 +27,7 @@ import { TabMenu, TabMenuLabel } from '@/components/dashboard/TabMenu'
 import { campaignViewReader, readCampaignView, writeCampaignView } from '@/lib/dashboard/campaignView'
 import { campaignRowLabel, campaignViewRows, type UtmDimension } from '@/lib/dashboard/campaignRows'
 import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
+import { SortHead, VISITORS_COLUMN, VISITORS_DESC, byVisitors, sortRows, type Sort } from '@/components/dashboard/SortHead'
 
 /**
  * Sources — where visitors came from, in ONE card.
@@ -130,6 +131,10 @@ export default function Sources({
   const frame = useDashboardFrame()
   const [view, setView] = useState<View>('referrers')
   const [utm, setUtm] = useState<UtmDimension>('source')
+  // In the frame the column's name sorts the open view's rows, high to low and low to high (the Pages tab's device,
+  // R41). Today's arrangement keeps the server's order.
+  const [sort, setSort] = useState<Sort<'visitors'>>(VISITORS_DESC)
+  const ordered = <T extends { visitors?: number | null }>(rows: T[]): T[] => (frame ? sortRows(rows, sort, byVisitors) : rows)
   // The new frame: the Campaigns tab is also the menu of its five views (components/dashboard/TabMenu.tsx), in
   // place of the Select in the header's right slot. The tab reads the open view's name on every state.
   const [utmMenuOpen, setUtmMenuOpen] = useState(false)
@@ -178,11 +183,11 @@ export default function Sources({
   const fullMerged = wantsReferrerFullList && fullReferrers
     ? mergeReferrersByDisplayName(fullReferrers.filter(ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''), showReferrerDomains)
     : null
-  const allReferrers = fullMerged && fullMerged.length >= mergedReferrers.length ? fullMerged : mergedReferrers
+  const allReferrers = ordered(fullMerged && fullMerged.length >= mergedReferrers.length ? fullMerged : mergedReferrers)
   const hasReferrerData = allReferrers.length > 0
 
   // ── Channels ──
-  const filteredChannels = (channels || []).filter(c => c.channel && c.pageviews > 0)
+  const filteredChannels = ordered((channels || []).filter(c => c.channel && c.pageviews > 0))
   const hasChannelData = filteredChannels.length > 0
 
   // ── Campaigns (armed only while the view is open; never from a share view) ──
@@ -201,12 +206,13 @@ export default function Sources({
     const base = fullCampaignsRaw && fullCampaignsRaw.length > 0 ? fullCampaignsRaw : campaignData
     return campaignViewRows(base, utm)
   }, [fullCampaignsRaw, campaignData, utm])
-  const allCampaigns = groupedAllCampaigns.length >= groupedCampaigns.length ? groupedAllCampaigns : groupedCampaigns
+  const allCampaigns = ordered(groupedAllCampaigns.length >= groupedCampaigns.length ? groupedAllCampaigns : groupedCampaigns)
 
   // ── Paging: one pager, keyed on the whole context ──
   const activeCount = view === 'referrers' ? allReferrers.length : view === 'channels' ? filteredChannels.length : allCampaigns.length
   const pageCount = Math.max(1, Math.ceil(activeCount / LIMIT))
-  const [page, setPage] = useCardPage(`${view}|${view === 'campaigns' ? utm : ''}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
+  // In the frame a new order reads as page 1 too.
+  const [page, setPage] = useCardPage(`${view}|${view === 'campaigns' ? utm : ''}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}${frame ? `|${sort.key}:${sort.dir}` : ''}`, pageCount)
   const slice = <T,>(rows: T[]) => rows.slice((page - 1) * LIMIT, page * LIMIT)
   const displayedReferrers = slice(allReferrers)
   // The favicons of this page and of the pages on either side, asked for before a page flip or a tab switch
@@ -309,7 +315,7 @@ export default function Sources({
               className="h-7 min-w-[7.5rem] text-xs"
             />
           )}
-          <MetricUnitLabel />
+          {frame ? <SortHead columns={VISITORS_COLUMN} sort={sort} onSort={setSort} /> : <MetricUnitLabel />}
         </div>
       </div>
 

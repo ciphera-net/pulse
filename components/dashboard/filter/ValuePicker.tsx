@@ -106,7 +106,7 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
 
   const dimLabel = dimension ? (DIMENSION_LABELS[dimension] ?? dimension) : 'value'
 
-  const renderRow = (value: string, label: string, checked: boolean, count?: number) => (
+  const renderRow = (value: string, label: string, checked: boolean, count?: number, country?: string) => (
     <button
       key={value}
       type="button"
@@ -133,7 +133,7 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
       </span>
       {dimension && (
         <span className="flex h-4 w-4 items-center justify-center flex-shrink-0 [&_svg]:h-4 [&_svg]:w-4 [&_img]:h-4 [&_img]:w-4 [&_img]:object-contain">
-          {getFilterValueIcon(dimension, value)}
+          {getFilterValueIcon(dimension, value, country)}
         </span>
       )}
       <span className="truncate text-white flex-1 min-w-0">{label}</span>
@@ -196,7 +196,7 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
           className="max-h-52 overflow-y-auto border-t border-neutral-800"
         >
           {selectedExtras.map(v => renderRow(v, v, true))}
-          {filtered.map(s => renderRow(s.value, s.label, values.includes(s.value), s.count))}
+          {filtered.map(s => renderRow(s.value, s.label, values.includes(s.value), s.count, s.country))}
           {fetchFailed && (
             <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-red-400/90 border-t border-neutral-800">
               Suggestions unavailable

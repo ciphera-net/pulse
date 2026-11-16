@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 import { OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
 import { setFor, useSavedFilters, type SavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
-import { labelOf, type PageValues } from './values'
+import { labelOf, type PageValues, type PlaceCountries } from './values'
 import { valueIcon } from './SearchFilter'
 import { NameField, SavedAs, suggestName, valueText } from './saved'
 
@@ -38,8 +38,8 @@ export const OPPOSITE: Record<DimensionFilter['operator'], DimensionFilter['oper
 
 const excluded = (f: DimensionFilter) => f.operator === 'is_not' || f.operator === 'not_contains'
 const tone = (out: boolean) => (out ? 'border-white/[0.12] bg-white/[0.04] text-neutral-200' : 'border-brand-orange/20 bg-brand-orange/10 text-brand-ink')
-function Icon({ f }: { f: DimensionFilter }) {
-  return <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.values[0])}</span>
+function Icon({ f, places }: { f: DimensionFilter; places?: PlaceCountries }) {
+  return <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.values[0], places?.[f.dimension]?.[f.values[0]])}</span>
 }
 
 interface FiltersBoxProps {
@@ -48,6 +48,8 @@ interface FiltersBoxProps {
   onApply: (filter: DimensionFilter, editingIndex: number | null) => void
   onRemove: (index: number) => void
   pageValues: PageValues
+  /** The country of each city and region the page lists: their pills draw that country's flag (placeCountriesFrom). */
+  places?: PlaceCountries
 }
 
 interface BoxProps extends FiltersBoxProps {
@@ -149,7 +151,7 @@ function SaveRow({ filters, saved, savedFilters, pageValues }: { filters: Dimens
 }
 
 /** One filter as a pill: its kind, its operator (a press flips it), its values, its x, and the bookmark that saves it. */
-function Pill({ f, i, onApply, onRemove, pageValues, savedFilters }: { f: DimensionFilter; i: number; savedFilters: SavedFilters } & Omit<FiltersBoxProps, 'filters'>) {
+function Pill({ f, i, onApply, onRemove, pageValues, places, savedFilters }: { f: DimensionFilter; i: number; savedFilters: SavedFilters } & Omit<FiltersBoxProps, 'filters'>) {
   const out = excluded(f)
   const kind = labelOf(f.dimension)
   const pillRef = useRef<HTMLSpanElement>(null)
@@ -161,7 +163,7 @@ function Pill({ f, i, onApply, onRemove, pageValues, savedFilters }: { f: Dimens
     <>
       <span ref={pillRef} className={cn('inline-flex h-10 shrink-0 items-center border text-sm font-medium', tone(out))} data-testid="filter-pill">
         <span className="flex h-full items-center gap-1.5 ps-3 pe-1.5">
-          <Icon f={f} />
+          <Icon f={f} places={places} />
           <span className={out ? 'text-neutral-400' : 'text-brand-ink/70'}>{kind}</span>
         </span>
         <button
@@ -219,7 +221,7 @@ function Pill({ f, i, onApply, onRemove, pageValues, savedFilters }: { f: Dimens
 }
 
 /** The list behind the box: each filter a row of its own, reaching the menu's edges, then the row that saves them. */
-function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose, savedFilters }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
+function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, onClose, savedFilters }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
   const saved = savedFilters.on ? setFor(filters, savedFilters.sets) : null
   return (
     <AnchoredMenu anchor={anchor} width={340} label="Filters on" onClose={onClose} testid="filters-menu">
@@ -229,7 +231,7 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose, 
           const kind = labelOf(f.dimension)
           return (
             <div key={`${f.dimension}-${i}`} className="flex h-11 items-center gap-2 ps-4 text-sm" data-testid="filters-menu-row">
-              <Icon f={f} />
+              <Icon f={f} places={places} />
               <span className="shrink-0 text-neutral-500">{kind}</span>
               <button
                 type="button"
@@ -253,7 +255,7 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose, 
   )
 }
 
-export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues }: BoxProps) {
+export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues, places }: BoxProps) {
   const savedFilters = useSavedFilters()
   // The list hangs from the whole box: the box and its x together.
   const ref = useRef<HTMLSpanElement>(null)
@@ -262,7 +264,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
   const many = filters.length > 1
   useEffect(() => { if (!many) setOpen(false) }, [many])
   if (filters.length === 0) return null
-  if (!many) return <Pill f={filters[0]} i={0} onApply={onApply} onRemove={onRemove} pageValues={pageValues} savedFilters={savedFilters} />
+  if (!many) return <Pill f={filters[0]} i={0} onApply={onApply} onRemove={onRemove} pageValues={pageValues} places={places} savedFilters={savedFilters} />
   return (
     <>
       {/* The box and its x are one bordered control, as a single filter's pill and its x are. */}
@@ -277,7 +279,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
         >
           <span className="flex items-center -space-x-1" aria-hidden="true">
             {filters.slice(0, 3).map((f, i) => (
-              <span key={i} className="flex h-5 w-5 items-center justify-center bg-neutral-900 ring-1 ring-brand-orange/20"><Icon f={f} /></span>
+              <span key={i} className="flex h-5 w-5 items-center justify-center bg-neutral-900 ring-1 ring-brand-orange/20"><Icon f={f} places={places} /></span>
             ))}
           </span>
           {filters.length} filters
@@ -297,7 +299,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {open && ref.current && (
-            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} onClose={() => setOpen(false)} savedFilters={savedFilters} />
+            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} places={places} onClose={() => setOpen(false)} savedFilters={savedFilters} />
           )}
         </AnimatePresence>,
         document.body,

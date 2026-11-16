@@ -10,13 +10,15 @@ import {
   CursorClick,
   MapPin,
   Buildings,
-  Broadcast,
   FileText,
   Tag,
   FrameCorners,
 } from '@phosphor-icons/react'
 import { CountryFlag } from '@/components/ui/CountryFlag'
+import { FaviconOr } from '@/components/ui/FaviconOr'
+import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import { hasFlag } from '@/lib/flags'
+import { getTimezoneCountry, languageFlagCode } from '@/lib/dashboard/placeFlags'
 const ICON_SIZE = 20
 
 function brandIcon(slug: string, alt: string) {
@@ -477,11 +479,17 @@ export function getCountryFlagIcon(code: string): ReactNode {
 }
 
 /**
- * Icon for a filter-suggestion value, matching the dashboard panels'
- * iconography (flags in Locations, brand icons in TechSpecs, favicons in
- * Referrers) so the filter popover reads as the same product.
+ * Icon for a filter value, drawn as the dashboard's blocks draw the same value (flags as in Locations, brand icons
+ * as in Technology, favicons and channel marks as in Sources) so the Filter menu, a filter's pill and the blocks
+ * read as one product (16-11-2026, every kind checked against its block):
+ *   - a referrer's favicon falls back to the house's artwork or the globe when it fails or is the proxy's 16 px
+ *     "no icon" (FaviconOr), never the browser's broken-image mark;
+ *   - a city and a region draw their COUNTRY's flag, which only the caller knows (`country`, from the suggestion
+ *     read or the page's own lists). Without one (the funnel breakdown's rows carry none) they keep the kind's mark:
+ *     the globe means "belongs to no country", which a city never does;
+ *   - a language draws its tag's region, else its likely region; a timezone its zone's country; else the globe.
  */
-export function getFilterValueIcon(dimension: string, value: string): ReactNode {
+export function getFilterValueIcon(dimension: string, value: string, country?: string): ReactNode {
   switch (dimension) {
     case 'country':
       return getCountryFlagIcon(value)
@@ -493,17 +501,21 @@ export function getFilterValueIcon(dimension: string, value: string): ReactNode 
       return getDeviceIcon(value)
     case 'referrer': {
       const favicon = getReferrerFavicon(value)
-      if (favicon) return <img src={favicon} alt="" loading="lazy" />
+      if (favicon) return <FaviconOr key={favicon} url={favicon} fallback={getReferrerIcon(value)} />
       return getReferrerIcon(value)
     }
     case 'channel':
-      return <Broadcast className="text-neutral-500" />
+      return getChannelIcon(value)
     case 'page':
       return <FileText className="text-neutral-500" />
     case 'region':
-      return <MapPin className="text-neutral-500" />
+      return country ? getCountryFlagIcon(country) : <MapPin className="text-neutral-500" />
     case 'city':
-      return <Buildings className="text-neutral-500" />
+      return country ? getCountryFlagIcon(country) : <Buildings className="text-neutral-500" />
+    case 'language':
+      return getCountryFlagIcon(languageFlagCode(value))
+    case 'timezone':
+      return getCountryFlagIcon(getTimezoneCountry(value))
     case 'screen_resolution':
       return <FrameCorners className="text-neutral-500" />
     case 'event_name':

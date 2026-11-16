@@ -16,6 +16,7 @@ import { useOutboundUrls } from '@/lib/swr/dashboard'
 import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { getReferrerFavicon } from '@/lib/utils/icons'
+import { sortRows, type Sort } from '@/components/dashboard/SortHead'
 
 // ---------------------------------------------------------------------------
 // The Pages block's fourth tab in the new dashboard frame: Outbound (15-11-2026).
@@ -42,6 +43,9 @@ const LIMIT = 7
 /** Longest bar = 75% of the row, the house cap (as rowBarWidth). */
 const BAR_CAP = 75
 
+/** The tab's first order: clicks, high to low, the order the server sends. */
+const CLICKS_DESC: Sort<'clicks'> = { key: 'clicks', dir: 'desc' }
+
 /** Under a page filter. The Outbound card's line, with a colon where it has a dash. */
 export const OUTBOUND_NOT_FILTERED = 'Outbound is not filtered yet: these are whole-site clicks.'
 
@@ -58,12 +62,15 @@ export interface OutboundLinksTabProps {
   liveMinutes?: number
   /** The site's "Outbound links" option is off (Site settings, General). */
   trackingOff?: boolean
+  /** The order the block's head asks for (its clicks column, 16-11-2026). Clicks, high to low, when absent. */
+  sort?: Sort<'clicks'>
 }
 
-export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts, goalsImported, filters, live = false, liveMinutes, trackingOff = false }: OutboundLinksTabProps) {
+export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts, goalsImported, filters, live = false, liveMinutes, trackingOff = false, sort = CLICKS_DESC }: OutboundLinksTabProps) {
   // Mounted only while its tab is open, so the read is made on the first visit to the tab and not with the page.
   const { data, error, isLoading } = useOutboundUrls(siteId, dateRange.start, dateRange.end, period, liveMinutes)
-  const rows = useMemo(() => outboundLinkRows(data), [data])
+  // Sorted before paging, so a page is a slice of the asked order; ties keep the server's order.
+  const rows = useMemo(() => sortRows(outboundLinkRows(data), sort, (row) => row.clicks), [data, sort])
 
   // The share's denominator is EVERY outbound click of the range, the native part of the goal count where the
   // server says which that is (an import can add clicks no row here can show). The summed rows are the fallback.
@@ -73,7 +80,8 @@ export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts
   const maxClicks = rows.reduce((m, r) => Math.max(m, r.clicks), 0)
 
   const pageCount = Math.max(1, Math.ceil(rows.length / LIMIT))
-  const [page, setPage] = useCardPage(`outbound|${filters ?? ''}|${dateRange.start}|${dateRange.end}|${liveMinutes ?? ''}`, pageCount)
+  // A new order reads as page 1, as a new range does.
+  const [page, setPage] = useCardPage(`outbound|${filters ?? ''}|${dateRange.start}|${dateRange.end}|${liveMinutes ?? ''}|${sort.key}:${sort.dir}`, pageCount)
   const displayed = rows.slice((page - 1) * LIMIT, page * LIMIT)
   // An icon that failed to load once is the globe for good, so it is not asked for again on every draw.
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
