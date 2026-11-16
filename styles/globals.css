@@ -215,9 +215,16 @@
    * 255 in dark and 10 in light). `.glass-surface` and `.glass-overlay` above are the old flat surfaces and are
    * not these.
    *
-   * A BLOCK carries its fill and its blur on ::before, never on itself. An element with a backdrop filter is a
-   * backdrop root (a see-through pop-up inside it would blur only the block's own content) and the containing
-   * block of every fixed descendant. The pseudo-element is neither for the block's content. */
+   * A BLOCK carries its fill on ::before, never on itself: a filter or a backdrop filter on the block would make it
+   * a backdrop root (a see-through pop-up inside it would blur only the block's own content) and the containing
+   * block of every fixed descendant. The pseudo-element is neither for the block's content.
+   *
+   * 🔴 The block has NO blur of its own (ruling R64, 16-11-2026). It had one (24 px), sampling the flat page
+   * behind it, where it drew nothing: without it, 511 pixels of a 1440 x 1000 dashboard differ, in two small
+   * spots. The toolbar's band (below) blurs the blocks as the page moves under it, and a blur over blurs is the
+   * costly case: on macOS in Low Power Mode the band vanished for single frames, the blocks crisp in its place
+   * (a screen recording, 15-11-2026; never reproduced in a headless browser). So the band is the page's only
+   * blur. */
   .glass-block {
     position: relative;
     isolation: isolate;
@@ -229,15 +236,16 @@
     z-index: -1;
     pointer-events: none;
     background-color: rgb(var(--card) / var(--glass-block));
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
-    backdrop-filter: blur(24px) saturate(1.5);
   }
-  /* * The band behind a toolbar that stays at the top while the page moves under it. Its own element. */
+  /* * The band behind a toolbar that stays at the top while the page moves under it. Its own element, on a GPU
+   * layer of its own (R64, the flicker above): the compositor keeps its surface instead of building it again with
+   * the frame. The band is empty, so the layer changes no pixel. */
   .glass-band {
     background-color: rgb(var(--background) / var(--glass-band));
     border-bottom: 1px solid rgb(var(--white) / 0.06);
     -webkit-backdrop-filter: blur(24px) saturate(1.5);
     backdrop-filter: blur(24px) saturate(1.5);
+    transform: translateZ(0);
   }
   /* * A list that scrolls INSIDE a box of a fixed height: the Filter menu's list (components/dashboard/filter/search/
    * SearchFilter). A thin bar in the ink's colour, and the page under it does not take over the scroll at either end.

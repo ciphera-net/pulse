@@ -127,12 +127,27 @@ describe('glass lives in the stylesheet, on tokens both themes define', () => {
     for (const name of ['.glass-block::before', '.glass-band', '.glass-panel']) expect(css).toContain(name)
   })
 
-  it('keeps a block\'s blur off the block itself', () => {
+  it('keeps any filter off the block itself', () => {
     // On the element, a backdrop filter makes it the containing block of every fixed descendant and a backdrop
     // root for anything see-through inside it. The block's own rule may set position and isolation, no filter.
     const own = css.slice(css.indexOf('.glass-block {'), css.indexOf('.glass-block::before'))
     expect(own).toContain('isolation: isolate')
     expect(own).not.toContain('backdrop-filter')
+  })
+
+  it('makes the toolbar band the page\'s only blur, on a layer of its own (R64)', () => {
+    // A rule's body: from its selector to the first closing brace after it.
+    const body = (selector: string) => {
+      const at = css.indexOf(`${selector} {`)
+      expect(at, selector).toBeGreaterThanOrEqual(0)
+      return css.slice(at, css.indexOf('}', at))
+    }
+    // The blocks keep their see-through fill and drop the blur that drew nothing over the flat page (the band's
+    // one-frame flicker on macOS in Low Power Mode was a blur over blurs).
+    expect(body('.glass-block::before')).toContain('background-color: rgb(var(--card) / var(--glass-block))')
+    expect(body('.glass-block::before')).not.toContain('backdrop-filter')
+    expect(body('.glass-band')).toContain('backdrop-filter: blur(24px) saturate(1.5);')
+    expect(body('.glass-band')).toContain('transform: translateZ(0);')
   })
 
   it('gives each theme its own fill for each recipe', () => {
