@@ -39,8 +39,12 @@ interface EmptyStateProps {
 
 const ACTION_BUTTON =
   'mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]'
-/** The block's action: the dashboard's bordered button, the border brightening under the pointer. */
-const ACTION_BLOCK = cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 'mt-2 font-normal ease-apple')
+/**
+ * The block's action: the dashboard's bordered button, the border brightening under the pointer. Asked of Facet when
+ * a block draws one, never when this module loads: a page's empty state must not depend on it (tests that replace
+ * Facet with a stub of the parts a page uses import this module too).
+ */
+const blockAction = () => cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 'mt-2 font-normal ease-apple')
 
 /**
  * Empty state — use in place of inline "No X" fallbacks.
@@ -53,7 +57,7 @@ const ACTION_BLOCK = cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 'mt-2
  */
 export function EmptyState({ icon, title, description, action, variant = 'page', className }: EmptyStateProps) {
   const block = variant === 'block'
-  const actionClass = block ? ACTION_BLOCK : ACTION_BUTTON
+  const actionClass = action ? (block ? blockAction() : ACTION_BUTTON) : undefined
   const actionButton = action ? (
     action.href ? (
       <Link
