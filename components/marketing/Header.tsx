@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import Image from 'next/image'
 import { cdnUrl } from '@/lib/cdn'
 import { DOCS_ORIGIN } from '@/lib/docs'
@@ -138,7 +138,7 @@ export function Header() {
       <div className="mx-auto w-full max-w-6xl py-3 sm:border-x sm:border-border">
         <nav className="flex h-16 w-full items-center justify-between px-6">
           <div className="flex items-center gap-5">
-            <Link href="/" className="-ml-2 flex items-center gap-2 p-2 hover:bg-accent">
+            <AppLink href="/" className="-ml-2 flex items-center gap-2 p-2 hover:bg-accent">
               <Image
                 src={cdnUrl('/pulse_icon_no_margins.png')}
                 alt="Pulse"
@@ -149,7 +149,7 @@ export function Header() {
                 unoptimized
               />
               <span className="text-xl font-bold tracking-tight text-foreground">Pulse</span>
-            </Link>
+            </AppLink>
             <div className="hidden md:flex">
               <NavigationMenu>
                 <NavigationMenuList>
@@ -166,9 +166,9 @@ export function Header() {
                       <div className="p-2">
                         <p className="text-sm text-muted-foreground">
                           Want to see it live?{' '}
-                          <Link href="/demo" className="font-medium text-foreground hover:underline">
+                          <AppLink href="/demo" className="font-medium text-foreground hover:underline">
                             Open the demo
-                          </Link>
+                          </AppLink>
                         </p>
                       </div>
                     </NavigationMenuContent>
@@ -221,7 +221,7 @@ export function Header() {
                 action — back to the app — instead of Sign in/Get started. */}
             {isSignedIn ? (
               <Button asChild>
-                <Link href="/sites">Dashboard</Link>
+                <AppLink href="/sites">Dashboard</AppLink>
               </Button>
             ) : (
               <>
@@ -279,14 +279,14 @@ export function Header() {
                     {link.title}
                   </a>
                 ) : (
-                  <Link
+                  <AppLink
                     key={link.href}
                     href={link.href}
                     onClick={closeMenu}
                     className="py-2 text-base text-foreground transition-colors duration-fast motion-reduce:transition-none hover:text-muted-foreground"
                   >
                     {link.title}
-                  </Link>
+                  </AppLink>
                 ),
               )}
             </React.Fragment>
@@ -295,7 +295,7 @@ export function Header() {
         <div className="flex flex-col gap-2">
           {isSignedIn ? (
             <Button className="w-full" asChild>
-              <Link href="/sites">Dashboard</Link>
+              <AppLink href="/sites">Dashboard</AppLink>
             </Button>
           ) : (
             <>

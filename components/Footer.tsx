@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import Image from 'next/image'
 import { GithubIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
@@ -97,7 +97,7 @@ function FooterLinkItem({
   )
 }
 
-export function Footer({ LinkComponent = Link }: FooterProps) {
+export function Footer({ LinkComponent = AppLink }: FooterProps) {
   const Component = LinkComponent
   const year = new Date().getFullYear()
 
@@ -114,7 +114,7 @@ export function Footer({ LinkComponent = Link }: FooterProps) {
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-[1.5fr_repeat(5,1fr)]">
             {/* Brand column — spans the full row on small screens */}
             <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-              <Link href="/" className="flex items-center gap-2">
+              <AppLink href="/" className="flex items-center gap-2">
                 <Image
                   src={cdnUrl('/pulse_icon_no_margins.png')}
                   alt=""
@@ -127,7 +127,7 @@ export function Footer({ LinkComponent = Link }: FooterProps) {
                 <span className="font-display text-lg font-semibold tracking-tight text-foreground">
                   Pulse
                 </span>
-              </Link>
+              </AppLink>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
                 Simple, privacy-first web analytics. Sets no cookies: insight without surveillance.
               </p>

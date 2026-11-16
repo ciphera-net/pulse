@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { AppLink } from '@/components/AppLink'
 import { Button } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
@@ -30,16 +30,16 @@ export default function NotFound() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link href="/">
+          <AppLink href="/">
             <Button variant="default" className="px-8 py-3">
               Go back home
             </Button>
-          </Link>
-          <Link href="/faq">
+          </AppLink>
+          <AppLink href="/faq">
             <Button variant="secondary" className="px-8 py-3">
               View FAQ
             </Button>
-          </Link>
+          </AppLink>
         </div>
       </div>
     </div>
