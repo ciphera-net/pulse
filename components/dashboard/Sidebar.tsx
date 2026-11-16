@@ -27,7 +27,6 @@ import { PULSE_HOME_URL } from '@/components/public/links'
 import { scopeHref, useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 import { NAV_GROUPS, SETTINGS_ITEM, publicNavGroups, type IconWeight, type NavGroup, type NavItem } from './siteNav'
 import { Badge } from '@ciphera-net/facet'
-import { useFeature } from '@/lib/features'
 import { TOOLTIP_PANEL_CLASS } from '@/lib/ui/popupSurface'
 
 const EXPANDED = 256
@@ -355,9 +354,8 @@ function SidebarContent({
   // the links already use to paint themselves active.
   const pathname = usePathname()
   const activeKey = pendingHref ?? pathname
-  // * A row with a beta flag shows only while the team's flag is on (siteNav's `flag`): Analyst, behind barry.
-  const barryOn = useFeature('barry') === true
-  const shown = (item: NavItem) => !item.flag || (item.flag === 'barry' && barryOn)
+  // * A row with a beta flag (siteNav's `flag`) shows only while it is on; no row has one since Analyst left beta.
+  const shown = (item: NavItem) => !item.flag
   // The home group's heading follows the team-state signal (PULSE-59): it
   // never says team to somebody who works alone.
   const teamState = useTeamState()

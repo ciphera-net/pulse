@@ -8,8 +8,6 @@ import { SWRConfig } from 'swr'
 import { ApiError } from '@/lib/api/client'
 import type { AnalystMemories, AnalystMemory } from '@/lib/api/analyst'
 
-let mockAnalyst: boolean | null = true
-vi.mock('@/lib/features', () => ({ useFeature: () => mockAnalyst }))
 
 const getAnalystMemories = vi.fn()
 const setAnalystMemoriesEnabled = vi.fn()
@@ -100,7 +98,6 @@ const renderPage = () =>
 
 beforeEach(() => {
   cleanup()
-  mockAnalyst = true
   getAnalystMemories.mockReset().mockResolvedValue(list())
   setAnalystMemoriesEnabled.mockReset().mockImplementation(async (_s: string, enabled: boolean) => ({ enabled }))
   updateAnalystMemory.mockReset().mockImplementation(async (_s: string, id: string, body: string) => memory(id, body, '2026-11-10T09:00:00Z'))
@@ -213,17 +210,11 @@ describe('Site Settings, Analyst', () => {
     expect(screen.getByText('0 of 20')).toBeInTheDocument()
   })
 
-  it('tells a team without Analyst so, without reading anything', async () => {
-    mockAnalyst = false
-    renderPage()
-    expect(await screen.findByText('Analyst is not on for this team')).toBeInTheDocument()
-    expect(getAnalystMemories).not.toHaveBeenCalled()
-  })
-
-  it('tells a team the server answers 404 for the same', async () => {
+  it('says a 404 (the kill switch, or Analyst not configured) failed to load, never that there are no memories', async () => {
     getAnalystMemories.mockRejectedValue(new ApiError('Not found', 404))
     renderPage()
-    expect(await screen.findByText('Analyst is not on for this team')).toBeInTheDocument()
+    expect(await screen.findByText("Couldn't load the memories")).toBeInTheDocument()
+    expect(screen.queryByText('No memories yet')).toBeNull()
   })
 
   it('says a failed read failed, never that there are no memories, and reads again on Try again', async () => {
