@@ -34,7 +34,7 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
     // (PULSE-164, one row per save of the DNT/GPC toggles), plus
     // org_beta_features_changed (PUL-40, one row per switch of Settings → Beta), plus
     // site_analyst_memories_changed (14-11-2026, Analyst's memories turned on or off), plus
-    // saved_filter_created and saved_filter_deleted (16-11-2026, the saved-filters beta).
+    // saved_filter_created and saved_filter_deleted (16-11-2026, saved filters).
     const writtenToday = [
       'admin_plan_granted', 'admin_refund_failed', 'admin_refund_issued', 'admin_verdict_revoked',
       'billing_checkout_started', 'billing_payment_method_update_started', 'billing_refund_failed',
