@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useCan } from '@/lib/auth/permissions'
 import { useActiveSite } from '@/components/settings/active-site'
 import { landingPage, pagesVisibleTo } from '@/components/settings/nav'
-import { useFeature } from '@/lib/features'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 
 /**
@@ -17,14 +16,13 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 export default function SettingsIndexPage() {
   const router = useRouter()
   const { sites, isLoading } = useActiveSite()
-  const analyst = useFeature('barry')
   const pages = pagesVisibleTo({
     'sites.edit': useCan('sites.edit'),
     'goals.manage': useCan('goals.manage'),
     'billing.view': useCan('billing.view'),
     'integrations.manage': useCan('integrations.manage'),
-  }, { barry: analyst === true })
-  const target = isLoading || analyst === null ? undefined : landingPage(pages, sites.length > 0)
+  })
+  const target = isLoading ? undefined : landingPage(pages, sites.length > 0)
 
   useEffect(() => {
     if (target) router.replace(target.href)

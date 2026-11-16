@@ -16,10 +16,6 @@ vi.mock('@/lib/api/sites', () => ({
 vi.mock('@ciphera-net/facet-hold', async () =>
   (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
-// Whether the team has Analyst (the barry beta), switched per test.
-const features = vi.hoisted(() => ({ barry: false as boolean | null }))
-vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'barry' ? features.barry : false) }))
-
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...args: any[]) => args.flat().filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
@@ -41,7 +37,6 @@ const onReset = vi.fn()
 const onClose = vi.fn()
 
 beforeEach(() => {
-  features.barry = false
   resetSiteData.mockClear()
   onReset.mockClear()
   onClose.mockClear()
@@ -61,25 +56,13 @@ function selectModule(label: string) {
 
 describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
   // * An analytics reset deletes the site's Analyst chats too (their answers quote the figures it erases), so a team
-  // * with Analyst is told; every other team keeps the caption as it was.
-  it("tells a team with Analyst that its chats about the site go with the visits and events", () => {
-    features.barry = true
+  // * is told (every team has Analyst since 16-11-2026).
+  it("says the site's Analyst chats go with the visits and events", () => {
     renderModal()
     expect(
       screen.getByText("Every pageview, visit and event, the totals made from them, and your team's Analyst chats about this site. An import in progress stops."),
     ).toBeInTheDocument()
     expect(screen.queryByText('Every pageview, visit and event, and the totals made from them. An import in progress stops.')).toBeNull()
-  })
-
-  it("keeps the caption without Analyst for a team that does not have it, and while the team's betas load", () => {
-    features.barry = null
-    const { unmount } = renderModal()
-    expect(screen.queryByText(/Analyst chats/)).toBeNull()
-    unmount()
-    features.barry = false
-    renderModal()
-    expect(screen.getByText('Every pageview, visit and event, and the totals made from them. An import in progress stops.')).toBeInTheDocument()
-    expect(screen.queryByText(/Analyst chats/)).toBeNull()
   })
 
   it('lists every reset module and stays disabled until one is picked', () => {
