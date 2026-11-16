@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { BookmarkSimple, CaretRight, X } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
-import { OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
+import { OPERATOR_LABELS, type DimensionFilter, type FilterMode } from '@/lib/filters'
 import { setFor, useSavedFilters, type SavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
 import { labelOf, type PageValues, type PlaceCountries } from './values'
 import { valueIcon } from './SearchFilter'
@@ -50,6 +50,12 @@ interface FiltersBoxProps {
   pageValues: PageValues
   /** The country of each city and region the page lists: their pills draw that country's flag (placeCountriesFrom). */
   places?: PlaceCountries
+  /**
+   * Match all or Match any, as the page reads its filters (lib/filters.ts, modeFor), and its switch. Absent `onMode`:
+   * the page offers no switch (the match-any beta is off, or the page is not the dashboard).
+   */
+  mode?: FilterMode
+  onMode?: (mode: FilterMode) => void
 }
 
 interface BoxProps extends FiltersBoxProps {
@@ -120,7 +126,7 @@ function AnchoredMenu({ anchor, width, label, onClose, testid, children }: {
 }
 
 /** The box list's last row: saves the filters on under a name typed in place; once saved, says under which. */
-function SaveRow({ filters, saved, savedFilters, pageValues }: { filters: DimensionFilter[]; saved: SavedSet | null; savedFilters: SavedFilters; pageValues: PageValues }) {
+function SaveRow({ filters, saved, savedFilters, pageValues, mode }: { filters: DimensionFilter[]; saved: SavedSet | null; savedFilters: SavedFilters; pageValues: PageValues; mode: FilterMode }) {
   const [naming, setNaming] = useState(false)
   if (saved) return <SavedAs name={saved.name} />
   if (!savedFilters.canEdit) return null
@@ -130,7 +136,7 @@ function SaveRow({ filters, saved, savedFilters, pageValues }: { filters: Dimens
         initial={suggestName(filters, pageValues)}
         placeholder="Name these filters"
         label="Name for these filters"
-        onSave={async (name) => { await savedFilters.save(name, filters); setNaming(false) }}
+        onSave={async (name) => { await savedFilters.save(name, filters, mode); setNaming(false) }}
         onCancel={() => setNaming(false)}
       />
     )
@@ -221,8 +227,8 @@ function Pill({ f, i, onApply, onRemove, pageValues, places, savedFilters }: { f
 }
 
 /** The list behind the box: each filter a row of its own, reaching the menu's edges, then the row that saves them. */
-function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, onClose, savedFilters }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
-  const saved = savedFilters.on ? setFor(filters, savedFilters.sets) : null
+function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, onClose, savedFilters, mode = 'all' }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
+  const saved = savedFilters.on ? setFor(filters, savedFilters.sets, mode) : null
   return (
     <AnchoredMenu anchor={anchor} width={340} label="Filters on" onClose={onClose} testid="filters-menu">
       <div data-menu-list="" className="divide-y divide-white/[0.06]">
@@ -249,13 +255,13 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, o
             </div>
           )
         })}
-        {savedFilters.on && <SaveRow filters={filters} saved={saved} savedFilters={savedFilters} pageValues={pageValues} />}
+        {savedFilters.on && <SaveRow filters={filters} saved={saved} savedFilters={savedFilters} pageValues={pageValues} mode={mode} />}
       </div>
     </AnchoredMenu>
   )
 }
 
-export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues, places }: BoxProps) {
+export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues, places, mode = 'all', onMode }: BoxProps) {
   const savedFilters = useSavedFilters()
   // The list hangs from the whole box: the box and its x together.
   const ref = useRef<HTMLSpanElement>(null)
@@ -299,7 +305,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {open && ref.current && (
-            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} places={places} onClose={() => setOpen(false)} savedFilters={savedFilters} />
+            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} places={places} onClose={() => setOpen(false)} savedFilters={savedFilters} mode={mode} onMode={onMode} />
           )}
         </AnimatePresence>,
         document.body,

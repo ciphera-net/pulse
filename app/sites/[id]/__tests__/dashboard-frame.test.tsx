@@ -335,3 +335,63 @@ describe('the new frame', () => {
     }
   })
 })
+
+// Match any (R65 of 16-11-2026; lib/filters.ts): the mode is part of the ONE filters string, so it reaches every read
+// and the address or none of them. The team's beta decides whether the page may be in it at all.
+describe('Match any', () => {
+  const ANY = 'any:v2:country|is|NO,device|is|mobile'
+  const ALL = 'v2:country|is|NO,device|is|mobile'
+  const flag = (value: boolean | null) => h.feature.mockImplementation((name: string) => (name === 'match-any' ? value : true))
+  /** The filters the dashboard's own read, the previous period's read and a block were last handed, and the address's. */
+  const sent = () => ({
+    dashboard: h.useDashboard.mock.calls.at(-1)?.[4],
+    previous: h.useStats.mock.calls.at(-1)?.[3],
+    block: h.captured.Sources?.filters,
+    address: new URL(window.location.href).searchParams.get('filters'),
+  })
+  const everywhere = (filters: string) => ({ dashboard: filters, previous: filters, block: filters, address: filters })
+
+  it('an address that asks for Any reads Any everywhere, for a team with the beta', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ANY))
+  })
+
+  it('is believed while /me has not answered: the reads go out once, as the address asks', async () => {
+    flag(null)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ANY))
+    // No read of this page ever went out as Match all.
+    expect(h.useDashboard.mock.calls.every((call) => call[4] === ANY)).toBe(true)
+  })
+
+  it('a team without the beta reads Match all, and the address is rewritten to say so', async () => {
+    flag(false)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ALL))
+  })
+
+  it('Match all stays byte for byte what it was', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ALL })
+    await mount()
+    expect(sent()).toEqual(everywhere(ALL))
+  })
+
+  it('one filter alone is Match all whatever the address says', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: 'any:v2:country|is|NO' })
+    await mount()
+    expect(sent()).toEqual(everywhere('v2:country|is|NO'))
+  })
+
+  it('an event filter beside the others keeps the page on Match all (the server refuses Any there)', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: 'any:v2:country|is|NO,device|is|mobile,event|is|signup' })
+    await mount()
+    expect(sent()).toEqual(everywhere('v2:country|is|NO,device|is|mobile,event|is|signup'))
+  })
+})
