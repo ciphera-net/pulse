@@ -25,6 +25,8 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * `site_script_features_changed` is one row per save of General's "What the script counts" switches (scroll,
  * outbound, downloads, interactions and its kinds), flat: each changed switch and its `previous_` value. Since
  * tracker v1.9.0 (14-11-2026) a save takes effect on the site at once, so the row dates the change.
+ * `saved_filter_created` and `saved_filter_deleted` are one row each time a team saves the filters that are on under
+ * a name, or deletes such a set (16-11-2026, the saved-filters beta): `site_id`, `saved_filter_id` and `name`.
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.
@@ -77,6 +79,8 @@ export const AUDIT_ACTIONS = [
   'report_revoked',
   'report_schedule_created',
   'report_schedule_stopped',
+  'saved_filter_created',
+  'saved_filter_deleted',
   'site_analyst_memories_changed',
   'site_created',
   'site_exported',
@@ -158,6 +162,8 @@ export const ACTION_LABELS = {
   report_revoked: 'Deleted report',
   report_schedule_created: 'Scheduled report emails',
   report_schedule_stopped: 'Stopped report emails',
+  saved_filter_created: 'Created saved filter',
+  saved_filter_deleted: 'Deleted saved filter',
   site_analyst_memories_changed: 'Turned Analyst memories on or off',
   site_created: 'Created site',
   site_exported: 'Exported data',

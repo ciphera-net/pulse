@@ -319,6 +319,11 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
     setFilters([])
   }, [])
 
+  // A saved set in place of the filters on, in one change (saved filters, R59: the Filter panel lists the sets).
+  const handleApplySavedFilters = useCallback((next: DimensionFilter[]) => {
+    setFilters(next)
+  }, [])
+
   // A row that filters is a real control and one that cannot is inert text: the cards
   // take no `onFilter` where filtering is refused (a share link).
   const onCardFilter = caps.filters ? handleAddFilter : undefined
@@ -581,7 +586,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
               <TermInfoTip term="imported_history" />
             </span>
           )}
-          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} />
+          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} onApplySet={handleApplySavedFilters} />
         </>
       ) : (
         <>

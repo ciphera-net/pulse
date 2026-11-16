@@ -25,4 +25,7 @@ export const BETAS: readonly Beta[] = [
   { flag: 'monthly-summary', name: 'Monthly summary email', revalidates: [] },
   // Analyst, the AI analyst (PUL-78): its menu row and page read useFeature.
   { flag: 'barry', name: 'Analyst', revalidates: [] },
+  // Saved filters (R59, R60 of 16-11-2026): the filters box's save row and the Filter panel's list read useFeature
+  // (lib/swr/savedFilters.ts).
+  { flag: 'saved-filters', name: 'Saved filters', revalidates: [] },
 ]
