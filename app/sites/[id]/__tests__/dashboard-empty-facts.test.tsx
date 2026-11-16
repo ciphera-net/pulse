@@ -75,9 +75,6 @@ vi.mock('@/components/dashboard/ContentStats', () => ({
   default: (p: Record<string, unknown>) => { h.pages = p; return null },
 }))
 vi.mock('@/components/dashboard/ContentSignals', () => ({ default: () => null }))
-// Today's Outbound block: still imported by the surface, never drawn in the frame.
-vi.mock('@/components/dashboard/Outbound', () => ({ default: () => null }))
-vi.mock('@/components/dashboard/PeakHours', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/DashboardBottom', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/FilterButton', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/FilterPills', () => ({ default: () => null }))
@@ -126,7 +123,6 @@ beforeAll(async () => {
   await Promise.all([
     import('@/components/dashboard/CommandDeck'),
     import('@/components/dashboard/ContentSignals'),
-    import('@/components/dashboard/PeakHours'),
     import('@/components/dashboard/DashboardBottom'),
     import('@/lib/tour/TourController'),
   ])

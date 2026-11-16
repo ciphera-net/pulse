@@ -201,20 +201,10 @@ export const TERMS: Record<string, GlossaryTerm> = {
       'Bucketed by the site\'s own wall clock, not the viewer\'s, so everyone sees the same grid. Hours with no measured value contribute no weight to averages.',
     docs: 'dashboard#peak-hours',
   },
-  outbound_domains: {
-    title: 'Outbound domains',
-    definition:
-      'Clicks on links to any other hostname, grouped by destination — so your own apps on another subdomain count too. Counts are clicks, not people.',
-  },
   outbound_links: {
     title: 'Outbound links',
     definition:
       'Each destination link on its own row, with the path after the host. A row opens the link. Counts are clicks, not people.',
-  },
-  outbound_pages: {
-    title: 'Outbound from page',
-    definition:
-      'The page a visitor was on when they clicked out — where your site sends people away, not where they went.',
   },
   referrers: {
     title: 'Referrers',
@@ -634,13 +624,8 @@ export const DIMENSION_TERM: Record<string, string> = {
   exit_pages: 'exits',
   // Content signals.
   scroll: 'scroll_depth',
-  // Outbound — `links` alone would read as a page-set, and `pages` would
-  // collide with the Content card's term, so all three map explicitly.
-  domains: 'outbound_domains',
-  links: 'outbound_links',
-  from_page: 'outbound_pages',
-  // The Pages block's Outbound tab in the new dashboard frame (15-11-2026) IS the Outbound card's Links list, so
-  // it says the same sentence: one term, reached from two tab ids. The two never stand on one screen.
+  // The Pages block's Outbound tab (15-11-2026) is the old Outbound card's Links list, so it says that list's
+  // sentence. The card, with its Domains and From page views and their two terms, left on 16-11-2026.
   outbound: 'outbound_links',
 }
 

@@ -6,7 +6,6 @@ import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { Card } from '@ciphera-net/facet'
 import { formatCompactNumber, formatDuration } from '@/lib/utils/format'
-import Select from '@/components/ui/select'
 import { ChartLine } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING } from '@/lib/motion'
@@ -39,8 +38,10 @@ import { useDashboardFrame } from '@/lib/dashboard/frame'
 // decision and hold fixed columns.
 //
 // Since 02-09-2026 the share surface mounts this deck too (the /demo
-// catch-up: the authed dashboard is the spec) — with prevStats absent and
-// intervalPicker=false, the two constraints the public-scoped read imposes.
+// catch-up: the authed dashboard is the spec) — with prevStats absent, the
+// constraint the public-scoped read imposes. The chart has no bucket picker
+// for any reader since the dashboard became the frame (removed 16-11-2026):
+// its buckets follow the range.
 // ---------------------------------------------------------------------------
 
 interface CommandDeckProps {
@@ -61,11 +62,6 @@ interface CommandDeckProps {
   period?: string
   /** Realtime mode: an empty window says so in one line (CardEmptyState). */
   live?: boolean
-  multiDayInterval: 'hour' | 'day'
-  setMultiDayInterval: (interval: 'hour' | 'day') => void
-  // False on the public share surface, where the backend clamps every read to
-  // day buckets (F2) and an interval selector would be a dead control.
-  intervalPicker?: boolean
   /**
    * Imported-history provenance, as the responses said it (PULSE-118, dashboard
    * option 2): the current range's (the dashboard's `imported`) and the
@@ -190,12 +186,9 @@ export default function CommandDeck({
   metric,
   onMetricChange,
   interval,
-  intervalPicker = true,
   live = false,
   dateRange,
   period,
-  multiDayInterval,
-  setMultiDayInterval,
   imported,
   prevImported,
   prevData,
@@ -379,7 +372,9 @@ export default function CommandDeck({
                 previous dates are not repeated here — the tooltip names the
                 previous day of every bucket. */}
             {hasPrevSeries && (
-              <div className="order-last flex w-full items-center gap-4 md:order-none md:ml-auto md:w-auto">
+              // md:mr-4: the 16 px the bucket picker's slot left after the legend, kept when the picker went
+              // (16-11-2026), so the legend stays where it was.
+              <div className="order-last flex w-full items-center gap-4 md:order-none md:ml-auto md:mr-4 md:w-auto">
                 <span className="flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-neutral-400">
                   <LegendLine color="var(--chart-1)" />
                   {activeMetric?.label}
@@ -400,32 +395,6 @@ export default function CommandDeck({
                 </button>
               </div>
             )}
-            <div className="ml-auto flex items-center gap-2 md:ml-0">
-              {/* 1h and 24h are fixed-granularity rolling windows, and a
-                  single-day range is fixed HOURLY (owner ruling 02-09-2026:
-                  minute granularity belongs to the 1h range alone) — a
-                  selector on any of them would disagree with the chart it
-                  claims to control. intervalPicker=false (the public share
-                  surface) hides it entirely: the backend clamps public-scoped
-                  reads to day buckets (F2 — an hourly bucket with one visitor
-                  is that person's arrival time), so the selector there was a
-                  control wired to nothing. Past a year the SERVER picks week
-                  or month buckets (All time) and echoes them in `interval`;
-                  the selector then offered "1 day" over weekly points — so it
-                  goes whenever the chart is not drawn in the buckets it
-                  offers. */}
-              {!intervalPicker || period === '1h' || period === '24h' || dateRange.start === dateRange.end || interval === 'week' || interval === 'month' ? null : (
-                <Select
-                  variant="input"
-                  value={multiDayInterval}
-                  onChange={(value) => setMultiDayInterval(value as 'hour' | 'day')}
-                  options={[
-                    { value: 'hour', label: '1 hour' },
-                    { value: 'day', label: '1 day' },
-                  ]}
-                />
-              )}
-            </div>
           </div>
 
           {/* The GRID ROW is the deck's height authority (H2 pick, 01-09-2026:

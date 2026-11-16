@@ -20,9 +20,9 @@ import { HEAT_STEPS } from '@/lib/dashboard/heatmapGrid'
 // stands one figure and its line, the map's own device: at rest the week's busiest two hours, under the pointer the
 // two hours pointed at.
 //
-// It reads what today's heat map reads (components/dashboard/PeakHours.tsx, which stays the heat map of today's
-// arrangement): the hourly series on the SITE's clock, the page's filters, at most the last 366 days (an hourly
-// series is capped at a year), and a failed read is an error with a retry, never an empty week.
+// It reads what the heat map across the page read (Peak hours, which left with the old arrangement on 16-11-2026):
+// the hourly series on the SITE's clock, the page's filters, at most the last 366 days (an hourly series is capped at
+// a year), and a failed read is an error with a retry, never an empty week.
 //
 // The cells behave as the status page's days do (the owner's note of 15-11-2026): there is no gap a pointer can be
 // in, and the square under the pointer grows.
@@ -52,7 +52,7 @@ const LEAD: Record<HeatMetric, string> = {
 
 // The app's own five steps of orange, and the ink at 8% for a cell with nothing in it.
 const NOTHING = 'rgb(var(--neutral-400) / 0.08)'
-// Today's heat map's own five steps (lib/dashboard/heatmapGrid.ts), its first (no colour) left out: NOTHING draws that.
+// The heat map's five steps of orange (lib/dashboard/heatmapGrid.ts), its first (no colour) left out: NOTHING draws that.
 const STEPS = HEAT_STEPS.slice(1)
 const tint = (value: number, max: number) =>
   value <= 0 || max <= 0 ? NOTHING : value === max ? STEPS[4] : STEPS[Math.min(3, Math.floor((value / max) * 4))]

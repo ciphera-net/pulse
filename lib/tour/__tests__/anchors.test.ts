@@ -66,7 +66,7 @@ describe('tour anchor contract', () => {
     ).toEqual([])
   })
 
-  it('the six dimension cards each carry their data-tour-card key, and no others exist', () => {
+  it('the five dimension blocks each carry their data-tour-card key, and no others exist', () => {
     const cards = scanAttrs('data-tour-card')
     const missing = DIMENSION_CARD_KEYS.filter((k) => !cards.has(k))
     const rogue = [...cards.keys()].filter((k) => !DIMENSION_CARD_KEYS.includes(k as never))

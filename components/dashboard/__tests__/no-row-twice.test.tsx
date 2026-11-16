@@ -8,7 +8,6 @@ import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import ContentStats from '@/components/dashboard/ContentStats'
 import ContentSignals from '@/components/dashboard/ContentSignals'
-import Outbound from '@/components/dashboard/Outbound'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,7 +25,7 @@ import { DashboardFrameProvider } from '@/lib/dashboard/frame'
 //      apart. A new block that is not on the list fails here, before it can draw a row twice.
 //
 // The mutations these tests kill: the Source view grouping by the stored value again; the merge taken out of the
-// Outbound rows, the old Outbound card, Technology or Locations; a merged row filtering by one of its stored
+// Outbound rows, Technology or Locations; a merged row filtering by one of its stored
 // values only; a block that draws rows and is not listed.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -35,7 +34,6 @@ const h = vi.hoisted(() => ({
   useCampaignsList: vi.fn(),
   usePagePreview: vi.fn(),
   useOutboundUrls: vi.fn(),
-  useOutboundLinks: vi.fn(),
   useEventPropertyKeys: vi.fn(),
   useEventPropertyValues: vi.fn(),
 }))
@@ -45,7 +43,6 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useCampaignsList: (...a: unknown[]) => h.useCampaignsList(...a),
   usePagePreview: (...a: unknown[]) => h.usePagePreview(...a),
   useOutboundUrls: (...a: unknown[]) => h.useOutboundUrls(...a),
-  useOutboundLinks: (...a: unknown[]) => h.useOutboundLinks(...a),
   useEventPropertyKeys: (...a: unknown[]) => h.useEventPropertyKeys(...a),
   useEventPropertyValues: (...a: unknown[]) => h.useEventPropertyValues(...a),
 }))
@@ -74,7 +71,6 @@ beforeEach(() => {
   h.useCampaignsList.mockReset().mockReturnValue(idle)
   h.usePagePreview.mockReset().mockReturnValue({ data: null })
   h.useOutboundUrls.mockReset().mockReturnValue(idle)
-  h.useOutboundLinks.mockReset().mockReturnValue(idle)
   h.useEventPropertyKeys.mockReset().mockReturnValue({ ...idle, data: [], available: true })
   h.useEventPropertyValues.mockReset().mockReturnValue({ ...idle, available: true })
 })
@@ -252,15 +248,6 @@ describe('Outbound links', () => {
     // It opens its most clicked link.
     expect(merged.getAttribute('href')).toBe('https://www.shop.example/cart')
   })
-
-  it('today\'s Outbound card, Links: the same', () => {
-    h.useOutboundLinks.mockReturnValue({ ...idle, data: { urls, paths: [] } })
-    render(<Outbound siteId="site-1" dateRange={dateRange} goalCounts={[]} />)
-    tab('Links')
-    expectNoRowTwice()
-    expect(drawn()).toEqual(['shop.example/cart', 'docs.example/start'])
-    expect(rowReading('shop.example/cart').textContent).toContain('16')
-  })
 })
 
 describe('Events, in the new frame', () => {
@@ -310,7 +297,6 @@ const HOW_ROWS_STAY_APART: Record<string, { by: string[] | null; why: string }> 
   'components/dashboard/Locations.tsx': { by: ['mergeSameRows('], why: 'A row is its flag and its label.' },
   'components/dashboard/TechSpecs.tsx': { by: ['mergeSameRows('], why: 'A row is its name with a capital.' },
   'components/dashboard/OutboundLinksTab.tsx': { by: ['outboundLinkRows('], why: 'outboundLinkRows merges links that read the same.' },
-  'components/dashboard/Outbound.tsx': { by: ['groupSameRows('], why: 'Links merge by host and path; a domain is grouped by host; a page is its stored path.' },
   'components/dashboard/ContentStats.tsx': { by: null, why: 'A page is drawn as the path that is stored: the stored value is the row.' },
   'components/dashboard/GoalStats.tsx': { by: null, why: 'A row is one event. Its name is the event\'s, or the one its owner gave it: two events stay two rows.' },
   'components/dashboard/events/EventsBlock.tsx': { by: ['eventLabels('], why: 'A row is one event, so two are never merged: names that read alike each read their stored name instead.' },

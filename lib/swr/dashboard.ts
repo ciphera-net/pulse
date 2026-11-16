@@ -475,7 +475,7 @@ export function useDailyStats(
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
       // PULSE-226: same backgrounded-tab gap as useDashboard (see its
-      // comment). This is the dashboard's own trend chart (PeakHours), same
+      // comment). The dashboard's chart and the bottom's week read it, same
       // page, same 60s/10s cadence.
       revalidateOnFocus: true,
       focusThrottleInterval: 30_000,
@@ -1209,41 +1209,14 @@ export function useFullDimensionList<T>(
   )
 }
 
-// * The Outbound card's two lists: every outbound_link destination and the
-// * page each click happened on, as EVENT counts (the property endpoints do
-// * not count people and take no filters — the card labels both facts).
-// * Keyed on the resolved dates AND the period token, and the token is SENT
-// * (a `1h`/`today` window resolves in the site's timezone server-side; a
-// * date-only fetch spans two days when the window crosses midnight — the
-// * campaigns lesson of 02-09-2026). 1,000 rows = the endpoint's ceiling.
-export interface OutboundLists {
-  urls: EventPropertyValue[]
-  paths: EventPropertyValue[]
-}
-export const OUTBOUND_ROW_LIMIT = 1000
+// * The outbound links, for the Pages block's Outbound tab (15-11-2026): every outbound_link destination as EVENT
+// * counts (the property endpoint does not count people and takes no filters; the tab says both), read only while the
+// * tab is open (`enabled`), as the campaigns list is armed. Keyed on the resolved dates AND the period token, and the
+// * token is SENT (a `1h`/`today` window resolves in the site's timezone server-side; a date-only fetch spans two days
+// * when the window crosses midnight, the campaigns lesson of 02-09-2026). 1,000 rows = the endpoint's ceiling. The
+// * Outbound card's two-list read (links and the pages they were clicked on) left with that card on 16-11-2026.
 // * Route class `demo`.
-export function useOutboundLinks(siteId: string, start: string, end: string, period?: string, liveMinutes?: number) {
-  const live = liveMinutes != null
-  return useSiteSWR<OutboundLists>(
-    siteId, 'demo',
-    (siteKey) => !siteId ? null
-      : live ? ['outbound', siteKey, LIVE_LIST_KEY, liveMinutes]
-        : start && end ? ['outbound', siteKey, start, end, period ?? ''] : null,
-    async (ref) => {
-      const p = live ? undefined : period
-      const [urls, paths] = await Promise.all([
-        getEventPropertyValues(ref, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
-        getEventPropertyValues(ref, 'outbound_link', 'page_path', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
-      ])
-      return { urls, paths }
-    },
-    { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : { refreshInterval: 60_000, dedupingInterval: 10_000 }) }
-  )
-}
-
-// * The outbound links ALONE, for the Pages block's Outbound tab in the new dashboard frame (15-11-2026): one read
-// * where the Outbound card makes two, and only while the tab is open (`enabled`), as the campaigns list is armed.
-// * The same key rules as useOutboundLinks above (the period token is part of the key and is sent). Route class `demo`.
+export const OUTBOUND_ROW_LIMIT = 1000
 export function useOutboundUrls(siteId: string, start: string, end: string, period?: string, liveMinutes?: number, enabled = true) {
   const live = liveMinutes != null
   return useSiteSWR<EventPropertyValue[]>(

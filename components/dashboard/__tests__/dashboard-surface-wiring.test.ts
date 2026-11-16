@@ -18,6 +18,9 @@ const read = (rel: string) =>
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 
 const SURFACE = 'components/surfaces/DashboardSurface.tsx'
+// The blocks are drawn by the frame the surface mounts (since 15-11-2026; the surface's own arrangement left on
+// 16-11-2026), so the pins about what each block is handed read the frame.
+const FRAME = 'components/surfaces/DashboardFrame.tsx'
 
 describe('the dashboard surface: the range and the live window', () => {
   const page = read(SURFACE)
@@ -31,11 +34,13 @@ describe('the dashboard surface: the range and the live window', () => {
   })
 
   it('every list a card fetches on its own gets the live window, and refreshes on the live signal (PULSE-192)', () => {
-    for (const card of ['Sources', 'Audience', 'TechSpecs', 'Outbound', 'ContentStats', 'ContentSignals']) {
-      const start = page.indexOf(`<${card}\n`)
+    const frame = read(FRAME)
+    for (const card of ['Sources', 'Audience', 'TechSpecs', 'ContentStats', 'ContentSignals']) {
+      const start = frame.indexOf(`<${card}\n`)
       expect(start, card).toBeGreaterThan(-1)
-      expect(page.slice(start, page.indexOf('/>', start)), card).toContain('liveMinutes={liveMinutes}')
+      expect(frame.slice(start, frame.indexOf('/>', start)), card).toContain('liveMinutes={liveMinutes}')
     }
+    expect(page).toContain('liveMinutes={liveMinutes}')
     // The matcher finds a site's live lists whichever way their keys were written: a
     // member's carry the id, a public read's carry `public:<id>`.
     expect(page).toContain('void mutateLiveLists(liveListKeyMatcher(siteId))')
@@ -108,24 +113,25 @@ describe('the dashboard surface: what a share link is refused is not asked for',
   it('hands no card a way to filter, and the cards the full lists only where they are served', () => {
     expect(page).toContain('const onCardFilter = caps.filters ? handleAddFilter : undefined')
     expect(page).not.toMatch(/onFilter=\{handleAddFilter\}/)
-    // Sources, Audience, TechSpecs, ContentStats, ContentSignals.
-    expect(page.match(/memberFeatures=\{caps\.fullReads\}/g)?.length).toBe(5)
+    expect(page).toContain('onCardFilter={onCardFilter}')
+    // Sources, Audience, TechSpecs, ContentStats, ContentSignals, in the frame.
+    expect(read(FRAME).match(/memberFeatures=\{caps\.fullReads\}/g)?.length).toBe(5)
   })
 
-  it('draws the sections a share link is served, and only those', () => {
-    expect(page).toMatch(/\{caps\.fullReads && \(\s*<div className="flex flex-col">\s*<SectionHeader title="Outbound" \/>/)
-    expect(page).toMatch(/\{!isLive && caps\.hourlyBuckets && \(<>\s*<SectionHeader title="Behaviour" \/>/)
+  it('draws the bottom only where a share link is served its reads, and no block of Outbound links', () => {
+    const frame = read(FRAME)
+    expect(frame).toMatch(/\{!isLive && caps\.hourlyBuckets && caps\.fullReads && \(\s*<DashboardBottom /)
+    expect(frame).toContain('outbound={caps.fullReads ? {')
+    expect(page).not.toContain('<Outbound')
   })
 
-  it('offers the filter builder, its pills and its button where filtering is served', () => {
-    // The toolbar's filter, in both arrangements: the new dashboard's Search filter and its box, or today's pills
-    // and button (R36, 15-11-2026). Today's popover, twice, in today's arrangement alone.
-    expect(page.match(/caps\.filters && \(frame \? \(/g)?.length).toBe(1)
-    expect(page.match(/caps\.filters && !frame && \(/g)?.length).toBe(2)
-    expect(page.match(/<FilterBuilder/g)?.length).toBe(2)
+  it('offers the filter, its box and its saved sets where filtering is served', () => {
+    // The toolbar's filter (R36, 15-11-2026): the Search filter's button and the box of the filters on, under the
+    // one guard. The old pills, button and popover left with today's arrangement (16-11-2026).
     expect(page.match(/<SearchFilter /g)?.length).toBe(1)
     expect(page.match(/<FiltersBox /g)?.length).toBe(1)
-    // Nothing of the filter is drawn outside those three guards.
-    expect(page.match(/caps\.filters &&/g)?.length).toBe(3)
+    expect(page).not.toContain('<FilterBuilder')
+    // Nothing of the filter is drawn outside that guard.
+    expect(page.match(/caps\.filters &&/g)?.length).toBe(1)
   })
 })

@@ -15,20 +15,17 @@ import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import ContentStats from '@/components/dashboard/ContentStats'
 import ContentSignals from '@/components/dashboard/ContentSignals'
-import Outbound from '@/components/dashboard/Outbound'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
 import { EmptyFactsProvider } from '@/lib/dashboard/emptyFacts'
 
 const h = vi.hoisted(() => ({
   idle: { data: undefined, error: undefined, isLoading: false, mutate: () => {} },
-  outbound: { data: { urls: [], paths: [] }, error: undefined, isLoading: false, mutate: () => {} },
   usePagePreview: vi.fn(),
 }))
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: () => h.idle,
   useCampaignsList: () => h.idle,
-  useOutboundLinks: () => h.outbound,
   usePagePreview: (...a: unknown[]) => h.usePagePreview(...a),
 }))
 vi.mock('@/components/dashboard/Cascade', () => ({
@@ -75,15 +72,12 @@ function Cards({ scope, live: mode = false }: { scope: SiteScope; live?: Live })
         interval="day"
         live={live}
         dateRange={range}
-        multiDayInterval="day"
-        setMultiDayInterval={noop}
       />
       <Sources referrers={[]} siteId="site-1" dateRange={range} live={live} />
       <Audience countries={[]} cities={[]} regions={[]} languages={[]} timezones={[]} siteId="site-1" dateRange={range} live={live} />
       <TechSpecs browsers={[]} os={[]} devices={[]} screenResolutions={[]} siteId="site-1" dateRange={range} live={live} />
       <ContentStats topPages={[]} entryPages={[]} exitPages={[]} domain="haldencycles.example" siteId="site-1" dateRange={range} live={live} />
       <ContentSignals goalCounts={[]} siteId="site-1" dateRange={range} liveMinutes={live ? 5 : undefined} />
-      <Outbound siteId="site-1" dateRange={range} live={live} />
     </EmptyFactsProvider>
     </SiteScopeProvider>
   )
@@ -91,7 +85,7 @@ function Cards({ scope, live: mode = false }: { scope: SiteScope; live?: Live })
 
 /**
  * Every link and every word a reader could meet while opening every tab of every card,
- * once each. The walk renders seven real cards and clicks every tab of every one, so it is
+ * once each. The walk renders six real cards and clicks every tab of every one, so it is
  * done once per scope and shared by the assertions about it.
  */
 const walks = new Map<SiteScope, ReturnType<typeof walkOnce>>()
@@ -180,7 +174,6 @@ describe('realtime: every empty card reads a realtime line', () => {
     expect([...seen.headings].sort()).toEqual([
       'No campaign visits in the last 5 minutes.',
       'No events in the last 5 minutes.',
-      'No outbound clicks in the last 5 minutes.',
       'No page views in the last 5 minutes.',
       'No scroll depth in the last 5 minutes.',
       'No visits in the last 5 minutes.',

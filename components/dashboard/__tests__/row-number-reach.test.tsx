@@ -152,7 +152,7 @@ describe('the two lists whose rows have an overlay', () => {
 
 describe('every list row with an overlay button tells its numbers so', () => {
   const ROOT = path.resolve(__dirname, '../../..')
-  const CARDS = ['Sources', 'ContentStats', 'Locations', 'TechSpecs', 'GoalStats', 'Outbound'].map((name) => `components/dashboard/${name}.tsx`)
+  const CARDS = ['Sources', 'ContentStats', 'Locations', 'TechSpecs', 'GoalStats'].map((name) => `components/dashboard/${name}.tsx`)
 
   it('no card takes the pointer off its numbers by hand any more', () => {
     for (const file of CARDS) {

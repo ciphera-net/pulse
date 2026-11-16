@@ -33,7 +33,7 @@ describe('every info pop-up of the app carries the panel class', () => {
     const term = render(<TermInfoTip term="outbound_links" />)
     expect(open().classList.contains(INFO_TIP_PANEL_CLASS)).toBe(true)
     term.unmount()
-    render(<DimensionInfoTip tab="links" />)
+    render(<DimensionInfoTip tab="outbound" />)
     expect(open().classList.contains(INFO_TIP_PANEL_CLASS)).toBe(true)
   })
 
@@ -193,7 +193,7 @@ describe('the info icon is a fine circle, drawn by the stylesheet', () => {
     // No stray "undefined" where the caller places nothing.
     expect(screen.getByRole('button').className).not.toContain('undefined')
     term.unmount()
-    render(<DimensionInfoTip tab="links" className="ms-2 me-auto" />)
+    render(<DimensionInfoTip tab="outbound" className="ms-2 me-auto" />)
     expect(screen.getByRole('button').className).toContain(`${INFO_TIP_GLYPH_CLASS} ms-2 me-auto`)
   })
 

@@ -75,12 +75,10 @@ const CARD_TABS: Record<string, string[]> = {
   'components/dashboard/Sources.tsx': ['referrers', 'channels', 'source', 'medium', 'campaign', 'term', 'content'],
   'components/dashboard/Locations.tsx': ['map', 'countries', 'regions', 'cities', 'languages', 'timezones'],
   'components/dashboard/TechSpecs.tsx': ['browsers', 'os', 'devices', 'screens'],
-  // Pages, Entries, Exits, and in the new dashboard frame Outbound (15-11-2026), which is the Outbound card's
-  // Links list in another place: its tab id resolves to that list's own term.
+  // Pages, Entries, Exits, and Outbound (15-11-2026), which is the old Outbound card's Links list in another place:
+  // its tab id resolves to that list's own term.
   'components/dashboard/ContentStats.tsx': ['top_pages', 'entry_pages', 'exit_pages', 'outbound'],
   'components/dashboard/ContentSignals.tsx': ['scroll', 'events'],
-  // Outbound (08-09-2026): three views, all mapped through DIMENSION_TERM.
-  'components/dashboard/Outbound.tsx': ['domains', 'links', 'from_page'],
 }
 
 /** What a card's tab id actually resolves to at render time. */
@@ -222,14 +220,14 @@ describe('terms registry', () => {
       ).toBe(sentences.length)
     }
     // And across cards: no two dimension terms may share a definition. A term is counted once however many tab
-    // ids reach it: the Pages block's Outbound tab and the Outbound card's Links tab are one list in two
-    // arrangements of the page (never on one screen), and they are meant to say the same sentence.
+    // ids reach it.
     const terms = [...new Set(Object.values(CARD_TABS).flat().map(resolve).filter((t) => TERMS[t]))]
     const all = terms.map((t) => TERMS[t].definition)
     expect(new Set(all).size, 'two dimension terms share a definition').toBe(all.length)
-    // The one pair of tab ids that shares a term, by name: a second such pair is a decision, not a slip.
+    // No two tab ids share a term: the one pair that did (the Outbound card's Links tab and the Pages block's
+    // Outbound tab, one list in two arrangements) ended with the card on 16-11-2026. A new pair is a decision.
     const shared = Object.entries(DIMENSION_TERM).filter(([, term], _, list) => list.filter(([, other]) => other === term).length > 1).map(([tab]) => tab).sort()
-    expect(shared).toEqual(['links', 'outbound'])
+    expect(shared).toEqual([])
   })
 
   it('every dimension-card tab id is the one the component actually holds', () => {

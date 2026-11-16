@@ -36,8 +36,6 @@ const base = {
   onMetricChange: () => {},
   interval: 'day' as const,
   dateRange: { start: '2026-08-29', end: '2026-09-27' },
-  multiDayInterval: 'day' as const,
-  setMultiDayInterval: () => {},
 }
 const NONE: ImportedProvenance = { included: false, from: null, through: null, source: null, reason: null }
 const INCLUDED: ImportedProvenance = { included: true, from: '2026-08-29', through: '2026-09-14', source: 'plausible', reason: null }

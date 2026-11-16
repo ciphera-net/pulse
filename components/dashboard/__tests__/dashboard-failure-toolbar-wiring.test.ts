@@ -38,8 +38,10 @@ describe('a failed dashboard request keeps the toolbar', () => {
     expect(toolbar).toBeLessThan(card)
   })
 
-  it('renders the filter builder the toolbar opens', () => {
-    expect(branch).toMatch(/<FilterBuilder\s+builder=\{filterBuilder\}/)
+  it('needs no popover of its own: the Search filter in the toolbar draws its panel in a portal', () => {
+    // The old filter builder was rendered beside the failure card; it left with today's arrangement (16-11-2026).
+    expect(branch).not.toContain('<FilterBuilder')
+    expect(src).toContain('<SearchFilter ')
   })
 
   it('keeps a 404 as the bare site-not-found state', () => {

@@ -10,8 +10,7 @@ import { SkeletonLine } from './primitives'
 // of that one height, and three tiles of 164 px.
 // Every part now has a height of its own, so the page is as tall on this skeleton as on its data at every width.
 // (Until the bottom's round the frame closed with the heat map across the page, whose height followed its width;
-// today's arrangement still has it, with HeatMapSkeletonBody as its loading state.) Today's skeleton is shorter
-// than the new page and still draws a campaigns table the dashboard no longer has.
+// that heat map and its loading body left with the old arrangement on 16-11-2026.)
 //
 // It is the dashboard's skeleton for every reader since 15-11-2026 (components/skeletons.tsx). No state, nothing
 // read: the server and the browser draw the same thing.
