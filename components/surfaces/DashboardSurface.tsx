@@ -574,7 +574,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
       {caps.filters && (frame ? (
         // The new dashboard: the filters on in one box, then the Search filter's button (its panel is a portal).
         <>
-          <FiltersBox filters={filters} onApply={handleFilterApply} onRemove={handleRemoveFilter} pageValues={pageValues} />
+          <FiltersBox filters={filters} onApply={handleFilterApply} onRemove={handleRemoveFilter} onClearAll={handleClearFilters} pageValues={pageValues} />
           {importLeftOutByFilter(dashboard?.imported) && (
             <span className="inline-flex items-center gap-1 text-xs text-neutral-500" data-testid="imported-filtered-note">
               Pulse-measured days only

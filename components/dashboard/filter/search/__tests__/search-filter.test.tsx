@@ -135,8 +135,9 @@ describe('FiltersBox (R46: "One box")', () => {
   const box = (filters: DimensionFilter[]) => {
     const onApply = vi.fn()
     const onRemove = vi.fn()
-    render(<FiltersBox filters={filters} onApply={onApply} onRemove={onRemove} pageValues={PAGE} />)
-    return { onApply, onRemove }
+    const onClearAll = vi.fn()
+    render(<FiltersBox filters={filters} onApply={onApply} onRemove={onRemove} onClearAll={onClearAll} pageValues={PAGE} />)
+    return { onApply, onRemove, onClearAll }
   }
 
   it('draws nothing with no filter', () => {
@@ -171,6 +172,28 @@ describe('FiltersBox (R46: "One box")', () => {
     fireEvent.click(within(rows[1]).getByRole('button', { name: 'Remove Device filter' }))
     expect(onRemove).toHaveBeenCalledWith(1)
     expect(onRemove).not.toHaveBeenCalledWith(0)
+  })
+
+  it('takes every filter away with the box\'s own x, in one change, and closes the list (R59)', async () => {
+    const { onRemove, onClearAll } = box([country, device])
+    // The x sits in the box's own border, after the box's button: one control, as a single filter's pill is.
+    const control = screen.getByTestId('filters-box-control')
+    expect(within(control).getByTestId('filters-box').textContent).toContain('2 filters')
+    const x = within(control).getByRole('button', { name: 'Remove every filter' })
+    expect(x.className.split(' ')).toEqual(expect.arrayContaining(['w-8', 'border-s', 'border-brand-orange/20']))
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(screen.getAllByTestId('filters-menu-row')).toHaveLength(2)
+    fireEvent.click(x)
+    // One call to the page's clear, never one removal per filter (each would be an address update of its own).
+    expect(onClearAll).toHaveBeenCalledTimes(1)
+    expect(onRemove).not.toHaveBeenCalled()
+    // The list leaves through its exit animation.
+    await waitFor(() => expect(screen.queryAllByTestId('filters-menu-row')).toHaveLength(0))
+  })
+
+  it('offers no clear-all for a single filter, whose own x already removes it', () => {
+    box([country])
+    expect(screen.queryByRole('button', { name: 'Remove every filter' })).toBeNull()
   })
 
   it('writes several values of one kind as an "or", and draws no "Clear all"', () => {
