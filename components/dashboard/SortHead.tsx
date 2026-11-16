@@ -7,8 +7,9 @@ import { cn } from '@/lib/utils'
 // ---------------------------------------------------------------------------
 // A list sorted by its columns, high to low and low to high, in the new dashboard frame (rulings R41 and R51,
 // design Pulse/docs/plans/14-11-2026-dashboard-overhaul-2-plan.md §10ad). Used by the Events block (visitors,
-// events and conversion; the picked event's values by events and share) and by the Pages block's Pages tab
-// (visitors and views).
+// events and conversion; the picked event's values by events and share), by the Pages block's Pages tab (visitors
+// and views), and since 16-11-2026 by every other list of the dashboard with its one column (visitors; the Outbound
+// tab's clicks).
 //
 // The column names over the numbers are the control. A press on a name sorts by its column, high to low; a second
 // press on the same name turns it low to high. The sorted column carries its arrow; another shows a faint one under
@@ -26,6 +27,18 @@ export interface SortColumn<K extends string> {
   /** The column's width and alignment: the SAME classes as the numbers under it. */
   className: string
 }
+
+/**
+ * The one column of a list whose rows show visitors alone: Sources, Locations, Technology and the Pages block's
+ * Entries and Exits tabs (16-11-2026). No width: the number sits at the row's end, where the head ends too.
+ */
+export const VISITORS_COLUMN: readonly SortColumn<'visitors'>[] = [{ key: 'visitors', label: 'visitors', className: '' }]
+/** The Pages block's Outbound tab: a link's clicks. */
+export const CLICKS_COLUMN: readonly SortColumn<'clicks'>[] = [{ key: 'clicks', label: 'clicks', className: '' }]
+/** A row's visitors for sortRows; a row without them counts as none. */
+export const byVisitors = (row: { visitors?: number | null }): number => row.visitors ?? 0
+/** The first order of every list: high to low, the order the server ranks by. */
+export const VISITORS_DESC: Sort<'visitors'> = { key: 'visitors', dir: 'desc' }
 
 /** Rows in the asked order. Ties keep the order the rows came in (the server's), in both directions. */
 export function sortRows<T, K extends string>(rows: readonly T[], sort: Sort<K>, value: (row: T, key: K) => number): T[] {

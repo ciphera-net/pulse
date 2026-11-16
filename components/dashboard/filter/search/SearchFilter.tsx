@@ -43,10 +43,12 @@ export function DimensionIcon({ dimension, className = 'h-3.5 w-3.5' }: { dimens
   return Mark ? <Mark className={cn('shrink-0', className)} aria-hidden="true" /> : null
 }
 
-/** A value's icon: its flag, favicon or mark as the blocks draw it; a kind without pictures of its own gets the kind's. */
-export function valueIcon(dimension: string, value: string): ReactNode {
-  if (dimension === 'language' || dimension === 'timezone') return <DimensionIcon dimension={dimension} className="h-4 w-4 text-neutral-500" />
-  return getFilterValueIcon(dimension, value)
+/**
+ * A value's icon: its flag, favicon or mark as the blocks draw it (getFilterValueIcon, every kind). `country` is a
+ * city's or a region's country, for its flag: a found value carries its own, a filter's pill looks it up.
+ */
+export function valueIcon(dimension: string, value: string, country?: string): ReactNode {
+  return getFilterValueIcon(dimension, value, country)
 }
 
 function Key({ children }: { children: ReactNode }) {
@@ -290,7 +292,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
         return row(i, (
           <>
             <span className="w-[84px] shrink-0 truncate text-[11px] text-neutral-500">{labelOf(f.dimension)}</span>
-            <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.value)}</span>
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.value, f.country)}</span>
             {/* The suggestion's own label is the reader's name (a country by its name, an event by its list's name). */}
             <span className="min-w-0 flex-1 truncate"><Marked text={f.label} query={text} /></span>
             {f.count != null && <span className="shrink-0 text-xs tabular-nums text-neutral-500">{formatCompactNumber(f.count)}</span>}

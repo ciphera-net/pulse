@@ -81,11 +81,11 @@ export function useFilterSuggestions(
           }
           case 'city': {
             const data = await getCities(ref, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
-            return data.filter(c => c.city && c.city !== 'Unknown').map(c => ({ value: c.city, label: c.city, count: c.pageviews }))
+            return data.filter(c => c.city && c.city !== 'Unknown').map(c => ({ value: c.city, label: c.city, count: c.pageviews, ...(c.country ? { country: c.country } : {}) }))
           }
           case 'region': {
             const data = await getRegions(ref, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
-            return data.filter(r => r.region && r.region !== 'Unknown').map(r => ({ value: r.region, label: r.region, count: r.pageviews }))
+            return data.filter(r => r.region && r.region !== 'Unknown').map(r => ({ value: r.region, label: r.region, count: r.pageviews, ...(r.country ? { country: r.country } : {}) }))
           }
           case 'browser': {
             const data = await getBrowsers(ref, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)

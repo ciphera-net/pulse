@@ -84,6 +84,23 @@ describe('useFilterSuggestions reads through the nearest site scope', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('gives a city and a region their country, for the flag the Filter menu draws (16-11-2026)', async () => {
+    fetchSpy.mockImplementation(async (url: string) => {
+      const body = url.includes('/cities')
+        ? { cities: [{ city: 'Oslo', country: 'NO', pageviews: 9, visitors: 5 }, { city: 'Atlantis', country: '', pageviews: 1, visitors: 1 }] }
+        : { regions: [{ region: 'Viken', country: 'NO', pageviews: 4, visitors: 3 }] }
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+    })
+    const id = nextId()
+    const { result } = renderHook(() => useFilterSuggestions(id, RANGE, undefined, '30d'), { wrapper: wrapperFor(memberScope(id)) })
+    // A row with no country carries no country key at all.
+    await expect(result.current('city')).resolves.toStrictEqual([
+      { value: 'Oslo', label: 'Oslo', count: 9, country: 'NO' },
+      { value: 'Atlantis', label: 'Atlantis', count: 1 },
+    ])
+    await expect(result.current('region')).resolves.toStrictEqual([{ value: 'Viken', label: 'Viken', count: 4, country: 'NO' }])
+  })
+
   it('still answers [] before there is a range, in every scope', async () => {
     const id = nextId()
     const { result } = renderHook(() => useFilterSuggestions(id, null), { wrapper: wrapperFor(demoScope(id)) })

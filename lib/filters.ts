@@ -11,6 +11,8 @@ export interface FilterSuggestion {
   value: string
   label: string
   count?: number
+  /** A city's or a region's country (ISO code), for its flag in the Filter menu; the reads of the two carry it. */
+  country?: string
 }
 
 export const DIMENSION_LABELS: Record<string, string> = {

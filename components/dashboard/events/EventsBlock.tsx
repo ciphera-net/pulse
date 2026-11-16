@@ -98,8 +98,10 @@ export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRan
   }
   const nameOf = (row: GoalCountStat) => labels.get(row.event_name) ?? row.event_name
 
+  // Two equal columns (16-11-2026): the divider, the properties pane's left border, falls on the block's centre,
+  // under the gap between the two half-width blocks above it. It was split 1.15 to 1, off that line.
   return (
-    <div className={`grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] ${memberFeatures ? 'lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]' : ''}`} data-events-block="">
+    <div className={`grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] ${memberFeatures ? 'lg:grid-cols-2' : ''}`} data-events-block="">
       <section className={`${pane === 'detail' && picked ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col ${memberFeatures ? 'lg:pr-5' : ''}`} data-events-pane="list">
         <div className="mb-4 flex items-center justify-between">
           <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">

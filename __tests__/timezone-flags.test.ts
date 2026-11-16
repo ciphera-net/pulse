@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getTimezoneCountry } from '@/components/dashboard/Locations'
+import { getTimezoneCountry } from '@/lib/dashboard/placeFlags'
 import { TIMEZONE_COUNTRY, TZDATA_VERSION } from '@/lib/timezone-countries.gen'
 
 /**

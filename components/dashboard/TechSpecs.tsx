@@ -18,6 +18,7 @@ import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { Switcher } from '@ciphera-net/facet'
+import { SortHead, VISITORS_COLUMN, VISITORS_DESC, byVisitors, sortRows, type Sort } from '@/components/dashboard/SortHead'
 
 interface TechSpecsProps {
   browsers: Array<{ browser: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
@@ -81,6 +82,8 @@ const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os'
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: TechSpecsProps) {
   const frame = useDashboardFrame()
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
+  // In the frame the column's name sorts the rows, high to low and low to high (the Pages tab's device, R41).
+  const [sort, setSort] = useState<Sort<'visitors'>>(VISITORS_DESC)
   // `names`: a row made of several stored names that read the same (lib/dashboard/sameRows.ts), what a press filters by.
   type TechItem = { name: string; names?: string[]; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
   // A row reads its name with a capital. Stored names that read the same (`mobile` beside `Mobile`) are one row.
@@ -153,11 +156,14 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
 
   // Gate on wantsFullList: stale hook-state from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
-  const allData = wantsFullList && fullRaw && fullData.length >= data.length ? fullData : data
+  const fetched = wantsFullList && fullRaw && fullData.length >= data.length ? fullData : data
+  // Sorted before paging, so a page is a slice of the asked order. Ties keep the server's order; the bars still
+  // measure against the largest row, whatever the order.
+  const allData = frame ? sortRows(fetched, sort, byVisitors) : fetched
   const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,
-  // and a shrinking list clamps at read time.
-  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
+  // and a shrinking list clamps at read time. In the frame a new order does too.
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}${frame ? `|${sort.key}:${sort.dir}` : ''}`, pageCount)
 
   const displayedData = hasData ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -184,7 +190,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         </div>
         <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         <div className="flex min-w-0 shrink items-center gap-1.5">
-          <MetricUnitLabel />
+          {frame ? <SortHead columns={VISITORS_COLUMN} sort={sort} onSort={setSort} /> : <MetricUnitLabel />}
         </div>
       </div>
 

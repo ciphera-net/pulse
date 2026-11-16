@@ -17,7 +17,7 @@ import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import OutboundLinksTab from '@/components/dashboard/OutboundLinksTab'
-import { SortHead, sortRows, type Sort, type SortColumn } from '@/components/dashboard/SortHead'
+import { CLICKS_COLUMN, SortHead, VISITORS_COLUMN, VISITORS_DESC, byVisitors, sortRows, type Sort, type SortColumn } from '@/components/dashboard/SortHead'
 
 /** The Pages tab's two columns, which sort its rows in the new frame (R41): the widths of the numbers under them. */
 type PageSortKey = 'visitors' | 'views'
@@ -88,6 +88,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const [chosenTab, setActiveTab] = useState<Tab>('top_pages')
   // The Pages tab's order in the frame. Visitors, high to low, is the order the server ranks by.
   const [sort, setSort] = useState<Sort<PageSortKey>>({ key: 'visitors', dir: 'desc' })
+  // The Entries and Exits tabs' one column, and the Outbound tab's clicks (16-11-2026): each tab keeps its own order.
+  const [visitSort, setVisitSort] = useState<Sort<'visitors'>>(VISITORS_DESC)
+  const [clickSort, setClickSort] = useState<Sort<'clicks'>>({ key: 'clicks', dir: 'desc' })
   // Outbound is a tab only in the frame, and only where its read is served.
   const hasOutbound = frame && outbound !== undefined
   const tabs: Tab[] = hasOutbound ? ['top_pages', 'entry_pages', 'exit_pages', 'outbound'] : ['top_pages', 'entry_pages', 'exit_pages']
@@ -145,14 +148,19 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
   const fullClean = wantsFullList && fullData ? filterGenericPaths(fullData) : null
   const listed = fullClean && fullClean.length >= data.length ? fullClean : data
-  // In the frame the Pages tab's two column names sort its rows, high to low and low to high (R41); ties keep the
-  // server's order, and the bars keep following visitors. Today's arrangement keeps the server's order.
+  // In the frame the Pages tab's two column names sort its rows, high to low and low to high (R41), and the Entries
+  // and Exits tabs' one column name does the same (16-11-2026); ties keep the server's order, and the bars keep
+  // following visitors. Today's arrangement keeps the server's order.
   const sortable = frame && twinColumns
-  const allData = sortable ? sortRows(listed, sort, (row, key) => (key === 'visitors' ? row.visitors ?? 0 : row.pageviews ?? 0)) : listed
+  const visitSortable = frame && !twinColumns && !onOutbound
+  const allData = sortable
+    ? sortRows(listed, sort, (row, key) => (key === 'visitors' ? row.visitors ?? 0 : row.pageviews ?? 0))
+    : visitSortable ? sortRows(listed, visitSort, byVisitors) : listed
   const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
+  const orderKey = sortable ? `|${sort.key}:${sort.dir}` : visitSortable ? `|${visitSort.key}:${visitSort.dir}` : ''
   // Page state keys on the context: a tab/filter/range change reads as page 1,
   // and a shrinking list clamps at read time. In the frame a new order does too.
-  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}${sortable ? `|${sort.key}:${sort.dir}` : ''}`, pageCount)
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}${orderKey}`, pageCount)
 
   const displayedData = hasData ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
@@ -180,10 +188,13 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               its own right-aligned slot unchanged. */}
           <div className="flex min-w-0 shrink items-center gap-3">
             {onOutbound ? (
-              <MetricUnitLabel unit="clicks" />
+              // Outbound is a tab only in the frame: its one column, clicks, orders the tab's rows.
+              <SortHead columns={CLICKS_COLUMN} sort={clickSort} onSort={setClickSort} />
             ) : sortable ? (
               // The same two columns and gap as MetricUnitLabel's, each name a control.
               <SortHead columns={PAGE_COLUMNS} sort={sort} onSort={setSort} className="gap-2" />
+            ) : visitSortable ? (
+              <SortHead columns={VISITORS_COLUMN} sort={visitSort} onSort={setVisitSort} />
             ) : (
               <MetricUnitLabel views={twinColumns} />
             )}
@@ -201,6 +212,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             live={live}
             liveMinutes={liveMinutes}
             trackingOff={outbound.trackingOff}
+            sort={clickSort}
           />
         ) : (
         <>
