@@ -3,7 +3,7 @@ import apiRequest, { ApiError } from './client'
 // ---------------------------------------------------------------------------
 // Saved filters (R59 and R60 of 16-11-2026): a set of the dashboard's filters saved under a name, the team's, per
 // site. Every member reads them; whoever may edit the site saves and deletes them. The routes sit behind the
-// `saved-filters` beta on the server (they answer as an unmounted path while it is off), so nothing here is called
+// `saved-filters` beta on the server until 16-11-2026 (they answered as an unmounted path while it was off), so nothing here was called
 // before useFeature says the beta is on.
 // ---------------------------------------------------------------------------
 

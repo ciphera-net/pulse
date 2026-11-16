@@ -4,12 +4,8 @@ import { useCallback, useMemo } from 'react'
 import useSWR from 'swr'
 import { createSavedFilter, deleteSavedFilter, listSavedFilters, type SavedFilter } from '@/lib/api/savedFilters'
 import { useCan } from '@/lib/auth/permissions'
-import { useFeature } from '@/lib/features'
 import { parseFiltersFromURL, serializeFilters, type DimensionFilter } from '@/lib/filters'
 import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
-
-/** The Unleash beta, exactly as pulse-backend names it (lib/betas.ts lists it for the Beta tab). */
-export const SAVED_FILTERS_FLAG = 'saved-filters'
 
 /** A saved set as the dashboard reads it: its filters parsed from the address form the server keeps. */
 export interface SavedSet {
@@ -31,7 +27,10 @@ export function setFor(filters: DimensionFilter[], sets: SavedSet[]): SavedSet |
 }
 
 export interface SavedFilters {
-  /** The beta is on for this team, on a member's page of a site: the saved sets show. Never on a public page. */
+  /**
+   * A member's page of a site: the saved sets show. Never on a public page. Saved filters were a beta until 16-11-2026,
+   * when they went to every team, and no flag is read any more.
+   */
   on: boolean
   /** The reader may save and delete them (`sites.edit`, R60). */
   canEdit: boolean
@@ -48,10 +47,9 @@ export const savedFiltersKey = (siteId: string) => ['savedFilters', siteId] as c
 
 export function useSavedFilters(): SavedFilters {
   const scope = useOptionalSiteScope()
-  const flag = useFeature(SAVED_FILTERS_FLAG)
   const canEdit = useCan('sites.edit')
   const siteId = scope && scope.mode !== 'public' ? scope.siteId : null
-  const on = flag === true && siteId !== null
+  const on = siteId !== null
   const { data, mutate } = useSWR<SavedFilter[]>(on && siteId ? savedFiltersKey(siteId) : null, () => listSavedFilters(siteId as string), {
     revalidateOnFocus: false,
   })

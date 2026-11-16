@@ -102,7 +102,7 @@ export interface SearchFilterProps {
   /** What the page's own answer lists for the kinds with no value read (events, channels, screens, languages, timezones). */
   pageValues: PageValues
   /**
-   * Puts a saved set on the page IN PLACE of the filters that are on, in one change (the saved-filters beta, R59).
+   * Puts a saved set on the page IN PLACE of the filters that are on, in one change (saved filters, R59).
    * Without it the panel lists no saved set.
    */
   onApplySet?: (filters: DimensionFilter[]) => void
@@ -134,7 +134,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   const groups = groupsFor(eventFilters)
   const dimensions = useMemo(() => dimensionsFor(eventFilters), [eventFilters])
   const { values, ready } = useFilterValues({ on: open || warm, fetchSuggestions, pageValues, filters, dimensions })
-  // Saved filters (the saved-filters beta): listed at the top of the first view while the page can put one on.
+  // Saved filters: listed at the top of the first view while the page can put one on.
   const savedFilters = useSavedFilters()
   const sets = useMemo(() => (savedFilters.on && onApplySet ? savedFilters.sets : []), [savedFilters.on, savedFilters.sets, onApplySet])
   const current = setFor(filters, sets)
