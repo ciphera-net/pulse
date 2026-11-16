@@ -10,11 +10,11 @@ import { SkeletonLine } from '@/components/skeleton/primitives'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 import { formatCompactNumber } from '@/lib/utils/format'
 import { getFilterValueIcon } from '@/lib/utils/icons'
-import { type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
+import { TOO_MANY_EVENT_FILTERS, eventFilterRoomFor, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
 import { DIMENSION_ICONS } from '../dimensionIcons'
 import { setFor, useSavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
 import { SavedRow } from './saved'
-import { GROUPS, TEXT_DIMENSIONS, labelOf, search, useFilterValues, type Found, type PageValues } from './values'
+import { TEXT_DIMENSIONS, dimensionsFor, groupsFor, labelOf, search, useFilterValues, type Found, type PageValues } from './values'
 
 // ---------------------------------------------------------------------------
 // The Search filter: ONE field (owner ruling R36 of 15-11-2026, the new dashboard's filter; the lab's option
@@ -77,10 +77,16 @@ export interface SearchFilterProps {
    * Without it the panel lists no saved set.
    */
   onApplySet?: (filters: DimensionFilter[]) => void
+  /**
+   * The event-filters beta is on (R45): the Events group offers an event and an outbound link, each keeping or leaving
+   * out whole visitors, in place of the row test `event_name`. At most MAX_EVENT_FILTERS of them at once.
+   */
+  eventFilters?: boolean
 }
 
+
 /** The Filter button and its panel. The panel is drawn in a portal, so it outlives the page's loading states. */
-export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues, onApplySet }: SearchFilterProps) {
+export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues, onApplySet, eventFilters = false }: SearchFilterProps) {
   const glass = useGlassPanels()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -94,7 +100,9 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
-  const { values, ready } = useFilterValues({ on: open || warm, fetchSuggestions, pageValues, filters })
+  const groups = groupsFor(eventFilters)
+  const dimensions = useMemo(() => dimensionsFor(eventFilters), [eventFilters])
+  const { values, ready } = useFilterValues({ on: open || warm, fetchSuggestions, pageValues, filters, dimensions })
   // Saved filters (the saved-filters beta): listed at the top of the first view while the page can put one on.
   const savedFilters = useSavedFilters()
   const sets = useMemo(() => (savedFilters.on && onApplySet ? savedFilters.sets : []), [savedFilters.on, savedFilters.sets, onApplySet])
@@ -165,14 +173,14 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
     if (!searching) {
       return [
         ...sets.map((set): Item => ({ kind: 'set', set })),
-        ...GROUPS.flatMap((g) => g.dimensions.map((dimension): Item => ({ kind: 'dimension', dimension }))),
+        ...groups.flatMap((g) => g.dimensions.map((dimension): Item => ({ kind: 'dimension', dimension }))),
       ]
     }
     if (!ready) return []
-    const found = search(values, text, scope, 4).map((f): Item => ({ kind: 'value', found: f }))
+    const found = search(values, text, scope, 4, dimensions).map((f): Item => ({ kind: 'value', found: f }))
     const typed: Item[] = text === '' ? [] : (scope ? [scope] : ['page', 'referrer']).filter((d) => TEXT_DIMENSIONS.has(d)).map((dimension) => ({ kind: 'contains', dimension, text }))
     return [...found, ...typed]
-  }, [searching, ready, values, text, scope, sets])
+  }, [searching, ready, values, text, scope, sets, groups, dimensions])
   const picked = Math.min(index, Math.max(0, items.length - 1))
 
   // While values are still being read for what was typed, the list keeps the height it had.
@@ -181,6 +189,11 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   })
 
   const add = (filter: DimensionFilter) => {
+    // The server reads at most two event filters (each is one more read of the range).
+    if (!eventFilterRoomFor(filter, filters)) {
+      toast.error(TOO_MANY_EVENT_FILTERS)
+      return
+    }
     onApply(filter, null)
     setQuery('')
     setScope(null)
@@ -256,7 +269,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
             </>
           )}
           <div className={cn('px-3 pb-1 text-[11px] text-neutral-500', sets.length > 0 ? 'mt-1.5 border-t border-white/[0.08] pt-2.5' : 'pt-1.5')}>Filter on</div>
-          {GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.label} className="flex items-center gap-3 px-3 py-1">
               <span className="w-[84px] shrink-0 text-[11px] text-neutral-500">{group.label}</span>
               <div className="flex min-w-0 flex-wrap gap-1.5">

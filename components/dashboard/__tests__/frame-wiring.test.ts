@@ -27,7 +27,7 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
     expect(frame).toContain('campaigns={caps.fullReads ? undefined : (dashboard?.campaigns ?? [])}')
     // No Outbound on a share link, as today: its links are the Pages block's fourth tab, and the block is handed
     // them only where their read is served.
-    expect(frame).toContain('outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff } : undefined}')
+    expect(frame).toContain('outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff, filterByLink: eventFilters } : undefined}')
     // And the Outbound block itself is not in the frame any more.
     expect(frame).not.toContain('<Outbound')
     expect(frame).not.toContain("from '@/components/dashboard/Outbound'")
@@ -87,7 +87,9 @@ describe('the surface mounts the frame for every reader, and holds nothing of th
 
   it('mounts the frame for every reader: no flag is read, public pages included (15-11-2026)', () => {
     expect(page).not.toMatch(/const frame\b/)
-    expect(page).not.toContain('useFeature(')
+    // The one flag the page reads is a beta's that decides what its filter offers (the event filter, R45), never the
+    // frame's.
+    expect(page.match(/useFeature\([^)]*\)/g) ?? []).toEqual(['useFeature(EVENT_FILTERS_FLAG)'])
     expect(page).not.toContain('NEW_DASHBOARD_FLAG')
   })
 

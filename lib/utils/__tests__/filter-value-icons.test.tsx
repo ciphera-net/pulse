@@ -94,3 +94,22 @@ describe('placeCountriesFrom: a pill\'s city or region finds its country in the 
     expect(placeCountriesFrom(null)).toEqual({})
   })
 })
+
+describe('the event filter kinds (R45): an event its mark, an outbound link its destination\'s favicon', () => {
+  it('draws an outbound link as the Outbound tab draws its row: the favicon of the link\'s host, www. dropped', async () => {
+    const { OUTBOUND_KIND, eventPropertyKind } = await import('@/lib/filters')
+    const el = draw(getFilterValueIcon(OUTBOUND_KIND, 'https://www.example.org/docs?tab=api'))
+    expect(el.querySelector('img')?.getAttribute('src')).toContain('domain=example.org')
+    // A site the house draws itself: the same artwork its referrer row draws.
+    expect(draw(getFilterValueIcon(OUTBOUND_KIND, 'https://github.com/ciphera')).innerHTML).toBe(markup(getFilterValueIcon('referrer', 'github.com')))
+    // No web address: the globe, never a request for a favicon.
+    const none = draw(getFilterValueIcon(OUTBOUND_KIND, 'javascript:alert(1)'))
+    expect(none.querySelector('img')).toBeNull()
+    // Any other property, and the bare kind: the event's mark (an svg, no image).
+    for (const d of ['event', eventPropertyKind('signup', 'plan')]) {
+      const mark = draw(getFilterValueIcon(d, 'pro'))
+      expect(mark.querySelector('img')).toBeNull()
+      expect(mark.querySelector('svg')).toBeTruthy()
+    }
+  })
+})

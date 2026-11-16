@@ -544,6 +544,9 @@ describe('words', () => {
     expect(exportErrorText(new ApiError('an export covers at most 3660 days', 400))).toBe('A file covers at most 10 years.')
     expect(exportErrorText(new ApiError('Network error, please try again.', 0))).toBe("Pulse can't be reached. Check your connection and try again.")
     expect(exportErrorText(new ApiError('Failed to build the export', 500))).toBe("Couldn't make the file. Try again.")
+    // The event filter (R45): the server's own words, naming the tables that cannot follow it.
+    const named = "Daily and Pages can't be filtered by an event with these settings. Leave them out of the export or remove the event filter."
+    expect(exportErrorText(new ApiError(named, 422))).toBe(named)
   })
 
   it('says time in §2’s one format', () => {

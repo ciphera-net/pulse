@@ -13,7 +13,8 @@ import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
-import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
+import { type DimensionFilter, serializeFilters, parseFiltersFromURL, EVENT_FILTERS_FLAG, readEventNameAsEvent } from '@/lib/filters'
+import { useFeature } from '@/lib/features'
 import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
@@ -111,6 +112,11 @@ function FunnelDetail({ scope, funnelId }: { scope: SiteScope; funnelId: string 
     return raw ? parseFiltersFromURL(raw) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+  // The event filter's beta (R45): an old address's event_name filter reads as an event, as on the dashboard.
+  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
+  useEffect(() => {
+    if (eventFilters) setFilters((prev) => readEventNameAsEvent(prev))
+  }, [eventFilters])
 
   useEffect(() => {
     const url = new URL(window.location.href)

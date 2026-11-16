@@ -11,9 +11,13 @@ import {
   getOS,
   getDevices,
   getCampaigns,
+  getGoalStats,
+  getEventPropertyValues,
 } from '@/lib/api/stats'
 import { getJourneyEntryPoints } from '@/lib/api/journeys'
-import type { FilterSuggestion } from '@/lib/filters'
+import { EVENT_KIND, OUTBOUND_KIND, eventPropertyOf, type FilterSuggestion } from '@/lib/filters'
+import { eventName } from '@/lib/dashboard/events'
+import { outboundLinkRows } from '@/lib/dashboard/outbound'
 import { logger } from '@/lib/utils/logger'
 import { useSiteRead } from '@/lib/swr/site-read'
 
@@ -111,8 +115,23 @@ export function useFilterSuggestions(
             })
             return [...map.entries()].map(([v, count]) => ({ value: v, label: v, count }))
           }
-          default:
-            return []
+          case EVENT_KIND: {
+            // * The event filter (R45): every custom event of the range under the other filters now on, named as the
+            // * Events block names it, with its count.
+            const data = await getGoalStats(ref, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
+            return data.filter(g => g.event_name && g.event_name !== '(other)').map(g => ({ value: g.event_name, label: eventName(g), count: g.count }))
+          }
+          default: {
+            // * An event's property (R45): its stored values. An outbound link is read as the Outbound tab writes it,
+            // * its value the stored address the filter matches.
+            const property = eventPropertyOf(dimension)
+            if (!property) return []
+            const data = await getEventPropertyValues(ref, property.event, property.key, start, end, limit, liveMinutes != null ? undefined : period, liveMinutes, f)
+            if (dimension === OUTBOUND_KIND) {
+              return data.flatMap(v => outboundLinkRows([v]).map(row => ({ value: v.value, label: row.label, count: v.count })))
+            }
+            return data.map(v => ({ value: v.value, label: v.value, count: v.count }))
+          }
         }
       } catch (err) {
         // * Rethrow so the value picker renders its explicit error + retry —

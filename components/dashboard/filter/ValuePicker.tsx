@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { motion } from 'framer-motion'
-import { DIMENSION_LABELS, type FilterSuggestion } from '@/lib/filters'
+import { kindLabel, type FilterSuggestion } from '@/lib/filters'
 import { getFilterValueIcon } from '@/lib/utils/icons'
 import { formatCompactNumber } from '@/lib/utils/format'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -104,7 +104,7 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
     setSearch('')
   }
 
-  const dimLabel = dimension ? (DIMENSION_LABELS[dimension] ?? dimension) : 'value'
+  const dimLabel = dimension ? kindLabel(dimension) : 'value'
 
   const renderRow = (value: string, label: string, checked: boolean, count?: number, country?: string) => (
     <button

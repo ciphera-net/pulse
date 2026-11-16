@@ -39,7 +39,8 @@ import FrameToolbar from '@/components/dashboard/FrameToolbar'
 // Client-only and off the critical path: driver.js only matters once the
 // dashboard is interactive, and the controller waits for the anchors anyway.
 const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
-import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
+import { type DimensionFilter, serializeFilters, parseFiltersFromURL, EVENT_FILTERS_FLAG, readEventNameAsEvent } from '@/lib/filters'
+import { useFeature } from '@/lib/features'
 import {
   useDashboard,
   useRealtime,
@@ -163,6 +164,13 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
     return raw ? parseFiltersFromURL(raw) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+  // The event filter's beta (R45): the Search filter offers an event and an outbound link, and an old address's
+  // event_name filter reads as an event, once /me says the beta is on. The page never sends the two side by side,
+  // which the server refuses.
+  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
+  useEffect(() => {
+    if (eventFilters) setFilters((prev) => readEventNameAsEvent(prev))
+  }, [eventFilters])
 
   // Deck metric selection lives in the URL (?metric=) like ?period= — a shared
   // link carries it and a reload keeps it. DECOUPLED (owner decision,
@@ -572,7 +580,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
               <TermInfoTip term="imported_history" />
             </span>
           )}
-          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} onApplySet={handleApplySavedFilters} />
+          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} onApplySet={handleApplySavedFilters} eventFilters={eventFilters} />
         </>
       )}
       <DateRangePicker {...picker} />
@@ -685,6 +693,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           filtersParam={filtersParam}
           onCardFilter={onCardFilter}
           outboundOff={outboundOff}
+          eventFilters={eventFilters}
         />
       )}
       </EmptyFactsProvider>
