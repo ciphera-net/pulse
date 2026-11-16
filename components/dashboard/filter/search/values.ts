@@ -1,9 +1,23 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { DIMENSION_CATEGORIES, EVENT_KIND, OUTBOUND_KIND, SCOPED_DIMENSIONS, kindLabel, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  DIMENSION_CATEGORIES,
+  EVENT_KIND,
+  EVENT_PROPERTY_SCOPE,
+  OUTBOUND_KIND,
+  SCOPED_DIMENSIONS,
+  eventPropertyKind,
+  eventPropertyOf,
+  kindLabel,
+  propertyKeysEvent,
+  propertyKeysScope,
+  type DimensionFilter,
+  type FilterSuggestion,
+} from '@/lib/filters'
 import type { DashboardData } from '@/lib/api/stats'
-import { eventName } from '@/lib/dashboard/events'
+import { eventName, propertyName, readPropertyValue } from '@/lib/dashboard/events'
+import { outboundLinkRows } from '@/lib/dashboard/outbound'
 
 // ---------------------------------------------------------------------------
 // What the Search filter can be on, and the page's real values for each (owner ruling R36 of 15-11-2026, built
@@ -21,13 +35,19 @@ export const GROUPS: { label: string; dimensions: string[] }[] = DIMENSION_CATEG
 
 export const ALL_DIMENSIONS = GROUPS.flatMap((g) => g.dimensions)
 
+// "Event property" (lib/filters.ts, EVENT_PROPERTY_SCOPE) is a chip of the Events group that is no filter of its own:
+// it narrows the search to the page's events, an event narrows it to that event's keys, and a key to the values of the
+// kind `event_property:<event>:<key>`. Each step is the Search filter's own device, a kind that narrows the search.
+export { EVENT_PROPERTY_SCOPE }
+
 /**
- * The groups while the event-filters beta is on (R45): the Events group offers an event and an outbound link, each a
- * test on a visitor's day, in place of the row test `event_name` (design 15-11-2026-event-and-outbound-link-filter-
- * design.md, section 8).
+ * The groups while the event-filters beta is on (R45): the Events group offers an event, an event's property and an
+ * outbound link, each a test on a visitor's day, in place of the row test `event_name` (design section 8).
  */
 export const EVENT_FILTER_GROUPS: { label: string; dimensions: string[] }[] = GROUPS.map((g) =>
-  g.dimensions.includes('event_name') ? { ...g, dimensions: g.dimensions.flatMap((d) => (d === 'event_name' ? [EVENT_KIND, OUTBOUND_KIND] : [d])) } : g,
+  g.dimensions.includes('event_name')
+    ? { ...g, dimensions: g.dimensions.flatMap((d) => (d === 'event_name' ? [EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND] : [d])) }
+    : g,
 )
 
 /** The groups a page offers: the event filter's while its beta is on. */
@@ -35,30 +55,88 @@ export function groupsFor(eventFilters: boolean): { label: string; dimensions: s
   return eventFilters ? EVENT_FILTER_GROUPS : GROUPS
 }
 
-/** Every kind a page offers, in the groups' order. */
+/**
+ * Every kind a page reads values for up front, in the groups' order. "Event property" is not one: its first step lists
+ * the events, which the Event kind already reads, and its later steps are read when they open (useScopeList).
+ */
 export function dimensionsFor(eventFilters: boolean): string[] {
-  return groupsFor(eventFilters).flatMap((g) => g.dimensions)
+  return groupsFor(eventFilters).flatMap((g) => g.dimensions).filter((d) => d !== EVENT_PROPERTY_SCOPE)
 }
 
-/** An event's name as the Events block writes it. */
+/** An event's name as the Events block writes it (with no list at hand: the stored name made readable). */
 const eventLabel = (event: string) => eventName({ event_name: event, display_name: null })
-/** A kind as a reader names it ("Outbound link", "Signup: plan"). */
-export const labelOf = (dimension: string) => kindLabel(dimension, eventLabel)
+
+/** An event's name as the page's own list gives it (a goal's own name), else as the Events block writes it. */
+function eventNameOn(event: string, pageValues?: PageValues): string {
+  return pageValues?.[EVENT_KIND]?.find((s) => s.value === event)?.label ?? eventLabel(event)
+}
+
+/**
+ * A kind as a reader names it: "Outbound link", or a property as its event and its key the way the Events block names
+ * them ("Sign-ups: Plan", "File downloads: Link"). The steps of "Event property" are named too: the chip itself, and
+ * an event's keys by the event's name. `pageValues` (the page's own answer) gives an event its owner's name.
+ */
+export function labelOf(dimension: string, pageValues?: PageValues): string {
+  if (dimension === EVENT_PROPERTY_SCOPE) return 'Event property'
+  const keysOf = propertyKeysEvent(dimension)
+  if (keysOf) return eventNameOn(keysOf, pageValues)
+  return kindLabel(dimension, (event) => eventNameOn(event, pageValues), propertyName)
+}
+
+/**
+ * A value row's kind column (84 px wide): a property by its key alone ("Category"), because the chip above the list
+ * names its event and "Add to cart: Category" did not fit (seen on the lab page, 16-11-2026); every other kind as
+ * labelOf names it.
+ */
+export function columnLabelOf(dimension: string, pageValues?: PageValues): string {
+  const property = dimension === OUTBOUND_KIND ? null : eventPropertyOf(dimension)
+  return property ? propertyName(property.event, property.key) : labelOf(dimension, pageValues)
+}
+
+/** The field's prompt while a kind narrows the search. */
+export function placeholderOf(scope: string): string {
+  if (scope === EVENT_PROPERTY_SCOPE) return 'Search events'
+  if (propertyKeysEvent(scope)) return 'Search properties'
+  const property = scope === OUTBOUND_KIND ? null : eventPropertyOf(scope)
+  if (property) return `Search ${propertyName(property.event, property.key).toLowerCase()}`
+  return `Search ${labelOf(scope).toLowerCase()}`
+}
+
+/**
+ * Where a row of a scope leads when pressed: an event of "Event property" to its keys, a key to its values. Null where
+ * the row is a value, which a press adds as a filter.
+ */
+export function drillOf(scope: string | null, value: string): string | null {
+  if (scope === EVENT_PROPERTY_SCOPE) return propertyKeysScope(value)
+  const event = scope ? propertyKeysEvent(scope) : null
+  return event ? eventPropertyKind(event, value) : null
+}
+
 /** Kinds whose value is free text as well as a list: a "contains" filter makes sense on them. */
 export const TEXT_DIMENSIONS: ReadonlySet<string> = new Set(['page', 'referrer', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', EVENT_KIND, OUTBOUND_KIND])
+
+/** Whether "contains" makes sense on a kind: the text kinds, and every event property (the server takes it on all). */
+export function isTextKind(dimension: string): boolean {
+  return TEXT_DIMENSIONS.has(dimension) || eventPropertyOf(dimension) !== null
+}
 
 export type PageValues = Record<string, FilterSuggestion[]>
 export type Loaded = Record<string, FilterSuggestion[]>
 
+/** The events list's fold row (M12-g): the events past its cap, stored as `(other)`. */
+const OTHER_EVENTS = '(other)'
+
 /** The kinds the page's own answer lists, which have no value read of their own. */
 export function pageValuesFrom(dashboard: DashboardData | null | undefined): PageValues {
   if (!dashboard) return {}
-  const events = (dashboard.goal_counts ?? []).map((g) => ({ value: g.event_name, label: g.display_name || g.event_name.replace(/_/g, ' '), count: g.count }))
+  const goals = dashboard.goal_counts ?? []
   return {
-    event_name: events,
+    event_name: goals.map((g) => ({ value: g.event_name, label: g.display_name || g.event_name.replace(/_/g, ' '), count: g.count })),
     // The event filter's bare kind lists the same events (R45: "Events come from the page's own answer, with the
-    // names their owner gave them"); the counts are the page's.
-    [EVENT_KIND]: events,
+    // names their owner gave them"), each named as the Events block names its row ("Outbound clicks", a goal by its
+    // own name); the counts are the page's. Not the list's fold row: `(other)` stands for the events past its cap
+    // and is no event name, so the server refuses a filter on it.
+    [EVENT_KIND]: goals.filter((g) => g.event_name !== OTHER_EVENTS).map((g) => ({ value: g.event_name, label: eventName(g), count: g.count })),
     channel: (dashboard.channels ?? []).map((c) => ({ value: c.channel, label: c.channel, count: c.visitors })),
     screen_resolution: (dashboard.screen_resolutions ?? []).map((s) => ({ value: s.screen_resolution, label: s.screen_resolution, count: s.visitors })),
     language: (dashboard.languages ?? []).map((l) => ({ value: l.language, label: l.language, count: l.visitors })),
@@ -170,6 +248,97 @@ export function useFilterValues({
   return { values, ready }
 }
 
+/** Whether a scope's list is read when it opens rather than up front: an event's keys, or a property no page reads up front. */
+export function readsOnOpen(scope: string | null, known: readonly string[]): scope is string {
+  if (scope === null || known.includes(scope)) return false
+  return propertyKeysEvent(scope) !== null || eventPropertyOf(scope) !== null
+}
+
+type ScopeRead = { list: FilterSuggestion[]; failed: false } | { list: null; failed: true }
+
+/**
+ * The list of a step of "Event property" that no page reads up front: an event's keys, or one property's values. Read
+ * when the step opens, and kept while the page's reads stay the same (the suggestion reader changes with the range and
+ * the filters), so going back a step shows its list at once. A property with a filter on is offered its list from
+ * before that filter, with the counts the filters now on give, as every kind is (useFilterValues). A failed read is
+ * said, never shown as an empty list; `retry` reads again.
+ */
+export function useScopeList({
+  scope,
+  fetchSuggestions,
+  filters,
+  known,
+}: {
+  scope: string | null
+  fetchSuggestions: ((dimension: string) => Promise<FilterSuggestion[]>) | undefined
+  filters: DimensionFilter[]
+  /** The kinds the page reads up front (dimensionsFor): an outbound link reached through its event is one. */
+  known: readonly string[]
+}): { list: FilterSuggestion[]; ready: boolean; failed: boolean; retry: () => void } {
+  const filtersKey = filters.map((f) => `${f.dimension}|${f.operator}|${f.values.join(';')}`).join(',')
+  const [reads, setReads] = useState<Record<string, ScopeRead>>({})
+  // What was read belongs to one suggestion reader under one set of filters: another range or other filters read
+  // again. Adjusted during render, React's pattern for state derived from props, so no frame shows the old lists.
+  const [readFor, setReadFor] = useState(() => ({ reader: fetchSuggestions, filtersKey }))
+  if (readFor.reader !== fetchSuggestions || readFor.filtersKey !== filtersKey) {
+    setReadFor({ reader: fetchSuggestions, filtersKey })
+    setReads({})
+  }
+  // Lists read while their own kind had no filter on.
+  const base = useRef<Record<string, FilterSuggestion[]>>({})
+  // The reader and filters now, and the reads out (each scope with the reader and filters it was asked under).
+  const latestFilters = useRef(filtersKey)
+  const latestReader = useRef(fetchSuggestions)
+  useEffect(() => {
+    latestFilters.current = filtersKey
+    latestReader.current = fetchSuggestions
+  }, [fetchSuggestions, filtersKey])
+  const reading = useRef<Map<string, { reader: unknown; filtersKey: string }>>(new Map())
+  const active = readsOnOpen(scope, known) && fetchSuggestions ? scope : null
+  const read = active ? reads[active] : undefined
+
+  useEffect(() => {
+    if (!active || !fetchSuggestions || reads[active]) return
+    const out = reading.current.get(active)
+    if (out && out.reader === fetchSuggestions && out.filtersKey === filtersKey) return
+    const reader = fetchSuggestions
+    const asked = filtersKey
+    const filteredOn = filters.some((f) => f.dimension === active)
+    reading.current.set(active, { reader, filtersKey: asked })
+    void reader(active)
+      .then((fresh): ScopeRead => {
+        if (!filteredOn) base.current[active] = fresh
+        else if (base.current[active]) {
+          const now = new Map(fresh.map((s) => [s.value, s.count]))
+          return { list: base.current[active].map((s) => (now.has(s.value) ? { ...s, count: now.get(s.value) } : s)), failed: false }
+        }
+        return { list: fresh, failed: false }
+      })
+      .catch((): ScopeRead => ({ list: null, failed: true }))
+      .then((result) => {
+        const mine = reading.current.get(active)
+        if (mine && mine.reader === reader && mine.filtersKey === asked) reading.current.delete(active)
+        // A read asked under a reader or filters the page has since replaced is dropped: its list describes another
+        // range or other filters.
+        if (latestReader.current !== reader || latestFilters.current !== asked) return
+        setReads((prev) => ({ ...prev, [active]: result }))
+      })
+    // The read follows the scope and the page's reader; `filtersKey` stands for the filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, fetchSuggestions, reads, filtersKey])
+
+  const retry = useCallback(() => {
+    if (!active) return
+    setReads((prev) => {
+      const next = { ...prev }
+      delete next[active]
+      return next
+    })
+  }, [active])
+
+  return { list: read?.list ?? [], ready: read !== undefined && !read.failed, failed: read?.failed === true, retry }
+}
+
 const regions = (() => {
   try {
     return new Intl.DisplayNames(['en'], { type: 'region' })
@@ -178,11 +347,17 @@ const regions = (() => {
   }
 })()
 
-/** A value as a reader names it: a country by its name, an event by the name its list gives it, the rest as stored. */
+/**
+ * A value as a reader names it: a country by its name, an event by the name its list gives it, an outbound link as the
+ * Outbound tab writes it and any other property's value as the Events block writes it (a link without its scheme, its
+ * `www.` and a closing slash), the rest as stored.
+ */
 export function valueName(dimension: string, value: string, pageValues?: PageValues): string {
   if (dimension === 'country' && /^[A-Z]{2}$/.test(value)) return regions?.of(value) ?? value
   const listed = pageValues?.[dimension]?.find((s) => s.value === value)?.label
   if (listed) return listed
   if (dimension === EVENT_KIND) return eventLabel(value)
+  if (dimension === OUTBOUND_KIND) return outboundLinkRows([{ value, count: 0 }])[0]?.label ?? value
+  if (eventPropertyOf(dimension)) return readPropertyValue(value).label
   return dimension === 'event_name' ? value.replace(/_/g, ' ') : value
 }

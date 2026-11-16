@@ -65,3 +65,31 @@ describe('FilterPill — language chip (PULSE-173)', () => {
     expect(screen.queryByText(/en-US/)).toBeNull()
   })
 })
+
+// The event filter's kinds on the older pages' pills (a funnel's page, Journeys, Settings, Export): by the names the
+// dashboard gives them, never their keys (found 16-11-2026: an outbound link's pill read
+// "event_property:outbound_link:url is https://…").
+describe('FilterPill and the event filter (R45)', () => {
+  it('names an outbound link and writes it as the Outbound tab does, a merged row once', async () => {
+    const { OUTBOUND_KIND } = await import('@/lib/filters')
+    const filter: DimensionFilter = { dimension: OUTBOUND_KIND, operator: 'is', values: ['https://github.com/ciphera', 'http://www.github.com/ciphera'] }
+    render(<FilterPill filter={filter} onEdit={vi.fn()} onRemove={vi.fn()} />)
+    expect(screen.getByText('Outbound link')).toBeTruthy()
+    expect(screen.getByText('github.com/ciphera')).toBeTruthy()
+    expect(screen.queryByText(/event_property/)).toBeNull()
+    expect(screen.queryByText(/\+1/)).toBeNull()
+  })
+
+  it('names a property by its event and key, and an event by its readable name', async () => {
+    const { eventPropertyKind } = await import('@/lib/filters')
+    render(<FilterPill filter={{ dimension: eventPropertyKind('signup', 'plan'), operator: 'is', values: ['pro', 'team'] }} onEdit={vi.fn()} onRemove={vi.fn()} />)
+    expect(screen.getByText('Signup: Plan')).toBeTruthy()
+    expect(screen.getByText('pro +1')).toBeTruthy()
+  })
+
+  it('leaves every other kind\'s values as they were (a country stays its code)', () => {
+    render(<FilterPill filter={{ dimension: 'country', operator: 'is', values: ['NO'] }} onEdit={vi.fn()} onRemove={vi.fn()} />)
+    expect(screen.getByText('NO')).toBeTruthy()
+    expect(screen.getByText('Country')).toBeTruthy()
+  })
+})

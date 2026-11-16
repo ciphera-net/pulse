@@ -16,15 +16,18 @@ import { labelOf, valueName, type PageValues } from './values'
 
 const excluded = (f: DimensionFilter) => f.operator === 'is_not' || f.operator === 'not_contains'
 
-/** "Norway", "Norway or Sweden", "Norway, Sweden or 2 more": the box's own wording. */
+/**
+ * "Norway", "Norway or Sweden", "Norway, Sweden or 2 more": the box's own wording. Values that read the same are named
+ * once: a row that merged them (an outbound link's `http` and `https` addresses) filters by all of them and is one name.
+ */
 export function valueText(f: DimensionFilter, pageValues: PageValues): string {
-  const names = f.values.map((v) => valueName(f.dimension, v, pageValues))
+  const names = [...new Set(f.values.map((v) => valueName(f.dimension, v, pageValues)))]
   return names.length <= 2 ? names.join(' or ') : `${names.slice(0, 2).join(', ')} or ${names.length - 2} more`
 }
 
 /** "Country is Norway and Device is mobile": what a saved set holds, for the line beside its name. */
 export function describe(filters: DimensionFilter[], pageValues: PageValues): string {
-  return filters.map((f) => `${labelOf(f.dimension)} ${OPERATOR_LABELS[f.operator]} ${valueText(f, pageValues)}`).join(' and ')
+  return filters.map((f) => `${labelOf(f.dimension, pageValues)} ${OPERATOR_LABELS[f.operator]} ${valueText(f, pageValues)}`).join(' and ')
 }
 
 /** The name a set is offered when it is saved: its values, "Norway, mobile", "Norway, not google.com and 1 more". */

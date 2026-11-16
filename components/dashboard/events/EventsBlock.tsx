@@ -11,6 +11,7 @@ import { DIMENSION_ROW, ROW_NUMBER } from '@/components/dashboard/MetricRowStat'
 import { SortHead, sortRows, type Sort, type SortColumn } from '@/components/dashboard/SortHead'
 import { CompactNumber } from '@/components/ui/compact-number'
 import type { GoalCountStat, ImportedProvenance } from '@/lib/api/stats'
+import type { DimensionFilter } from '@/lib/filters'
 import { CardFooter, FRAME_CARD_BODY, FRAME_CARD_NOTE } from '@/lib/dashboard/frame'
 import { EVENTS_IMPORTED_WORD, eventLabels, people, percent, splitEvents } from '@/lib/dashboard/events'
 import { docsUrl } from '@/lib/docs'
@@ -72,9 +73,11 @@ export interface EventsBlockProps {
   memberFeatures?: boolean
   /** The page's filters. The rows already follow them; the pane's own reads send them too. */
   filters?: string
+  /** The event-filters beta (R45): a press on one of the pane's values filters the page by it. */
+  onFilter?: (filter: DimensionFilter) => void
 }
 
-export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRange, period, liveMinutes, totals, memberFeatures = true, filters }: EventsBlockProps) {
+export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRange, period, liveMinutes, totals, memberFeatures = true, filters, onFilter }: EventsBlockProps) {
   // What the list and its picked event describe: one window under one set of filters.
   const windowKey = `${liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`}|${filters ?? ''}`
   const [tab, setTab] = useState<Tab>('own')
@@ -233,6 +236,7 @@ export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRan
               liveMinutes={liveMinutes}
               filters={filters}
               onBack={() => setPane('list')}
+              onFilter={onFilter}
             />
           ) : (
             <PaneLine>An event&apos;s properties show here.</PaneLine>

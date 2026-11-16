@@ -133,3 +133,55 @@ describe('useFilterSuggestions reads through the nearest site scope', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
+
+describe('useFilterSuggestions for Event property (R45, design section 8)', () => {
+  const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+
+  it('reads an event\'s keys with the page\'s period and filters, named and ordered as the Events block\'s tabs', async () => {
+    const { propertyKeysScope } = await import('@/lib/filters')
+    fetchSpy.mockImplementation(async () => json({ keys: [{ key: 'page_path', count: 30 }, { key: 'url', count: 30 }] }))
+    const id = nextId()
+    const filters = 'v2:country|is|NO'
+    const { result } = renderHook(() => useFilterSuggestions(id, RANGE, filters, 'all'), { wrapper: wrapperFor(memberScope(id)) })
+    // An automatic event's keys in reading order: what was pressed first, the page it was pressed on last.
+    await expect(result.current(propertyKeysScope('outbound_link'))).resolves.toEqual([
+      { value: 'url', label: 'Link', count: 30 },
+      { value: 'page_path', label: 'Page', count: 30 },
+    ])
+    // All time travels as its token: sent as its dates, a history past 366 days is refused.
+    expect(sent().endpoint).toBe(`/sites/${id}/goals/outbound_link/properties?period=all&filters=${encodeURIComponent(filters)}`)
+    fetchSpy.mockImplementation(async () => json({ keys: [{ key: 'billing_cycle', count: 4 }] }))
+    await expect(result.current(propertyKeysScope('signup'))).resolves.toEqual([{ value: 'billing_cycle', label: 'Billing cycle', count: 4 }])
+  })
+
+  it('sends the live window, never a period, in realtime', async () => {
+    const { propertyKeysScope } = await import('@/lib/filters')
+    fetchSpy.mockImplementation(async () => json({ keys: [] }))
+    const id = nextId()
+    const { result } = renderHook(() => useFilterSuggestions(id, RANGE, undefined, 'today', 30), { wrapper: wrapperFor(memberScope(id)) })
+    await result.current(propertyKeysScope('signup'))
+    expect(sent().endpoint).toContain('minutes=30')
+    expect(sent().endpoint).not.toContain('period=')
+  })
+
+  it('offers stored values that read the same as one suggestion carrying all of them', async () => {
+    const { OUTBOUND_KIND, eventPropertyKind } = await import('@/lib/filters')
+    fetchSpy.mockImplementation(async (url: string) =>
+      json({
+        values: url.includes('/outbound_link/')
+          ? [{ value: 'https://github.com/ciphera', count: 4 }, { value: 'http://www.github.com/ciphera', count: 2 }, { value: 'https://docs.example/x', count: 1 }]
+          : [{ value: 'https://www.example.com/a.pdf', count: 5 }, { value: 'http://example.com/a.pdf/', count: 2 }, { value: 'Pro', count: 1 }],
+      }),
+    )
+    const id = nextId()
+    const { result } = renderHook(() => useFilterSuggestions(id, RANGE, undefined, '30d'), { wrapper: wrapperFor(memberScope(id)) })
+    await expect(result.current(OUTBOUND_KIND)).resolves.toStrictEqual([
+      { value: 'https://github.com/ciphera', label: 'github.com/ciphera', count: 6, values: ['https://github.com/ciphera', 'http://www.github.com/ciphera'] },
+      { value: 'https://docs.example/x', label: 'docs.example/x', count: 1 },
+    ])
+    await expect(result.current(eventPropertyKind('file_download', 'url'))).resolves.toStrictEqual([
+      { value: 'https://www.example.com/a.pdf', label: 'example.com/a.pdf', count: 7, values: ['https://www.example.com/a.pdf', 'http://example.com/a.pdf/'] },
+      { value: 'Pro', label: 'Pro', count: 1 },
+    ])
+  })
+})

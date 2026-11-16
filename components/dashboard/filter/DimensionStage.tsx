@@ -3,11 +3,13 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { MagnifyingGlass } from '@phosphor-icons/react'
-import { EVENT_FILTERS_FLAG, SCOPED_DIMENSIONS, categoriesFor, kindLabel } from '@/lib/filters'
+import { EVENT_FILTERS_FLAG, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND, SCOPED_DIMENSIONS, categoriesFor, eventPropertyOf, type FilterSuggestion } from '@/lib/filters'
 import { useFeature } from '@/lib/features'
-import { DIMENSION_ICONS } from './dimensionIcons'
+import { DIMENSION_ICONS, iconKeyOf } from './dimensionIcons'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { moveHighlight } from './useFilterBuilder'
+import { labelOf } from './search/values'
+import PropertyStep from './PropertyStep'
 
 // * Mirrors the dashboard's tool iconography so the popover reads as the same
 // * product surface (flags/brand icons appear once a dimension is picked).
@@ -26,9 +28,32 @@ export interface DimensionStageProps {
   /** Optional allowlist — when set, only these dimensions are offered (additive;
    * omitted on the dashboard, so it's unaffected). */
   allowed?: readonly string[]
+  /** The page's suggestion reads: "Event property" lists the range's events, then an event's keys, through them. */
+  fetchSuggestions?: (dimension: string) => Promise<FilterSuggestion[]>
 }
 
-export default function DimensionStage({ activeDimensions, onPick, onClose, allowed }: DimensionStageProps) {
+export default function DimensionStage({ activeDimensions, onPick, onClose, allowed, fetchSuggestions }: DimensionStageProps) {
+  // The steps of "Event property" opened so far ([] while the kinds are listed): the events, then an event's keys.
+  const [path, setPath] = useState<string[]>([])
+  if (path.length > 0) {
+    const step = path[path.length - 1]
+    return (
+      <PropertyStep
+        // One step, one list: a new step starts with an empty field and its own read.
+        key={step}
+        step={step}
+        fetchSuggestions={fetchSuggestions}
+        onOpen={(next) => setPath((p) => [...p, next])}
+        onPick={onPick}
+        onBack={() => setPath((p) => p.slice(0, -1))}
+      />
+    )
+  }
+  return <KindList activeDimensions={activeDimensions} onPick={(d) => (d === EVENT_PROPERTY_SCOPE ? setPath([d]) : onPick(d))} onClose={onClose} allowed={allowed} />
+}
+
+/** The kinds, grouped, with type-to-search and keyboard navigation. */
+function KindList({ activeDimensions, onPick, onClose, allowed }: Omit<DimensionStageProps, 'fetchSuggestions'>) {
   const [search, setSearch] = useState('')
   const [highlight, setHighlight] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -52,7 +77,7 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
         label: cat.label,
         dimensions: cat.dimensions.filter(
           // * No allowlist = the page's full vocabulary MINUS the scoped dimensions.
-          d => (allowSet ? allowSet.has(d) : !SCOPED_DIMENSIONS.has(d)) && kindLabel(d).toLowerCase().includes(query),
+          d => (allowSet ? allowSet.has(d) : !SCOPED_DIMENSIONS.has(d)) && labelOf(d).toLowerCase().includes(query),
         ),
       }))
       .filter(g => g.dimensions.length > 0)
@@ -89,7 +114,7 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
   }
 
   const renderItem = (dim: string, index: number) => {
-    const DimIcon = DIMENSION_ICONS[dim]
+    const DimIcon = DIMENSION_ICONS[iconKeyOf(dim)]
     return (
       // * Tiny mount cascade (capped at 120ms) — rows that stay mounted while
       // * typing never re-animate, so keystroke filtering stays instant.
@@ -114,8 +139,8 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
             className={`w-4 h-4 flex-shrink-0 ${index === highlight ? 'text-neutral-300' : 'text-neutral-500'}`}
           />
         )}
-        <span className="flex-1">{kindLabel(dim)}</span>
-        {activeDimensions.has(dim) && (
+        <span className="flex-1">{labelOf(dim)}</span>
+        {(activeDimensions.has(dim) || (dim === EVENT_PROPERTY_SCOPE && [...activeDimensions].some(d => d !== OUTBOUND_KIND && eventPropertyOf(d) !== null))) && (
           <span
             aria-label="has an active filter"
             className="w-1.5 h-1.5 rounded-full bg-brand-orange flex-shrink-0"

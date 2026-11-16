@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { EVENT_KIND, OUTBOUND_KIND, serializeFilters, parseFiltersFromURL, type DimensionFilter } from '@/lib/filters'
+import { EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND, serializeFilters, parseFiltersFromURL, type DimensionFilter } from '@/lib/filters'
 import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
@@ -31,11 +31,11 @@ export const ENTRY_DIMENSION = 'entry_path'
 export const JOURNEY_FILTER_DIMENSIONS = [ENTRY_DIMENSION, 'country', 'device', 'referrer'] as const
 
 /**
- * The same while the event-filters beta is on (R45): an event and an outbound link too. The server tests them on each
- * journey's session (journey_flows), so a journey is kept whole (design 15-11-2026-event-and-outbound-link-filter-
- * design.md, section 7).
+ * The same while the event-filters beta is on (R45): an event, an event's property and an outbound link too. The
+ * server tests them on each journey's session (journey_flows), so a journey is kept whole (design
+ * 15-11-2026-event-and-outbound-link-filter-design.md, section 7).
  */
-export const JOURNEY_EVENT_FILTER_DIMENSIONS = [...JOURNEY_FILTER_DIMENSIONS, EVENT_KIND, OUTBOUND_KIND] as const
+export const JOURNEY_EVENT_FILTER_DIMENSIONS = [...JOURNEY_FILTER_DIMENSIONS, EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND] as const
 
 // ─── Constants ──────────────────────────────────────────────────────
 

@@ -12,6 +12,7 @@ import { SkeletonLine } from '@/components/skeleton/primitives'
 import { CompactNumber } from '@/components/ui/compact-number'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
+import { eventPropertyKind, type DimensionFilter } from '@/lib/filters'
 import { CardFooter, FRAME_CARD_BODY } from '@/lib/dashboard/frame'
 import { orderKeys, percent, propertyName, propertyValueRows, type PropertyValueRow } from '@/lib/dashboard/events'
 import { useEventPropertyKeys, useEventPropertyValues } from '@/lib/swr/dashboard'
@@ -24,7 +25,8 @@ import { COL, COL_SHARE, GAP, LABEL_BOX, LIMIT } from './columns'
 // Its keys are tabs, ONE property at a time, in the orange every block's tabs have (R41). Each value carries its
 // events and its share of the events that carry the property, seven to a page with the blocks' pager; both
 // columns sort, high to low and low to high (R41, R51). The reads follow the page's filters, so under a filter the
-// values add up to the count the event's row shows.
+// values add up to the count the event's row shows. Under the event-filters beta (R45) a value is a filter: a press
+// keeps the visitors who did this event with this value that day, the Pages rows' device (an overlay button).
 // ---------------------------------------------------------------------------
 
 /** The values one read asks for: the pane pages through them seven at a time. */
@@ -88,9 +90,15 @@ interface EventPropertiesProps {
   filters?: string
   /** Below `lg` the pane takes the list's place: back to the list. */
   onBack: () => void
+  /**
+   * The event-filters beta (R45; design 15-11-2026-event-and-outbound-link-filter-design.md, section 8: "a property
+   * value by its value"): a press on a value filters the page by it, every stored value a merged row stands for.
+   * Without it the rows are not controls.
+   */
+  onFilter?: (filter: DimensionFilter) => void
 }
 
-export function EventProperties({ siteId, row, name, windowKey, dateRange, period, liveMinutes, filters, onBack }: EventPropertiesProps) {
+export function EventProperties({ siteId, row, name, windowKey, dateRange, period, liveMinutes, filters, onBack, onFilter }: EventPropertiesProps) {
   const event = row.event_name
   // Imported days carry no properties (an export has none), and the server says which rows those are.
   const readable = row.instrument !== 'imported'
@@ -111,6 +119,10 @@ export function EventProperties({ siteId, row, name, windowKey, dateRange, perio
   const shown = ordered?.slice((page - 1) * LIMIT, page * LIMIT) ?? []
   // Against the largest of all, whatever the order: low to high puts the smallest first.
   const max = rows ? rows.reduce((m, value) => Math.max(m, value.count), 0) : 0
+  // Under the event-filters beta a value filters the page: the visitors who did this event with it that day.
+  const filterBy = onFilter && activeKey
+    ? (value: PropertyValueRow) => onFilter({ dimension: eventPropertyKind(event, activeKey), operator: 'is', values: value.values })
+    : null
 
   return (
     <>
@@ -158,14 +170,29 @@ export function EventProperties({ siteId, row, name, windowKey, dateRange, perio
           <CascadeGroup flipKey={`${event}-${activeKey}-${page}`} className="space-y-2">
             {shown.map((value, i) => (
               <CascadeRow key={value.value} index={i}>
-                <div className={DIMENSION_ROW} data-event-value="">
+                <div className={filterBy ? `interactive-row ${DIMENSION_ROW} cursor-pointer` : DIMENSION_ROW} data-event-value="">
+                  {filterBy && activeKey && (
+                    // The Pages rows' device: the press is an overlay, and the number takes the pointer back for its
+                    // exact count and hands the press on.
+                    <button
+                      type="button"
+                      aria-label={`Filter by ${name}: ${propertyName(event, activeKey)} is ${value.label}`}
+                      onClick={() => filterBy(value)}
+                      className="absolute inset-0 h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+                      data-testid="event-value-filter"
+                    />
+                  )}
                   <div className={`${LABEL_BOX} gap-3 text-sm text-white`}>
-                    {/* The row is not a control, so its bar does not deepen under the pointer. */}
-                    <RowBar width={max > 0 ? (value.count / max) * 100 : 0} index={i} className="md:group-hover:bg-brand-orange/[0.16]" />
+                    {/* A row that is not a control keeps its bar under the pointer; a filter's deepens, as every row's does. */}
+                    <RowBar width={max > 0 ? (value.count / max) * 100 : 0} index={i} className={filterBy ? undefined : 'md:group-hover:bg-brand-orange/[0.16]'} />
                     <ValueLabel row={value} />
                   </div>
-                  <div className={`relative ml-4 flex items-center ${GAP}`}>
-                    <CompactNumber value={value.count} className={`${ROW_NUMBER} ${COL}`} />
+                  <div className={`relative ml-4 flex items-center ${GAP}${filterBy ? ' pointer-events-none' : ''}`}>
+                    <CompactNumber
+                      value={value.count}
+                      className={`${ROW_NUMBER} ${COL}${filterBy ? ' pointer-events-auto' : ''}`}
+                      onClick={filterBy ? () => filterBy(value) : undefined}
+                    />
                     <span className={`${ROW_NUMBER} ${COL_SHARE} tabular-nums`}>{percent(value.count, carrying) ?? EM_DASH}</span>
                   </div>
                 </div>

@@ -2,7 +2,8 @@
 
 import { motion } from 'framer-motion'
 import { X } from '@phosphor-icons/react'
-import { type DimensionFilter, DIMENSION_LABELS, OPERATOR_LABELS } from '@/lib/filters'
+import { type DimensionFilter, OPERATOR_LABELS, isEventKind } from '@/lib/filters'
+import { labelOf, valueName } from '@/components/dashboard/filter/search/values'
 import { EASE_APPLE } from '@/lib/motion'
 import { formatLanguage, languageGroupKey } from '@/lib/dashboard/language'
 
@@ -14,7 +15,10 @@ interface FilterPillProps {
 }
 
 export default function FilterPill({ filter, onEdit, onRemove }: FilterPillProps) {
-  const dim = DIMENSION_LABELS[filter.dimension] || filter.dimension
+  // The event filter's kinds by the names the dashboard gives them ("Outbound link", "Signup: Plan"), never their keys.
+  const dim = labelOf(filter.dimension)
+  // Their values as the dashboard writes them, and a merged row's addresses (they read the same) once.
+  const names = isEventKind(filter.dimension) ? [...new Set(filter.values.map(v => valueName(filter.dimension, v)))] : filter.values
   const op = OPERATOR_LABELS[filter.operator]
   // PULSE-173: a grouped-language row's click produces one filter carrying
   // every member locale of the group (e.g. ["en-US","en-GB","en",…]) — showing
@@ -32,9 +36,9 @@ export default function FilterPill({ filter, onEdit, onRemove }: FilterPillProps
     && filter.values.every(v => languageGroupKey(v) === languageGroupKey(filter.values[0]))
   const val = isHomogeneousLanguageGroup
     ? formatLanguage(languageGroupKey(filter.values[0]))
-    : filter.values.length > 1
-      ? `${filter.values[0]} +${filter.values.length - 1}`
-      : filter.values[0]
+    : names.length > 1
+      ? `${names[0]} +${names.length - 1}`
+      : names[0]
 
   return (
     <motion.div

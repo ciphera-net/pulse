@@ -56,7 +56,7 @@ interface DashboardFrameProps {
   onCardFilter: ((filter: DimensionFilter) => void) | undefined
   /** The site's "Outbound links" option is switched off: the Pages block's Outbound tab then says so in place of its rows. */
   outboundOff: boolean
-  /** The event-filters beta (R45): a press on an Outbound row filters the page by its link. */
+  /** The event-filters beta (R45): a press on an Outbound row filters the page by its link, one on an event's value by it. */
   eventFilters?: boolean
 }
 
@@ -174,6 +174,7 @@ export default function DashboardFrame({
               totals={totals}
               memberFeatures={caps.fullReads}
               filters={filtersParam || undefined}
+              onFilter={eventFilters ? onCardFilter : undefined}
             />
           </div>
         </div>

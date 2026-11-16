@@ -12,11 +12,12 @@ import {
   getDevices,
   getCampaigns,
   getGoalStats,
+  getEventPropertyKeys,
   getEventPropertyValues,
 } from '@/lib/api/stats'
 import { getJourneyEntryPoints } from '@/lib/api/journeys'
-import { EVENT_KIND, OUTBOUND_KIND, eventPropertyOf, type FilterSuggestion } from '@/lib/filters'
-import { eventName } from '@/lib/dashboard/events'
+import { EVENT_KIND, OUTBOUND_KIND, eventPropertyOf, propertyKeysEvent, type FilterSuggestion } from '@/lib/filters'
+import { eventName, orderKeys, propertyName, propertyValueRows } from '@/lib/dashboard/events'
 import { outboundLinkRows } from '@/lib/dashboard/outbound'
 import { logger } from '@/lib/utils/logger'
 import { useSiteRead } from '@/lib/swr/site-read'
@@ -122,15 +123,23 @@ export function useFilterSuggestions(
             return data.filter(g => g.event_name && g.event_name !== '(other)').map(g => ({ value: g.event_name, label: eventName(g), count: g.count }))
           }
           default: {
-            // * An event's property (R45): its stored values. An outbound link is read as the Outbound tab writes it,
-            // * its value the stored address the filter matches.
+            // * An event's keys (the Search filter's "Event property", on its way to a property): named and ordered
+            // * as the Events block's tabs are. All time travels as its token, as for every list here.
+            const keysOf = propertyKeysEvent(dimension)
+            if (keysOf) {
+              const keys = await getEventPropertyKeys(ref, keysOf, start, end, liveMinutes, f, liveMinutes != null ? undefined : period)
+              return orderKeys(keysOf, keys).map(k => ({ value: k.key, label: propertyName(keysOf, k.key), count: k.count }))
+            }
+            // * An event's property (R45): its values, written as the Events block writes them, and an outbound link
+            // * as the Outbound tab does. Stored values that read the same are one suggestion, which filters by all of
+            // * them (a list never draws the same row twice, plan section 10ab).
             const property = eventPropertyOf(dimension)
             if (!property) return []
             const data = await getEventPropertyValues(ref, property.event, property.key, start, end, limit, liveMinutes != null ? undefined : period, liveMinutes, f)
             if (dimension === OUTBOUND_KIND) {
-              return data.flatMap(v => outboundLinkRows([v]).map(row => ({ value: v.value, label: row.label, count: v.count })))
+              return outboundLinkRows(data).map(row => ({ value: row.href, label: row.label, count: row.clicks, ...(row.hrefs.length > 1 ? { values: row.hrefs } : {}) }))
             }
-            return data.map(v => ({ value: v.value, label: v.value, count: v.count }))
+            return propertyValueRows(data).map(row => ({ value: row.value, label: row.label, count: row.count, ...(row.values.length > 1 ? { values: row.values } : {}) }))
           }
         }
       } catch (err) {

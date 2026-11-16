@@ -10,11 +10,27 @@ import { SkeletonLine } from '@/components/skeleton/primitives'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
 import { formatCompactNumber } from '@/lib/utils/format'
 import { getFilterValueIcon } from '@/lib/utils/icons'
-import { TOO_MANY_EVENT_FILTERS, eventFilterRoomFor, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
-import { DIMENSION_ICONS } from '../dimensionIcons'
+import { EVENT_KIND, TOO_MANY_EVENT_FILTERS, eventFilterRoomFor, propertyKeysEvent, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
+import { DIMENSION_ICONS, iconKeyOf } from '../dimensionIcons'
 import { setFor, useSavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
 import { SavedRow } from './saved'
-import { TEXT_DIMENSIONS, dimensionsFor, groupsFor, labelOf, search, useFilterValues, type Found, type PageValues } from './values'
+import {
+  EVENT_PROPERTY_SCOPE,
+  columnLabelOf,
+  dimensionsFor,
+  drillOf,
+  groupsFor,
+  isTextKind,
+  labelOf,
+  placeholderOf,
+  readsOnOpen,
+  search,
+  useFilterValues,
+  useScopeList,
+  type Found,
+  type Loaded,
+  type PageValues,
+} from './values'
 
 // ---------------------------------------------------------------------------
 // The Search filter: ONE field (owner ruling R36 of 15-11-2026, the new dashboard's filter; the lab's option
@@ -30,8 +46,10 @@ import { TEXT_DIMENSIONS, dimensionsFor, groupsFor, labelOf, search, useFilterVa
 //     about to be. The values are read from the moment the pointer reaches the button.
 //   * It enters and leaves as the date menu does (components/ui/DateRangePicker: 150 ms, from 4 px under and 98 %
 //     of its size), and the button carries the date button's caret, a quarter turn while it is open.
-// Not here, because the server does none of them yet: saved sets, "match any", an event's property and an outbound
-// link as a filter. Each comes with its own server work.
+// Under the event-filters beta (R45), "Event property" is a kind that narrows in three steps: the page's events, then
+// the picked event's keys, then that property's values, each row of the first two ending in the caret that says a
+// press opens something. Backspace in an empty field goes back one step.
+// Not here, because the server does not do it yet: "match any".
 // ---------------------------------------------------------------------------
 
 // A value's reader name lives in ./values (saved filters' rows read it too); re-exported for this file's importers.
@@ -39,7 +57,7 @@ export { valueName } from './values'
 
 /** A kind's own icon. */
 export function DimensionIcon({ dimension, className = 'h-3.5 w-3.5' }: { dimension: string; className?: string }) {
-  const Mark = DIMENSION_ICONS[dimension]
+  const Mark = DIMENSION_ICONS[iconKeyOf(dimension)]
   return Mark ? <Mark className={cn('shrink-0', className)} aria-hidden="true" /> : null
 }
 
@@ -62,7 +80,20 @@ function Marked({ text, query }: { text: string; query: string }) {
   return <>{text.slice(0, at)}<span className="font-medium text-white">{text.slice(at, at + query.length)}</span>{text.slice(at + query.length)}</>
 }
 
-type Item = { kind: 'value'; found: Found } | { kind: 'contains'; dimension: string; text: string } | { kind: 'set'; set: SavedSet } | { kind: 'dimension'; dimension: string }
+type Item =
+  | { kind: 'value'; found: Found }
+  // A row that opens the next step of "Event property": an event to its keys, a key to its values.
+  | { kind: 'drill'; found: Found; to: string }
+  | { kind: 'contains'; dimension: string; text: string }
+  | { kind: 'set'; set: SavedSet }
+  | { kind: 'dimension'; dimension: string }
+
+/** What an empty step says when nothing was typed: each step of "Event property" its own line, any other kind one. */
+function emptyLine(scope: string | null): string {
+  if (scope === EVENT_PROPERTY_SCOPE) return 'There are no events on this page.'
+  if (scope && propertyKeysEvent(scope)) return 'No properties were sent with this event.'
+  return 'There is nothing to pick from on this page.'
+}
 
 export interface SearchFilterProps {
   filters: DimensionFilter[]
@@ -99,6 +130,8 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   const [at, setAt] = useState<{ top: number; left: number; width: number } | null>(null)
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState<string | null>(null)
+  // The steps above the scope ("Event property", then an event's keys): Backspace in an empty field goes back to the last.
+  const [trail, setTrail] = useState<string[]>([])
   const [index, setIndex] = useState(0)
   const groups = groupsFor(eventFilters)
   const dimensions = useMemo(() => dimensionsFor(eventFilters), [eventFilters])
@@ -108,10 +141,24 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   const sets = useMemo(() => (savedFilters.on && onApplySet ? savedFilters.sets : []), [savedFilters.on, savedFilters.sets, onApplySet])
   const current = setFor(filters, sets)
 
+  // The later steps of "Event property" are read when they open; its first lists the events the Event kind reads.
+  const scopeRead = useScopeList({ scope, fetchSuggestions, filters, known: dimensions })
+  const onOpen = readsOnOpen(scope, dimensions)
+  const listed: Loaded = useMemo(() => {
+    if (scope === EVENT_PROPERTY_SCOPE) return { ...values, [EVENT_PROPERTY_SCOPE]: values[EVENT_KIND] ?? [] }
+    if (onOpen && scope) return { ...values, [scope]: scopeRead.list }
+    return values
+  }, [scope, onOpen, values, scopeRead.list])
+  const listReady = onOpen ? scopeRead.ready : ready
+  const failed = onOpen && scopeRead.failed
+  // A step whose rows open the next one: Enter opens, and there is nothing to exclude.
+  const drilling = scope === EVENT_PROPERTY_SCOPE || (scope !== null && propertyKeysEvent(scope) !== null)
+
   const close = useCallback(() => {
     setOpen(false)
     setQuery('')
     setScope(null)
+    setTrail([])
     setIndex(0)
   }, [])
 
@@ -167,7 +214,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
 
   const text = query.trim()
   const searching = text !== '' || scope !== null
-  const loading = searching && !ready
+  const loading = searching && !listReady && !failed
   const items: Item[] = useMemo(() => {
     // The first view (the saved sets, then every kind) needs no value: drawn at once, at its full size.
     if (!searching) {
@@ -176,11 +223,14 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
         ...groups.flatMap((g) => g.dimensions.map((dimension): Item => ({ kind: 'dimension', dimension }))),
       ]
     }
-    if (!ready) return []
-    const found = search(values, text, scope, 4, dimensions).map((f): Item => ({ kind: 'value', found: f }))
-    const typed: Item[] = text === '' ? [] : (scope ? [scope] : ['page', 'referrer']).filter((d) => TEXT_DIMENSIONS.has(d)).map((dimension) => ({ kind: 'contains', dimension, text }))
+    if (!listReady) return []
+    const found = search(listed, text, scope, 4, dimensions).map((f): Item => {
+      const to = drillOf(scope, f.value)
+      return to ? { kind: 'drill', found: f, to } : { kind: 'value', found: f }
+    })
+    const typed: Item[] = text === '' ? [] : (scope ? [scope] : ['page', 'referrer']).filter(isTextKind).map((dimension) => ({ kind: 'contains', dimension, text }))
     return [...found, ...typed]
-  }, [searching, ready, values, text, scope, sets, groups, dimensions])
+  }, [searching, listReady, listed, text, scope, sets, groups, dimensions])
   const picked = Math.min(index, Math.max(0, items.length - 1))
 
   // While values are still being read for what was typed, the list keeps the height it had.
@@ -200,20 +250,31 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
     setIndex(0)
     inputRef.current?.focus()
   }
+  /** Narrows the search to a kind or a step; `from` is the step it was opened from, for Backspace. */
+  const narrow = (to: string, from: string | null) => {
+    setTrail((t) => (from === null ? [] : [...t, from]))
+    setScope(to)
+    setQuery('')
+    setIndex(0)
+    inputRef.current?.focus()
+  }
+  /** Back one step: to the step a row was opened from, or to every kind. */
+  const back = () => {
+    setScope(trail.length > 0 ? trail[trail.length - 1] : null)
+    setTrail((t) => t.slice(0, -1))
+    setIndex(0)
+  }
   const act = (item: Item | undefined, exclude: boolean) => {
     if (!item) return
-    if (item.kind === 'value') add({ dimension: item.found.dimension, operator: exclude ? 'is_not' : 'is', values: [item.found.value] })
+    // A merged row (two stored addresses that read the same) filters by every value it stands for.
+    if (item.kind === 'value') add({ dimension: item.found.dimension, operator: exclude ? 'is_not' : 'is', values: item.found.values ?? [item.found.value] })
+    else if (item.kind === 'drill') narrow(item.to, scope)
     else if (item.kind === 'contains') add({ dimension: item.dimension, operator: exclude ? 'not_contains' : 'contains', values: [item.text] })
     else if (item.kind === 'set') {
       // One press: the set in place of the filters on. The page reads again, so the panel closes first.
       close()
       onApplySet?.(item.set.filters)
-    } else {
-      setScope(item.dimension)
-      setQuery('')
-      setIndex(0)
-      inputRef.current?.focus()
-    }
+    } else narrow(item.dimension, null)
   }
 
   const row = (i: number, body: ReactNode, onPress: (exclude: boolean) => void, key: string) => (
@@ -286,7 +347,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
                       data-search-filter-kind={dimension}
                     >
                       <DimensionIcon dimension={dimension} className={cn('h-3.5 w-3.5', mine === picked ? 'text-neutral-300' : 'text-neutral-500 group-hover/kind:text-neutral-300')} />
-                      {labelOf(dimension)}
+                      {labelOf(dimension, pageValues)}
                     </button>
                   )
                 })}
@@ -296,15 +357,51 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
         </>
       )
     }
+    if (failed) {
+      // A failed read is said, never drawn as an empty list.
+      return (
+        <div className="flex items-center gap-3 px-3 py-3 text-sm text-neutral-500" data-testid="search-filter-failed">
+          <span className="min-w-0 flex-1">{scope && propertyKeysEvent(scope) ? 'The properties of this event could not be loaded.' : 'The values of this property could not be loaded.'}</span>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              scopeRead.retry()
+              inputRef.current?.focus()
+            }}
+            className="shrink-0 text-neutral-300 underline decoration-dotted underline-offset-4 hover:text-white hover:decoration-solid"
+          >
+            Try again
+          </button>
+        </div>
+      )
+    }
     if (items.length === 0) {
-      return <p className="px-3 py-3 text-sm text-neutral-500">Nothing on this page matches &quot;{text}&quot;.</p>
+      return <p className="px-3 py-3 text-sm text-neutral-500">{text ? <>Nothing on this page matches &quot;{text}&quot;.</> : emptyLine(scope)}</p>
     }
     return items.map((item, i) => {
+      if (item.kind === 'drill') {
+        const f = item.found
+        // An event of "Event property" is drawn as the Event kind draws it; a key with the property's mark.
+        const event = scope === EVENT_PROPERTY_SCOPE
+        return row(i, (
+          <>
+            <span className="w-[84px] shrink-0 truncate text-[11px] text-neutral-500">{labelOf(event ? EVENT_KIND : f.dimension, pageValues)}</span>
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">
+              {event ? valueIcon(EVENT_KIND, f.value) : <DimensionIcon dimension={EVENT_PROPERTY_SCOPE} className="h-4 w-4 text-neutral-500" />}
+            </span>
+            <span className="min-w-0 flex-1 truncate"><Marked text={f.label} query={text} /></span>
+            {f.count != null && <span className="shrink-0 text-xs tabular-nums text-neutral-500">{formatCompactNumber(f.count)}</span>}
+            {/* The date button's caret: a press opens the next step. */}
+            <CaretRight weight="bold" className={cn('h-3 w-3 shrink-0', i === picked ? 'text-neutral-300' : 'text-neutral-600')} aria-hidden="true" data-search-filter-drill="" />
+          </>
+        ), () => act(item, false), `drill-${f.dimension}-${f.value}`)
+      }
       if (item.kind === 'value') {
         const f = item.found
         return row(i, (
           <>
-            <span className="w-[84px] shrink-0 truncate text-[11px] text-neutral-500">{labelOf(f.dimension)}</span>
+            <span className="w-[84px] shrink-0 truncate text-[11px] text-neutral-500">{columnLabelOf(f.dimension, pageValues)}</span>
             <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.value, f.country)}</span>
             {/* The suggestion's own label is the reader's name (a country by its name, an event by its list's name). */}
             <span className="min-w-0 flex-1 truncate"><Marked text={f.label} query={text} /></span>
@@ -315,7 +412,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
       if (item.kind === 'contains') {
         return row(i, (
           <>
-            <span className="w-[84px] shrink-0 truncate text-[11px] text-neutral-500">{labelOf(item.dimension)}</span>
+            <span className="w-[84px] shrink-0 truncate text-[11px] text-neutral-500">{columnLabelOf(item.dimension, pageValues)}</span>
             <span className="flex h-4 w-4 shrink-0 items-center justify-center"><DimensionIcon dimension={item.dimension} className="h-4 w-4 text-neutral-500" /></span>
             <span className="min-w-0 flex-1 truncate">contains <span className="font-medium text-white">&quot;{item.text}&quot;</span></span>
           </>
@@ -369,8 +466,8 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
                 {scope && (
                   <span className="inline-flex h-6 shrink-0 items-center gap-1 border border-white/[0.08] ps-1.5 text-xs text-neutral-300" data-search-filter-scope={scope}>
                     <DimensionIcon dimension={scope} className="h-3.5 w-3.5 text-neutral-500" />
-                    {labelOf(scope)}
-                    <button type="button" aria-label="Search every kind again" onClick={() => { setScope(null); setIndex(0); inputRef.current?.focus() }} className="flex h-6 w-5 items-center justify-center text-neutral-500 hover:text-white">
+                    {labelOf(scope, pageValues)}
+                    <button type="button" aria-label="Search every kind again" onClick={() => { setScope(null); setTrail([]); setIndex(0); inputRef.current?.focus() }} className="flex h-6 w-5 items-center justify-center text-neutral-500 hover:text-white">
                       <X className="h-3 w-3" weight="bold" />
                     </button>
                   </span>
@@ -383,10 +480,10 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
                     if (e.key === 'ArrowDown') { e.preventDefault(); setIndex(items.length ? (picked + 1) % items.length : 0) }
                     else if (e.key === 'ArrowUp') { e.preventDefault(); setIndex(items.length ? (picked - 1 + items.length) % items.length : 0) }
                     else if (e.key === 'Enter') { e.preventDefault(); act(items[picked], e.altKey) }
-                    else if (e.key === 'Escape') { e.preventDefault(); if (query || scope) { setQuery(''); setScope(null); setIndex(0) } else close() }
-                    else if (e.key === 'Backspace' && query === '' && scope) { e.preventDefault(); setScope(null); setIndex(0) }
+                    else if (e.key === 'Escape') { e.preventDefault(); if (query || scope) { setQuery(''); setScope(null); setTrail([]); setIndex(0) } else close() }
+                    else if (e.key === 'Backspace' && query === '' && scope) { e.preventDefault(); back() }
                   }}
-                  placeholder={scope ? `Search ${labelOf(scope).toLowerCase()}` : 'Filter by page, source, country or event'}
+                  placeholder={scope ? placeholderOf(scope) : 'Filter by page, source, country or event'}
                   aria-label="Filter"
                   role="combobox"
                   aria-expanded="true"
@@ -407,8 +504,14 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
                 {list()}
               </div>
               <div className="flex items-center gap-3 border-t border-white/[0.08] px-3 py-2 text-[11px] text-neutral-500">
-                <span className="inline-flex items-center gap-1.5"><Key>↵</Key> add</span>
-                <span className="inline-flex items-center gap-1.5"><Key>⌥</Key><Key>↵</Key> exclude</span>
+                {drilling ? (
+                  <span className="inline-flex items-center gap-1.5"><Key>↵</Key> open</span>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1.5"><Key>↵</Key> add</span>
+                    <span className="inline-flex items-center gap-1.5"><Key>⌥</Key><Key>↵</Key> exclude</span>
+                  </>
+                )}
               </div>
             </motion.div>
           )}
