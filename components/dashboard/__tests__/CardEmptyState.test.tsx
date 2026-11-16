@@ -226,11 +226,51 @@ describe('how it is drawn', () => {
     expect(box.className.split(' ')).not.toContain('py-6')
   })
 
-  it('draws every link as a quiet text link, never the filled orange button', () => {
-    show({ filtered: true, clearFilters: () => {} })
-    const link = screen.getByRole('button', { name: 'Clear filter' })
-    expect(link.className).toContain('text-brand-ink')
-    expect(link.className).not.toContain('bg-brand-orange')
+  it('is the block kind: the icon without its tile, the action in the dashboard\'s bordered button (R57)', () => {
+    const { container } = show({ filtered: true, clearFilters: () => {} }, { icon: <svg data-testid="icon" /> })
+    const box = container.firstElementChild as HTMLElement
+    expect(box.getAttribute('data-empty-state')).toBe('block')
+    // The icon stands alone: no tinted tile around it, as a page's empty state has.
+    expect(container.querySelector('.bg-brand-orange\\/10')).toBeNull()
+    expect(screen.getByTestId('icon').parentElement?.className).toContain('text-brand-ink')
+    // The action is the date button's and the funnel picker's look (Facet's chrome): a hairline box on the card's
+    // ground. Never the filled orange button, and never the bare orange link it replaced.
+    const action = screen.getByRole('button', { name: 'Clear filter' })
+    const classes = action.className.split(' ')
+    expect(classes).toEqual(expect.arrayContaining(['border', 'border-input', 'bg-card', 'hover:border-line-hover']))
+    expect(classes).not.toContain('bg-brand-orange')
+    expect(classes).not.toContain('text-brand-ink')
+  })
+})
+
+describe('one kind of empty on the whole dashboard (R57, 16-11-2026)', () => {
+  const ROOT = path.resolve(__dirname, '../../..')
+  const dir = path.join(ROOT, 'components/dashboard')
+  // Every component under the dashboard, the bottom block and the Events block in their folders included: the second
+  // kind lived in the bottom block, which a scan of the top folder alone never read.
+  const files = (fs.readdirSync(dir, { recursive: true }) as string[]).filter((name) => name.endsWith('.tsx') && !name.includes('__tests__'))
+  const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'`\\])\/\/[^\n]*/g, '$1')
+
+  it('every EmptyState on the dashboard is the block kind, its variant written first', () => {
+    const calls: string[] = []
+    const page: string[] = []
+    for (const name of files) {
+      const src = strip(fs.readFileSync(path.join(dir, name), 'utf8'))
+      calls.push(...[...src.matchAll(/<EmptyState\b/g)].map(() => name))
+      page.push(...[...src.matchAll(/<EmptyState\b(?!\s+variant="block"[\s/>])/g)].map(() => name))
+    }
+    // CardEmptyState 6, the bottom block 1, the heat map of the page before the frame 1.
+    expect(calls.length).toBe(8)
+    expect(calls).toContain(path.join('bottom', 'ConversionBlock.tsx'))
+    expect(page).toEqual([])
+  })
+
+  it('no block draws an empty state of its own by hand', () => {
+    // The bottom block's own (a grey icon, a small title, a grey line and a hand-made bordered button) was the second
+    // kind. Its marks: the grey icon size and the hand-made button's border.
+    const byHand = files.filter((name) => /text-2xl text-neutral-600|inline-flex h-9 items-center border border-neutral-800/.test(strip(fs.readFileSync(path.join(dir, name), 'utf8'))))
+    expect(files.length).toBeGreaterThan(20)
+    expect(byHand).toEqual([])
   })
 })
 

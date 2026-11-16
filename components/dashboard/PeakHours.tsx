@@ -397,6 +397,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
         </>
       ) : (
         <EmptyState
+          variant="block"
           icon={<Clock />}
           title="Too early to tell"
           description="This heatmap needs a few days of traffic to reveal when your visitors are most active. Check back soon."

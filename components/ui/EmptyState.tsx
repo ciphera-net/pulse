@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import { buttonVariants } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 
 interface EmptyStateProps {
@@ -21,20 +22,25 @@ interface EmptyStateProps {
     href?: string
     onClick?: () => void
     external?: boolean
-    /**
-     * `link`: a quiet text link in the brand's ink instead of the filled button. For a place where the thing to do
-     * is small and optional (the dashboard's empty blocks: "Clear filter", one docs link), and a filled orange
-     * button in every empty block would shout six times on one screen.
-     */
-    variant?: 'button' | 'link'
   }
+  /**
+   * Which kind of empty this is (ruling R57, 16-11-2026: one kind for every dashboard block).
+   *
+   *   page    The default. A whole page with nothing to show yet (no funnels, a site in another team): the icon in
+   *           a tinted tile, a large title, the action as the filled orange button.
+   *   block   One block among many on the dashboard: the icon alone in the brand's ink, a smaller title, and the
+   *           action in the dashboard's own bordered button (Facet's `chrome`, the look of the date button and the
+   *           funnel picker). Every empty block draws this one, so a page of empty blocks shows one kind, and no
+   *           action shouts in orange six times on one screen.
+   */
+  variant?: 'page' | 'block'
   className?: string
 }
 
 const ACTION_BUTTON =
   'mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]'
-const ACTION_LINK =
-  'inline-flex items-center rounded-none text-sm font-medium text-brand-ink underline-offset-4 transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange'
+/** The block's action: the dashboard's bordered button, the border brightening under the pointer. */
+const ACTION_BLOCK = cn(buttonVariants({ variant: 'chrome', size: 'sm' }), 'mt-2 font-normal ease-apple')
 
 /**
  * Empty state — use in place of inline "No X" fallbacks.
@@ -45,8 +51,9 @@ const ACTION_LINK =
  * Good: "No visitors yet — share your site and check back"
  * Bad: "No data available"
  */
-export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
-  const actionClass = action?.variant === 'link' ? ACTION_LINK : ACTION_BUTTON
+export function EmptyState({ icon, title, description, action, variant = 'page', className }: EmptyStateProps) {
+  const block = variant === 'block'
+  const actionClass = block ? ACTION_BLOCK : ACTION_BUTTON
   const actionButton = action ? (
     action.href ? (
       <Link
@@ -68,8 +75,21 @@ export function EmptyState({ icon, title, description, action, className }: Empt
     )
   ) : null
 
+  if (block) {
+    return (
+      <div className={cn('flex flex-col items-center justify-center gap-2 py-12 px-6 text-center', className)} data-empty-state="block">
+        {icon && <span className="mb-1 text-brand-ink [&_svg]:h-8 [&_svg]:w-8">{icon}</span>}
+        <h3 className="text-base font-semibold text-neutral-100">{title}</h3>
+        {description && (
+          <p className="max-w-sm text-caption text-neutral-400">{description}</p>
+        )}
+        {actionButton}
+      </div>
+    )
+  }
+
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 py-12 px-6 text-center', className)}>
+    <div className={cn('flex flex-col items-center justify-center gap-3 py-12 px-6 text-center', className)} data-empty-state="page">
       {icon && (
         <div className="flex h-20 w-20 items-center justify-center rounded-none bg-brand-orange/10 text-brand-ink [&_svg]:h-10 [&_svg]:w-10 ring-1 ring-brand-orange/10">
           {icon}

@@ -180,6 +180,10 @@ describe('ConversionBlock: Funnels (R47, R49, R53)', () => {
     expect(empty.textContent).toContain('No funnels yet')
     expect(empty.textContent).toContain('A funnel shows how many visitors get from one step to the next.')
     expect(within(empty).getByRole('link', { name: 'Create a funnel' }).getAttribute('href')).toBe('/sites/site-1/funnels')
+    // The one kind every block shows (R57, 16-11-2026): the shared block look, its action the dashboard's bordered
+    // button, where this block used to draw a quieter state of its own.
+    expect(empty.querySelector('[data-empty-state="block"]')).not.toBeNull()
+    expect(within(empty).getByRole('link', { name: 'Create a funnel' }).className.split(' ')).toEqual(expect.arrayContaining(['border-input', 'bg-card']))
     member.unmount()
     // The demo cannot write: it is told what a funnel is and offered nothing it cannot do.
     inFrame(<ConversionBlock siteId={SITE} dateRange={dateRange} />, demo)
