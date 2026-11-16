@@ -11,7 +11,7 @@ import { DIMENSION_ROW, ROW_NUMBER } from '@/components/dashboard/MetricRowStat'
 import { SortHead, sortRows, type Sort, type SortColumn } from '@/components/dashboard/SortHead'
 import { CompactNumber } from '@/components/ui/compact-number'
 import type { GoalCountStat, ImportedProvenance } from '@/lib/api/stats'
-import type { DimensionFilter } from '@/lib/filters'
+import { EVENT_KIND, type DimensionFilter } from '@/lib/filters'
 import { CardFooter, FRAME_CARD_BODY, FRAME_CARD_NOTE } from '@/lib/dashboard/frame'
 import { EVENTS_IMPORTED_WORD, eventLabels, people, percent, splitEvents } from '@/lib/dashboard/events'
 import { docsUrl } from '@/lib/docs'
@@ -42,6 +42,11 @@ import { EventProperties, PaneLine } from './EventProperties'
 // visitors arrive as the block's `totals`, filtered as its rows are, so a conversion is a division inside one answer.
 // Off on a customer's share link (`memberFeatures`): the property reads are not served there, so the block is the
 // list alone, with nothing to press.
+//
+// A PRESS FILTERS once an event can filter the page (R62 of 16-11-2026, option B1 of the Events rows round): with the
+// event-filters beta on (`onFilter`), a press on a row filters the page by its event, as a press on a Pages or
+// Referrers row filters by its page or source, and the caret at the row's end is a button of its own (a 24 px box)
+// that opens the event's properties. Without the beta the press opens the properties, as before.
 // ---------------------------------------------------------------------------
 
 type Tab = 'own' | 'automatic'
@@ -73,7 +78,10 @@ export interface EventsBlockProps {
   memberFeatures?: boolean
   /** The page's filters. The rows already follow them; the pane's own reads send them too. */
   filters?: string
-  /** The event-filters beta (R45): a press on one of the pane's values filters the page by it. */
+  /**
+   * The event-filters beta (R45): a press on a row filters the page by its event, the row's caret opens its
+   * properties (R62), and a press on one of the pane's values filters the page by it.
+   */
   onFilter?: (filter: DimensionFilter) => void
 }
 
@@ -155,7 +163,10 @@ export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRan
                 const name = nameOf(row)
                 const on = picked?.event_name === row.event_name
                 const did = people(row)
-                const press = memberFeatures ? () => pick(row.event_name) : undefined
+                // R62: with the event filter, a press filters by the event and the caret opens its properties.
+                const pressFilters = memberFeatures && !!onFilter
+                const filter = () => onFilter?.({ dimension: EVENT_KIND, operator: 'is', values: [row.event_name] })
+                const press = pressFilters ? filter : memberFeatures ? () => pick(row.event_name) : undefined
                 return (
                   <CascadeRow key={row.event_name} index={i}>
                     <div
@@ -168,9 +179,10 @@ export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRan
                         // press is an overlay, and each number takes the pointer back for its own box.
                         <button
                           type="button"
-                          aria-pressed={on}
-                          aria-label={`Show the properties of ${name}`}
+                          aria-pressed={pressFilters ? undefined : on}
+                          aria-label={pressFilters ? `Filter by event: ${name}` : `Show the properties of ${name}`}
                           onClick={press}
+                          data-row-press={pressFilters ? 'filter' : 'open'}
                           className="absolute inset-0 h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
                         />
                       )}
@@ -186,7 +198,26 @@ export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRan
                         <span className={`${COL_RATE} ${ROW_NUMBER} tabular-nums`} data-conversion="">
                           {(rangeVisitors != null ? percent(did, rangeVisitors) : null) ?? EM_DASH}
                         </span>
-                        {memberFeatures && (
+                        {memberFeatures && (pressFilters ? (
+                          // R62: the caret is a button of its own (its own 24 px box), and opens the properties; orange
+                          // on the event the pane shows.
+                          <span className={`${COL_CUE} flex justify-end`} data-cue="">
+                            <button
+                              type="button"
+                              onClick={() => pick(row.event_name)}
+                              aria-label={`Show the properties of ${name}`}
+                              aria-pressed={on}
+                              className="pointer-events-auto -my-1 -me-1.5 flex h-6 w-6 items-center justify-center text-neutral-500 hover:bg-white/[0.06] hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange"
+                              data-row-open=""
+                            >
+                              <CaretRight
+                                weight="bold"
+                                className={`h-3 w-3 transition-colors duration-fast ease-apple ${on ? 'text-brand-ink' : ''}`}
+                                aria-hidden="true"
+                              />
+                            </button>
+                          </span>
+                        ) : (
                           // The press cue: the date button's caret says a press opens something; orange on the
                           // picked row (colour in a small mark, never in a panel).
                           <span className={`${COL_CUE} flex justify-end`} data-cue="">
@@ -196,7 +227,7 @@ export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRan
                               aria-hidden="true"
                             />
                           </span>
-                        )}
+                        ))}
                       </div>
                     </div>
                   </CascadeRow>
