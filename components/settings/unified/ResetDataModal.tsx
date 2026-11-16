@@ -6,7 +6,6 @@ import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
 import { ArrowCounterClockwise, WarningCircle } from '@phosphor-icons/react'
 import { whilePending } from '@/lib/hold/pending'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
-import { useFeature } from '@/lib/features'
 import { KitDialogRow, KitDialogTitle, KitWarningLine } from '@/components/settings/kit/Kit'
 
 /**
@@ -54,7 +53,6 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
   const { defer } = useUndo()
   const all = selected.size === MODULES.length
   // * null until the team's betas load: the chats are named only once the team is known to have Analyst.
-  const analyst = useFeature('barry') === true
 
   const handleClose = () => {
     setSelected(new Set())
@@ -87,7 +85,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
     <KitDialogRow
       key={m.id}
       label={m.label}
-      caption={m.id === 'analytics' && analyst ? ANALYTICS_CAPTION_WITH_ANALYST : m.caption}
+      caption={m.id === 'analytics' ? ANALYTICS_CAPTION_WITH_ANALYST : m.caption}
       control={<Checkbox checked={selected.has(m.id)} onChange={() => toggle(m.id)} aria-label={m.label} />}
     />
   )

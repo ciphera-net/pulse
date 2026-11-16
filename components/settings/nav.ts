@@ -59,7 +59,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
   { key: 'general', label: 'General', href: '/settings/site/general', description: "Your site's name, timezone and tracking script.", icon: GearSix, site: true, requires: 'sites.edit', absorbs: ['/settings/site/monitoring', '/settings/site/bot-spam'] },
   { key: 'goals', label: 'Goals', href: '/settings/site/goals', description: 'The events you count as goals.', icon: Target, site: true, requires: 'goals.manage', absorbs: [] },
   // Analyst's memories (P1, picked 14-11-2026): everyone with Analyst reads and changes them, so no permission.
-  { key: 'analyst', label: 'Analyst', href: '/settings/site/analyst', description: 'What Analyst remembers about this site.', icon: StarFour, site: true, flag: 'barry', absorbs: [] },
+  { key: 'analyst', label: 'Analyst', href: '/settings/site/analyst', description: 'What Analyst remembers about this site.', icon: StarFour, site: true, absorbs: [] },
   // Members read Sharing's two lists and download the PDFs, with no buttons that make or delete (R23).
   { key: 'sharing', label: 'Sharing', href: '/settings/site/visibility', description: 'Your public dashboard, growth reports and scheduled emails.', icon: ShareNetwork, site: true, absorbs: [] },
   { key: 'privacy', label: 'Privacy', href: '/settings/site/privacy', description: 'Visitor views, how long data is kept, and text for your privacy policy.', icon: ShieldCheck, site: true, requires: 'sites.edit', absorbs: [] },

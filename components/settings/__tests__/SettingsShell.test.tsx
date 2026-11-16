@@ -20,9 +20,6 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
 // Each test sets what the person may do; an unlisted permission is held.
 let can: Record<string, boolean> = {}
 vi.mock('@/lib/auth/permissions', () => ({ useCan: (perm: string) => can[perm] ?? true }))
-// Analyst's page is listed only while the team's barry beta is on (14-11-2026); on unless a test says otherwise.
-let analystOn: boolean | null = true
-vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'barry' ? analystOn : null) }))
 // The header's site identity reads the active site from this hook (round 3, 16-09-2026).
 type SiteLike = { id: string; name: string; domain: string }
 const setActiveSiteId = vi.fn()
@@ -53,7 +50,6 @@ beforeEach(() => {
   pathname = '/settings/organization/billing'
   activeSiteValue = { sites: [], activeSite: null, setActiveSiteId }
   can = {}
-  analystOn = true
 })
 
 describe('SettingsShell: one list of ten pages', () => {
@@ -110,15 +106,6 @@ describe('SettingsShell: one list of ten pages', () => {
     can = MEMBER
     render(<SettingsShell><div>page</div></SettingsShell>)
     expect(railRows().map((l) => l.getAttribute('aria-label'))).toEqual(['Analyst', 'Sharing', 'Data', 'Team', 'Billing', 'Account', 'Notifications'])
-  })
-
-  it('leaves Analyst out for a team without it, and while its beta is not known yet', () => {
-    for (const state of [false, null]) {
-      analystOn = state
-      const { unmount } = render(<SettingsShell><div>page</div></SettingsShell>)
-      expect(railRows().map((l) => l.getAttribute('href'))).not.toContain('/settings/site/analyst')
-      unmount()
-    }
   })
 
   it('still names a page a member opened by its address, with no row current', () => {

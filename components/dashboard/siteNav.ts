@@ -48,7 +48,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Visitors', href: (id) => `/sites/${id}/visitors`, icon: UsersThreeIcon, matchPrefix: true },
       { label: 'Funnels', href: (id) => `/sites/${id}/funnels`, icon: FunnelIcon, matchPrefix: true, page: 'funnels' },
       { label: 'Search', href: (id) => `/sites/${id}/search`, icon: SearchIcon, matchPrefix: true, page: 'search' },
-      { label: 'Analyst', href: (id) => `/sites/${id}/analyst`, icon: StarFourIcon, matchPrefix: true, flag: 'barry', badge: 'Beta' },
+      { label: 'Analyst', href: (id) => `/sites/${id}/analyst`, icon: StarFourIcon, matchPrefix: true },
     ],
   },
   {

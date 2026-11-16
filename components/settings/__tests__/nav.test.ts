@@ -63,27 +63,21 @@ describe('settings registry: one list of ten pages', () => {
     expect(pageFor('/sites/abc')).toBeUndefined()
   })
 
-  it('shows an owner or admin all ten, and a member the six a member can use', () => {
-    expect(pagesVisibleTo(ALL)).toHaveLength(10)
-    // Sharing and Data stay for members: they read the reports and an import's status (R23).
-    expect(pagesVisibleTo(MEMBER).map((p) => p.key)).toEqual(['sharing', 'data', 'team', 'billing', 'account', 'notifications'])
+  it('shows an owner or admin all eleven, and a member the seven a member can use', () => {
+    expect(pagesVisibleTo(ALL)).toHaveLength(11)
+    // Sharing and Data stay for members: they read the reports and an import's status (R23). Analyst asks for no
+    // permission, and every team has it since 16-11-2026.
+    expect(pagesVisibleTo(MEMBER).map((p) => p.key)).toEqual(['analyst', 'sharing', 'data', 'team', 'billing', 'account', 'notifications'])
   })
 
   it('keeps a page listed when its permission is unknown: a failed lookup never hides a page', () => {
     expect(pagesVisibleTo({}).map((p) => p.key)).toEqual(SETTINGS_PAGES.filter((p) => !p.flag).map((p) => p.key))
   })
 
-  it('lists Analyst only while the team\'s beta is known to be on, for a member too', () => {
-    expect(pagesVisibleTo(ALL).map((p) => p.key)).not.toContain('analyst')
-    expect(pagesVisibleTo(ALL, { barry: false }).map((p) => p.key)).not.toContain('analyst')
-    expect(pagesVisibleTo(ALL, { barry: true }).map((p) => p.key)).toContain('analyst')
-    expect(pagesVisibleTo(MEMBER, { barry: true })[0]?.key).toBe('analyst')
-  })
-
   it('lands /settings on the first page, or the first that is not a site\'s when there are no sites', () => {
     expect(landingPage(pagesVisibleTo(ALL), true)?.key).toBe('general')
     expect(landingPage(pagesVisibleTo(ALL), false)?.key).toBe('team')
-    expect(landingPage(pagesVisibleTo(MEMBER), true)?.key).toBe('sharing')
+    expect(landingPage(pagesVisibleTo(MEMBER), true)?.key).toBe('analyst')
     expect(landingPage(pagesVisibleTo(MEMBER), false)?.key).toBe('team')
     expect(landingPage([], true)).toBeUndefined()
   })

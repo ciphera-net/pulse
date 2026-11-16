@@ -15,7 +15,6 @@ import {
   type AnalystMemory,
 } from '@/lib/api/analyst'
 import { ApiError } from '@/lib/api/client'
-import { useFeature } from '@/lib/features'
 import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { SkeletonBar } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -52,8 +51,7 @@ export function savedOn(iso: string, now: Date = new Date()): string {
 }
 
 function MemoriesForSite({ siteId }: { siteId: string }) {
-  const analyst = useFeature('barry')
-  const { data, error, isLoading, isValidating, mutate } = useSWR(analyst === true ? memoriesKey(siteId) : null, () => getAnalystMemories(siteId), {
+  const { data, error, isLoading, isValidating, mutate } = useSWR(memoriesKey(siteId), () => getAnalystMemories(siteId), {
     revalidateOnFocus: false,
   })
   const { defer } = useUndo()
@@ -67,21 +65,7 @@ function MemoriesForSite({ siteId }: { siteId: string }) {
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const formRef = React.useRef<HTMLFormElement>(null)
 
-  // * A team without Analyst: the page exists only while the beta is on, and says so instead of failing.
-  const off = analyst === false || (error instanceof ApiError && error.status === 404)
-  if (off) {
-    return (
-      <KitPage>
-        <KitSection
-          title="Analyst is not on for this team"
-          description="Analyst is in beta. Your team's owners and admins can turn on beta features in Settings → Team."
-          icon={<StarFour />}
-        />
-      </KitPage>
-    )
-  }
-
-  if (analyst === null || isLoading || (!data && !error)) {
+  if (isLoading || (!data && !error)) {
     return (
       <KitPage>
         <KitSection title="Memories" description={DESCRIPTION} icon={<Brain />}>
