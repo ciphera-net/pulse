@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Button, RailGrid } from '@ciphera-net/facet'
 import { HoldDialog } from '@ciphera-net/facet-hold'
-import { DotsThree, Plugs, Robot } from '@phosphor-icons/react'
+import { Plugs, Robot } from '@phosphor-icons/react'
 import { KitBlock, KitDialogTitle, KitRow, KitRows, KitSection, KitStatus } from '@/components/settings/kit/Kit'
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 import { BRAND_MARKS } from '@/components/connect/AppMark'
@@ -56,17 +56,17 @@ export function AssistantsSection() {
                       selected ? 'bg-accent ring-1 ring-inset ring-primary' : 'hover:bg-muted',
                     )}
                   >
-                    {c.mark ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- a fixed CDN asset; next/image adds nothing here
-                      <img src={cdnUrl(c.mark)} alt="" width={28} height={28} className="h-7 w-7 object-contain" data-client={c.id} />
-                    ) : (
-                      <DotsThree weight="bold" aria-hidden="true" className="h-7 w-7 text-muted-foreground" />
-                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- a fixed CDN asset; next/image adds nothing here */}
+                    <img src={cdnUrl(c.mark)} alt="" width={28} height={28} className="h-7 w-7 object-contain" data-client={c.id} />
                     <span className={cn('text-[11px] font-medium leading-tight', selected ? 'text-foreground' : 'text-muted-foreground')}>{c.name}</span>
                   </button>
                 )
               })}
             </RailGrid>
+            {/* The "Other" tile became this line when Cline took its place (owner's pick A1, 16-11-2026). */}
+            <p className="text-xs text-muted-foreground">
+              Using another assistant? Any MCP client that supports remote servers with sign-in can connect with the server URL.
+            </p>
             <ol aria-label={`Connect ${client.name}`} className="flex flex-col gap-5">
               {steps.map((s, i) => (
                 <li key={`${client.id}-${i}`} className={cn('grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start', i > 0 && 'border-t border-border pt-5')}>
