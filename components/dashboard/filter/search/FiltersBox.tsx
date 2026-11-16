@@ -126,9 +126,10 @@ function AnchoredMenu({ anchor, width, label, onClose, testid, children }: {
 }
 
 /** The box list's last row: saves the filters on under a name typed in place; once saved, says under which. */
-function SaveRow({ filters, saved, savedFilters, pageValues, mode }: { filters: DimensionFilter[]; saved: SavedSet | null; savedFilters: SavedFilters; pageValues: PageValues; mode: FilterMode }) {
+function SaveRow({ filters, saved, savedAsAny, savedFilters, pageValues, mode }: { filters: DimensionFilter[]; saved: SavedSet | null; savedAsAny: SavedSet | null; savedFilters: SavedFilters; pageValues: PageValues; mode: FilterMode }) {
   const [naming, setNaming] = useState(false)
   if (saved) return <SavedAs name={saved.name} />
+  if (savedAsAny) return <SavedAs name={savedAsAny.name} anyOff />
   if (!savedFilters.canEdit) return null
   if (naming) {
     return (
@@ -227,8 +228,11 @@ function Pill({ f, i, onApply, onRemove, pageValues, places, savedFilters }: { f
 }
 
 /** The list behind the box: each filter a row of its own, reaching the menu's edges, then the row that saves them. */
-function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, onClose, savedFilters, mode = 'all' }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
+function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, onClose, savedFilters, mode = 'all', onMode }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
   const saved = savedFilters.on ? setFor(filters, savedFilters.sets, mode) : null
+  // A set saved with Match any, on a page that reads Match all and offers no switch (the beta is off): the list says
+  // so under the set's name, in place of offering to save filters that are saved already.
+  const savedAsAny = savedFilters.on && !saved && mode === 'all' && !onMode ? setFor(filters, savedFilters.sets, 'any') : null
   return (
     <AnchoredMenu anchor={anchor} width={340} label="Filters on" onClose={onClose} testid="filters-menu">
       <div data-menu-list="" className="divide-y divide-white/[0.06]">
@@ -255,7 +259,7 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, o
             </div>
           )
         })}
-        {savedFilters.on && <SaveRow filters={filters} saved={saved} savedFilters={savedFilters} pageValues={pageValues} mode={mode} />}
+        {savedFilters.on && <SaveRow filters={filters} saved={saved} savedAsAny={savedAsAny} savedFilters={savedFilters} pageValues={pageValues} mode={mode} />}
       </div>
     </AnchoredMenu>
   )

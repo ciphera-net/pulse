@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BookmarkSimple, Trash } from '@phosphor-icons/react'
 import { saveRefusal } from '@/lib/api/savedFilters'
-import { OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
+import { OPERATOR_LABELS, modeFor, type DimensionFilter, type FilterMode } from '@/lib/filters'
 import type { SavedSet } from '@/lib/swr/savedFilters'
 import { cn } from '@/lib/utils'
 import { labelOf, valueName, type PageValues } from './values'
@@ -25,9 +25,14 @@ export function valueText(f: DimensionFilter, pageValues: PageValues): string {
   return names.length <= 2 ? names.join(' or ') : `${names.slice(0, 2).join(', ')} or ${names.length - 2} more`
 }
 
-/** "Country is Norway and Device is mobile": what a saved set holds, for the line beside its name. */
-export function describe(filters: DimensionFilter[], pageValues: PageValues): string {
-  return filters.map((f) => `${labelOf(f.dimension, pageValues)} ${OPERATOR_LABELS[f.operator]} ${valueText(f, pageValues)}`).join(' and ')
+/**
+ * "Country is Norway and Device is mobile": what a saved set holds, for the line beside its name. A set saved with
+ * Match any (R65) keeps what fits at least one of its filters, so its line joins them with "or".
+ */
+export function describe(filters: DimensionFilter[], pageValues: PageValues, mode: FilterMode = 'all'): string {
+  return filters
+    .map((f) => `${labelOf(f.dimension, pageValues)} ${OPERATOR_LABELS[f.operator]} ${valueText(f, pageValues)}`)
+    .join(modeFor(filters, mode) === 'any' ? ' or ' : ' and ')
 }
 
 /** The name a set is offered when it is saved: its values, "Norway, mobile", "Norway, not google.com and 1 more". */
@@ -127,9 +132,16 @@ export function NameField({ initial, placeholder, label, onSave, onCancel }: {
   )
 }
 
-/** "Saved as …": the row that says the filters on are a saved set, its bookmark filled in the brand's ink. */
-export function SavedAs({ name }: { name: string }) {
-  return (
+/** What the box says under a set saved with Match any, on a page that reads Match all and offers no switch (R65). */
+export const SAVED_WITH_ANY_OFF = 'This saved filter uses Match any, which is off for this team. The page shows what fits every filter instead.'
+
+/**
+ * "Saved as …": the row that says the filters on are a saved set, its bookmark filled in the brand's ink. `anyOff`:
+ * the set was saved with Match any and the page cannot read it that way (the match-any beta is off), so a line under
+ * the row says what the page shows in its place. The line is the name field's refusal line, in the quiet grey.
+ */
+export function SavedAs({ name, anyOff = false }: { name: string; anyOff?: boolean }) {
+  const row = (
     <div className="flex h-11 items-center gap-2 px-4 text-sm text-neutral-500" data-saved-as="">
       <span className="flex h-4 w-4 shrink-0 items-center justify-center">
         <BookmarkSimple className="h-4 w-4 text-brand-ink" weight="fill" aria-hidden="true" />
@@ -137,6 +149,13 @@ export function SavedAs({ name }: { name: string }) {
       {/* The space reaches the text a screen reader reads; a flex row draws its gap, not the space. */}
       <span className="shrink-0">Saved as</span>{' '}
       <span className="min-w-0 truncate font-medium text-white">{name}</span>
+    </div>
+  )
+  if (!anyOff) return row
+  return (
+    <div>
+      {row}
+      <p className="px-4 pb-3 text-xs text-neutral-500" data-saved-any-off="">{SAVED_WITH_ANY_OFF}</p>
     </div>
   )
 }
@@ -173,7 +192,7 @@ export function SavedRow({ set, on, picked, onPick, onApply, onDelete, pageValue
           <BookmarkSimple className={cn('h-4 w-4', on ? 'text-brand-ink' : 'text-neutral-500')} weight={on ? 'fill' : 'bold'} aria-hidden="true" />
         </span>
         <span className="max-w-[220px] shrink-0 truncate text-white">{set.name}</span>{' '}
-        <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{describe(set.filters, pageValues)}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-neutral-500">{describe(set.filters, pageValues, set.mode)}</span>
       </button>
       {onDelete && (
         <button

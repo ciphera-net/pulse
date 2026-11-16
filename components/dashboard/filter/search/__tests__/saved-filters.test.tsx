@@ -26,7 +26,7 @@ vi.mock('@/lib/api/savedFilters', async (importOriginal) => ({ ...(await importO
 
 import FiltersBox from '../FiltersBox'
 import SearchFilter from '../SearchFilter'
-import { describe as describeSet, suggestName } from '../saved'
+import { describe as describeSet, suggestName, SAVED_WITH_ANY_OFF } from '../saved'
 import { keyOf, setFor } from '@/lib/swr/savedFilters'
 import { ApiError } from '@/lib/api/client'
 
@@ -84,6 +84,14 @@ describe('how a set is named and matched', () => {
     // One filter says the same under both, so its mode never tells two sets apart.
     expect(keyOf([NORWAY], 'any')).toBe(keyOf([NORWAY], 'all'))
   })
+
+  it('describes a set saved with Match any with "or", and one filter alone as before (R65)', () => {
+    expect(describeSet([NORWAY, NOT_MOBILE], PAGE, 'any')).toBe('Country is Norway or Device is not mobile')
+    expect(describeSet([NORWAY, NOT_MOBILE], PAGE, 'all')).toBe('Country is Norway and Device is not mobile')
+    expect(describeSet([NORWAY], PAGE, 'any')).toBe('Country is Norway')
+    // Beside an event filter Match any does not apply (lib/filters.ts modeFor), so the line keeps "and".
+    expect(describeSet([NORWAY, { dimension: 'event', operator: 'is', values: ['add_to_cart'] }], PAGE, 'any')).toContain(' and ')
+  })
 })
 
 describe('the filters box saves the filters on (R59: option A)', () => {
@@ -130,6 +138,35 @@ describe('the filters box saves the filters on (R59: option A)', () => {
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Name for these filters' }), { key: 'Escape' })
     expect(screen.getByTestId('filters-save-row')).toBeTruthy()
     expect(screen.getAllByTestId('filters-menu-row')).toHaveLength(2)
+  })
+
+  it('says a set was saved with Match any where the page cannot read it that way, and offers no second save (R65)', async () => {
+    const either = { id: 'set-3', name: 'Norway or phones', filters: 'any:v2:country|is|NO,device|is|mobile', created_at: '2026-11-16T03:00:00Z' }
+    const both: DimensionFilter[] = [NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }]
+    api.listSavedFilters.mockResolvedValue([either])
+    // The page reads Match all and hands the box no switch: the match-any beta is off for the team.
+    box(both)
+    await settle()
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(await screen.findByText('Norway or phones')).toBeTruthy()
+    expect(document.querySelector('[data-saved-any-off]')?.textContent).toBe(SAVED_WITH_ANY_OFF)
+    expect(screen.queryByTestId('filters-save-row')).toBeNull()
+    cleanup()
+    // Its Match all twin is saved too: the page shows THAT set, and there is nothing to explain.
+    api.listSavedFilters.mockResolvedValue([either, SAVED[0]])
+    box(both)
+    await settle()
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(await screen.findByText('Phones in Norway')).toBeTruthy()
+    expect(document.querySelector('[data-saved-any-off]')).toBeNull()
+    cleanup()
+    // With the switch on offer (the beta on) and the page on Match all, the filters are simply not saved yet.
+    api.listSavedFilters.mockResolvedValue([either])
+    within_(memberScope('site-1'), <FiltersBox filters={both} onApply={vi.fn()} onRemove={vi.fn()} onClearAll={vi.fn()} pageValues={PAGE} mode="all" onMode={vi.fn()} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(screen.getByTestId('filters-save-row')).toBeTruthy()
+    expect(document.querySelector('[data-saved-any-off]')).toBeNull()
   })
 
   it('saves a single filter from the bookmark beside its x', async () => {
@@ -218,6 +255,9 @@ describe('the Filter panel lists the sets (R59)', () => {
     expect(rows.map((r) => [r.getAttribute('data-saved-row'), r.getAttribute('data-on')])).toEqual([
       ['Norway or phones', 'true'], ['Phones in Norway', 'false'], ['Norway', 'false'],
     ])
+    // Each row's line says how its set joins its filters.
+    expect(rows[0].textContent).toContain('Country is Norway or Device is mobile')
+    expect(rows[1].textContent).toContain('Country is Norway and Device is mobile')
     fireEvent.click(within(rows[0] as HTMLElement).getByRole('option'))
     expect(onApplySet).toHaveBeenCalledWith(both, 'any')
   })

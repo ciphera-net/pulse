@@ -171,9 +171,8 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   const matchAnyFlag = useFeature(MATCH_ANY_FLAG)
   const mode: FilterMode = matchAnyFlag === false ? 'all' : modeFor(filters, filterMode)
   // The switch leaves with its second filter (or when an event filter joins), and it does not come back on by itself.
-  useEffect(() => {
-    if (filterMode === 'any' && !canMatchAny(filters)) setFilterMode('all')
-  }, [filterMode, filters])
+  // Put back while rendering, not in an effect: React renders again at once, before anything is drawn or read.
+  if (filterMode === 'any' && !canMatchAny(filters)) setFilterMode('all')
   // ONE string for every read and for the address, so the mode reaches each of them or none.
   const filtersParam = useMemo(() => serializeFilters(filters, mode), [filters, mode])
   // The event filter's beta (R45): the Search filter offers an event and an outbound link, and an old address's

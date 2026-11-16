@@ -8,7 +8,7 @@
 // The seams are those of dashboard-scopes.test.tsx: the data hooks are spies and the cards are prop-capturing
 // stubs (their own files test what a block does inside the frame).
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
-import { render, act, screen } from '@testing-library/react'
+import { render, act, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import type { DashboardData } from '@/lib/api/stats'
 import { SiteScopeProvider, memberScope } from '@/lib/scope/SiteScope'
@@ -393,5 +393,22 @@ describe('Match any', () => {
     mockSearchParams = new URLSearchParams({ filters: 'any:v2:country|is|NO,device|is|mobile,event|is|signup' })
     await mount()
     expect(sent()).toEqual(everywhere('v2:country|is|NO,device|is|mobile,event|is|signup'))
+  })
+
+  it('leaves Any with its second filter, and a second filter added later starts on Match all', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ANY))
+    // The box's list, the second filter's x: one filter says the same under both, and is sent as Match all.
+    fireEvent.click(screen.getByTestId('filters-box'))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Device filter' }))
+    await act(async () => {})
+    expect(sent()).toEqual(everywhere('v2:country|is|NO'))
+    // A row of a block adds a second filter: the switch does not come back on by itself.
+    await act(async () => {
+      (h.captured.Sources.onFilter as (f: { dimension: string; operator: string; values: string[] }) => void)({ dimension: 'browser', operator: 'is', values: ['Chrome'] })
+    })
+    expect(sent()).toEqual(everywhere('v2:country|is|NO,browser|is|Chrome'))
   })
 })
