@@ -339,7 +339,7 @@ describe('the demo (public, full): the whole member dashboard without the member
     await act(async () => { vi.advanceTimersByTime(15_000) })
     const matches = h.mutateLive.mock.calls[0][0] as (key: unknown) => boolean
     expect(matches(['fullList', 'countries', 'site-1', '__live__', 5, 100, undefined])).toBe(true)
-    expect(matches(['outbound', 'public:site-1', '__live__', 5])).toBe(true)
+    expect(matches(['outboundUrls', 'public:site-1', '__live__', 5, undefined])).toBe(true)
     expect(matches(['campaignsList', 'public:site-1', '__live__', 5, 10, undefined])).toBe(true)
     expect(matches(['fullList', 'countries', 'site-2', '__live__', 5, 100, undefined])).toBe(false)
     expect(matches(['dashboard', 'site-1', '__live__'])).toBe(false)

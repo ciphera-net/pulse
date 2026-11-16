@@ -182,6 +182,18 @@
       font-size: 16px;
     }
   }
+
+  /*
+   * The page's main region is a focus TARGET, never a control. The skip link lands on it, and focus is put there
+   * when a view is replaced under the reader; it is not in the tab order (tabindex="-1"). A click on empty page
+   * leaves focus on it too, and the next key press, a keyboard shortcut for one, then made the browser draw its
+   * own focus ring around the whole page (measured 16-11-2026 in Chromium: `outline: auto 1px rgb(0, 95, 204)`
+   * the moment :focus-visible matched). A region nobody can act on draws no ring. Every control inside it keeps
+   * its own, and the skip link still moves focus here.
+   */
+  main#main-content:focus {
+    outline: none;
+  }
 }
 
 @layer components {

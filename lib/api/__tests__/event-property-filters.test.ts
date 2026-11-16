@@ -85,11 +85,18 @@ describe("the page's filters on the event-property reads", () => {
     expect(lastUrl(fetchSpy).searchParams.has('filters')).toBe(false)
   })
 
-  it('the Outbound lists still send none: their footnote says they are whole-site clicks', async () => {
-    // lib/swr/dashboard.ts calls the values read for outbound_link with no filters argument. This pins that the
-    // argument is the LAST one, so those calls did not start sending something by position.
-    await stats.getEventPropertyValues('site-1', 'outbound_link', 'url', '2026-10-17', '2026-11-15', 1000, '30d', undefined)
-    const url = lastUrl(fetchSpy)
+  it('the Outbound tab\'s read carries them too, beside its period (16-11-2026)', async () => {
+    // lib/swr/dashboard.ts (useOutboundUrls) hands the page's filters as the LAST argument of the values read for
+    // outbound_link. Until then that read sent none and the tab said its clicks were the whole site's.
+    await stats.getEventPropertyValues('site-1', 'outbound_link', 'url', '2026-10-17', '2026-11-15', 1000, '30d', undefined, FILTERS)
+    let url = lastUrl(fetchSpy)
+    expect(url.pathname).toMatch(/\/goals\/outbound_link\/properties\/url$/)
+    expect(url.searchParams.get('filters')).toBe(FILTERS)
+    expect(url.searchParams.get('period')).toBe('30d')
+    expect(url.searchParams.get('limit')).toBe('1000')
+    // With no filter on the page the request is what it was.
+    await stats.getEventPropertyValues('site-1', 'outbound_link', 'url', '2026-10-17', '2026-11-15', 1000, '30d', undefined, undefined)
+    url = lastUrl(fetchSpy)
     expect(url.searchParams.has('filters')).toBe(false)
     expect(url.searchParams.get('period')).toBe('30d')
   })

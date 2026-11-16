@@ -1141,7 +1141,7 @@ export function useBingDailyTotals(siteId: string, start: string, end: string) {
 //    isLiveListKey matches, and the same 15 s backstop the fan-out uses covers a dropped
 //    signal.
 export const LIVE_LIST_KEY = '__live__'
-const LIVE_LIST_KINDS = new Set(['fullList', 'outbound', 'campaignsList', 'eventKeys', 'eventValues'])
+const LIVE_LIST_KINDS = new Set(['fullList', 'outboundUrls', 'campaignsList', 'eventKeys', 'eventValues'])
 
 /**
  * Matches every live list SWR key of one site: what the page revalidates on its live signal.
@@ -1210,21 +1210,26 @@ export function useFullDimensionList<T>(
 }
 
 // * The outbound links, for the Pages block's Outbound tab (15-11-2026): every outbound_link destination as EVENT
-// * counts (the property endpoint does not count people and takes no filters; the tab says both), read only while the
-// * tab is open (`enabled`), as the campaigns list is armed. Keyed on the resolved dates AND the period token, and the
+// * counts (the property endpoint does not count people; the tab says so), read only while the tab is open
+// * (`enabled`), as the campaigns list is armed. Keyed on the resolved dates AND the period token, and the
 // * token is SENT (a `1h`/`today` window resolves in the site's timezone server-side; a date-only fetch spans two days
 // * when the window crosses midnight, the campaigns lesson of 02-09-2026). 1,000 rows = the endpoint's ceiling. The
 // * Outbound card's two-list read (links and the pages they were clicked on) left with that card on 16-11-2026.
+// * The page's filters are SENT and are part of the key (16-11-2026), as the Events pane's property reads send them:
+// * the server applies them to the click rows as it does to the events list, so the tab's rows add up to the
+// * outbound_link count the page's own answer carries under the same filters, and rows read under one set of
+// * filters are never served under another. Until then the read took none and the tab said its clicks were the
+// * whole site's.
 // * Route class `demo`.
 export const OUTBOUND_ROW_LIMIT = 1000
-export function useOutboundUrls(siteId: string, start: string, end: string, period?: string, liveMinutes?: number, enabled = true) {
+export function useOutboundUrls(siteId: string, start: string, end: string, period?: string, liveMinutes?: number, filters?: string, enabled = true) {
   const live = liveMinutes != null
   return useSiteSWR<EventPropertyValue[]>(
     siteId, 'demo',
     (siteKey) => !enabled || !siteId ? null
-      : live ? ['outboundUrls', siteKey, LIVE_LIST_KEY, liveMinutes]
-        : start && end ? ['outboundUrls', siteKey, start, end, period ?? ''] : null,
-    (ref) => getEventPropertyValues(ref, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, live ? undefined : period, liveMinutes),
+      : live ? ['outboundUrls', siteKey, LIVE_LIST_KEY, liveMinutes, filters]
+        : start && end ? ['outboundUrls', siteKey, start, end, period ?? '', filters] : null,
+    (ref) => getEventPropertyValues(ref, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, live ? undefined : period, liveMinutes, filters),
     { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : { refreshInterval: 60_000, dedupingInterval: 10_000 }) }
   )
 }

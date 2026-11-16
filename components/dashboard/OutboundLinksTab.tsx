@@ -33,9 +33,13 @@ import { sortRows, type Sort } from '@/components/dashboard/SortHead'
 // What it keeps from that card, because each is a fact and not a style:
 //   - the number is CLICKS (a visitor who clicked twice counts twice), and the block's header says so;
 //   - a row opens its link in a new tab: there is no outbound dimension to filter by;
-//   - the page's filter does not reach this read, so under a filter the footer says these are whole-site clicks;
 //   - with imported days in range the footer says the rows are Pulse's own;
 //   - a site whose Outbound links option is off says that, where it would otherwise say "no clicks".
+//
+// It follows the page's filters (16-11-2026), as every other tab of the block does: the read sends them, so the rows
+// are the clicks that fit, and their shares are of the page's own filtered outbound_link count. An empty tab under a
+// filter is the filter's doing and says so, with the cards' way out. Until then the read took no filter and a
+// footnote said the clicks were the whole site's.
 //
 // It renders the block's body AND its footer row, which is what a tab of this block owns.
 // ---------------------------------------------------------------------------
@@ -50,9 +54,6 @@ const CLICKS_DESC: Sort<'clicks'> = { key: 'clicks', dir: 'desc' }
 /** With imported days in range: the rows are Pulse's own (W-M12-6, owner pick A, 28-09-2026; the Outbound card's line). */
 export const OUTBOUND_NATIVE_ONLY = 'Pulse-measured clicks only. Imported outbound clicks count in Events.'
 
-/** Under a page filter. The Outbound card's line, with a colon where it has a dash. */
-export const OUTBOUND_NOT_FILTERED = 'Outbound is not filtered yet: these are whole-site clicks.'
-
 export interface OutboundLinksTabProps {
   siteId: string
   dateRange: { start: string; end: string }
@@ -60,7 +61,7 @@ export interface OutboundLinksTabProps {
   /** The dashboard fan-out's goal counts: the `outbound_link` row is every outbound click of the range. */
   goalCounts?: GoalCountStat[]
   goalsImported?: ImportedProvenance | null
-  /** Active page filters. The read takes none: the footer says so. */
+  /** Active page filters, sent with the read: the rows are the clicks that fit them. */
   filters?: string
   live?: boolean
   liveMinutes?: number
@@ -78,7 +79,7 @@ export interface OutboundLinksTabProps {
 
 export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts, goalsImported, filters, live = false, liveMinutes, trackingOff = false, sort = CLICKS_DESC, onFilter }: OutboundLinksTabProps) {
   // Mounted only while its tab is open, so the read is made on the first visit to the tab and not with the page.
-  const { data, error, isLoading } = useOutboundUrls(siteId, dateRange.start, dateRange.end, period, liveMinutes)
+  const { data, error, isLoading } = useOutboundUrls(siteId, dateRange.start, dateRange.end, period, liveMinutes, filters)
   // Sorted before paging, so a page is a slice of the asked order; ties keep the server's order.
   const rows = useMemo(() => sortRows(outboundLinkRows(data), sort, (row) => row.clicks), [data, sort])
 
@@ -100,8 +101,9 @@ export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts
   const emptySlots = Math.max(0, LIMIT - displayed.length)
   const hasData = rows.length > 0
 
-  // Never both notes: under a filter nothing imported is merged in, so the filter's note is the one that is true.
-  const footnote = filters ? OUTBOUND_NOT_FILTERED : goalsImported?.included === true ? OUTBOUND_NATIVE_ONLY : null
+  // Under a filter nothing imported is merged in (the page says so beside its filters), so the note has nothing to
+  // tell apart there: every click in the tab and in the Events count is Pulse's own.
+  const footnote = !filters && goalsImported?.included === true ? OUTBOUND_NATIVE_ONLY : null
 
   return (
     <>
@@ -207,8 +209,6 @@ export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts
             icon={<ArrowSquareOut />}
             kind="outbound clicks"
             fresh="Clicks on links to other sites are listed here."
-            // The page's filter does not reach this read, so an empty tab is never the filter's doing.
-            filterable={false}
             off={trackingOff ? { title: 'Outbound links are switched off', description: 'This site does not record clicks on links to other sites.' } : null}
           />
         )}

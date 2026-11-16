@@ -12,12 +12,13 @@
 // live.
 //
 // What made it removable rather than a loss: the only case where scope
-// actually differs between neighbouring cards is Outbound, whose endpoints
-// take no filters — and that card states it ITSELF, in its own footnote, and
-// only when a page filter is on ("Outbound is not filtered yet — these are
-// whole-site clicks"). The header note said it on every section, on every
-// load, whether or not anything was filtered. A line that is right five times
-// out of five and informative none of them is chrome.
+// actually differed between neighbouring cards was Outbound, whose endpoints
+// took no filters — and that card stated it ITSELF, in its own footnote, and
+// only when a page filter was on. (Since 16-11-2026 Outbound follows the
+// page's filters like its neighbours, and that footnote is gone.) The header
+// note said it on every section, on every load, whether or not anything was
+// filtered. A line that is right five times out of five and informative none
+// of them is chrome.
 // ---------------------------------------------------------------------------
 
 interface SectionHeaderProps {

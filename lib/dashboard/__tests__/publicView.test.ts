@@ -7,14 +7,14 @@ describe('liveListKeyMatcher', () => {
 
   it('matches the live lists of this site, read as a member', () => {
     expect(matches(['fullList', 'countries', 'site-1', '__live__', 5, 100, undefined])).toBe(true)
-    expect(matches(['outbound', 'site-1', '__live__', 5])).toBe(true)
+    expect(matches(['outboundUrls', 'site-1', '__live__', 5, undefined])).toBe(true)
     expect(matches(['campaignsList', 'site-1', '__live__', 5, 10, undefined])).toBe(true)
   })
 
   it('matches them read as the public too: their keys carry the ref key, never the bare id', () => {
     const key = siteRefKey(publicSiteRef('site-1'))
     expect(matches(['fullList', 'countries', key, '__live__', 5, 100, undefined])).toBe(true)
-    expect(matches(['outbound', key, '__live__', 5])).toBe(true)
+    expect(matches(['outboundUrls', key, '__live__', 5, undefined])).toBe(true)
   })
 
   it('matches nothing of another site, no historical list and no other kind of key', () => {

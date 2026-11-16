@@ -112,11 +112,6 @@ describe('a filter is on and nothing matches', () => {
     show({ filtered: true })
     expect(read().actions).toEqual([])
   })
-
-  it('never blames the filter in a block the filter does not reach (Outbound)', () => {
-    show({ filtered: true, clearFilters: () => {} }, { filterable: false })
-    expect(read()).toEqual({ title: 'No events in this range', line: 'Try a longer range.', actions: [] })
-  })
 })
 
 describe('the kind is switched off for the site', () => {

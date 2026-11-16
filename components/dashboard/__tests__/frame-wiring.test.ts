@@ -17,8 +17,8 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
     expect(frame.match(/totals=\{totals\}/g)?.length).toBe(5)
     expect(frame).toMatch(/<ContentSignals\n(?:\s+\w+=\{[^}]*\}+\n)*\s+totals=\{totals\}\n/)
     // Sources, Pages, Locations, Technology, Events and the heat map thread the filters. (Outbound's links ride in
-    // the Pages block and get its filters from there: they say they are whole-site clicks under one. Events takes
-    // them since 15-11-2026, for an opened event's properties.)
+    // the Pages block and get its filters from there: since 16-11-2026 their read sends them. Events takes them
+    // since 15-11-2026, for an opened event's properties.)
     expect(frame.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
   })
 
