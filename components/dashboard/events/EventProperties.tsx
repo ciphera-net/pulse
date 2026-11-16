@@ -82,22 +82,24 @@ interface EventPropertiesProps {
   /** What the list describes: one window under one set of filters. The pager starts again when it changes. */
   windowKey: string
   dateRange: { start: string; end: string }
+  /** The page's period token: All time travels as `all`, which a history past 366 days needs (its dates are refused). */
+  period?: string
   liveMinutes?: number
   filters?: string
   /** Below `lg` the pane takes the list's place: back to the list. */
   onBack: () => void
 }
 
-export function EventProperties({ siteId, row, name, windowKey, dateRange, liveMinutes, filters, onBack }: EventPropertiesProps) {
+export function EventProperties({ siteId, row, name, windowKey, dateRange, period, liveMinutes, filters, onBack }: EventPropertiesProps) {
   const event = row.event_name
   // Imported days carry no properties (an export has none), and the server says which rows those are.
   const readable = row.instrument !== 'imported'
-  const { data: rawKeys, error: keysError } = useEventPropertyKeys(siteId, readable ? event : null, dateRange.start, dateRange.end, filters, liveMinutes)
+  const { data: rawKeys, error: keysError } = useEventPropertyKeys(siteId, readable ? event : null, dateRange.start, dateRange.end, filters, liveMinutes, period)
   const keys = useMemo(() => (rawKeys ? orderKeys(event, rawKeys) : rawKeys), [event, rawKeys])
   const [chosen, setChosen] = useState<string | null>(null)
   // The pressed tab while the event still carries that property, else its first.
   const activeKey = keys?.find((k) => k.key === chosen)?.key ?? keys?.[0]?.key ?? null
-  const { data: values, error: valuesError } = useEventPropertyValues(siteId, event, activeKey, dateRange.start, dateRange.end, VALUE_LIMIT, filters, liveMinutes)
+  const { data: values, error: valuesError } = useEventPropertyValues(siteId, event, activeKey, dateRange.start, dateRange.end, VALUE_LIMIT, filters, liveMinutes, period)
   const rows = useMemo(() => (values ? propertyValueRows(values) : undefined), [values])
   // A share is of the events that carry this property, which is what the values add up to.
   const carrying = keys?.find((k) => k.key === activeKey)?.count ?? row.count

@@ -122,10 +122,10 @@ describe("an opened event's properties follow the page's filters", () => {
 
 describe('the Events block hands its filters to its list', () => {
   // The new frame's pane reads through SWR: every render gets a cache of its own, so no answer crosses tests.
-  const inFrame = (filters?: string) => (
+  const inFrame = (filters?: string, period?: string) => (
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
       <DashboardFrameProvider>
-        <ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} filters={filters} />
+        <ContentSignals goalCounts={events} siteId="site-1" dateRange={dateRange} filters={filters} period={period} />
       </DashboardFrameProvider>
     </SWRConfig>
   )
@@ -134,8 +134,17 @@ describe('the Events block hands its filters to its list', () => {
     render(inFrame(MOBILE))
     // The first event is shown at rest: its keys, then its first key's values (100 of them, paged in the pane).
     await waitFor(() => expect(h.getEventPropertyValues).toHaveBeenCalled())
-    expect(h.getEventPropertyKeys.mock.calls[0].slice(1)).toEqual(['signup', dateRange.start, dateRange.end, undefined, MOBILE])
+    expect(h.getEventPropertyKeys.mock.calls[0].slice(1)).toEqual(['signup', dateRange.start, dateRange.end, undefined, MOBILE, undefined])
     expect(h.getEventPropertyValues.mock.calls[0].slice(1)).toEqual(['signup', 'plan', dateRange.start, dateRange.end, 100, undefined, undefined, MOBILE])
+    expect(await screen.findByText('pro')).toBeInTheDocument()
+  })
+
+  it('in the new frame: All time travels as its token, which a history past 366 days needs (16-11-2026)', async () => {
+    // Sent as its dates, a window longer than 366 days is refused, and the pane said its properties could not load.
+    render(inFrame(MOBILE, 'all'))
+    await waitFor(() => expect(h.getEventPropertyValues).toHaveBeenCalled())
+    expect(h.getEventPropertyKeys.mock.calls[0].slice(1)).toEqual(['signup', dateRange.start, dateRange.end, undefined, MOBILE, 'all'])
+    expect(h.getEventPropertyValues.mock.calls[0].slice(1)).toEqual(['signup', 'plan', dateRange.start, dateRange.end, 100, 'all', undefined, MOBILE])
     expect(await screen.findByText('pro')).toBeInTheDocument()
   })
 

@@ -287,23 +287,29 @@ describe('the Events block in the new frame: the list beside the picked event\'s
 
   it('reads the picked event\'s properties under the page\'s filters and its live window, and reads nothing else', () => {
     inFrame(block({ filters: MOBILE }))
-    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', 'signup', dateRange.start, dateRange.end, MOBILE, undefined)
-    expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', 'plan', dateRange.start, dateRange.end, 100, MOBILE, undefined)
+    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', 'signup', dateRange.start, dateRange.end, MOBILE, undefined, undefined)
+    expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', 'plan', dateRange.start, dateRange.end, 100, MOBILE, undefined, undefined)
     press('Purchase')
-    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', 'purchase', dateRange.start, dateRange.end, MOBILE, undefined)
+    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', 'purchase', dateRange.start, dateRange.end, MOBILE, undefined, undefined)
+  })
+
+  it('hands the page\'s period to the pane\'s reads: All time travels as its token (16-11-2026)', () => {
+    inFrame(block({ filters: MOBILE, period: 'all' }))
+    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', 'signup', dateRange.start, dateRange.end, MOBILE, undefined, 'all')
+    expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', 'plan', dateRange.start, dateRange.end, 100, MOBILE, undefined, 'all')
   })
 
   it('in a live window the pane\'s reads carry the minutes with the filters', () => {
     inFrame(block({ filters: MOBILE, liveMinutes: 5 }))
-    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', 'signup', dateRange.start, dateRange.end, MOBILE, 5)
-    expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', 'plan', dateRange.start, dateRange.end, 100, MOBILE, 5)
+    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', 'signup', dateRange.start, dateRange.end, MOBILE, 5, undefined)
+    expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', 'plan', dateRange.start, dateRange.end, 100, MOBILE, 5, undefined)
   })
 
   it('says an event counted from imported days alone carries no properties, and asks for none', () => {
     inFrame(block({ goalCounts: [{ event_name: 'signup', count: 50, visitors: 40, instrument: 'imported' }] }))
     expect(propsPane().textContent).toContain('Imported days carry no properties')
-    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', null, dateRange.start, dateRange.end, undefined, undefined)
-    expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', null, dateRange.start, dateRange.end, 100, undefined, undefined)
+    expect(h.useEventPropertyKeys).toHaveBeenLastCalledWith('site-1', null, dateRange.start, dateRange.end, undefined, undefined, undefined)
+    expect(h.useEventPropertyValues).toHaveBeenLastCalledWith('site-1', 'signup', null, dateRange.start, dateRange.end, 100, undefined, undefined, undefined)
   })
 
   it('holds the rows\' place while the properties are read, and says when there are none or the read failed', () => {

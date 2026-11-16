@@ -62,6 +62,8 @@ export interface EventsBlockProps {
   goalsImported?: ImportedProvenance | null
   siteId: string
   dateRange: { start: string; end: string }
+  /** The page's period token, for the pane's reads (All time travels as `all`). */
+  period?: string
   /** Realtime mode's rolling window in minutes: the pane's reads use it instead of the dates. */
   liveMinutes?: number
   /** The range's true totals, filtered as the rows are: a conversion is an event's visitors over these visitors. */
@@ -72,7 +74,7 @@ export interface EventsBlockProps {
   filters?: string
 }
 
-export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRange, liveMinutes, totals, memberFeatures = true, filters }: EventsBlockProps) {
+export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRange, period, liveMinutes, totals, memberFeatures = true, filters }: EventsBlockProps) {
   // What the list and its picked event describe: one window under one set of filters.
   const windowKey = `${liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`}|${filters ?? ''}`
   const [tab, setTab] = useState<Tab>('own')
@@ -227,6 +229,7 @@ export default function EventsBlock({ goalCounts, goalsImported, siteId, dateRan
               name={nameOf(picked)}
               windowKey={windowKey}
               dateRange={dateRange}
+              period={period}
               liveMinutes={liveMinutes}
               filters={filters}
               onBack={() => setPane('list')}

@@ -1235,26 +1235,28 @@ export function useOutboundUrls(siteId: string, start: string, end: string, peri
 // * its row shows, and nothing read under one set of filters is served under another. A live window keys on the
 // * window, never on the dates (see LIVE_LIST_KEY), and refreshes with the dashboard. A null event (or key) reads
 // * nothing. Route class `demo`: a share link is not served the property routes.
-export function useEventPropertyKeys(siteId: string, event: string | null, start: string, end: string, filters?: string, liveMinutes?: number) {
+// * The page's period token is SENT, as the Outbound tab's read sends it (16-11-2026): All time sent as its dates was
+// * refused once a site's history passed the 366-day cap, so its pane said the properties could not be loaded.
+export function useEventPropertyKeys(siteId: string, event: string | null, start: string, end: string, filters?: string, liveMinutes?: number, period?: string) {
   const live = liveMinutes != null
   return useSiteSWR<EventPropertyKey[]>(
     siteId, 'demo',
     (siteKey) => !siteId || event === null ? null
       : live ? ['eventKeys', siteKey, event, LIVE_LIST_KEY, liveMinutes, filters]
-        : start && end ? ['eventKeys', siteKey, event, start, end, filters] : null,
-    (ref) => getEventPropertyKeys(ref, event as string, start, end, liveMinutes, filters),
+        : start && end ? ['eventKeys', siteKey, event, start, end, period ?? '', filters] : null,
+    (ref) => getEventPropertyKeys(ref, event as string, start, end, liveMinutes, filters, live ? undefined : period),
     { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : {}) }
   )
 }
 
-export function useEventPropertyValues(siteId: string, event: string | null, key: string | null, start: string, end: string, limit: number, filters?: string, liveMinutes?: number) {
+export function useEventPropertyValues(siteId: string, event: string | null, key: string | null, start: string, end: string, limit: number, filters?: string, liveMinutes?: number, period?: string) {
   const live = liveMinutes != null
   return useSiteSWR<EventPropertyValue[]>(
     siteId, 'demo',
     (siteKey) => !siteId || event === null || key === null ? null
       : live ? ['eventValues', siteKey, event, key, LIVE_LIST_KEY, liveMinutes, limit, filters]
-        : start && end ? ['eventValues', siteKey, event, key, start, end, limit, filters] : null,
-    (ref) => getEventPropertyValues(ref, event as string, key as string, start, end, limit, undefined, liveMinutes, filters),
+        : start && end ? ['eventValues', siteKey, event, key, start, end, period ?? '', limit, filters] : null,
+    (ref) => getEventPropertyValues(ref, event as string, key as string, start, end, limit, live ? undefined : period, liveMinutes, filters),
     { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : {}) }
   )
 }

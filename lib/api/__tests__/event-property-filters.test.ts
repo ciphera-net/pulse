@@ -43,6 +43,16 @@ describe("the page's filters on the event-property reads", () => {
     expect(url.searchParams.get('end_date')).toBe('2026-11-15')
   })
 
+  it('the keys read sends the period token when given, in place of the dates (16-11-2026)', async () => {
+    // All time sent as its dates is refused past 366 days; sent as `all` it is answered.
+    await stats.getEventPropertyKeys('site-1', 'add_to_cart', '2025-09-24', '2026-11-16', undefined, FILTERS, 'all')
+    const url = lastUrl(fetchSpy)
+    expect(url.searchParams.get('period')).toBe('all')
+    expect(url.searchParams.has('start_date')).toBe(false)
+    expect(url.searchParams.has('end_date')).toBe(false)
+    expect(url.searchParams.get('filters')).toBe(FILTERS)
+  })
+
   it('the values read sends them', async () => {
     await stats.getEventPropertyValues('site-1', 'add_to_cart', 'category', '2026-10-17', '2026-11-15', 20, undefined, undefined, FILTERS)
     const url = lastUrl(fetchSpy)
