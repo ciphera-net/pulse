@@ -50,6 +50,6 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   // shows for every team since 09-11-2026, when the weekly summary left beta.
   { id: 'summary', label: 'Weekly summary', critical: false },
   // summary_monthly joined with iris migration 052 (09-11-2026): the email on the 1st with each site's last month, in its
-  // own category so a person keeps one summary and drops the other. Its row shows while the monthly-summary beta is on.
+  // own category so a person keeps one summary and drops the other. Its row shows for every team since 16-11-2026, when the monthly summary left beta.
   { id: 'summary_monthly', label: 'Monthly summary', critical: false },
 ]
