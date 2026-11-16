@@ -185,5 +185,7 @@ export function exportErrorText(err: unknown): string {
   if (month) return `Monthly rows cover at most ${month[1]} days. Pick a shorter range.`
   if (/^only the daily table covers more than a year/i.test(raw)) return 'Over more than a year, only the daily summary can be exported.'
   if (/^an export covers at most/i.test(raw)) return 'A file covers at most 10 years.'
+  // The event filter (R45): the server names the tables that cannot follow it, in words written for this page.
+  if (/can't be filtered by an event with these settings/i.test(raw)) return raw
   return EXPORT_COULDNT
 }

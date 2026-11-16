@@ -421,3 +421,36 @@ describe('the other three tabs are as they were', () => {
     expect(unit()).toBe('visitors')
   })
 })
+
+describe('under the event-filters beta (R45): a press filters by the link, the arrow opens it', () => {
+  it('filters the page by every stored address the row stands for, and keeps the link on its arrow', async () => {
+    const { OUTBOUND_KIND } = await import('@/lib/filters')
+    // Two stored addresses that read the same make one row (outboundLinkRows): its filter names both.
+    h.useOutboundUrls.mockReturnValue({
+      data: [{ value: 'https://www.strava.com/clubs/haldencycles', count: 443 }, { value: 'https://strava.com/clubs/haldencycles', count: 7 }],
+      error: undefined,
+      isLoading: false,
+    })
+    const onFilter = vi.fn()
+    inFrame(block({ period: '7d', goalCounts: goalCounts as Outbound['goalCounts'], filterByLink: true }, { onFilter }))
+    openOutbound()
+    const row = rows()[0]
+    expect(row.tagName).toBe('DIV')
+    fireEvent.click(within(row).getByRole('button', { name: /Filter by outbound link: strava.com\/clubs\/haldencycles/ }))
+    expect(onFilter).toHaveBeenCalledWith({
+      dimension: OUTBOUND_KIND,
+      operator: 'is',
+      values: ['https://www.strava.com/clubs/haldencycles', 'https://strava.com/clubs/haldencycles'],
+    })
+    const arrow = within(row).getByTestId('outbound-link-arrow')
+    expect(arrow.tagName).toBe('A')
+    expect(arrow.getAttribute('href')).toBe('https://www.strava.com/clubs/haldencycles')
+    expect(arrow.getAttribute('target')).toBe('_blank')
+  })
+
+  it('opens the link from the whole row without the beta, as before', () => {
+    inFrame(block())
+    openOutbound()
+    expect(rows()[0].tagName).toBe('A')
+  })
+})

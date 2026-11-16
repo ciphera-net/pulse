@@ -32,6 +32,8 @@ export const DIMENSION_LABELS: Record<string, string> = {
   utm_term: 'UTM Term',
   utm_content: 'UTM Content',
   event_name: 'Event',
+  // The event filter's bare kind (below): keeps whole visitors, where event_name tests a row.
+  event: 'Event',
   entry_path: 'Entry page',
   // Not in the picker (DIMENSION_CATEGORIES) yet: a row of the Locations block sets these two, and without a label
   // its pill read "language is en-US" and "timezone is Europe/Brussels", the raw keys.
@@ -147,8 +149,90 @@ export function parseFiltersFromURL(raw: string): DimensionFilter[] {
 
 /** Build display label for a filter pill */
 export function filterLabel(f: DimensionFilter): string {
-  const dim = DIMENSION_LABELS[f.dimension] || f.dimension
+  const dim = kindLabel(f.dimension)
   const op = OPERATOR_LABELS[f.operator] || f.operator
   const val = f.values.length > 1 ? `${f.values[0]} +${f.values.length - 1}` : f.values[0]
   return `${dim} ${op} ${val}`
+}
+
+// ---------------------------------------------------------------------------
+// The event filter (owner ruling R45 of 15-11-2026; design Pulse/docs/plans/15-11-2026-event-and-outbound-link-filter-
+// design.md, sections 3 to 8). Two kinds the server reads in the v2 format only. Each keeps or leaves out WHOLE
+// visitors, everything they did that day, never single rows:
+//   * `event`: the visitors who did any of the named events that day ("is"), or none of them ("is not").
+//   * `event_property:<event>:<key>`: the visitors who did <event> with <key> matching. An outbound link is this
+//     kind on the event `outbound_link` and its property `url`. The key is escaped like a value (it may hold the
+//     format's delimiters); an event name cannot hold any of them (ingest's own rule), so it is written as is.
+// While the event-filters beta is on they replace `event_name` (a test on a row): an old address's `event_name` is
+// read as `event`. The server refuses the two side by side, and more than MAX_EVENT_FILTERS event filters.
+// ---------------------------------------------------------------------------
+
+/** The beta that offers the two kinds (lib/betas.ts; read with useFeature). */
+export const EVENT_FILTERS_FLAG = 'event-filters'
+export const EVENT_KIND = 'event'
+const EVENT_PROPERTY_PREFIX = 'event_property:'
+/** The most event filters one page may carry: each is one more full read of the range on the server. */
+export const MAX_EVENT_FILTERS = 2
+/** Said when a third event filter is asked for. */
+export const TOO_MANY_EVENT_FILTERS = 'A page can have at most two event filters.'
+
+/** Whether one more event filter would pass the most a page may carry (a filter equal to one on adds nothing). */
+export function eventFilterRoomFor(filter: DimensionFilter, filters: DimensionFilter[]): boolean {
+  if (!isEventKind(filter.dimension)) return true
+  if (filters.some((f) => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';'))) return true
+  return filters.filter((f) => isEventKind(f.dimension)).length < MAX_EVENT_FILTERS
+}
+
+/** The Events category while the event-filters beta is on: an event and an outbound link in place of `event_name`. */
+export function categoriesFor(eventFilters: boolean): { label: string; dimensions: readonly string[] }[] {
+  return DIMENSION_CATEGORIES.map((c) =>
+    eventFilters && c.dimensions.includes('event_name' as never)
+      ? { label: c.label, dimensions: c.dimensions.flatMap((d) => (d === 'event_name' ? [EVENT_KIND, OUTBOUND_KIND] : [d])) }
+      : { label: c.label, dimensions: c.dimensions },
+  )
+}
+export const OUTBOUND_EVENT = 'outbound_link'
+export const OUTBOUND_KEY = 'url'
+
+/** The kind of a property filter: `event_property:<event>:<key>`, the key escaped. */
+export function eventPropertyKind(event: string, key: string): string {
+  return `${EVENT_PROPERTY_PREFIX}${event.toLowerCase()}:${escapeFilterValue(key)}`
+}
+
+/** The outbound link's kind: the `url` of the `outbound_link` event. */
+export const OUTBOUND_KIND = eventPropertyKind(OUTBOUND_EVENT, OUTBOUND_KEY)
+
+/** A property filter's event and key (unescaped), or null for any other kind. */
+export function eventPropertyOf(dimension: string): { event: string; key: string } | null {
+  if (!dimension.startsWith(EVENT_PROPERTY_PREFIX)) return null
+  const rest = dimension.slice(EVENT_PROPERTY_PREFIX.length)
+  const at = rest.indexOf(':')
+  if (at <= 0) return null
+  const key = unescapeFilterValue(rest.slice(at + 1))
+  return key.trim() ? { event: rest.slice(0, at), key } : null
+}
+
+/** Whether a kind is one of the event filter's two (a test on a visitor's day, not on a row). */
+export function isEventKind(dimension: string): boolean {
+  return dimension === EVENT_KIND || eventPropertyOf(dimension) !== null
+}
+
+/**
+ * An old address's `event_name` filters, read as `event` (R45: an old Event link takes the new meaning), the names
+ * lower-cased as ingest stores every name. Only while the event-filters beta is on; every other filter passes as is.
+ */
+export function readEventNameAsEvent(filters: DimensionFilter[]): DimensionFilter[] {
+  if (!filters.some((f) => f.dimension === 'event_name')) return filters
+  return filters.map((f) => (f.dimension === 'event_name' ? { ...f, dimension: EVENT_KIND, values: f.values.map((v) => v.toLowerCase()) } : f))
+}
+
+/**
+ * A kind as a reader names it: "Event", "Outbound link", or a property as its event's name and its key
+ * ("Signup: plan"). `eventLabel` names an event (the Events block's names); without it the stored name is used.
+ */
+export function kindLabel(dimension: string, eventLabel: (event: string) => string = (e) => e): string {
+  if (dimension === OUTBOUND_KIND) return 'Outbound link'
+  const property = eventPropertyOf(dimension)
+  if (property) return `${eventLabel(property.event)}: ${property.key}`
+  return DIMENSION_LABELS[dimension] || dimension
 }

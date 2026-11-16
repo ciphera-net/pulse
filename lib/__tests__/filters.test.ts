@@ -222,3 +222,54 @@ describe('constants', () => {
     expect(OPERATORS).toEqual(['is', 'is_not', 'contains', 'not_contains'])
   })
 })
+
+describe('the event filter kinds (R45)', () => {
+  it('writes and reads a property kind with its key escaped, the event lower-cased', async () => {
+    const { eventPropertyKind, eventPropertyOf, isEventKind, OUTBOUND_KIND } = await import('../filters')
+    const kind = eventPropertyKind('Signup', 'a:b,c|d;e%f')
+    expect(kind).toBe('event_property:signup:a:b%2Cc%7Cd%3Be%25f')
+    expect(eventPropertyOf(kind)).toEqual({ event: 'signup', key: 'a:b,c|d;e%f' })
+    expect(OUTBOUND_KIND).toBe('event_property:outbound_link:url')
+    expect(isEventKind('event')).toBe(true)
+    expect(isEventKind(kind)).toBe(true)
+    expect(isEventKind('event_name')).toBe(false)
+    expect(isEventKind('event_property:signup')).toBe(false)
+    expect(isEventKind('event_property::plan')).toBe(false)
+    expect(isEventKind('event_property:signup:')).toBe(false)
+  })
+
+  it('round-trips through the address exactly as the server parses it', async () => {
+    const { eventPropertyKind } = await import('../filters')
+    const filters: DimensionFilter[] = [
+      { dimension: 'country', operator: 'is', values: ['NO'] },
+      { dimension: 'event', operator: 'is_not', values: ['signup', 'purchase'] },
+      { dimension: eventPropertyKind('signup', 'plan;tier'), operator: 'is', values: ['pro,annual'] },
+    ]
+    const raw = serializeFilters(filters)
+    expect(raw).toBe('v2:country|is|NO,event|is_not|signup;purchase,event_property:signup:plan%3Btier|is|pro%2Cannual')
+    expect(parseFiltersFromURL(raw)).toEqual(filters)
+  })
+
+  it('reads an old event_name as an event, lower-cased, and leaves the rest alone', async () => {
+    const { readEventNameAsEvent } = await import('../filters')
+    const filters: DimensionFilter[] = [
+      { dimension: 'event_name', operator: 'contains', values: ['Sign'] },
+      { dimension: 'page', operator: 'is', values: ['/Pricing'] },
+    ]
+    expect(readEventNameAsEvent(filters)).toEqual([
+      { dimension: 'event', operator: 'contains', values: ['sign'] },
+      { dimension: 'page', operator: 'is', values: ['/Pricing'] },
+    ])
+    const none: DimensionFilter[] = [{ dimension: 'page', operator: 'is', values: ['/'] }]
+    expect(readEventNameAsEvent(none)).toBe(none)
+  })
+
+  it('names the kinds as a pill reads them', async () => {
+    const { eventPropertyKind, kindLabel, OUTBOUND_KIND } = await import('../filters')
+    expect(kindLabel('event')).toBe('Event')
+    expect(kindLabel(OUTBOUND_KIND)).toBe('Outbound link')
+    expect(kindLabel(eventPropertyKind('signup', 'plan'), (e) => (e === 'signup' ? 'Sign-ups' : e))).toBe('Sign-ups: plan')
+    expect(filterLabel({ dimension: OUTBOUND_KIND, operator: 'is', values: ['shop.example/cart'] })).toBe('Outbound link is shop.example/cart')
+    expect(filterLabel({ dimension: eventPropertyKind('signup', 'plan'), operator: 'is_not', values: ['pro'] })).toBe('signup: plan is not pro')
+  })
+})

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { ArrowSquareOut } from '@phosphor-icons/react'
+import { OUTBOUND_KIND, type DimensionFilter } from '@/lib/filters'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { DestinationIcon } from '@/components/dashboard/DestinationIcon'
 import { CardFooter, FRAME_CARD_BODY, FRAME_CARD_NOTE } from '@/lib/dashboard/frame'
@@ -67,9 +68,15 @@ export interface OutboundLinksTabProps {
   trackingOff?: boolean
   /** The order the block's head asks for (its clicks column, 16-11-2026). Clicks, high to low, when absent. */
   sort?: Sort<'clicks'>
+  /**
+   * The event-filters beta (R45; design 15-11-2026-event-and-outbound-link-filter-design.md, section 8): a press on a row
+   * filters the page by its link (every stored address the row stands for) and the small arrow opens it, the Pages and
+   * Referrers rows' device. Without it the whole row opens the link, as before.
+   */
+  onFilter?: (filter: DimensionFilter) => void
 }
 
-export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts, goalsImported, filters, live = false, liveMinutes, trackingOff = false, sort = CLICKS_DESC }: OutboundLinksTabProps) {
+export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts, goalsImported, filters, live = false, liveMinutes, trackingOff = false, sort = CLICKS_DESC, onFilter }: OutboundLinksTabProps) {
   // Mounted only while its tab is open, so the read is made on the first visit to the tab and not with the page.
   const { data, error, isLoading } = useOutboundUrls(siteId, dateRange.start, dateRange.end, period, liveMinutes)
   // Sorted before paging, so a page is a slice of the asked order; ties keep the server's order.
@@ -107,6 +114,44 @@ export default function OutboundLinksTab({ siteId, dateRange, period, goalCounts
             {displayed.map((row, i) => {
               const width = maxClicks > 0 ? (row.clicks / maxClicks) * BAR_CAP : 0
               const share = totalClicks > 0 ? `${Math.round((row.clicks / totalClicks) * 100)}%` : ''
+              if (onFilter) {
+                // The Pages row's device (ContentStats): an overlay button filters, the arrow above it opens the link.
+                return (
+                  <CascadeRow key={row.href} index={i}>
+                    <div className={`interactive-row ${DIMENSION_ROW} cursor-pointer`} data-testid="outbound-link-row">
+                      <button
+                        type="button"
+                        className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+                        aria-label={`Filter by outbound link: ${row.label}`}
+                        onClick={() => onFilter({ dimension: OUTBOUND_KIND, operator: 'is', values: row.hrefs })}
+                      />
+                      <RowBar width={width} index={i} className="pointer-events-none" />
+                      <div className="relative flex-1 min-w-0 text-white flex items-center gap-3 pointer-events-none">
+                        <DestinationIcon
+                          host={row.host}
+                          failed={faviconFailed.has(row.host)}
+                          onFail={() => setFaviconFailed((prev) => new Set(prev).add(row.host))}
+                        />
+                        <span className="truncate" title={row.href}>{row.label}</span>
+                        <a
+                          href={row.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open ${row.label} in a new tab`}
+                          data-testid="outbound-link-arrow"
+                          className="relative z-10 pointer-events-auto -m-1 shrink-0 rounded-sm p-1 text-neutral-500 opacity-0 transition ease-apple hover:text-brand-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-brand-orange group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                        >
+                          <ArrowSquareOut className="h-3.5 w-3.5" aria-hidden="true" />
+                        </a>
+                      </div>
+                      <div className={`${ROW_STAT} gap-2 pointer-events-none`}>
+                        {share && <span className={ROW_SHARE}>{share}</span>}
+                        <CompactNumber value={row.clicks} className={ROW_NUMBER} />
+                      </div>
+                    </div>
+                  </CascadeRow>
+                )
+              }
               return (
                 <CascadeRow key={row.href} index={i}>
                   <a

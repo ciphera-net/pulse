@@ -1,7 +1,7 @@
 'use client'
 
 import { CaretLeft } from '@phosphor-icons/react'
-import { DIMENSION_LABELS, SINGLE_VALUE_DIMENSIONS, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
+import { SINGLE_VALUE_DIMENSIONS, kindLabel, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
 import type { FilterDraft } from './useFilterBuilder'
 import OperatorChip from './OperatorChip'
 import ValuePicker from './ValuePicker'
@@ -32,7 +32,7 @@ export default function ValueStage({
   fetchSuggestions,
 }: ValueStageProps) {
   const canApply = draft.values.length > 0 && !isDuplicate
-  const dimLabel = draft.dimension ? (DIMENSION_LABELS[draft.dimension] ?? draft.dimension) : ''
+  const dimLabel = draft.dimension ? kindLabel(draft.dimension) : ''
 
   const handleApply = () => {
     if (canApply) onApply()

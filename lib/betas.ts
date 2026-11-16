@@ -28,4 +28,8 @@ export const BETAS: readonly Beta[] = [
   // Saved filters (R59, R60 of 16-11-2026): the filters box's save row and the Filter panel's list read useFeature
   // (lib/swr/savedFilters.ts).
   { flag: 'saved-filters', name: 'Saved filters', revalidates: [] },
+  // The event filter (R45 of 15-11-2026): an event and an outbound link as a filter on the dashboard, a funnel's page,
+  // Journeys and Settings, Export. Their pickers read useFeature (lib/filters.ts EVENT_FILTERS_FLAG); the server
+  // answers a condition for every team.
+  { flag: 'event-filters', name: 'Event filters', revalidates: [] },
 ]

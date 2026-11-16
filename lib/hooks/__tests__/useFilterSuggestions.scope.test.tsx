@@ -101,6 +101,31 @@ describe('useFilterSuggestions reads through the nearest site scope', () => {
     await expect(result.current('region')).resolves.toStrictEqual([{ value: 'Viken', label: 'Viken', count: 4, country: 'NO' }])
   })
 
+  it('reads the event filter\'s kinds (R45): the events with their names, an outbound link as the Outbound tab writes it', async () => {
+    const { OUTBOUND_KIND, eventPropertyKind } = await import('@/lib/filters')
+    fetchSpy.mockImplementation(async (url: string) => {
+      const body = url.includes('/goals/stats')
+        ? { goal_counts: [{ event_name: 'outbound_link', count: 7, visitors: 5 }, { event_name: 'sign_up', count: 3, visitors: 3 }, { event_name: '(other)', count: 1, visitors: 1 }] }
+        : url.includes('/properties/url')
+          ? { values: [{ value: 'https://www.github.com/ciphera', count: 4 }, { value: 'javascript:void(0)', count: 1 }] }
+          : { values: [{ value: 'pro', count: 2 }] }
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+    })
+    const id = nextId()
+    const filters = 'v2:country|is|NO'
+    const { result } = renderHook(() => useFilterSuggestions(id, RANGE, filters, '30d'), { wrapper: wrapperFor(memberScope(id)) })
+    await expect(result.current('event')).resolves.toEqual([
+      { value: 'outbound_link', label: 'Outbound clicks', count: 7 },
+      { value: 'sign_up', label: 'Sign up', count: 3 },
+    ])
+    expect(sent().endpoint).toBe(`/sites/${id}/goals/stats?period=30d&limit=100&filters=${encodeURIComponent(filters)}`)
+    // The stored address stays the value the filter matches; a link that opens no page is not offered.
+    await expect(result.current(OUTBOUND_KIND)).resolves.toEqual([{ value: 'https://www.github.com/ciphera', label: 'github.com/ciphera', count: 4 }])
+    expect(sent().endpoint).toContain(`/sites/${id}/goals/outbound_link/properties/url?`)
+    await expect(result.current(eventPropertyKind('signup', 'plan'))).resolves.toEqual([{ value: 'pro', label: 'pro', count: 2 }])
+    expect(sent().endpoint).toContain(`/sites/${id}/goals/signup/properties/plan?`)
+  })
+
   it('still answers [] before there is a range, in every scope', async () => {
     const id = nextId()
     const { result } = renderHook(() => useFilterSuggestions(id, null), { wrapper: wrapperFor(demoScope(id)) })

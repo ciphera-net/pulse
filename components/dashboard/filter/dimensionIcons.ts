@@ -16,6 +16,7 @@ import {
   Translate,
   type Icon,
 } from '@phosphor-icons/react'
+import { EVENT_KIND, OUTBOUND_KIND } from '@/lib/filters'
 
 /**
  * The icon of each kind of thing a filter can be on, read by both pickers (today's DimensionStage and the new
@@ -39,6 +40,9 @@ export const DIMENSION_ICONS: Record<string, Icon> = {
   region: MapPin,
   city: Buildings,
   event_name: CursorClick,
+  // The event filter's kinds (R45): an event as the Events block marks one, an outbound link as the Outbound tab does.
+  [EVENT_KIND]: CursorClick,
+  [OUTBOUND_KIND]: ArrowSquareOut,
   entry_path: SignIn,
   language: Translate,
   timezone: Clock,

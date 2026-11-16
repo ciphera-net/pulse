@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { DIMENSION_CATEGORIES, DIMENSION_LABELS, SCOPED_DIMENSIONS, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
+import { DIMENSION_CATEGORIES, EVENT_KIND, OUTBOUND_KIND, SCOPED_DIMENSIONS, kindLabel, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
 import type { DashboardData } from '@/lib/api/stats'
+import { eventName } from '@/lib/dashboard/events'
 
 // ---------------------------------------------------------------------------
 // What the Search filter can be on, and the page's real values for each (owner ruling R36 of 15-11-2026, built
@@ -19,9 +20,32 @@ export const GROUPS: { label: string; dimensions: string[] }[] = DIMENSION_CATEG
   .map((c) => (c.label === 'Audience' ? { ...c, dimensions: [...c.dimensions, 'language', 'timezone'] } : c))
 
 export const ALL_DIMENSIONS = GROUPS.flatMap((g) => g.dimensions)
-export const labelOf = (dimension: string) => DIMENSION_LABELS[dimension] ?? dimension
+
+/**
+ * The groups while the event-filters beta is on (R45): the Events group offers an event and an outbound link, each a
+ * test on a visitor's day, in place of the row test `event_name` (design 15-11-2026-event-and-outbound-link-filter-
+ * design.md, section 8).
+ */
+export const EVENT_FILTER_GROUPS: { label: string; dimensions: string[] }[] = GROUPS.map((g) =>
+  g.dimensions.includes('event_name') ? { ...g, dimensions: g.dimensions.flatMap((d) => (d === 'event_name' ? [EVENT_KIND, OUTBOUND_KIND] : [d])) } : g,
+)
+
+/** The groups a page offers: the event filter's while its beta is on. */
+export function groupsFor(eventFilters: boolean): { label: string; dimensions: string[] }[] {
+  return eventFilters ? EVENT_FILTER_GROUPS : GROUPS
+}
+
+/** Every kind a page offers, in the groups' order. */
+export function dimensionsFor(eventFilters: boolean): string[] {
+  return groupsFor(eventFilters).flatMap((g) => g.dimensions)
+}
+
+/** An event's name as the Events block writes it. */
+const eventLabel = (event: string) => eventName({ event_name: event, display_name: null })
+/** A kind as a reader names it ("Outbound link", "Signup: plan"). */
+export const labelOf = (dimension: string) => kindLabel(dimension, eventLabel)
 /** Kinds whose value is free text as well as a list: a "contains" filter makes sense on them. */
-export const TEXT_DIMENSIONS: ReadonlySet<string> = new Set(['page', 'referrer', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'])
+export const TEXT_DIMENSIONS: ReadonlySet<string> = new Set(['page', 'referrer', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', EVENT_KIND, OUTBOUND_KIND])
 
 export type PageValues = Record<string, FilterSuggestion[]>
 export type Loaded = Record<string, FilterSuggestion[]>
@@ -29,8 +53,12 @@ export type Loaded = Record<string, FilterSuggestion[]>
 /** The kinds the page's own answer lists, which have no value read of their own. */
 export function pageValuesFrom(dashboard: DashboardData | null | undefined): PageValues {
   if (!dashboard) return {}
+  const events = (dashboard.goal_counts ?? []).map((g) => ({ value: g.event_name, label: g.display_name || g.event_name.replace(/_/g, ' '), count: g.count }))
   return {
-    event_name: (dashboard.goal_counts ?? []).map((g) => ({ value: g.event_name, label: g.display_name || g.event_name.replace(/_/g, ' '), count: g.count })),
+    event_name: events,
+    // The event filter's bare kind lists the same events (R45: "Events come from the page's own answer, with the
+    // names their owner gave them"); the counts are the page's.
+    [EVENT_KIND]: events,
     channel: (dashboard.channels ?? []).map((c) => ({ value: c.channel, label: c.channel, count: c.visitors })),
     screen_resolution: (dashboard.screen_resolutions ?? []).map((s) => ({ value: s.screen_resolution, label: s.screen_resolution, count: s.visitors })),
     language: (dashboard.languages ?? []).map((l) => ({ value: l.language, label: l.language, count: l.visitors })),
@@ -64,10 +92,10 @@ export interface Found extends FilterSuggestion {
 }
 
 /** What matches the typed text, the most counted first inside each kind, at most `perKind` each. */
-export function search(values: Loaded, text: string, only: string | null, perKind: number): Found[] {
+export function search(values: Loaded, text: string, only: string | null, perKind: number, dimensions: string[] = ALL_DIMENSIONS): Found[] {
   const q = text.trim().toLowerCase()
   const out: Found[] = []
-  for (const dimension of only ? [only] : ALL_DIMENSIONS) {
+  for (const dimension of only ? [only] : dimensions) {
     const list = values[dimension] ?? []
     const hits = (q === '' ? list : list.filter((s) => s.label.toLowerCase().includes(q) || s.value.toLowerCase().includes(q)))
       .slice()
@@ -92,11 +120,14 @@ export function useFilterValues({
   fetchSuggestions,
   pageValues,
   filters,
+  dimensions = ALL_DIMENSIONS,
 }: {
   on: boolean
   fetchSuggestions: ((dimension: string) => Promise<FilterSuggestion[]>) | undefined
   pageValues: PageValues
   filters: DimensionFilter[]
+  /** The kinds the page offers (dimensionsFor). */
+  dimensions?: string[]
 }): { values: Loaded; ready: boolean } {
   const [values, setValues] = useState<Loaded>({})
   const [ready, setReady] = useState(false)
@@ -111,7 +142,7 @@ export function useFilterValues({
     const filteredOn = (dimension: string) => filters.some((f) => f.dimension === dimension)
     const next: Loaded = {}
     void Promise.all(
-      ALL_DIMENSIONS.map(async (dimension) => {
+      dimensions.map(async (dimension) => {
         let list: FilterSuggestion[] = []
         if (pageValues[dimension]) list = pageValues[dimension]
         else {
@@ -133,9 +164,9 @@ export function useFilterValues({
       setValues(next)
       setReady(true)
     })
-    // The reads follow the page: its answer (pageKey) and the filters now on.
+    // The reads follow the page: its answer (pageKey), the filters now on and the kinds it offers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [on, fetchSuggestions, pageKey, filtersKey])
+  }, [on, fetchSuggestions, pageKey, filtersKey, dimensions.join(',')])
   return { values, ready }
 }
 
@@ -152,5 +183,6 @@ export function valueName(dimension: string, value: string, pageValues?: PageVal
   if (dimension === 'country' && /^[A-Z]{2}$/.test(value)) return regions?.of(value) ?? value
   const listed = pageValues?.[dimension]?.find((s) => s.value === value)?.label
   if (listed) return listed
+  if (dimension === EVENT_KIND) return eventLabel(value)
   return dimension === 'event_name' ? value.replace(/_/g, ' ') : value
 }

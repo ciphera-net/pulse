@@ -3,7 +3,8 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { MagnifyingGlass } from '@phosphor-icons/react'
-import { DIMENSION_CATEGORIES, DIMENSION_LABELS, SCOPED_DIMENSIONS } from '@/lib/filters'
+import { EVENT_FILTERS_FLAG, SCOPED_DIMENSIONS, categoriesFor, kindLabel } from '@/lib/filters'
+import { useFeature } from '@/lib/features'
 import { DIMENSION_ICONS } from './dimensionIcons'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { moveHighlight } from './useFilterBuilder'
@@ -41,20 +42,22 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
 
   const query = search.trim().toLowerCase()
   const allowSet = useMemo(() => (allowed ? new Set(allowed) : null), [allowed])
+  // * The event filter's beta (R45): the Events group offers an event and an outbound link in place of event_name.
+  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
 
   // * Groups with their matching dimensions; `flat` is the keyboard order.
   const { groups, flat } = useMemo(() => {
-    const groups = DIMENSION_CATEGORIES
+    const groups = categoriesFor(eventFilters)
       .map(cat => ({
         label: cat.label,
         dimensions: cat.dimensions.filter(
           // * No allowlist = the page's full vocabulary MINUS the scoped dimensions.
-          d => (allowSet ? allowSet.has(d) : !SCOPED_DIMENSIONS.has(d)) && DIMENSION_LABELS[d].toLowerCase().includes(query),
+          d => (allowSet ? allowSet.has(d) : !SCOPED_DIMENSIONS.has(d)) && kindLabel(d).toLowerCase().includes(query),
         ),
       }))
       .filter(g => g.dimensions.length > 0)
     return { groups, flat: groups.flatMap(g => g.dimensions) }
-  }, [query, allowSet])
+  }, [query, allowSet, eventFilters])
 
   // * Clamp the highlight when the filtered list shrinks.
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
             className={`w-4 h-4 flex-shrink-0 ${index === highlight ? 'text-neutral-300' : 'text-neutral-500'}`}
           />
         )}
-        <span className="flex-1">{DIMENSION_LABELS[dim]}</span>
+        <span className="flex-1">{kindLabel(dim)}</span>
         {activeDimensions.has(dim) && (
           <span
             aria-label="has an active filter"

@@ -22,10 +22,12 @@ import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { TERMS } from '@/lib/dashboard/terms'
-import type { DimensionFilter } from '@/lib/filters'
+import { EVENT_FILTERS_FLAG, type DimensionFilter } from '@/lib/filters'
+import { useFeature } from '@/lib/features'
 import {
   useJourneyFilters,
   JOURNEY_FILTER_DIMENSIONS,
+  JOURNEY_EVENT_FILTER_DIMENSIONS,
   ENTRY_DIMENSION,
   DEPTH_OPTIONS,
   DENSITY_OPTIONS,
@@ -110,6 +112,8 @@ function Journeys({ scope }: { scope: SiteScope }) {
 
   // ── The dashboard filter system, restricted to journeys' dimensions ──
   const fetchSuggestions = useFilterSuggestions(siteId, fetchRange, filters.filtersParam || undefined, allPeriod)
+  // The event filter's beta (R45): the filter offers an event and an outbound link too.
+  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
   const filterBuilder = useFilterBuilder(fetchSuggestions)
   const handleFilterApply = useCallback(
     (filter: DimensionFilter, editingIndex: number | null) => {
@@ -330,7 +334,7 @@ function Journeys({ scope }: { scope: SiteScope }) {
         builder={filterBuilder}
         filters={filters.dimensionFilters}
         onApply={handleFilterApply}
-        allowedDimensions={JOURNEY_FILTER_DIMENSIONS}
+        allowedDimensions={eventFilters ? JOURNEY_EVENT_FILTER_DIMENSIONS : JOURNEY_FILTER_DIMENSIONS}
       />
     </div>
   )

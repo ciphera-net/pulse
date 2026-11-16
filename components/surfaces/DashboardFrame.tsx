@@ -56,6 +56,8 @@ interface DashboardFrameProps {
   onCardFilter: ((filter: DimensionFilter) => void) | undefined
   /** The site's "Outbound links" option is switched off: the Pages block's Outbound tab then says so in place of its rows. */
   outboundOff: boolean
+  /** The event-filters beta (R45): a press on an Outbound row filters the page by its link. */
+  eventFilters?: boolean
 }
 
 export default function DashboardFrame({
@@ -73,6 +75,7 @@ export default function DashboardFrame({
   filtersParam,
   onCardFilter,
   outboundOff,
+  eventFilters = false,
 }: DashboardFrameProps) {
   return (
     <DashboardFrameProvider>
@@ -117,7 +120,7 @@ export default function DashboardFrame({
             importedCards={dashboard?.imported_cards}
             // Outbound's links are this block's fourth tab (15-11-2026). A share link is not served their read
             // (event-property reads are outside a public-scoped read) and gets no tab.
-            outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff } : undefined}
+            outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff, filterByLink: eventFilters } : undefined}
           />
           <Audience
             countries={dashboard?.countries ?? []}

@@ -1,3 +1,4 @@
+import { EVENT_KIND, OUTBOUND_KIND, eventPropertyOf } from '@/lib/filters'
 import { type ReactNode } from 'react'
 import { cdnUrl } from '@/lib/cdn'
 import {
@@ -519,6 +520,7 @@ export function getFilterValueIcon(dimension: string, value: string, country?: s
     case 'screen_resolution':
       return <FrameCorners className="text-neutral-500" />
     case 'event_name':
+    case EVENT_KIND:
       return <CursorClick className="text-neutral-500" />
     case 'utm_source':
     case 'utm_medium':
@@ -526,8 +528,31 @@ export function getFilterValueIcon(dimension: string, value: string, country?: s
     case 'utm_term':
     case 'utm_content':
       return <Tag className="text-neutral-500" />
-    default:
+    default: {
+      // The event filter's property kinds (R45): an outbound link draws its destination's favicon, as the Outbound
+      // tab's row does; any other property, the event's mark.
+      if (dimension === OUTBOUND_KIND) {
+        const host = outboundHost(value)
+        if (!host) return <Globe className="text-neutral-500" />
+        // The referrer's own path, on the link's host: the house's artwork for a site it knows, else the favicon.
+        const favicon = getReferrerFavicon(host)
+        if (favicon) return <FaviconOr key={favicon} url={favicon} fallback={getReferrerIcon(host)} />
+        return getReferrerIcon(host)
+      }
+      if (eventPropertyOf(dimension)) return <CursorClick className="text-neutral-500" />
       return <Globe className="text-neutral-500" />
+    }
+  }
+}
+
+/** An outbound link's host as the Outbound tab reads it (lib/dashboard/outbound.ts), or null for no web address. */
+function outboundHost(value: string): string | null {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+    return url.hostname.replace(/^www\./, '').toLowerCase() || null
+  } catch {
+    return null
   }
 }
 

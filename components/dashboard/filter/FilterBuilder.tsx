@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { DimensionFilter } from '@/lib/filters'
+import { toast } from '@ciphera-net/facet'
+import { TOO_MANY_EVENT_FILTERS, eventFilterRoomFor, type DimensionFilter } from '@/lib/filters'
 import FilterPopover from './FilterPopover'
 import DimensionStage from './DimensionStage'
 import ValueStage from './ValueStage'
@@ -30,6 +31,12 @@ export default function FilterBuilder({ builder, filters, onApply, allowedDimens
 
   const apply = () => {
     if (!draft.dimension || draft.values.length === 0 || duplicate) return
+    const next = { dimension: draft.dimension, operator: draft.operator, values: draft.values }
+    // * The server reads at most two event filters (each is one more read of the range); an edit replaces one.
+    if (draft.editingIndex === null && !eventFilterRoomFor(next, filters)) {
+      toast.error(TOO_MANY_EVENT_FILTERS)
+      return
+    }
     onApply(
       { dimension: draft.dimension, operator: draft.operator, values: draft.values },
       draft.editingIndex,

@@ -205,3 +205,83 @@ describe('FiltersBox (R46: "One box")', () => {
     expect(screen.getByTestId('filter-pill').textContent).toContain('Norway or Sweden')
   })
 })
+
+describe('SearchFilter with the event-filters beta (R45)', () => {
+  const EVENT_PAGE = {
+    event_name: [{ value: 'signup', label: 'Sign-ups', count: 12 }],
+    event: [{ value: 'signup', label: 'Sign-ups', count: 12 }],
+  }
+  const OUTBOUND: FilterSuggestion[] = [{ value: 'https://github.com/ciphera', label: 'github.com/ciphera', count: 5 }]
+  async function renderBeta(filters: DimensionFilter[] = []) {
+    const { OUTBOUND_KIND } = await import('@/lib/filters')
+    const onApply = vi.fn()
+    const fetch = vi.fn(async (d: string) => (d === OUTBOUND_KIND ? OUTBOUND : (LISTS[d] ?? [])))
+    render(<SearchFilter filters={filters} onApply={onApply} fetchSuggestions={fetch} pageValues={EVENT_PAGE} eventFilters />)
+    return { onApply, fetch, button: screen.getByTestId('search-filter-button'), OUTBOUND_KIND }
+  }
+
+  it('offers an event and an outbound link in place of the row test event_name', async () => {
+    const { button, OUTBOUND_KIND } = await renderBeta()
+    fireEvent.click(button)
+    const kinds = [...(panel() as HTMLElement).querySelectorAll('[data-search-filter-kind]')].map((k) => k.getAttribute('data-search-filter-kind'))
+    expect(kinds).toEqual(expect.arrayContaining(['event', OUTBOUND_KIND]))
+    expect(kinds).not.toContain('event_name')
+    const outbound = (panel() as HTMLElement).querySelector(`[data-search-filter-kind="${OUTBOUND_KIND}"]`)
+    expect(outbound?.textContent).toContain('Outbound link')
+  })
+
+  it('adds an event as the event kind, and reads outbound links from their own read', async () => {
+    const { button, onApply, fetch, OUTBOUND_KIND } = await renderBeta()
+    fireEvent.click(button)
+    await settle()
+    expect(fetch.mock.calls.map((c) => c[0])).toContain(OUTBOUND_KIND)
+    // The page's own answer lists the events: not read again.
+    expect(fetch.mock.calls.map((c) => c[0])).not.toContain('event')
+    fireEvent.change(field(), { target: { value: 'sign' } })
+    fireEvent.keyDown(field(), { key: 'Enter' })
+    expect(onApply).toHaveBeenLastCalledWith({ dimension: 'event', operator: 'is', values: ['signup'] }, null)
+    fireEvent.change(field(), { target: { value: 'github' } })
+    fireEvent.keyDown(field(), { key: 'Enter', altKey: true })
+    expect(onApply).toHaveBeenLastCalledWith({ dimension: OUTBOUND_KIND, operator: 'is_not', values: ['https://github.com/ciphera'] }, null)
+  })
+
+  it('refuses a third event filter in the words of the limit, and lets a repeated one through', async () => {
+    const { toast } = await import('@ciphera-net/facet')
+    const error = vi.spyOn(toast, 'error').mockImplementation(() => '' as never)
+    const { OUTBOUND_KIND, TOO_MANY_EVENT_FILTERS } = await import('@/lib/filters')
+    const two: DimensionFilter[] = [
+      { dimension: 'event', operator: 'is', values: ['purchase'] },
+      { dimension: OUTBOUND_KIND, operator: 'is', values: ['https://github.com/ciphera'] },
+    ]
+    const { button, onApply } = await renderBeta(two)
+    fireEvent.click(button)
+    await settle()
+    fireEvent.change(field(), { target: { value: 'sign' } })
+    fireEvent.keyDown(field(), { key: 'Enter' })
+    expect(onApply).not.toHaveBeenCalled()
+    expect(error).toHaveBeenCalledWith(TOO_MANY_EVENT_FILTERS)
+    // A dimension filter still goes on beside two event filters.
+    fireEvent.change(field(), { target: { value: 'nor' } })
+    fireEvent.keyDown(field(), { key: 'Enter' })
+    expect(onApply).toHaveBeenLastCalledWith({ dimension: 'country', operator: 'is', values: ['NO'] }, null)
+    // One equal to a filter already on adds nothing, so it is no third: it reaches the page, which keeps one.
+    error.mockClear()
+    fireEvent.change(field(), { target: { value: 'github' } })
+    fireEvent.keyDown(field(), { key: 'Enter' })
+    expect(onApply).toHaveBeenLastCalledWith({ dimension: OUTBOUND_KIND, operator: 'is', values: ['https://github.com/ciphera'] }, null)
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+})
+
+describe('the page\'s own events for the event kind (R45: "Events come from the page\'s own answer")', () => {
+  it('lists the dashboard\'s events under the event kind exactly as under event_name, with the owner\'s names', async () => {
+    const { pageValuesFrom } = await import('../values')
+    const values = pageValuesFrom({ goal_counts: [{ event_name: 'signup', display_name: 'Sign-ups', count: 12 }, { event_name: 'add_to_cart', count: 3 }] } as never)
+    expect(values.event).toEqual([
+      { value: 'signup', label: 'Sign-ups', count: 12 },
+      { value: 'add_to_cart', label: 'add to cart', count: 3 },
+    ])
+    expect(values.event).toEqual(values.event_name)
+  })
+})
