@@ -16,8 +16,10 @@ import { valueIcon, valueName } from './SearchFilter'
 // line never wraps on a computer, however many filters there are: the live count, the Filter button and the date
 // range stay where they are (before, a second filter pushed the range onto a line of its own).
 //
-// A filter's operator is a button of its own: one press turns "is" into "is not" and back. Its x removes it. There is
-// no "Clear all" (the owner: "the clear all button needs to be removed").
+// A filter's operator is a button of its own: one press turns "is" into "is not" and back. Its x removes it. The box
+// has an x of its own at its right end, as a single filter's pill has, and it takes every filter away (R59 of
+// 16-11-2026, "an x on the box", which supersedes the earlier "the clear all button needs to be removed": that was a
+// "Clear all" row in the list).
 // ---------------------------------------------------------------------------
 
 /** The one-press opposite of an operator. */
@@ -45,6 +47,11 @@ interface FiltersBoxProps {
   onApply: (filter: DimensionFilter, editingIndex: number | null) => void
   onRemove: (index: number) => void
   pageValues: PageValues
+}
+
+interface BoxProps extends FiltersBoxProps {
+  /** Takes every filter away in one change (the page's own handler, one address update). */
+  onClearAll: () => void
 }
 
 /** One filter as a pill: its kind, its operator (a press flips it), its values, its x. */
@@ -151,8 +158,9 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, onClose }
   )
 }
 
-export default function FiltersBox({ filters, onApply, onRemove, pageValues }: FiltersBoxProps) {
-  const ref = useRef<HTMLButtonElement>(null)
+export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues }: BoxProps) {
+  // The list hangs from the whole box: the box and its x together.
+  const ref = useRef<HTMLSpanElement>(null)
   const [open, setOpen] = useState(false)
   // The box's list closes with its last filter.
   const many = filters.length > 1
@@ -161,24 +169,35 @@ export default function FiltersBox({ filters, onApply, onRemove, pageValues }: F
   if (!many) return <Pill f={filters[0]} i={0} onApply={onApply} onRemove={onRemove} pageValues={pageValues} />
   return (
     <>
-      <button
-        ref={ref}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className={cn('inline-flex h-10 shrink-0 items-center gap-1.5 border px-3 text-sm font-medium', tone(false))}
-        data-testid="filters-box"
-      >
-        <span className="flex items-center -space-x-1" aria-hidden="true">
-          {filters.slice(0, 3).map((f, i) => (
-            <span key={i} className="flex h-5 w-5 items-center justify-center bg-neutral-900 ring-1 ring-brand-orange/20"><Icon f={f} /></span>
-          ))}
-        </span>
-        {filters.length} filters
-        {/* The date button's caret: a quarter turn while the list is open. */}
-        <CaretRight weight="bold" className={cn('h-3.5 w-3.5 text-brand-ink/60 transition-transform', open && 'rotate-90')} aria-hidden="true" />
-      </button>
+      {/* The box and its x are one bordered control, as a single filter's pill and its x are. */}
+      <span ref={ref} className={cn('inline-flex h-10 shrink-0 items-center border text-sm font-medium', tone(false))} data-testid="filters-box-control">
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className="inline-flex h-full items-center gap-1.5 px-3"
+          data-testid="filters-box"
+        >
+          <span className="flex items-center -space-x-1" aria-hidden="true">
+            {filters.slice(0, 3).map((f, i) => (
+              <span key={i} className="flex h-5 w-5 items-center justify-center bg-neutral-900 ring-1 ring-brand-orange/20"><Icon f={f} /></span>
+            ))}
+          </span>
+          {filters.length} filters
+          {/* The date button's caret: a quarter turn while the list is open. */}
+          <CaretRight weight="bold" className={cn('h-3.5 w-3.5 text-brand-ink/60 transition-transform', open && 'rotate-90')} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); onClearAll() }}
+          aria-label="Remove every filter"
+          className="flex h-full w-8 items-center justify-center border-s border-brand-orange/20 hover:text-white"
+          data-testid="filters-box-clear"
+        >
+          <X className="h-3.5 w-3.5" weight="bold" />
+        </button>
+      </span>
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {open && ref.current && (
