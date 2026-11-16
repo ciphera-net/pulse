@@ -395,6 +395,33 @@ describe('Match any', () => {
     expect(sent()).toEqual(everywhere('v2:country|is|NO,device|is|mobile,event|is|signup'))
   })
 
+  it('the switch in the filters box puts every read and the address on Any, and back', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ALL })
+    await mount()
+    expect(sent()).toEqual(everywhere(ALL))
+    fireEvent.click(screen.getByTestId('filters-box'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Any' }))
+    await act(async () => {})
+    expect(sent()).toEqual(everywhere(ANY))
+    expect(screen.getByTestId('filters-box')).toHaveTextContent('Any of 2 filters')
+    fireEvent.click(screen.getByRole('radio', { name: 'All' }))
+    await act(async () => {})
+    expect(sent()).toEqual(everywhere(ALL))
+  })
+
+  it.each([
+    ['a team without the beta', false],
+    ['a page that has not heard from /me yet', null],
+  ])('offers no switch to %s', async (_who, value) => {
+    flag(value)
+    mockSearchParams = new URLSearchParams({ filters: ALL })
+    await mount()
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(screen.getAllByTestId('filters-menu-row')).toHaveLength(2)
+    expect(screen.queryByTestId('filters-match-row')).toBeNull()
+  })
+
   it('leaves Any with its second filter, and a second filter added later starts on Match all', async () => {
     flag(true)
     mockSearchParams = new URLSearchParams({ filters: ANY })

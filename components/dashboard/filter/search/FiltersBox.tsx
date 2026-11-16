@@ -4,9 +4,10 @@ import { useLayoutEffect, useRef, useState, useEffect, type ReactNode } from 're
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BookmarkSimple, CaretRight, X } from '@phosphor-icons/react'
+import { Switcher } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
-import { OPERATOR_LABELS, type DimensionFilter, type FilterMode } from '@/lib/filters'
+import { OPERATOR_LABELS, canMatchAny, type DimensionFilter, type FilterMode } from '@/lib/filters'
 import { setFor, useSavedFilters, type SavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
 import { labelOf, type PageValues, type PlaceCountries } from './values'
 import { valueIcon } from './SearchFilter'
@@ -26,6 +27,10 @@ import { NameField, SavedAs, suggestName, valueText } from './saved'
 // Saved filters (R59 and R60; for every team since 16-11-2026): the box's list ends with "Save these filters", which names
 // the set in place; a single filter's pill has a bookmark beside its x that opens the same field. While the filters
 // on are a saved set, both say "Saved as …" instead. The sets themselves are listed in the Filter panel.
+//
+// Match any (R65 of 16-11-2026, the match-any beta): the box's list opens with a "Match" row and its All / Any
+// switch, and the box says "Any of 3 filters" while the page counts what fits at least one. Beside an event filter
+// the server reads Match all only, so the switch is off there and the row says why.
 // ---------------------------------------------------------------------------
 
 /** The one-press opposite of an operator. */
@@ -37,6 +42,9 @@ export const OPPOSITE: Record<DimensionFilter['operator'], DimensionFilter['oper
 }
 
 const excluded = (f: DimensionFilter) => f.operator === 'is_not' || f.operator === 'not_contains'
+const MATCH_MODES: { value: FilterMode; label: string }[] = [{ value: 'all', label: 'All' }, { value: 'any', label: 'Any' }]
+/** Why the switch is off beside an event filter (the server reads Match all there). */
+export const MATCH_ANY_NEEDS_NO_EVENT = 'With an event filter on, every filter has to match.'
 const tone = (out: boolean) => (out ? 'border-white/[0.12] bg-white/[0.04] text-neutral-200' : 'border-brand-orange/20 bg-brand-orange/10 text-brand-ink')
 function Icon({ f, places }: { f: DimensionFilter; places?: PlaceCountries }) {
   return <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.values[0], places?.[f.dimension]?.[f.values[0]])}</span>
@@ -236,6 +244,26 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, o
   return (
     <AnchoredMenu anchor={anchor} width={340} label="Filters on" onClose={onClose} testid="filters-menu">
       <div data-menu-list="" className="divide-y divide-white/[0.06]">
+        {onMode && (
+          // The switch stands over the filters it joins. It is the blocks' own switcher, so it reads as one.
+          <div data-testid="filters-match-row">
+            <div className="flex h-12 items-center justify-between gap-3 ps-4 pe-3 text-sm">
+              <span className="text-neutral-400">Match</span>
+              <Switcher
+                size="sm"
+                tone="solid"
+                aria-label="Match all filters or any filter"
+                options={MATCH_MODES}
+                value={mode}
+                onChange={(v) => onMode(v as FilterMode)}
+                disabled={!canMatchAny(filters)}
+              />
+            </div>
+            {!canMatchAny(filters) && (
+              <p className="px-4 pb-3 text-xs text-neutral-500" data-testid="filters-match-why">{MATCH_ANY_NEEDS_NO_EVENT}</p>
+            )}
+          </div>
+        )}
         {filters.map((f, i) => {
           const out = excluded(f)
           const kind = labelOf(f.dimension, pageValues)
@@ -292,7 +320,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
               <span key={i} className="flex h-5 w-5 items-center justify-center bg-neutral-900 ring-1 ring-brand-orange/20"><Icon f={f} places={places} /></span>
             ))}
           </span>
-          {filters.length} filters
+          {mode === 'any' ? `Any of ${filters.length} filters` : `${filters.length} filters`}
           {/* The date button's caret: a quarter turn while the list is open. */}
           <CaretRight weight="bold" className={cn('h-3.5 w-3.5 text-brand-ink/60 transition-transform', open && 'rotate-90')} aria-hidden="true" />
         </button>
