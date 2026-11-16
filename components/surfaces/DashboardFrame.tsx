@@ -169,6 +169,7 @@ export default function DashboardFrame({
               goalsImported={dashboard?.imported_goals}
               siteId={siteId}
               dateRange={dateRange}
+              period={period}
               liveMinutes={liveMinutes}
               totals={totals}
               memberFeatures={caps.fullReads}

@@ -553,8 +553,10 @@ export interface EventPropertyValue {
 // to the event rows, exactly as it does for the events list, so an event's properties add up to the count the
 // list shows for it. Until 15-11-2026 neither read took them: under a filter the list was filtered and the
 // properties under an opened event were the whole site's.
-export function getEventPropertyKeys(site: SiteRef, eventName: string, startDate?: string, endDate?: string, minutes?: number, filters?: string): Promise<EventPropertyKey[]> {
-  return apiRequest<{ keys: EventPropertyKey[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, minutes, filters })}`))
+// `period` wins over the dates when given (buildQuery), as for the values below: All time sent as its dates is refused
+// once the site's history passes the 366-day cap, and sent as `all` it is not.
+export function getEventPropertyKeys(site: SiteRef, eventName: string, startDate?: string, endDate?: string, minutes?: number, filters?: string, period?: string): Promise<EventPropertyKey[]> {
+  return apiRequest<{ keys: EventPropertyKey[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, period, minutes, filters })}`))
     .then(r => r?.keys || [])
 }
 

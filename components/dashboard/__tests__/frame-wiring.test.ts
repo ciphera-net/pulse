@@ -63,6 +63,10 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
     expect(frame.match(/lg:col-span-2/g)?.length).toBe(1)
   })
 
+  it('hands the Events block the page\'s period, which its property reads send (All time past 366 days needs it)', () => {
+    expect(frame).toMatch(/<ContentSignals\n(?:\s+\w+=\{[^}]*\}+\n)*\s+period=\{period\}\n/)
+  })
+
   it('hands the Events block no scroll depth: it left the dashboard', () => {
     expect(frame).not.toContain('scrollDepth=')
   })

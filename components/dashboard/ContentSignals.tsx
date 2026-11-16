@@ -44,6 +44,8 @@ interface ContentSignalsProps {
   goalsImported?: ImportedProvenance | null
   /** Realtime mode's rolling window in minutes (PULSE-192), for the Events tab's property breakdown. */
   liveMinutes?: number
+  /** The new frame only: the page's period token, for the Events block's property reads (All time travels as `all`). */
+  period?: string
   /** The page's filters, for the Events tab's property breakdown (an opened event follows them, as its row does). */
   filters?: string
   /**
@@ -70,6 +72,7 @@ export default function ContentSignals(props: ContentSignalsProps) {
           goalsImported={props.goalsImported}
           siteId={props.siteId}
           dateRange={props.dateRange}
+          period={props.period}
           liveMinutes={props.liveMinutes}
           totals={props.totals}
           memberFeatures={props.memberFeatures}

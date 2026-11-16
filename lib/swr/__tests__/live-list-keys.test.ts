@@ -88,17 +88,33 @@ describe('useCampaignsList in realtime mode (PULSE-192)', () => {
 describe('useEventPropertyKeys and useEventPropertyValues: the page\'s filters, and the live window', () => {
   const F = 'v2:device|is|mobile'
 
-  it('key a dated read on the event, the dates and the filters, and send the filters', async () => {
+  it('key a dated read on the event, the dates, the period and the filters, and send the filters', async () => {
     renderHook(() => useEventPropertyKeys('site-1', 'signup', '2026-10-01', '2026-10-07', F))
-    expect(keyOf()).toEqual(['eventKeys', 'site-1', 'signup', '2026-10-01', '2026-10-07', F])
+    expect(keyOf()).toEqual(['eventKeys', 'site-1', 'signup', '2026-10-01', '2026-10-07', '', F])
     await fetcherOf()()
-    expect(api.getEventPropertyKeys).toHaveBeenCalledWith('site-1', 'signup', '2026-10-01', '2026-10-07', undefined, F)
+    expect(api.getEventPropertyKeys).toHaveBeenCalledWith('site-1', 'signup', '2026-10-01', '2026-10-07', undefined, F, undefined)
     expect(configOf().refreshInterval).toBeUndefined()
 
     renderHook(() => useEventPropertyValues('site-1', 'signup', 'plan', '2026-10-01', '2026-10-07', 100, F))
-    expect(keyOf()).toEqual(['eventValues', 'site-1', 'signup', 'plan', '2026-10-01', '2026-10-07', 100, F])
+    expect(keyOf()).toEqual(['eventValues', 'site-1', 'signup', 'plan', '2026-10-01', '2026-10-07', '', 100, F])
     await fetcherOf()()
     expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'signup', 'plan', '2026-10-01', '2026-10-07', 100, undefined, undefined, F)
+  })
+
+  it('send the page\'s period, which All time needs past 366 days, and key on it (16-11-2026)', async () => {
+    renderHook(() => useEventPropertyKeys('site-1', 'signup', '2025-09-24', '2026-11-16', F, undefined, 'all'))
+    expect(keyOf()).toEqual(['eventKeys', 'site-1', 'signup', '2025-09-24', '2026-11-16', 'all', F])
+    await fetcherOf()()
+    expect(api.getEventPropertyKeys).toHaveBeenCalledWith('site-1', 'signup', '2025-09-24', '2026-11-16', undefined, F, 'all')
+
+    renderHook(() => useEventPropertyValues('site-1', 'signup', 'plan', '2025-09-24', '2026-11-16', 100, F, undefined, 'all'))
+    expect(keyOf()).toEqual(['eventValues', 'site-1', 'signup', 'plan', '2025-09-24', '2026-11-16', 'all', 100, F])
+    await fetcherOf()()
+    expect(api.getEventPropertyValues).toHaveBeenCalledWith('site-1', 'signup', 'plan', '2025-09-24', '2026-11-16', 100, 'all', undefined, F)
+
+    // The same dates under another period, or none, are another entry: the server answers each on its own terms.
+    renderHook(() => useEventPropertyKeys('site-1', 'signup', '2025-09-24', '2026-11-16', F))
+    expect(keyOf()).not.toContain('all')
   })
 
   it('another set of filters is another entry: an answer read under one is never served under the other', () => {
@@ -112,7 +128,7 @@ describe('useEventPropertyKeys and useEventPropertyValues: the page\'s filters, 
     renderHook(() => useEventPropertyKeys('site-1', 'signup', '2026-10-01', '2026-10-01', F, 5))
     expect(keyOf()).toEqual(['eventKeys', 'site-1', 'signup', LIVE_LIST_KEY, 5, F])
     await fetcherOf()()
-    expect(api.getEventPropertyKeys).toHaveBeenCalledWith('site-1', 'signup', '2026-10-01', '2026-10-01', 5, F)
+    expect(api.getEventPropertyKeys).toHaveBeenCalledWith('site-1', 'signup', '2026-10-01', '2026-10-01', 5, F, undefined)
     expect(configOf().refreshInterval).toBe(15_000)
 
     renderHook(() => useEventPropertyValues('site-1', 'signup', 'plan', '2026-10-01', '2026-10-01', 100, F, 5))
