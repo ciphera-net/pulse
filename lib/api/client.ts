@@ -11,6 +11,42 @@ import { logger } from '@/lib/utils/logger'
 /** Request timeout in ms; network errors surface as user-facing "Network error, please try again." */
 const FETCH_TIMEOUT_MS = 30_000
 
+/**
+ * A READ with no answer after this long is cancelled and sent once more (ruling R68, 16-11-2026). A read held on its
+ * way to the API (measured that day: a realtime read reached the cluster 28 s after it was sent, while the same
+ * browser's other reads got through, and the server then answered it in 0.7 s) otherwise ended in the error at 30 s.
+ * The second try has the full FETCH_TIMEOUT_MS, so a read the server needs longer than 10 s for still lands; the
+ * server stops the cancelled one with its request. A write is never sent twice.
+ */
+export const STALLED_READ_RETRY_MS = 10_000
+
+/**
+ * One request with the client's timeouts. A GET the caller cannot cancel itself gets two tries: STALLED_READ_RETRY_MS,
+ * then FETCH_TIMEOUT_MS. Anything else gets one try of FETCH_TIMEOUT_MS. A caller's own signal replaces the timeouts,
+ * as it always has: that caller decides when the request ends.
+ */
+async function fetchWithTimeouts(url: string, init: RequestInit, method: string): Promise<Response> {
+  if (init.signal) return fetch(url, init)
+  const tries = method === 'GET' ? [STALLED_READ_RETRY_MS, FETCH_TIMEOUT_MS] : [FETCH_TIMEOUT_MS]
+  for (let i = 0; ; i++) {
+    const controller = new AbortController()
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, tries[i])
+    try {
+      return await fetch(url, { ...init, signal: controller.signal })
+    } catch (e) {
+      // Only our own timer starts another try: a refused connection or a caller's abort is answered at once.
+      if (!timedOut || i === tries.length - 1) throw e
+      logger.warn(`pulse-api: a read had no answer in ${tries[i] / 1000}s and is sent again`)
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+}
+
 // Sourced from the Zod-validated env schema in lib/env.ts. The schema
 // validates URL format at module load time and throws a structured error
 // listing every problem if anything is missing or malformed. No runtime
@@ -501,23 +537,16 @@ async function apiRequest<T>(
   // * S5 makes the ceremony host-only, and the browser still holds them.
   const headers = buildSessionHeaders(endpoint, method, baseHeaders)
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-  const signal = options.signal ?? controller.signal
-
   // * Create the request promise
   const requestPromise = (async (): Promise<T> => {
     let response: Response
     try {
-      response = await fetch(url, {
+      response = await fetchWithTimeouts(url, {
         ...options,
         headers,
         credentials: 'include', // * IMPORTANT: Send cookies
-        signal,
-      })
-      clearTimeout(timeoutId)
+      }, method)
     } catch (e) {
-      clearTimeout(timeoutId)
       if (e instanceof Error && (e.name === 'AbortError' || e.name === 'TypeError')) {
         throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
       }
