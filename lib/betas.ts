@@ -20,9 +20,6 @@ export const BETAS: readonly Beta[] = [
   // The server lists GA4 among a site's import sources only while this flag is on for the team
   // (lib/import/useImportSources.ts).
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
-  // The email on the 1st with each site's last month (pulse-backend's monthly summary job). Its settings row reads
-  // useFeature.
-  { flag: 'monthly-summary', name: 'Monthly summary email', revalidates: [] },
   // Analyst, the AI analyst (PUL-78): its menu row and page read useFeature.
   { flag: 'barry', name: 'Analyst', revalidates: [] },
   // The event filter (R45 of 15-11-2026): an event and an outbound link as a filter on the dashboard, a funnel's page,

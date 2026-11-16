@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Toggle, toast } from '@ciphera-net/facet'
 import { EnvelopeSimple, WarningCircle } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
-import { useFeature } from '@/lib/features'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
   getPrefsDocument,
@@ -53,10 +52,6 @@ const CAPTIONS: Record<string, string> = {
   summary_monthly: "On the 1st of each month: last month's visitors, top pages and top sources for each site that had visits.",
 }
 
-// The monthly summary is a beta (lib/betas.ts): its row shows only once /me says the beta is on for the team, so
-// nobody is offered a switch for an email their team does not get. null (not known yet) hides it.
-const MONTHLY_SUMMARY_BETA = 'monthly-summary'
-
 /** Iris's preferences document: null until the first answer; `failed` when the read failed with nothing to show. */
 function usePrefsDocument() {
   const [doc, setDoc] = useState<PreferencesDocument | null>(null)
@@ -90,7 +85,6 @@ function usePrefsDocument() {
 export default function NotificationsPage() {
   const { user } = useAuth()
   const alone = useTeamState() === 'alone'
-  const monthlyBeta = useFeature(MONTHLY_SUMMARY_BETA) === true
   const { doc, setDoc, failed, retry, retrying } = usePrefsDocument()
   const [saving, setSaving] = useState(false)
 
@@ -116,13 +110,12 @@ export default function NotificationsPage() {
   // (Ciphera ID's own, and internal ones for staff), so a group is drawn only when this list names it (§12.11.1).
   // Team is drawn for everyone, somebody alone in this team included: the switches are the person's across every team
   // (one document per person), so they may have teammates elsewhere (§13.3). The weekly summary is drawn for everyone
-  // too since 09-11-2026, when it left beta. The monthly summary is drawn only while its beta is on for the team.
+  // too since 09-11-2026, when it left beta, and the monthly summary since 16-11-2026.
   const groups = useMemo(() => {
     const byId = new Map((doc?.categories ?? []).map((c) => [c.category_id, c]))
-    return NOTIFICATION_CATEGORIES.filter((k) => k.id !== 'summary_monthly' || monthlyBeta)
-      .map((k) => byId.get(k.id))
+    return NOTIFICATION_CATEGORIES.map((k) => byId.get(k.id))
       .filter((c): c is CategoryPreferenceDoc => c !== undefined)
-  }, [doc, monthlyBeta])
+  }, [doc])
 
   if (!user || (!doc && !failed)) return <SettingsLoadingState rows={6} />
 
