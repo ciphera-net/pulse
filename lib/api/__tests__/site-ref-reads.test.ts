@@ -82,6 +82,8 @@ const READS: ReadCase[] = [
   { name: 'stats.getGoalStats', call: (s) => stats.getGoalStats(s, D1, D2, 25), rest: `/goals/stats?${RANGE}&limit=25` },
   { name: 'stats.getCampaigns#live', call: (s) => stats.getCampaigns(s, D1, D1, 25, undefined, undefined, 5), rest: '/campaigns?minutes=5&limit=25' },
   { name: 'stats.getPagesTable', call: (s) => stats.getPagesTable(s, D1, D2, 500), rest: `/pages/table?${RANGE}&limit=500` },
+  { name: 'stats.getPagesTable#hours', call: (s) => stats.getPagesTable(s, D1, D1, 500, undefined, undefined, 'hours'), rest: `/pages/table?start_date=${D1}&end_date=${D1}&limit=500&include=hours` },
+  { name: 'stats.getPageScroll', call: (s) => stats.getPageScroll(s, '/pricing', 'device', D1, D2), rest: `/pages/scroll?${RANGE}&path=%2Fpricing&by=device` },
   { name: 'stats.getEventPropertyKeys', call: (s) => stats.getEventPropertyKeys(s, 'signup', D1, D2), rest: `/goals/signup/properties?${RANGE}` },
   { name: 'stats.getEventPropertyValues', call: (s) => stats.getEventPropertyValues(s, 'outbound_link', 'url', D1, D2, 20), rest: `/goals/outbound_link/properties/url?${RANGE}&limit=20` },
 

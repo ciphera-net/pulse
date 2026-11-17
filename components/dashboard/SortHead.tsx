@@ -103,9 +103,15 @@ function inkWidth(el: Element): number {
   return typeof range.getBoundingClientRect === 'function' ? range.getBoundingClientRect().width : el.getBoundingClientRect().width
 }
 
+/**
+ * The block a head's names are measured against: a dashboard card (`data-tour-card`, the guided tour's five), or a
+ * list anywhere else that marks itself `data-sort-block` (the Pages page's list), which the tour does not know.
+ */
+const SORT_BLOCK = '[data-tour-card], [data-sort-block]'
+
 /** The names of one head and the numbers of its block, measured on the page. Null outside a block. */
 function measure(head: HTMLElement): Record<string, number> | null {
-  const card = head.closest('[data-tour-card]')
+  const card = head.closest(SORT_BLOCK)
   if (!card) return null
   const names: MeasuredName[] = []
   for (const button of head.querySelectorAll<HTMLElement>('[data-sort]')) {
@@ -148,7 +154,7 @@ function useCentredNames(head: RefObject<HTMLSpanElement | null>): Shifts {
   })
   useEffect(() => {
     const el = head.current
-    const card = el?.closest('[data-tour-card]')
+    const card = el?.closest(SORT_BLOCK)
     if (!el || !card || typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(() => applyShifts(el, setShifts))
     observer.observe(card)
