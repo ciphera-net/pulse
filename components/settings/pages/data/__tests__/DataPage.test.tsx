@@ -486,6 +486,10 @@ describe('DataPage: export', () => {
     expect(req.format).toBe('xlsx')
     expect(req.grain).toBe('day')
     expect(req.tables).toContain('daily')
+    // The short list's Events row is ticked by default: it stands for the named events and every event.
+    expect(req.tables).toContain('named_events')
+    expect(req.tables).toContain('events')
+    expect(req.tables as readonly string[]).not.toContain('goals')
     expect(within(s).getByRole('link', { name: 'Manage API keys' }).getAttribute('href')).toBe('/settings/organization/api-keys')
     expect(within(s).getByRole('link', { name: 'Connect an assistant' }).getAttribute('href')).toBe('/settings/organization/mcp')
   })

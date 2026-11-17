@@ -9,7 +9,7 @@
 // error message rather than saving an error body as a file.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setAccessToken, setRefreshHandler } from '@/lib/api/client'
-import { buildExportQuery, downloadExport, type ExportRequest } from '@/lib/api/export'
+import { EXPORT_TABLES, buildExportQuery, downloadExport, type ExportRequest } from '@/lib/api/export'
 
 const BASE: ExportRequest = {
   tables: ['daily', 'pages'],
@@ -33,11 +33,18 @@ describe('buildExportQuery', () => {
   it("lists tables and metrics in the server's order, whatever order they were ticked in", () => {
     const q = params({
       ...BASE,
-      tables: ['events', 'utm_campaign', 'daily', 'goals', 'referrers'],
+      tables: ['events', 'utm_campaign', 'daily', 'named_events', 'referrers'],
       metrics: ['scroll_depth', 'visitors', 'bounce_rate'],
     })
-    expect(q.get('tables')).toBe('daily,referrers,utm_campaign,goals,events')
+    expect(q.get('tables')).toBe('daily,referrers,utm_campaign,named_events,events')
     expect(q.get('metrics')).toBe('visitors,bounce_rate,scroll_depth')
+  })
+
+  it('asks for the named events by the name the downloads use, never by the old one', () => {
+    // The server still takes `goals` for this table; a download says named_events, and so does the app.
+    expect(EXPORT_TABLES as readonly string[]).toContain('named_events')
+    expect(EXPORT_TABLES as readonly string[]).not.toContain('goals')
+    expect(params({ ...BASE, tables: ['named_events'] }).get('tables')).toBe('named_events')
   })
 
   it('sends All time as the token and never as dates (it is exempt from the 366-day cap)', () => {
