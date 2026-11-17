@@ -48,6 +48,8 @@ const POPUPS: Record<string, string> = {
   'components/ui/DateRangePicker.tsx': 'the date menu',
   'components/whats-new/WhatsNewButton.tsx': "the What's new panel",
   'components/VersionToast.tsx': 'the "update available" notice',
+  'components/ui/navigation-menu.tsx': "the public header's dropdown (the sign-in and not-found pages)",
+  'components/marketing/Header.tsx': "the public header's menu on a phone",
 }
 
 /** Pop-ups that open inside a glass surface, where a blur has nothing in reach: solid, and why is written at each. */
@@ -80,10 +82,10 @@ describe('every pop-up the app draws itself is glass', () => {
   })
 
   it('no other file of the app draws a surface with the solid popover fill', () => {
-    // Those that may: the surface's own solid branch (kept for a page that ever needs a solid panel), the public
-    // header's menu, which changes together with the marketing site's own header or not at all, and the two that
-    // open inside a glass surface.
-    const allowed = new Set(['lib/dashboard/frame.tsx', 'components/ui/navigation-menu.tsx', ...Object.keys(INSIDE_GLASS)])
+    // Those that may: the surface's own solid branch (kept for a page that ever needs a solid panel) and the two
+    // that open inside a glass surface. (The public header's menus were the last solid ones: glass since
+    // 17-11-2026, as the marketing site's own header already was.)
+    const allowed = new Set(['lib/dashboard/frame.tsx', ...Object.keys(INSIDE_GLASS)])
     const found: string[] = []
     const walk = (dir: string) => {
       for (const name of readdirSync(join(ROOT, dir))) {

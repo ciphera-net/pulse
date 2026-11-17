@@ -156,7 +156,7 @@ export function Header() {
                   <NavigationMenuItem>
                     <NavigationMenuTrigger className="bg-transparent">Product</NavigationMenuTrigger>
                     <NavigationMenuContent className="bg-transparent p-1 pr-1.5">
-                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-border bg-card p-2">
+                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-white/[0.06] p-2">
                         {productLinks.map((item, i) => (
                           <li key={i}>
                             <ListItem {...item} />
@@ -177,7 +177,7 @@ export function Header() {
                   <NavigationMenuItem>
                     <NavigationMenuTrigger className="bg-transparent">Compare</NavigationMenuTrigger>
                     <NavigationMenuContent className="bg-transparent p-1 pr-1.5 pb-1.5">
-                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-border bg-card p-2">
+                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-white/[0.06] p-2">
                         {compareLinks.map((item) => (
                           <li key={item.href}>
                             <ListItem {...item} />
@@ -190,7 +190,7 @@ export function Header() {
                   <NavigationMenuItem>
                     <NavigationMenuTrigger className="bg-transparent">Guides</NavigationMenuTrigger>
                     <NavigationMenuContent className="bg-transparent p-1 pr-1.5 pb-1.5">
-                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-border bg-card p-2">
+                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-white/[0.06] p-2">
                         {guidesLinks.map((item, i) => (
                           <li key={i} className={i === guidesLinks.length - 1 ? 'col-span-2' : undefined}>
                             <ListItem {...item} />
@@ -203,7 +203,7 @@ export function Header() {
                   <NavigationMenuItem>
                     <NavigationMenuTrigger className="bg-transparent">Resources</NavigationMenuTrigger>
                     <NavigationMenuContent className="bg-transparent p-1 pr-1.5 pb-1.5">
-                      <ul className="grid w-[36rem] grid-cols-2 gap-2 border border-border bg-card p-2">
+                      <ul className="grid w-[36rem] grid-cols-2 gap-2 border border-white/[0.06] p-2">
                         {resourcesLinks.map((item, i) => (
                           <li key={i}>
                             <ListItem {...item} />
@@ -337,7 +337,7 @@ function ListItem({
       asChild
     >
       <a href={href} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-        <div className="flex aspect-square size-12 items-center justify-center border border-border bg-card p-2">
+        <div className="flex aspect-square size-12 items-center justify-center border border-white/[0.08] bg-white/[0.04] p-2">
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logo} alt="" width={24} height={24} className="size-6 object-contain" loading="lazy" />
@@ -439,8 +439,12 @@ function MobileMenu({ open, onClose, triggerRef, children, className, ...props }
       aria-label="Menu"
       tabIndex={-1}
       className={cn(
-        'bg-background',
-        'fixed top-16 right-0 bottom-0 left-0 z-40 flex flex-col overflow-hidden border-y border-border md:hidden',
+        // Glass, like every pop-up (lib/ui/__tests__/popups-are-glass.test.ts): the menus' surface, on the panel
+        // itself, which is in a portal and under no fading wrapper.
+        'glass-panel',
+        // It starts UNDER the header: the bar is 88 px tall (py-3 around an h-16 row) plus its hairline. At
+        // `top-16` the bar's hairline ran through the menu's first heading.
+        'fixed top-[89px] right-0 bottom-0 left-0 z-40 flex flex-col overflow-hidden md:hidden',
       )}
     >
       <div
