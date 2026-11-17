@@ -223,7 +223,7 @@ export default function Select({
                 // No padding, and a divider with no margin: a menu's rows reach its edges (the rule is written at
                 // the date picker's rows, components/ui/DateRangePicker.tsx).
                 data-menu-list=""
-                className="fixed bg-popover border border-border rounded-none shadow-lg z-[300] overflow-y-auto"
+                className="fixed glass-panel border border-white/[0.08] rounded-none shadow-lg z-[300] overflow-y-auto"
                 style={{
                   left: coords.left,
                   width: coords.width,

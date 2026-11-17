@@ -86,7 +86,7 @@ export default function OperatorChip({ operator, onChange, dimension }: Operator
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
           // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
           data-menu-list=""
-          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-none shadow-lg origin-top-left"
+          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] glass-panel border border-white/[0.08] rounded-none shadow-lg origin-top-left"
         >
           {operators.map(op => (
             <button

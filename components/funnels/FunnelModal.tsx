@@ -201,7 +201,7 @@ function SuggestInput({
           aria-label={`${ariaLabel} suggestions`}
           // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
           data-menu-list=""
-          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-none border border-border bg-popover shadow-lg"
+          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-none glass-panel border border-white/[0.08] shadow-lg"
         >
           {showSpinner ? (
             <div className="flex items-center justify-center py-4">

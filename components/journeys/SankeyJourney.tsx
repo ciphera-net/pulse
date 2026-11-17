@@ -363,12 +363,12 @@ export default function SankeyJourney({
         </svg>
       </div>
 
-      {/* Tooltip — fixed, popover surface (sanctioned shadow). Anchors to the
+      {/* Tooltip — fixed, glass as every pop-up is (sanctioned shadow). Anchors to the
           right of the cursor normally, flips to the left in the right portion of
           the viewport so it never runs off the last column. */}
       {tooltip && (
         <div
-          className="pointer-events-none fixed z-50 max-w-xs -translate-y-1/2 truncate rounded-none border border-border bg-popover px-3 py-2 shadow-lg"
+          className="pointer-events-none fixed z-50 max-w-xs -translate-y-1/2 truncate rounded-none glass-panel border border-white/[0.08] px-3 py-2 shadow-lg"
           style={
             tooltip.x > (typeof window !== 'undefined' ? window.innerWidth : 0) * 0.62
               ? { right: (typeof window !== 'undefined' ? window.innerWidth : 0) - tooltip.x + 14, top: tooltip.y }

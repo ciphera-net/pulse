@@ -537,15 +537,19 @@
   top: 72px !important;
 }
 
-/* * Product tour (driver.js) — the popover wears the estate's one panel
-   recipe (bg-popover · border-border · rounded-none · shadow-lg) and the
-   checklist chip's progress anatomy; the footer is the Facet button pair
-   (owner pick P2, 24-08-2026). driver.css ships its own rounded, light-theme
-   look — everything visual is overridden here, keyed on the popoverClass. */
+/* * Product tour (driver.js) — the popover wears the estate's one pop-up
+   recipe (glass: the popover's fill let through, a 40 px blur, the ink's
+   hairline at 8%, rounded-none, shadow-lg: the menus' rule above, to the
+   value, since driver.js builds the element and takes one class) and the checklist
+   chip's progress anatomy; the footer is the Facet button pair (owner pick P2,
+   24-08-2026). driver.css ships its own rounded, light-theme look — everything
+   visual is overridden here, keyed on the popoverClass. */
 .driver-popover.pulse-tour {
-  background: rgb(var(--popover));
+  background: rgb(var(--popover) / var(--glass-panel));
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  backdrop-filter: blur(40px) saturate(1.5);
   color: rgb(var(--foreground));
-  border: 1px solid rgb(var(--border));
+  border: 1px solid rgb(var(--white) / 0.08);
   border-radius: 0;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   padding: 0;

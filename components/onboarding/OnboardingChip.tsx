@@ -98,7 +98,7 @@ export default function OnboardingChip() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed w-72 bg-popover border border-border rounded-none overflow-hidden z-[100] origin-top-right"
+          className="fixed w-72 glass-panel border border-white/[0.08] rounded-none shadow-lg overflow-hidden z-[100] origin-top-right"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-4 pb-3">

@@ -202,16 +202,17 @@ describe('sticky cursor contract', () => {
       (el) =>
         el.className.includes('pointer-events-none') &&
         el.className.includes('z-50') &&
-        el.querySelector('div[class*="bg-popover"]'),
+        el.className.includes('glass-panel'),
     ) as HTMLElement | undefined
     expect(wrapper, 'card wrapper must render while hovering').toBeDefined()
     expect(wrapper?.style.transition).toContain('left 100ms')
 
     // Fixed one-line card: w-56 box, nowrap label/value (the 192px box
     // wrapped "Visit duration | 15m 58s" onto two lines, 01-09 report).
-    const inner = wrapper?.querySelector('div[class*="bg-popover"]')
-    expect(inner?.className).toContain('w-56')
-    const label = inner?.querySelector('span[class*="text-neutral-300"]')
+    // The card IS the placed element since it became glass (the blur fades in on the element that fades in).
+    expect(wrapper?.className).toContain('w-56')
+    expect(wrapper?.className).not.toContain('bg-popover')
+    const label = wrapper?.querySelector('span[class*="text-neutral-300"]')
     expect(label?.className).toContain('whitespace-nowrap')
   })
 

@@ -216,7 +216,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-50 w-[240px] bg-popover rounded-none border border-border overflow-hidden origin-top-left"
+          className="fixed z-50 w-[240px] glass-panel border border-white/[0.08] rounded-none shadow-lg overflow-hidden origin-top-left"
           style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
         >
           <div className="p-2">

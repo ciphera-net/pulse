@@ -923,7 +923,11 @@ function TooltipBox({
   return createPortal(
     <motion.div
       animate={{ opacity: 1 }}
-      className={cn("pointer-events-none absolute z-50", className)}
+      // Glass, as every pop-up is (styles/globals.css, `.glass-panel`). On THIS element, which is the one that fades
+      // in: a blur under an ancestor that is still fading reaches the chart only when the fade ends.
+      // w-56 fits the longest row on one line ("Visit duration | 15m 58s" ≈ 210px incl. padding): rows are nowrap,
+      // so a narrower box would clip, and wrapping is what the fixed-size ruling forbids.
+      className={cn("pointer-events-none absolute z-50 w-56 overflow-hidden rounded-none glass-panel border border-white/[0.08] text-white shadow-lg", className)}
       initial={{ opacity: 0 }}
       ref={tooltipRef}
       style={{
@@ -933,12 +937,7 @@ function TooltipBox({
       }}
       transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
     >
-      {/* w-56 fits the longest row on one line ("Visit duration | 15m 58s"
-          ≈ 210px incl. padding) — rows are nowrap, so a narrower box would
-          clip, and wrapping is what the fixed-size ruling forbids. */}
-      <div className="w-56 overflow-hidden rounded-none bg-popover border border-border text-white">
-        {children}
-      </div>
+      {children}
     </motion.div>,
     container
   );
