@@ -22,8 +22,8 @@ import { CLICKS_COLUMN, SortHead, VISITORS_COLUMN, VISITORS_DESC, byVisitors, so
 /** The Pages tab's two columns, which sort its rows in the new frame (R41): the widths of the numbers under them. */
 type PageSortKey = 'visitors' | 'views'
 const PAGE_COLUMNS: SortColumn<PageSortKey>[] = [
-  { key: 'visitors', label: 'visitors', className: 'w-12' },
-  { key: 'views', label: 'views', className: 'w-12' },
+  { key: 'visitors', label: 'Visitors', className: 'w-12' },
+  { key: 'views', label: 'Views', className: 'w-12' },
 ]
 
 interface ContentStatsProps {

@@ -253,7 +253,7 @@ describe('ConversionBlock: Journeys (R47, R50)', () => {
     expect(drawn.querySelectorAll('[data-flow-node]').length).toBeGreaterThan(0)
     expect(drawn.querySelectorAll('[data-flow-link]').length).toBeGreaterThan(0)
     expect(drawn.textContent).toContain('Entry · 200')
-    expect(screen.getByTestId('metric-unit').textContent).toBe('sessions')
+    expect(screen.getByTestId('metric-unit').textContent).toBe('Sessions')
     // The drawing and the foot are both "Open Journeys", and both go there.
     expect(screen.getAllByRole('link', { name: 'Open Journeys' }).map((l) => l.getAttribute('href'))).toEqual(['/sites/site-1/journeys', '/sites/site-1/journeys'])
   })

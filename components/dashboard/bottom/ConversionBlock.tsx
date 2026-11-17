@@ -359,7 +359,7 @@ export default function ConversionBlock({ siteId, dateRange, period, filters }: 
     } else if (flow.total_sessions === 0 || flow.links.length === 0) {
       empty = { icon: <Path />, title: 'No journeys in this range', line: 'A journey needs a visit of two pages or more.' }
     } else {
-      right = <MetricUnitLabel unit="sessions" />
+      right = <MetricUnitLabel unit="Sessions" />
       body = <MiniFlow flow={flow} href={scopeHref(scope, 'journeys')} />
     }
   }

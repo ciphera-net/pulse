@@ -43,7 +43,7 @@ describe('dimension blocks are decoupled from the selected metric', () => {
     render(<Sources {...base} />)
     expect(screen.getByText('61')).toBeTruthy()
     expect(screen.getByText('3')).toBeTruthy()
-    expect(screen.getByTestId('metric-unit').textContent).toBe('visitors')
+    expect(screen.getByTestId('metric-unit').textContent).toBe('Visitors')
   })
 
   it('never shows the pageview count as the row stat', () => {
