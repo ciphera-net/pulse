@@ -290,6 +290,15 @@
     border-color: rgb(var(--white) / 0.08);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
+  /* * A tooltip or an info pop-up of Facet's that the app has NOT marked (Facet 0.25.7, where every pop-up of
+   * Facet's is glass). Facet draws those two dark in every theme (`.facet-glass-dark`: a fixed dark fill under its
+   * fixed light grey text), because its own greys do not follow the theme. Pulse's greys do, so on the light page an
+   * unmarked one would be a dark panel under dark text. This gives it the theme's fill and hairline, as the marked
+   * ones above have; the blur and the shadow are Facet's own, the same values. */
+  html:root .facet-glass-dark {
+    background-color: rgb(var(--popover) / var(--glass-panel));
+    border-color: rgb(var(--white) / 0.08);
+  }
   /* * Its hairline: the ink at 8%, which a menu gets from lib/dashboard/frame.tsx (`panelSurface`). And a menu's
    * shadow (Tailwind's shadow-lg, to the value): Facet's own is drawn for a solid panel on a dark page, half
    * black over 25 px, and it dims the page around a panel that is meant to let the page through. */

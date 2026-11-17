@@ -45,8 +45,10 @@ describe('every info pop-up of the app carries the panel class', () => {
     fireEvent.click(glyph)
     const panel = screen.getByRole('dialog')
     expect(panel.classList.contains('ms-2')).toBe(false)
-    // Facet's own solid panel is still there under it: without the look's class the pop-up is today's.
-    expect(panel.classList.contains('bg-neutral-900')).toBe(true)
+    // Facet's own panel is still there under it. Since facet 0.25.7 that panel is glass too, dark in every theme
+    // (`facet-glass-dark`), and has no fill utility left for the app's class to fight.
+    expect(panel.classList.contains('facet-glass-dark')).toBe(true)
+    expect(panel.className).not.toMatch(/\bbg-neutral-900\b/)
   })
 
   it('is the class the stylesheet names', () => {
@@ -116,6 +118,19 @@ describe('the stylesheet makes the panel glass on every page', () => {
   it('and a menu still gets its hairline from the frame, the same ink', async () => {
     const { panelSurface } = await import('@/lib/dashboard/frame')
     expect(panelSurface(true)).toBe('glass-panel border border-white/[0.08]')
+  })
+
+  it('a facet tooltip or info pop-up the app has not marked takes the theme\'s fill and hairline too', () => {
+    // Facet 0.25.7 draws those two dark in every theme. Pulse's greys follow the theme, so on the light page an
+    // unmarked one would be a dark panel under dark text: one rule, on facet's own class, with the marked ones' values.
+    const rules = [...css.matchAll(/\n  html:root \.facet-glass-dark \{\n([^}]*)\}/g)]
+    expect(rules).toHaveLength(1)
+    const body = rules[0][1]
+    expect(body).toContain('background-color: rgb(var(--popover) / var(--glass-panel));')
+    expect(body).toContain('border-color: rgb(var(--white) / 0.08);')
+    // The blur and the shadow stay facet's own (the same values as the menus'), so the rule names neither.
+    expect(body).not.toContain('backdrop-filter')
+    expect(body).not.toContain('box-shadow')
   })
 })
 
