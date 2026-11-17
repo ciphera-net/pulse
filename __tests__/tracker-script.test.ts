@@ -59,7 +59,11 @@ describe('tracker script endpoints', () => {
   // * one is intact — breaking exactly one endpoint is the realistic mistake, and it
   // * would take out goals and outbound-link tracking with nothing to show for it.
   it('still sends pageviews and custom events to /api/v1/events', () => {
-    expect(code.match(/post\('\/api\/v1\/events', /g)).toHaveLength(2)
+    // * Since 1.10.0 both go through send(), the one place that posts there (and retries):
+    // * the pageview with its answer handler, the custom event without one.
+    expect(code.match(/post\('\/api\/v1\/events', /g)).toHaveLength(1)
+    expect(code).toMatch(/function sendPageview\([\s\S]*?\n {6}send\(payload, data =>/)
+    expect(code).toMatch(/function trackCustomEvent\([\s\S]*?\n {6}send\(payload\);/)
   })
 
   // * v1.9.0: a browser sending Do Not Track or GPC asks for the site's settings here,
