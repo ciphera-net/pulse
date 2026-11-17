@@ -1859,6 +1859,43 @@ export interface AreaProps {
   strokeDasharray?: string;
 }
 
+
+/**
+ * The length along `path` at which it reaches `targetX`, by binary search, or 0 when there is nothing to search.
+ *
+ * 🔴 It reads the path's LIVE length, never only the remembered one. The remembered length (pathLength) is set by an
+ * effect after the render that changed the path, so for one render it can describe a line that is gone. On an EMPTY
+ * path Chrome's getPointAtLength throws ("The element's path is empty"), and because this runs inside a render-time
+ * useMemo the throw took the whole dashboard down to its error page (17-11-2026, Visit duration on a long range whose
+ * previous period had no data). A geometry error is never a reason to lose the page, so a throw here also yields 0.
+ */
+export function lengthAtX(
+  path: Pick<SVGPathElement, "getTotalLength" | "getPointAtLength"> | null,
+  rememberedLength: number,
+  targetX: number
+): number {
+  if (!path || rememberedLength <= 0) return 0;
+  try {
+    const total = path.getTotalLength();
+    if (!(total > 0)) return 0;
+    let low = 0;
+    let high = Math.min(rememberedLength, total);
+    const tolerance = 0.5;
+    while (high - low > tolerance) {
+      const mid = (low + high) / 2;
+      const point = path.getPointAtLength(mid);
+      if (point.x < targetX) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    return (low + high) / 2;
+  } catch {
+    return 0;
+  }
+}
+
 export function Area({
   dataKey,
   fill = chartCssVars.linePrimary,
@@ -1938,6 +1975,9 @@ export function Area({
   useEffect(() => {
     if (pathRef.current && animate) {
       const len = pathRef.current.getTotalLength();
+      // An emptied line (every point missing, as the dashed previous period can be for Visit duration) measures 0:
+      // record that, or findLengthAtX searches the old length on an empty path and Chrome throws (17-11-2026).
+      if (len <= 0) setPathLength(0);
       if (len > 0) {
         setPathLength(len);
         if (!isLoaded) {
@@ -1950,26 +1990,7 @@ export function Area({
   }, [animate, innerWidth, isLoaded, data, dataKey, xScale, yScale, curve, missingAsZero]);
 
   const findLengthAtX = useCallback(
-    (targetX: number): number => {
-      const path = pathRef.current;
-      if (!path || pathLength === 0) {
-        return 0;
-      }
-      let low = 0;
-      let high = pathLength;
-      const tolerance = 0.5;
-
-      while (high - low > tolerance) {
-        const mid = (low + high) / 2;
-        const point = path.getPointAtLength(mid);
-        if (point.x < targetX) {
-          low = mid;
-        } else {
-          high = mid;
-        }
-      }
-      return (low + high) / 2;
-    },
+    (targetX: number): number => lengthAtX(pathRef.current, pathLength, targetX),
     [pathLength]
   );
 
