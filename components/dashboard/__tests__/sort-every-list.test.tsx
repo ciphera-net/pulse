@@ -80,7 +80,7 @@ describe('Technology', () => {
   it('outside the frame keeps the plain label and the server\'s order', () => {
     render(techBlock())
     expect(cardOf('tech').querySelector('[data-sort-head]')).toBeNull()
-    expect(screen.getByTestId('metric-unit').textContent).toBe('visitors')
+    expect(screen.getByTestId('metric-unit').textContent).toBe('Visitors')
   })
 })
 
@@ -109,7 +109,7 @@ describe('Locations', () => {
     const card = cardOf('locations')
     fireEvent.click(within(card).getByRole('radio', { name: 'Map' }))
     expect(card.querySelector('[data-sort-head]')).toBeNull()
-    expect(within(card).getByTestId('metric-unit').textContent).toBe('visitors')
+    expect(within(card).getByTestId('metric-unit').textContent).toBe('Visitors')
   })
 })
 

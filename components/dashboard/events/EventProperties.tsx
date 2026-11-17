@@ -34,8 +34,8 @@ const VALUE_LIMIT = 100
 
 type ValueKey = 'events' | 'share'
 const VALUE_COLUMNS: SortColumn<ValueKey>[] = [
-  { key: 'events', label: 'events', className: COL },
-  { key: 'share', label: 'share', className: COL_SHARE },
+  { key: 'events', label: 'Events', className: COL },
+  { key: 'share', label: 'Share', className: COL_SHARE },
 ]
 
 /** One quiet line in the middle of a pane: nothing to show, and why. */

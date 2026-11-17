@@ -53,10 +53,10 @@ type Tab = 'own' | 'automatic'
 type ListKey = 'visitors' | 'events' | 'conversion'
 
 const LIST_COLUMNS: SortColumn<ListKey>[] = [
-  { key: 'visitors', label: 'visitors', className: COL },
+  { key: 'visitors', label: 'Visitors', className: COL },
   // `sm:inline-flex`, never NARROW_OFF's `sm:block`: a block among inline-flex names sits 8 px lower.
-  { key: 'events', label: 'events', className: `${COL} hidden sm:inline-flex` },
-  { key: 'conversion', label: 'conversion', className: COL_RATE },
+  { key: 'events', label: 'Events', className: `${COL} hidden sm:inline-flex` },
+  { key: 'conversion', label: 'Conversion', className: COL_RATE },
 ]
 
 /** What the list sorts a row by. Conversion is visitors over the range's visitors, so it orders as visitors do. */

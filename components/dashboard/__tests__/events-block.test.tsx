@@ -120,7 +120,7 @@ describe('the Events block in the new frame: the list beside the picked event\'s
     const cells = (name: string) => [...row(name).querySelectorAll('.tabular-nums')].map((c) => c.textContent)
     expect(cells('Signed up')).toEqual(['80', '120', '20%'])
     expect(cells('Newsletter')).toEqual(['20', '50', '5.0%'])
-    expect([...listPane().querySelectorAll('[data-sort]')].map((b) => b.textContent)).toEqual(['visitors', 'events', 'conversion'])
+    expect([...listPane().querySelectorAll('[data-sort]')].map((b) => b.textContent)).toEqual(['Visitors', 'Events', 'Conversion'])
   })
 
   it('writes a dash for the conversion when the range\'s visitors are not known, never 0%', () => {
@@ -464,7 +464,7 @@ describe('today\'s arrangement, outside the frame, is unchanged', () => {
     ]
     render(<ContentStats topPages={pages} entryPages={[]} exitPages={[]} domain="example.com" siteId="site-1" dateRange={dateRange} totals={totals} />)
     const label = screen.getByTestId('metric-unit')
-    expect([...label.children].map((c) => c.textContent)).toEqual(['visitors', 'views'])
+    expect([...label.children].map((c) => c.textContent)).toEqual(['Visitors', 'Views'])
     expect(label.querySelector('button')).toBeNull()
     expect(document.querySelector('[data-sort-head]')).toBeNull()
     expect([...document.querySelectorAll('.interactive-row .truncate')].map((el) => el.textContent)).toEqual(['/a', '/b'])
