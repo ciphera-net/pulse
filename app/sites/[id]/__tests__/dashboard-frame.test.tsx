@@ -393,21 +393,30 @@ describe('Match any', () => {
     mockSearchParams = new URLSearchParams({ filters: 'any:v2:country|is|NO,device|is|mobile,event|is|signup' })
     await mount()
     expect(sent()).toEqual(everywhere('v2:country|is|NO,device|is|mobile,event|is|signup'))
+    // The box's word says "all" and cannot be pressed.
+    expect(screen.queryByTestId('filters-box-mode')).toBeNull()
+    expect(screen.getByTestId('filters-box-mode-fixed').textContent).toBe('all')
   })
 
-  it('the switch in the filters box puts every read and the address on Any, and back', async () => {
+  it('one press on the box\'s word puts every read and the address on Any, and one more puts them back', async () => {
     flag(true)
     mockSearchParams = new URLSearchParams({ filters: ALL })
     await mount()
     expect(sent()).toEqual(everywhere(ALL))
-    fireEvent.click(screen.getByTestId('filters-box'))
-    fireEvent.click(screen.getByRole('radio', { name: 'Any' }))
+    // R75 (17-11-2026): the box reads "all 2 filters", and its first word is the switch.
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('all')
+    expect(screen.getByTestId('filters-box').textContent).toBe('2 filters')
+    fireEvent.click(screen.getByTestId('filters-box-mode'))
     await act(async () => {})
     expect(sent()).toEqual(everywhere(ANY))
-    expect(screen.getByTestId('filters-box')).toHaveTextContent('Any of 2 filters')
-    fireEvent.click(screen.getByRole('radio', { name: 'All' }))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('any of')
+    expect(screen.getByTestId('filters-box').textContent).toBe('2 filters')
+    // The press changed the mode and nothing else: the list of filters stayed folded.
+    expect(screen.queryByTestId('filters-menu')).toBeNull()
+    fireEvent.click(screen.getByTestId('filters-box-mode'))
     await act(async () => {})
     expect(sent()).toEqual(everywhere(ALL))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('all')
   })
 
   it.each([
@@ -417,9 +426,13 @@ describe('Match any', () => {
     flag(value)
     mockSearchParams = new URLSearchParams({ filters: ALL })
     await mount()
+    // The box is what it was: no word in front of its count, pressable or not.
+    expect(screen.queryByTestId('filters-box-mode')).toBeNull()
+    expect(screen.queryByTestId('filters-box-mode-fixed')).toBeNull()
+    expect(screen.getByTestId('filters-box').textContent).toBe('2 filters')
     fireEvent.click(screen.getByTestId('filters-box'))
     expect(screen.getAllByTestId('filters-menu-row')).toHaveLength(2)
-    expect(screen.queryByTestId('filters-match-row')).toBeNull()
+    expect(screen.queryByTestId('filters-match-why')).toBeNull()
   })
 
   it('leaves Any with its second filter, and a second filter added later starts on Match all', async () => {
@@ -427,6 +440,7 @@ describe('Match any', () => {
     mockSearchParams = new URLSearchParams({ filters: ANY })
     await mount()
     expect(sent()).toEqual(everywhere(ANY))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('any of')
     // The box's list, the second filter's x: one filter says the same under both, and is sent as Match all.
     fireEvent.click(screen.getByTestId('filters-box'))
     fireEvent.click(screen.getByRole('button', { name: 'Remove Device filter' }))
@@ -437,5 +451,6 @@ describe('Match any', () => {
       (h.captured.Sources.onFilter as (f: { dimension: string; operator: string; values: string[] }) => void)({ dimension: 'browser', operator: 'is', values: ['Chrome'] })
     })
     expect(sent()).toEqual(everywhere('v2:country|is|NO,browser|is|Chrome'))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('all')
   })
 })

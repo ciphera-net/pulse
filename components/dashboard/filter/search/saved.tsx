@@ -133,7 +133,7 @@ export function NameField({ initial, placeholder, label, onSave, onCancel }: {
 }
 
 /** What the box says under a set saved with Match any, on a page that reads Match all and offers no switch (R65). */
-export const SAVED_WITH_ANY_OFF = 'This saved filter uses Match any, which is off for this team. The page shows what fits every filter instead.'
+export const SAVED_WITH_ANY_OFF = 'This saved filter counts what fits any one of its filters. That is off for this team, so the page shows what fits every filter instead.'
 
 /**
  * "Saved as …": the row that says the filters on are a saved set, its bookmark filled in the brand's ink. `anyOff`:
