@@ -58,7 +58,7 @@ const TABLE_LABELS: Record<ExportTable, string> = {
   operating_systems: 'Operating systems',
   devices: 'Devices',
   languages: 'Languages',
-  goals: 'Goals',
+  goals: 'Named events',
   events: 'Events',
   event_properties: 'Event properties',
 }
@@ -73,7 +73,8 @@ const TABLE_GROUPS: { label: string; tables: ExportTable[] }[] = [
 
 /**
  * The eight tables the short list offers, each naming the server tables it stands for. "Campaigns" is the campaign
- * dimension; "Goals and events" is two tables, so it reads as mixed when More options has only one of them.
+ * dimension; "Events" is two tables (the events a team named and every event), so it reads as mixed when More
+ * options has only one of them.
  */
 const BASIC_TABLES: { label: string; tables: ExportTable[] }[] = [
   { label: 'Daily summary', tables: ['daily'] },
@@ -83,7 +84,7 @@ const BASIC_TABLES: { label: string; tables: ExportTable[] }[] = [
   { label: 'Countries', tables: ['countries'] },
   { label: 'Devices', tables: ['devices'] },
   { label: 'Campaigns', tables: ['utm_campaign'] },
-  { label: 'Goals and events', tables: ['goals', 'events'] },
+  { label: 'Events', tables: ['goals', 'events'] },
 ]
 const BASIC_TABLE_SET: ReadonlySet<ExportTable> = new Set(BASIC_TABLES.flatMap((b) => b.tables))
 

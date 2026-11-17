@@ -66,7 +66,7 @@ describe('DeleteSiteModal (hold-to-confirm, PUL-28)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Delete Acme?' })
     expect(dialog.textContent).toContain('Pulse stops counting visits on acme.example')
     expect(screen.getByText('What goes')).toBeInTheDocument()
-    expect(screen.getByText('Its stats, its goals and everything else set up for it.')).toBeInTheDocument()
+    expect(screen.getByText('Its stats, its funnels and everything else set up for it.')).toBeInTheDocument()
     expect(screen.getByText(/You can restore it from the home page for 7 days/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Hold to delete' })).toBeInTheDocument()
     // No typed confirmation left anywhere.

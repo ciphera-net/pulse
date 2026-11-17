@@ -132,3 +132,34 @@ describe('a direct visit to /settings/site/import', () => {
     expect(h.notFound).not.toHaveBeenCalled()
   })
 })
+
+// R69 (17-11-2026): the page that names an event is Events, on /settings/site/events. It was Goals on
+// /settings/site/goals, an address that emails already sent, bookmarks and old docs links carry.
+describe('the Events page and its old address', () => {
+  it('renders the page on /settings/site/events, with no redirect', async () => {
+    h.tab = 'events'
+    h.replace.mockClear()
+    fresh(<SiteSettingsTabPage />)
+    expect(await screen.findByTestId('tab-content')).toBeInTheDocument()
+    expect(h.replace).not.toHaveBeenCalled()
+  })
+
+  it('lands a visit to /settings/site/goals on Events, never rendering a page there', async () => {
+    h.tab = 'goals'
+    h.replace.mockClear()
+    fresh(<SiteSettingsTabPage />)
+    await waitFor(() => expect(h.replace).toHaveBeenCalledWith('/settings/site/events'))
+    expect(screen.queryByTestId('tab-content')).toBeNull()
+    expect(h.notFound).not.toHaveBeenCalled()
+  })
+
+  it('marks Events as the current page on the old address while it redirects, and lists no Goals row', async () => {
+    h.pathname = '/settings/site/goals'
+    h.sources = { status: 404 }
+    fresh(<SettingsShell><div>tab</div></SettingsShell>)
+    const events = await screen.findByRole('link', { name: 'Events' })
+    expect(events).toHaveAttribute('aria-current', 'page')
+    expect(events).toHaveAttribute('href', '/settings/site/events')
+    expect(screen.queryByRole('link', { name: 'Goals' })).toBeNull()
+  })
+})

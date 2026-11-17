@@ -323,28 +323,28 @@ describe('the lookups of the other dashboard sections', () => {
     expect(finished('get_performance', {}, { page: 'https://example.com/', checks: [] })).toMatchObject({ text: 'Performance checks' })
   })
 
-  it('names goals and funnels by their filter', () => {
+  it('names events and funnels by their filter', () => {
     const filters = ['referrer==google.com']
     // * No events at all is a finding, so it is said in the block rather than left out.
     expect(finished('get_goals', { filters }, { range: THIS_WEEK, filters, events: [] })).toEqual({
       kind: 'figures',
       blocks: [
         {
-          title: 'Goals and events for google.com',
+          title: 'Events for google.com',
           range: '4 to 10 November',
-          rows: [{ name: 'Pulse recorded no goals or events', value: '', note: '', mark: false, logo: false }],
+          rows: [{ name: 'Pulse recorded no events', value: '', note: '', mark: false, logo: false }],
           more: 0,
         },
       ],
     })
-    expect(runningLookup('get_goals', { filters })).toBe('Reading the goals and events for google.com')
+    expect(runningLookup('get_goals', { filters })).toBe('Reading the events for google.com')
     expect(runningLookup('get_funnels', { filters: ['device==mobile'] })).toBe('Reading the funnels for mobile')
   })
 
   it('says what is missing when one fails, and what it is reading while it runs', () => {
     const failed = (tool: string) => describeStep(step(tool, {}, undefined, 'boom'))
     expect(failed('get_search')).toMatchObject({ text: 'Analyst could not read the search figures', failed: true })
-    expect(failed('get_goals')).toMatchObject({ text: 'Analyst could not read the goals and events', failed: true })
+    expect(failed('get_goals')).toMatchObject({ text: 'Analyst could not read the events', failed: true })
     expect(failed('get_funnels')).toMatchObject({ text: 'Analyst could not read the funnels', failed: true })
     expect(failed('get_performance')).toMatchObject({ text: 'Analyst could not read the performance checks', failed: true })
     expect(failed('get_uptime')).toMatchObject({ text: 'Analyst could not read the uptime checks', failed: true })
@@ -487,7 +487,7 @@ describe('the figures behind each lookup', () => {
     expect(titles(view('get_performance', {}, { page: 'https://ciphera.net/', checks: [noDevice] }))).toEqual([['Homepage speed', '11 November']])
   })
 
-  it('draws goals and events by their conversion rate and visits, five then "and N more"', () => {
+  it('draws events by their conversion rate and visits, five then "and N more"', () => {
     const e = (name: string, conversion_rate: number, visits: number) => ({ name, event: name, goal: false, count: visits, visits, conversion_rate })
     const v = view('get_goals', { period: 'month' }, {
       range: NOV,
@@ -495,7 +495,7 @@ describe('the figures behind each lookup', () => {
       events: [e('pulse_click', 30.9, 38), e('outbound_link', 16.3, 20), e('pulse_copy', 4.9, 6), e('pulse_form_submit', 2.4, 3),
         e('contact_captcha_verified', 2.4, 3), e('contact_form_submit_success', 2.4, 3), e('file_download', 0.8, 1)],
     })
-    expect(titles(v)).toEqual([['Goals and events', '1 to 12 November']])
+    expect(titles(v)).toEqual([['Events', '1 to 12 November']])
     expect(rows(v)?.slice(0, 2)).toEqual([['pulse_click', '30.9%', '38 visits'], ['outbound_link', '16.3%', '20 visits']])
     expect(v.kind === 'figures' && [v.blocks[0].rows.length, v.blocks[0].more]).toEqual([5, 2])
   })

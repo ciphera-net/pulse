@@ -75,7 +75,7 @@ export default function DeleteSiteModal({ open, onClose, siteName, siteDomain, s
     >
       <div data-dialog-style="groups">
         {/* The line above already says the rest: the restore window, or that this one can't be undone. */}
-        <KitDialogRow label="What goes" caption={now ? 'Everything, at once.' : 'Its stats, its goals and everything else set up for it.'} />
+        <KitDialogRow label="What goes" caption={now ? 'Everything, at once.' : 'Its stats, its funnels and everything else set up for it.'} />
       </div>
       {!permanentOnly && (
         <Button

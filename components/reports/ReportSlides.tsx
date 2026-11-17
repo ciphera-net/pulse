@@ -449,12 +449,12 @@ export default function ReportSlides({ payload, mode }: { payload: ReportPayload
   if (goals) {
     const maxConv = Math.max(0, ...goals.map((g) => g.conversions))
     slides.push({
-      label: 'Goals',
+      label: 'Events',
       body: (
         <>
-          <SlideTitle>Goals</SlideTitle>
+          <SlideTitle>Events</SlideTitle>
           <div className="mt-8 max-w-xl">
-            <RankList caption="Goals, conversions">
+            <RankList caption="Events, conversions">
               {goals.map((g) => (
                 <RankRow
                   key={g.name}

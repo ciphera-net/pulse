@@ -21,7 +21,7 @@ const DataPage = dynamic(() => import('@/components/settings/pages/data/DataPage
 
 const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = {
   general: GeneralPage,
-  goals: GoalsPage,
+  events: GoalsPage,
   analyst: AnalystSettingsPage,
   visibility: SharingPage,
   privacy: PrivacyPage,
@@ -35,11 +35,13 @@ const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = 
 const TAB_REDIRECTS: Record<string, string> = {
   monitoring: 'general',
   'bot-spam': 'general',
+  // The page was called Goals until 17-11-2026 (R69). Emails already sent and bookmarks carry this address.
+  goals: 'events',
   import: 'integrations',
   export: 'integrations',
 }
 
-// Only General gates at the route: Goals, Sharing, Privacy and Data say who they are for in their own words (copy
+// Only General gates at the route: Events, Sharing, Privacy and Data say who they are for in their own words (copy
 // deck), and a member reads Sharing's lists and Data's import status (R23).
 const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
   general: 'sites.edit',

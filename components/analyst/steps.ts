@@ -491,7 +491,7 @@ function searchBlocks(result: Record<string, unknown>): FigureBlock[] {
 
 function goalsBlocks(result: Record<string, unknown>, args: Record<string, unknown>): FigureBlock[] {
   if (!Array.isArray(result.events)) return []
-  const title = 'Goals and events' + narrowing('get_goals', args, result)
+  const title = 'Events' + narrowing('get_goals', args, result)
   const rows = list(result.events).flatMap((e) => {
     const name = str(e.name) ?? str(e.event)
     const rate = num(e.conversion_rate)
@@ -500,7 +500,7 @@ function goalsBlocks(result: Record<string, unknown>, args: Record<string, unkno
     return [figure(name, percent(rate), visits === null ? '' : counted(visits, 'visit', 'visits'))]
   })
   // * None at all is a finding ("LinkedIn recorded no events"), so it is said, not left as an empty block.
-  if (rows.length === 0) return [{ title, range: rangeText(result), rows: [figure('Pulse recorded no goals or events', '')], more: 0 }]
+  if (rows.length === 0) return [{ title, range: rangeText(result), rows: [figure('Pulse recorded no events', '')], more: 0 }]
   return [{ title, range: rangeText(result), ...shown(rows) }]
 }
 
@@ -691,7 +691,7 @@ function failedLookup(tool: string, args: Record<string, unknown>): string {
     case 'get_search':
       return 'Analyst could not read the search figures'
     case 'get_goals':
-      return 'Analyst could not read the goals and events'
+      return 'Analyst could not read the events'
     case 'get_funnels':
       return 'Analyst could not read the funnels'
     case 'get_performance':
@@ -734,7 +734,7 @@ function lookupName(tool: string, args: Record<string, unknown>): string {
     case 'get_search':
       return 'Search figures'
     case 'get_goals':
-      return 'Goals and events'
+      return 'Events'
     case 'get_funnels':
       return 'Funnels'
     case 'get_performance':
@@ -794,7 +794,7 @@ export function runningLookup(tool: string, args: Record<string, unknown> | null
     case 'get_search':
       return 'Reading the search figures'
     case 'get_goals':
-      return `Reading the goals and events${narrowed}`
+      return `Reading the events${narrowed}`
     case 'get_funnels':
       return `Reading the funnels${narrowed}`
     case 'get_performance':

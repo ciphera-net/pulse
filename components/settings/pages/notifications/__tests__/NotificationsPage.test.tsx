@@ -200,7 +200,7 @@ describe('NotificationsPage: Pulse emails', () => {
       'A new API key, or a dashboard shared by link, in your team.',
       'Two warnings before an inactive team is deleted, 30 and 7 days ahead, and the email that confirms the deletion.',
       'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
-      "Performance scores that drop or recover, pages losing visits, a goal's first conversion, finished imports and growth reports.",
+      "Performance scores that drop or recover, pages losing visits, a named event's first conversion, finished imports and growth reports.",
       'A change to your role in the team.',
       'Announcements and scheduled maintenance from Ciphera.',
       'Help with setting up a site, the first visits arriving, and a note if your team goes quiet.',

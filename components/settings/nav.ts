@@ -28,7 +28,7 @@ import {
  */
 
 export type SettingsPageKey =
-  | 'general' | 'goals' | 'analyst' | 'sharing' | 'privacy' | 'data'
+  | 'general' | 'events' | 'analyst' | 'sharing' | 'privacy' | 'data'
   | 'team' | 'billing' | 'developers' | 'account' | 'notifications'
 
 export interface SettingsPage {
@@ -57,7 +57,9 @@ export interface SettingsPage {
 
 export const SETTINGS_PAGES: SettingsPage[] = [
   { key: 'general', label: 'General', href: '/settings/site/general', description: "Your site's name, timezone and tracking script.", icon: GearSix, site: true, requires: 'sites.edit', absorbs: ['/settings/site/monitoring', '/settings/site/bot-spam'] },
-  { key: 'goals', label: 'Goals', href: '/settings/site/goals', description: 'The events you count as goals.', icon: Target, site: true, requires: 'goals.manage', absorbs: [] },
+  // Events (R69, 17-11-2026): the page that gives an event its name. It was called Goals, a goal being exactly that:
+  // an event with a name of its own. The stored record, its API and the `goals.manage` permission keep the old word.
+  { key: 'events', label: 'Events', href: '/settings/site/events', description: 'Names for the events your site sends.', icon: Target, site: true, requires: 'goals.manage', absorbs: ['/settings/site/goals'] },
   // Analyst's memories (P1, picked 14-11-2026): everyone with Analyst reads and changes them, so no permission.
   { key: 'analyst', label: 'Analyst', href: '/settings/site/analyst', description: 'What Analyst remembers about this site.', icon: StarFour, site: true, absorbs: [] },
   // Members read Sharing's two lists and download the PDFs, with no buttons that make or delete (R23).

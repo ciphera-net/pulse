@@ -85,7 +85,7 @@ export function useOnboarding() {
     // actually knows whether events arrived.
     { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.install_status && s.install_status !== 'never_installed'), lockedReason: needsSite },
     { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1, countsTowardCompletion: false },
-    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: onboarding?.has_goal ?? false, lockedReason: needsSite },
+    { key: 'goal', label: 'Name an event', href: firstSiteId ? '/settings/site/events' : undefined, completed: onboarding?.has_goal ?? false, lockedReason: needsSite },
   ]
 
   // Completion counts only the steps that gate it — see countsTowardCompletion.

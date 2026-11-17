@@ -262,9 +262,9 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
             </CommandItem>
           )}
           {canGoalsManage && (
-            <CommandItem value="settings-site-goals" onSelect={() => go('/settings/site/goals')}>
+            <CommandItem value="settings-site-events" keywords={['goals', 'name an event']} onSelect={() => go('/settings/site/events')}>
               <Target size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-              <span><HighlightMatch text="Goals" query={search} /></span>
+              <span><HighlightMatch text="Events" query={search} /></span>
             </CommandItem>
           )}
           {canSitesEdit && (

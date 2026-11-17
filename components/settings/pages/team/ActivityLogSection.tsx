@@ -325,7 +325,7 @@ export function ActivityLogSection() {
   return (
     <KitSection
       title="Activity log"
-      description="Changes made in this team over the last 12 months: sites, goals, connected services, people and billing."
+      description="Changes made in this team over the last 12 months: sites, event names, connected services, people and billing."
       icon={<ClockCounterClockwise />}
     >
       <KitRows>{body}</KitRows>

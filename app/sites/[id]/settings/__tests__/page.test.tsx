@@ -52,7 +52,9 @@ describe('the site-settings tab redirect (?tab=)', () => {
     data: 'privacy',
     privacy: 'privacy',
     bot: 'general',
-    goals: 'goals',
+    // The page is Events since 17-11-2026; the first-conversion emails already sent say ?tab=goals.
+    goals: 'events',
+    events: 'events',
     integrations: 'integrations',
     import: 'integrations',
   }))('?tab=%s resolves to /settings/site/%s', (query, dest) => {
