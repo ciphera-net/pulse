@@ -119,7 +119,7 @@ describe("a menu's rows reach its edges", () => {
       expect(tag, file).toContain(MARK)
     }
     const operator = marked.find((m) => m.file.endsWith('OperatorChip.tsx'))
-    expect(classesOf(operator?.tag ?? '')).toEqual(expect.arrayContaining(['min-w-[180px]', 'glass-panel', 'border', 'shadow-lg']))
+    expect(classesOf(operator?.tag ?? '')).toEqual(expect.arrayContaining(['min-w-[180px]', 'bg-popover', 'border', 'shadow-lg']))
     // And it does call a padded list padded.
     expect(classesOf('<div data-menu-list="" className="max-h-72 overflow-y-auto p-1.5">').filter(holdsRoom)).toEqual(['p-1.5'])
     expect(classesOf('<div data-menu-list="" className={`flex flex-col py-2 ${x}`}>').filter(holdsRoom)).toEqual(['py-2'])

@@ -86,7 +86,12 @@ export default function OperatorChip({ operator, onChange, dimension }: Operator
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
           // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
           data-menu-list=""
-          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] glass-panel border border-white/[0.08] rounded-none shadow-lg origin-top-left"
+          // SOLID, on purpose, where every other pop-up is glass: this menu opens INSIDE the filter builder, which is
+          // glass, and it can hang out of the builder's box. A blur inside an element that has a backdrop filter of
+          // its own reaches that element's box and no further: the part of a see-through menu below the builder
+          // would show the page sharp through its fill (measured in Chrome,
+          // lib/ui/__tests__/popups-are-glass.test.ts).
+          className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-none shadow-lg origin-top-left"
         >
           {operators.map(op => (
             <button

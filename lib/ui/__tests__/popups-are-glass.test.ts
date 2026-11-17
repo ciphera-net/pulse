@@ -12,9 +12,15 @@ import { MODAL_PANEL_CLASS } from '@/components/settings/modalChrome'
 //
 // 🔴 Where the glass sits: on the element that FADES IN. A backdrop blur reads only what lies inside the nearest
 // ancestor with an opacity under 1, so under a wrapper that is still fading it reaches the page only when the fade
-// ends. And never on an element whose ANCESTOR carries a backdrop filter, unless the pop-up stays inside that
-// ancestor's box (the funnel dialog's suggestions, the filter builder's operator menu): outside it there is nothing
-// in reach to blur.
+// ends.
+//
+// 🔴 The two that stay SOLID: a pop-up that opens INSIDE a glass surface and hangs out of its box. A blur inside an
+// element that has a backdrop filter of its own reaches that element's box and no further. Measured in Chrome 145
+// on 17-11-2026 (Pulse/docs/data/17-11-2026-glass-own-popups/nested-overhang-probe.mjs, sharp stripes under a
+// see-through list): inside the dialog's box the stripes are blurred away (contrast 6 of 255), under the part of
+// the list below the dialog they stay sharp (62). With the dialog's glass on its ::before, as Facet's Modal has it,
+// both are blurred (2 and 2). The funnel dialog's step suggestions and the filter builder's operator menu hang out
+// of a surface that carries its glass on itself, so they keep the solid popover fill.
 // ---------------------------------------------------------------------------
 
 const ROOT = process.cwd()
@@ -26,13 +32,11 @@ const POPUPS: Record<string, string> = {
   'components/ui/select.tsx': "the app's own dropdown list",
   'components/ui/dialog.tsx': 'the dialog (the funnel dialog, the command palette)',
   'components/ui/tooltip.tsx': "the slider's tooltip",
-  'components/funnels/FunnelModal.tsx': "the funnel dialog's step suggestions",
   'components/settings/SiteHeaderIdentity.tsx': "the settings header's site switcher",
   'components/settings/SettingsShell.tsx': "the phone's settings sheet",
   'components/settings/modalChrome.ts': 'the passkey and recovery dialogs',
   'components/dashboard/DashboardShell.tsx': "the top bar's site picker",
   'components/dashboard/Sidebar.tsx': "the phone's navigation drawer",
-  'components/dashboard/filter/OperatorChip.tsx': "the filter builder's operator menu",
   'components/dashboard/filter/FilterPopover.tsx': 'the filter builder',
   'components/dashboard/filter/search/SearchFilter.tsx': 'the Filter menu',
   'components/dashboard/filter/search/FiltersBox.tsx': 'the filters on, and the menu that saves one',
@@ -46,7 +50,13 @@ const POPUPS: Record<string, string> = {
   'components/VersionToast.tsx': 'the "update available" notice',
 }
 
-/** A fill, a border colour or a heavy shadow that would make a pop-up solid again, or dress it as a card. */
+/** Pop-ups that open inside a glass surface, where a blur has nothing in reach: solid, and why is written at each. */
+const INSIDE_GLASS: Record<string, string> = {
+  'components/funnels/FunnelModal.tsx': "the funnel dialog's step suggestions, inside the dialog",
+  'components/dashboard/filter/OperatorChip.tsx': "the filter builder's operator menu, inside the builder",
+}
+
+/** The fill that makes a pop-up solid again. */
 const SOLID = /\bbg-popover\b/
 
 describe('every pop-up the app draws itself is glass', () => {
@@ -56,6 +66,13 @@ describe('every pop-up the app draws itself is glass', () => {
     expect(SOLID.test(source), `${file} must not name the solid popover fill`).toBe(false)
   })
 
+  it.each(Object.entries(INSIDE_GLASS))('%s stays solid (%s), and says why where it does', (file) => {
+    const source = read(file)
+    expect(source).toMatch(/border border-border bg-popover|bg-popover border border-border/)
+    expect(source).toContain('SOLID, on purpose')
+    expect(source).toContain('popups-are-glass.test.ts')
+  })
+
   it('the surface is one string, and the dialogs that share a class use it', () => {
     expect(panelSurface(true)).toBe('glass-panel border border-white/[0.08]')
     expect(MODAL_PANEL_CLASS).toContain('glass-panel border border-white/[0.08]')
@@ -63,9 +80,10 @@ describe('every pop-up the app draws itself is glass', () => {
   })
 
   it('no other file of the app draws a surface with the solid popover fill', () => {
-    // The two that may: the surface's own solid branch (kept for a page that ever needs a solid panel), and the
-    // public header's menu, which changes together with the marketing site's own header or not at all.
-    const allowed = new Set(['lib/dashboard/frame.tsx', 'components/ui/navigation-menu.tsx'])
+    // Those that may: the surface's own solid branch (kept for a page that ever needs a solid panel), the public
+    // header's menu, which changes together with the marketing site's own header or not at all, and the two that
+    // open inside a glass surface.
+    const allowed = new Set(['lib/dashboard/frame.tsx', 'components/ui/navigation-menu.tsx', ...Object.keys(INSIDE_GLASS)])
     const found: string[] = []
     const walk = (dir: string) => {
       for (const name of readdirSync(join(ROOT, dir))) {
