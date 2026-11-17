@@ -258,6 +258,16 @@ describe('a range of one day', () => {
     expect(screen.queryByText(/Views an? /)).toBeNull()
   })
 
+  it('leaves the bars out, and heads nothing by the hour, where the day came back without its hours', () => {
+    // The server answers a day without hours when it cannot read it by the hour: the list asked, and has none.
+    render(<PagesList {...base} rows={[page('/', 50, { trend: [50] }), page('/pricing', 20, { trend: [20] })]} prevRows={undefined} hourly />)
+    expect(screen.queryByTestId('bars')).toBeNull()
+    expect(screen.queryByText(/Views an? /)).toBeNull()
+    // The rows and their numbers are still there.
+    expect(line('/')).toBeInTheDocument()
+    expect(line('/pricing')).toBeInTheDocument()
+  })
+
   it('draws days over a longer range', () => {
     render(<PagesList {...base} />)
     expect(screen.getByText('Views a day')).toBeInTheDocument()

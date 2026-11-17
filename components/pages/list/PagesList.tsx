@@ -355,9 +355,12 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
 
   const days = rows[0]?.trend?.length ?? 0
   const { kind, buckets } = useMemo<{ kind: BucketKind; buckets: Bucket[] }>(() => bucketsFor(start, days, MAX_BARS), [start, days])
-  const perBar = hourly ? 'Views an hour' : kind === 'day' ? 'Views a day' : kind === 'week' ? 'Views a week' : 'Views a month'
+  // The hours are the rows' own, and the server may answer a day without them (a day too large to read by the
+  // hour): then there is nothing to draw, and the bars are not headed "an hour" over nothing.
+  const byHour = hourly && rows.some((r) => r.hours?.length === 24)
+  const perBar = byHour ? 'Views an hour' : kind === 'day' ? 'Views a day' : kind === 'week' ? 'Views a week' : 'Views a month'
   // One day has one figure a day: a single bar says nothing, so without the day's hours the column is left out.
-  const showBars = hourly || days > 1
+  const showBars = byHour || days > 1
   // A day still being counted is drawn up to the hour it has reached.
   const hoursShown = live && nowHour != null ? Math.min(24, nowHour + 1) : 24
   const hourNames = useMemo(() => Array.from({ length: hoursShown }, (_, h) => hourName(h)), [hoursShown])
@@ -453,7 +456,7 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
                   {/* The bars take the pointer for their own days; a press on them is still a press on the row. */}
                   {showBars && (
                     <span className={`${BARS} relative z-10 ml-4`} onClick={press}>
-                      {hourly
+                      {byHour
                         ? <DayBars values={(row.hours ?? []).slice(0, hoursShown)} hours={hourNames} kind="day" buckets={[]} live={live} className="w-full" />
                         : <DayBars values={row.trend ?? []} kind={kind} buckets={buckets} live={live} className="w-full" />}
                     </span>
