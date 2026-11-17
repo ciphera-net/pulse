@@ -424,6 +424,126 @@
       ]
     ]
   },
+  "usePagesTable#hours": {
+    "key": [
+      "pagesTable",
+      "site-1",
+      "",
+      "2026-10-01",
+      "2026-10-01",
+      500,
+      "v2:country|is|NL",
+      "hours"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getPagesTable",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-01",
+          500,
+          "v2:country|is|NL",
+          "__undefined__",
+          "hours"
+        ]
+      ]
+    ]
+  },
+  "usePageScroll": {
+    "key": [
+      "pageScroll",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07",
+      "/pricing",
+      "device",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getPageScroll",
+        [
+          "site-1",
+          "/pricing",
+          "device",
+          "2026-10-01",
+          "2026-10-07",
+          "v2:country|is|NL",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "usePageScroll#dates": {
+    "key": [
+      "pageScroll",
+      "site-1",
+      "",
+      "2026-10-01",
+      "2026-10-07",
+      "/pricing",
+      "country",
+      "__undefined__"
+    ],
+    "config": {
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getPageScroll",
+        [
+          "site-1",
+          "/pricing",
+          "country",
+          "2026-10-01",
+          "2026-10-07",
+          "__undefined__",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "usePageScroll#closed": {
+    "key": null,
+    "config": {
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
   "useDailyStats": {
     "key": [
       "dailyStats",

@@ -447,8 +447,16 @@ export function usePagesTable(
 ) {
   return useSiteSWR<PagesTableData>(
     siteId, 'demo',
-    (siteKey) => siteId && (period || (start && end)) ? ['pagesTable', siteKey, period ?? '', start, end, limit, filters, include ?? ''] : null,
-    (ref) => getPagesTable(ref, start, end, limit, filters, period, include),
+    // Without `include` the key and the call are what they were before it existed: other code revalidates this
+    // key, and a key that grew an element would leave it revalidating nothing. With it, the read is another answer
+    // and so another key.
+    (siteKey) => {
+      if (!siteId || !(period || (start && end))) return null
+      return include
+        ? ['pagesTable', siteKey, period ?? '', start, end, limit, filters, include]
+        : ['pagesTable', siteKey, period ?? '', start, end, limit, filters]
+    },
+    (ref) => (include ? getPagesTable(ref, start, end, limit, filters, period, include) : getPagesTable(ref, start, end, limit, filters, period)),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,

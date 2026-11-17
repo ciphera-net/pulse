@@ -267,8 +267,10 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
           )}
           {host && (
             <Button asChild variant="ghost" size="sm" className={cn('h-11 w-full min-w-0 justify-start gap-1.5 rounded-none px-4 text-[13px] font-normal text-neutral-300 [&_svg]:size-3.5 [&_svg]:shrink-0', !dashboardHref && 'col-span-2')}>
-              <a href={`https://${host}${row.path}`} target="_blank" rel="noopener noreferrer">
-                <ArrowSquareOut className="text-muted-foreground" aria-hidden="true" />
+              {/* An outbound link's arrow turns orange under the pointer, as every one in the app does. The link
+                  is its own group, so the arrow answers to this cell and to no row around it. */}
+              <a href={`https://${host}${row.path}`} target="_blank" rel="noopener noreferrer" className="group">
+                <ArrowSquareOut className="text-muted-foreground transition-colors ease-apple group-hover:text-brand-ink" aria-hidden="true" />
                 <span className="truncate">Open the page</span>
               </a>
             </Button>

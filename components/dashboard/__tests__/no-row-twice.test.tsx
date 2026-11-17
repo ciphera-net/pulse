@@ -302,6 +302,7 @@ const HOW_ROWS_STAY_APART: Record<string, { by: string[] | null; why: string }> 
   'components/dashboard/events/EventsBlock.tsx': { by: ['eventLabels('], why: 'A row is one event, so two are never merged: names that read alike each read their stored name instead.' },
   'components/dashboard/events/EventProperties.tsx': { by: ['propertyValueRows('], why: 'propertyValueRows merges values that read the same.' },
   'components/dashboard/MetricRowStat.tsx': { by: null, why: 'Defines the row and draws none.' },
+  'components/pages/list/PagesList.tsx': { by: null, why: 'The Pages list: a page is drawn as the path that is stored, so the stored value is the row.' },
 }
 
 function components(dir: string, out: string[] = []): string[] {

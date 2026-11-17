@@ -19,6 +19,7 @@ vi.mock('@/lib/utils/icons', () => ({
   getReferrerDisplayName: (r: string) => r.replace(/^www\./, '').split('.')[0],
 }))
 
+import { ApiError } from '@/lib/api/client'
 import ScrollWho, { whoRows } from '../ScrollWho'
 
 const depth = (total: number, end: number): ScrollDepthDistribution => ({ scroll_25: total, scroll_50: Math.round(total * 0.8), scroll_75: Math.round(total * 0.6), scroll_100: end, total_sessions: total })
@@ -111,6 +112,26 @@ describe('the tab', () => {
     render(<ScrollWho {...props} />)
     expect(screen.getByText('Could not load scroll depth')).toBeInTheDocument()
     expect(screen.queryByText('Everyone')).toBeNull()
+  })
+
+  it('says a range the server will not break down as a limit, with what lifts it', () => {
+    mockUsePageScroll.mockReturnValue({ data: undefined, isLoading: false, error: new ApiError('refused', 422, { error: 'refused' }) })
+    const { unmount } = render(<ScrollWho {...props} />)
+    expect(document.querySelector('[data-page-scroll="refused"]')).not.toBeNull()
+    expect(screen.getByText("Scroll depth can't be shown for this range")).toBeInTheDocument()
+    expect(screen.getByText('Choose a shorter range or remove a filter.')).toBeInTheDocument()
+    expect(screen.queryByText('Could not load scroll depth')).toBeNull()
+    unmount()
+    // With no filter to remove, only the range is named.
+    render(<ScrollWho {...props} filters={undefined} />)
+    expect(screen.getByText('Choose a shorter range.')).toBeInTheDocument()
+  })
+
+  it('keeps the plain failure for every other error, a server fault included', () => {
+    mockUsePageScroll.mockReturnValue({ data: undefined, isLoading: false, error: new ApiError('down', 503) })
+    render(<ScrollWho {...props} />)
+    expect(document.querySelector('[data-page-scroll="failed"]')).not.toBeNull()
+    expect(screen.getByText('Could not load scroll depth')).toBeInTheDocument()
   })
 
   it('says so where too few visits scrolled to name anyone', () => {

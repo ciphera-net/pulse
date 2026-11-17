@@ -5,6 +5,7 @@ import { Switcher } from '@ciphera-net/facet'
 import { SkeletonLine } from '@/components/skeletons'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { HEAT_STEPS } from '@/lib/dashboard/heatmapGrid'
+import { ApiError } from '@/lib/api/client'
 import { usePageScroll } from '@/lib/swr/dashboard'
 import { formatNumber } from '@/lib/utils/format'
 import { getCountryFlagIcon, getDeviceIcon, getReferrerDisplayName, getReferrerIcon } from '@/lib/utils/icons'
@@ -117,11 +118,16 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
   const fresh = data?.by === dim
   const who = useMemo<Who[] | null>(() => (data && fresh ? whoRows(dim, data.rows) : null), [data, fresh, dim])
 
-  // A read that failed with nothing in hand is said, never drawn as rows that wait for good.
+  // A read that failed with nothing in hand is said, never drawn as rows that wait for good. A range the server
+  // will not break down for one page (a 422: too many rows in it) is a limit and is said as one: waiting does not
+  // lift it, a shorter range does, and so can one filter fewer.
   if (!data && error) {
+    const refused = error instanceof ApiError && error.status === 422
     return (
-      <div className="flex h-full min-h-[232px] items-center justify-center" data-page-scroll="failed">
-        <ErrorCard title="Could not load scroll depth" description="The request failed. This is usually temporary." />
+      <div className="flex h-full min-h-[232px] items-center justify-center" data-page-scroll={refused ? 'refused' : 'failed'}>
+        {refused
+          ? <ErrorCard title="Scroll depth can't be shown for this range" description={filters ? 'Choose a shorter range or remove a filter.' : 'Choose a shorter range.'} />
+          : <ErrorCard title="Could not load scroll depth" description="The request failed. This is usually temporary." />}
       </div>
     )
   }
