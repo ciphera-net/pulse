@@ -102,7 +102,7 @@ export function SiteHeaderIdentity({ fallback }: { fallback: string }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="absolute left-0 top-full z-30 mt-2 w-72 rounded-none border border-border bg-popover text-sm font-normal shadow-lg"
+          className="absolute left-0 top-full z-30 mt-2 w-72 rounded-none glass-panel border border-white/[0.08] text-sm font-normal shadow-lg"
         >
           <div className="p-2">
             <input

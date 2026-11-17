@@ -356,13 +356,15 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                     aria-modal="true"
                     aria-label="Settings sections"
                     onKeyDown={onSheetKeyDown}
-                    className="fixed inset-x-0 bottom-0 z-[2147483647] max-h-[80vh] overflow-auto rounded-none border-t border-border bg-card"
+                    className="fixed inset-x-0 bottom-0 z-[2147483647] flex max-h-[80vh] flex-col overflow-hidden rounded-none glass-panel border-t border-white/[0.08]"
                     initial={{ y: '100%' }}
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
                     transition={SPRING}
                   >
-                    <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-3">
+                    {/* The title row stays put and the rows scroll in the box under it. It was `sticky` with a fill of its
+                        own; on a glass sheet a fill of its own would be a second blur over the first. */}
+                    <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-5 py-3">
                       <span className="text-sm font-semibold tracking-tight text-foreground">Settings</span>
                       <button
                         type="button"
@@ -373,21 +375,23 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="divide-y divide-border">
-                      {pages.map((page) => (
-                        <RailRow
-                          key={page.key}
-                          page={page}
-                          active={page.key === activePage.key}
-                          onClick={() => setSheetOpen(false)}
-                          className="min-h-[44px] px-5 py-3"
-                          bar
-                        />
-                      ))}
+                    <div className="min-h-0 flex-1 overflow-auto" data-testid="settings-sheet-rows">
+                      <div className="divide-y divide-border">
+                        {pages.map((page) => (
+                          <RailRow
+                            key={page.key}
+                            page={page}
+                            active={page.key === activePage.key}
+                            onClick={() => setSheetOpen(false)}
+                            className="min-h-[44px] px-5 py-3"
+                            bar
+                          />
+                        ))}
+                      </div>
+                      {/* The sheet IS the settings nav on mobile, so the policy
+                          links reach every viewport. */}
+                      <LegalLinks className="border-t border-border px-5 py-4" />
                     </div>
-                    {/* The sheet IS the settings nav on mobile, so the policy
-                        links reach every viewport. */}
-                    <LegalLinks className="border-t border-border px-5 py-4" />
                   </motion.div>
                 </div>
               )}

@@ -121,8 +121,8 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
             transition={SPRING}
             className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className="pointer-events-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-none border border-border bg-card">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+            <div className="pointer-events-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-none glass-panel border border-white/[0.08] shadow-lg">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
                 <h2 className="text-title-2 font-semibold text-white">Keyboard shortcuts</h2>
                 <button
                   type="button"

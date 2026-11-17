@@ -201,6 +201,10 @@ function SuggestInput({
           aria-label={`${ariaLabel} suggestions`}
           // No padding: a menu's rows reach its edges (the rule is written at the date picker's rows).
           data-menu-list=""
+          // SOLID, on purpose, where every other pop-up is glass: this list opens INSIDE the dialog, which is glass,
+          // and it hangs out of the dialog's box. A blur inside an element that has a backdrop filter of its own
+          // reaches that element's box and no further: the part of a see-through list below the dialog would show
+          // the page sharp through its fill (measured in Chrome, lib/ui/__tests__/popups-are-glass.test.ts).
           className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-none border border-border bg-popover shadow-lg"
         >
           {showSpinner ? (

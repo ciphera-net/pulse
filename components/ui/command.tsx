@@ -20,7 +20,7 @@ const Command = React.forwardRef<
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-none bg-popover text-popover-foreground",
+      "flex h-full w-full flex-col overflow-hidden rounded-none bg-transparent text-popover-foreground",
       className,
     )}
     {...props}
@@ -33,7 +33,7 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
     <Dialog {...props}>
       <DialogTitle className="sr-only">Command Palette</DialogTitle>
       <DialogDescription className="sr-only">Search sites, pages, and actions</DialogDescription>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl bg-card border border-neutral-800 [&>button:last-child]:hidden">
+      <DialogContent className="overflow-hidden p-0 sm:max-w-2xl [&>button:last-child]:hidden">
         {/* A row runs the dialog's width (the rule is written at the date picker's rows,
             components/ui/DateRangePicker.tsx): a group holds no padding, and a row's own `px-5` puts its icon
             under the search field's. With `px-2` on a group and `p-2` in it, a row's highlight floated 16 px

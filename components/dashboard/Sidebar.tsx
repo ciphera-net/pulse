@@ -703,7 +703,7 @@ function SidebarFrame({
               room under the title row. As a block, it was the title row taller
               than the screen and pushed Help & Support off the bottom. */}
           <aside
-            className={`fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-popover border-r md:hidden ${
+            className={`fixed inset-y-0 left-0 z-50 w-72 flex flex-col glass-panel border-r border-white/[0.08] md:hidden ${
               mobileClosing
                 ? 'animate-out slide-out-to-left duration-base fill-mode-forwards'
                 : 'animate-in slide-in-from-left duration-base'

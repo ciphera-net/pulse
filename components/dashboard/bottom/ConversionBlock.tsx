@@ -251,7 +251,7 @@ function MiniFlow({ flow, href }: { flow: JourneyFlow; href: string }) {
               initial={{ opacity: 0, y: 4, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-              className="whitespace-nowrap rounded-none border border-neutral-800/60 bg-neutral-950 px-3 py-2 text-sm font-medium text-white"
+              className="whitespace-nowrap rounded-none glass-panel border border-white/[0.08] px-3 py-2 text-sm font-medium text-white shadow-lg"
             >
               <div className="mb-1">{tip.title}</div>
               <div className="text-xs font-normal text-neutral-400">{tip.sub}</div>

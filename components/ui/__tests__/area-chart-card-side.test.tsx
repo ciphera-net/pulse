@@ -59,7 +59,9 @@ beforeAll(() => {
   Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
     configurable: true,
     get(this: HTMLElement) {
-      return this.querySelector(':scope > div.w-56') ? CARD : 0
+      // The card: the placed element itself carries its width (`w-56`) since it became glass. jsdom lays nothing
+      // out, so its width is given here; every other element measures 0.
+      return this.classList.contains('w-56') && this.classList.contains('pointer-events-none') ? CARD : 0
     },
   })
 })
@@ -114,7 +116,7 @@ function interactiveG(container: HTMLElement): SVGGElement {
 /** Where the card's left edge is drawn, in the chart's own pixels. */
 function cardLeft(container: HTMLElement): number {
   const wrapper = Array.from(container.querySelectorAll('div')).find(
-    (el) => el.className.includes('pointer-events-none') && el.className.includes('z-50') && el.querySelector('div[class*="bg-popover"]'),
+    (el) => el.className.includes('pointer-events-none') && el.className.includes('z-50') && el.className.includes('glass-panel'),
   ) as HTMLElement | undefined
   expect(wrapper, 'the card must be drawn while the pointer is on the chart').toBeDefined()
   return Number.parseFloat(wrapper?.style.left ?? '')

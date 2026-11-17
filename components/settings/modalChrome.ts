@@ -38,4 +38,4 @@ export const MODAL_SCROLL_CLASS = 'fixed inset-0 z-[100] overflow-y-auto bg-blac
 export const MODAL_CENTER_CLASS = 'flex min-h-full items-center justify-center p-4'
 
 /** The dialog panel itself. */
-export const MODAL_PANEL_CLASS = 'w-full max-w-sm border border-border bg-card p-6 shadow-xl'
+export const MODAL_PANEL_CLASS = 'w-full max-w-sm glass-panel border border-white/[0.08] p-6 shadow-lg'
