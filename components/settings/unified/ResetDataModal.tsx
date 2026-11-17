@@ -16,7 +16,7 @@ import { KitDialogRow, KitDialogTitle, KitWarningLine } from '@/components/setti
 const MODULES: { id: ResetModule; label: string; caption: string; refetched?: boolean }[] = [
   { id: 'analytics', label: 'Visits and events', caption: 'Every pageview, visit and event, and the totals made from them. An import in progress stops.' },
   { id: 'journeys', label: 'Journeys', caption: 'The paths people take from page to page.' },
-  { id: 'funnels', label: 'Funnels and goals', caption: 'The funnels and goals themselves, not only their numbers.' },
+  { id: 'funnels', label: 'Funnels and event names', caption: 'The funnels and event names themselves, not only their numbers.' },
   { id: 'uptime', label: 'Uptime history', caption: 'Checks, daily uptime and incidents. Your monitor stays.' },
   { id: 'pagespeed', label: 'Performance history', caption: 'Past performance checks. Your check settings stay.' },
   { id: 'cdn', label: 'Bunny CDN', caption: "Pulse's copy of your bandwidth data. Pulse fetches it again from Bunny.", refetched: true },

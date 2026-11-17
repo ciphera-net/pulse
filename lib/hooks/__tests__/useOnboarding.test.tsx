@@ -86,7 +86,8 @@ describe('useOnboarding', () => {
   it('drops the lock once a site exists', () => {
     const { result } = renderHook(() => useOnboarding())
     expect(item(result.current, 'goal').lockedReason).toBeUndefined()
-    expect(item(result.current, 'goal').href).toBe('/settings/site/goals')
+    expect(item(result.current, 'goal').href).toBe('/settings/site/events')
+    expect(item(result.current, 'goal').label).toBe('Name an event')
   })
 
   it('counts an installed script from events, not from a manual flag', () => {

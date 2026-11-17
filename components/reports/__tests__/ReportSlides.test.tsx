@@ -26,7 +26,7 @@ describe('ReportSlides', () => {
       'Growth',
       'Where visitors come from',
       'What they read, and where they are',
-      'Goals',
+      'Events',
       'How these numbers were measured',
     ])
     expect(all.map((s) => s.querySelector(':scope > span.absolute')?.textContent)).toEqual(['1 / 6', '2 / 6', '3 / 6', '4 / 6', '5 / 6', '6 / 6'])
@@ -121,11 +121,11 @@ describe('ReportSlides', () => {
     expect(text.indexOf('1,600')).toBeLessThan(text.indexOf('Hacker News'))
   })
 
-  it('leaves out a goals slide when the site has no goals, and says "Visitors per month" with nothing to compare', () => {
+  it('leaves out the Events slide when the site has no named events, and says "Visitors per month" with nothing to compare', () => {
     const payload: ReportPayload = { ...PAYLOAD, goals: [], compare: null }
     const { container } = render(<ReportSlides payload={payload} mode="page" />)
     const labels = slides(container).map((s) => s.getAttribute('aria-label'))
-    expect(labels).not.toContain('Goals')
+    expect(labels).not.toContain('Events')
     expect(within(slides(container)[0]).getByText('30 Jun – 27 Sep 2026.')).toBeTruthy()
     expect(within(slides(container)[1]).getByRole('heading', { level: 2 }).textContent).toBe('Visitors per month')
   })

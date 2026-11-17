@@ -20,9 +20,11 @@ import { SkeletonBar } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
- * Goals (settings overhaul P3), from its approved drawing and the copy deck's §5. The page has no section heading: the
- * page is Goals already (§5.1). Its line comes first, then the form when it is open (R13: above the list), then the list
- * between two hairlines. Owners and admins only (`goals.manage`).
+ * Events, the page that gives an event its name (R69, 17-11-2026: it was called Goals, and a goal is exactly that, an
+ * event with a name of its own; the stored record, its API, the permission and this folder keep the old word).
+ * Built in the settings overhaul (P3) from its approved drawing and the copy deck's §5. The page has no section
+ * heading: the page is Events already (§5.1). Its line comes first, then the form when it is open (R13: above the
+ * list), then the list between two hairlines. Owners and admins only (`goals.manage`).
  */
 export default function GoalsPage({ siteId }: { siteId: string }) {
   // Keyed by site: an open form or dialog never carries over to another site.
@@ -45,8 +47,8 @@ function isTakenRefusal(err: unknown): boolean {
 function Intro() {
   return (
     <p data-goals-intro="" className="max-w-[60ch] text-sm text-muted-foreground">
-      A goal gives one of your site&apos;s events a name. It shows by that name on the dashboard and in funnels, and
-      growth reports list it.
+      Give one of your site&apos;s events a name. It shows by that name on the dashboard and in funnels, and growth
+      reports list it.
     </p>
   )
 }
@@ -111,14 +113,14 @@ function GoalsForSite({ siteId }: { siteId: string }) {
       setSaving(false)
       if (isTakenRefusal(err)) setProblems({ ...NO_PROBLEMS, eventName: 'taken' })
       // The page's own words (§5.6, finding 3): Facet's message for a status would read "Invalid credentials" on a 403.
-      else toast.error(editing ? "Couldn't save the goal. Try again." : "Couldn't add the goal. Try again.")
+      else toast.error(editing ? "Couldn't save the name. Try again." : "Couldn't add the name. Try again.")
       return
     }
     // A failed refetch shows as the list's own error; the goal itself was saved.
     await mutate()
     setSaving(false)
     close()
-    toast.success(editing ? 'Goal saved' : 'Goal added')
+    toast.success(editing ? 'Name saved' : 'Name added')
   }
 
   // The goal disappears at once; the request is sent when the Undo window runs out (PUL-28).
@@ -143,7 +145,7 @@ function GoalsForSite({ siteId }: { siteId: string }) {
       <KitPage>
         <KitSection
           title="Owners and admins only"
-          description="Only your team's owners and admins can add and change goals."
+          description="Only your team's owners and admins can name events."
           icon={<LockSimple />}
         />
       </KitPage>
@@ -174,7 +176,7 @@ function GoalsForSite({ siteId }: { siteId: string }) {
     )
   }
 
-  // A failed fetch is not an empty list: never "No goals yet" for a site whose goals did not load.
+  // A failed fetch is not an empty list: never "No named events yet" for a site whose names did not load.
   if (error) {
     return (
       <KitPage>
@@ -185,7 +187,7 @@ function GoalsForSite({ siteId }: { siteId: string }) {
               state
               icon={<WarningCircle weight="fill" />}
               tone="coral"
-              label="Couldn't load your goals"
+              label="Couldn't load your named events"
               control={
                 <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
                   {isValidating ? 'Retrying…' : 'Try again'}
@@ -239,14 +241,14 @@ function GoalsForSite({ siteId }: { siteId: string }) {
     />
   )
 
-  // No goals yet: Pulse's one empty state (R57, 16-11-2026), its action the guide that shows how to send an event
-  // (§5.2). The masthead's Add goal stays the page's one way to add a goal.
+  // No named events yet: Pulse's one empty state (R57, 16-11-2026), its action the guide that shows how to send an
+  // event (§5.2). The masthead's Name an event stays the page's one way to add a name.
   const empty = (
     <div data-goals-empty="">
       <EmptyState
         icon={<Target />}
-        title="No goals yet"
-        description="Send an event from your site, like a sign-up or a purchase, then add it here."
+        title="No named events yet"
+        description="Send an event from your site, like a sign-up or a purchase, then name it here."
         action={{ label: 'How to send an event', href: docsUrl('custom-events'), external: true }}
       />
     </div>
@@ -260,7 +262,7 @@ function GoalsForSite({ siteId }: { siteId: string }) {
           <MastheadAction>
             <Button size="sm" onClick={() => open({ mode: 'add' })} data-goals-add="">
               <Plus weight="bold" className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              Add goal
+              Name an event
             </Button>
           </MastheadAction>
         )}
@@ -269,7 +271,7 @@ function GoalsForSite({ siteId }: { siteId: string }) {
           {form && (
             <div ref={formRef} className="mt-8 scroll-mt-24">
               <KitSection
-                title={form.mode === 'edit' ? 'Edit goal' : 'New goal'}
+                title={form.mode === 'edit' ? 'Edit name' : 'Name an event'}
                 icon={form.mode === 'edit' ? <PencilSimple /> : <Plus />}
               >
                 <div className="py-5 md:max-w-md">
@@ -309,16 +311,16 @@ function GoalsForSite({ siteId }: { siteId: string }) {
         onOpenChange={setDeleteOpen}
         title={
           <KitDialogTitle icon={<Trash weight="bold" />}>
-            {deleting ? `Delete the goal "${deleting.name}"?` : 'Delete the goal?'}
+            {deleting ? `Delete the name "${deleting.name}"?` : 'Delete the name?'}
           </KitDialogTitle>
         }
         description={
           deleting && (
             <>
               The name goes, and growth reports and exports stop listing{' '}
-              <code className="font-mono">{deleting.event_name}</code> as a goal. Every{' '}
+              <code className="font-mono">{deleting.event_name}</code>. Every{' '}
               <code className="font-mono">{deleting.event_name}</code> event stays counted on the dashboard. You can
-              add the goal again at any time.
+              name it again at any time.
             </>
           )
         }

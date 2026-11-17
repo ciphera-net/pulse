@@ -22,7 +22,7 @@ export const SECTION_LABELS: Record<ReportSection, string> = {
   sources: 'Where visitors come from',
   content: 'What they read, and where they are',
   devices: 'Devices',
-  goals: 'Goals',
+  goals: 'Events',
 }
 
 /** The approved form's default: every slide but Devices. */

@@ -12,7 +12,7 @@ const MEMBER = { 'sites.edit': false, 'goals.manage': false, 'billing.view': tru
 describe('settings registry: one list of ten pages', () => {
   it('lists the ten pages in the decided order, the same for everyone', () => {
     expect(SETTINGS_PAGES.map((p) => p.label)).toEqual([
-      'General', 'Goals', 'Analyst', 'Sharing', 'Privacy', 'Data', 'Team', 'Billing', 'Developers', 'Account', 'Notifications',
+      'General', 'Events', 'Analyst', 'Sharing', 'Privacy', 'Data', 'Team', 'Billing', 'Developers', 'Account', 'Notifications',
     ])
     expect(new Set(SETTINGS_PAGES.map((p) => p.key)).size).toBe(11)
   })
@@ -20,7 +20,7 @@ describe('settings registry: one list of ten pages', () => {
   it('keeps each page on today\'s route, so links already sent and published keep working', () => {
     expect(Object.fromEntries(SETTINGS_PAGES.map((p) => [p.key, p.href]))).toEqual({
       general: '/settings/site/general',
-      goals: '/settings/site/goals',
+      events: '/settings/site/events',
       analyst: '/settings/site/analyst',
       sharing: '/settings/site/visibility',
       privacy: '/settings/site/privacy',
@@ -34,7 +34,7 @@ describe('settings registry: one list of ten pages', () => {
   })
 
   it('marks the five site pages, and only those', () => {
-    expect(SETTINGS_PAGES.filter((p) => p.site).map((p) => p.key)).toEqual(['general', 'goals', 'analyst', 'sharing', 'privacy', 'data'])
+    expect(SETTINGS_PAGES.filter((p) => p.site).map((p) => p.key)).toEqual(['general', 'events', 'analyst', 'sharing', 'privacy', 'data'])
     for (const p of SETTINGS_PAGES) expect(p.href.startsWith('/settings/site/'), p.key).toBe(p.site)
   })
 
@@ -47,13 +47,17 @@ describe('settings registry: one list of ten pages', () => {
       '/settings/account/devices', '/settings/account/security',
       '/settings/organization/audit', '/settings/organization/beta', '/settings/organization/general',
       '/settings/organization/mcp', '/settings/organization/roles',
-      '/settings/site/bot-spam', '/settings/site/export', '/settings/site/import', '/settings/site/monitoring',
+      '/settings/site/bot-spam', '/settings/site/export', '/settings/site/goals', '/settings/site/import',
+      '/settings/site/monitoring',
     ])
   })
 
   it('names a route by its page, its own or one it takes in', () => {
     expect(pageFor('/settings/site/monitoring')?.key).toBe('general')
     expect(pageFor('/settings/site/export')?.key).toBe('data')
+    // Events was called Goals until 17-11-2026: its old address, in emails and bookmarks, is the Events page's.
+    expect(pageFor('/settings/site/goals')?.key).toBe('events')
+    expect(pageFor('/settings/site/events')?.key).toBe('events')
     expect(pageFor('/settings/organization/mcp')?.key).toBe('developers')
     expect(pageFor('/settings/organization/audit')?.key).toBe('team')
     expect(pageFor('/settings/account/devices')?.key).toBe('account')

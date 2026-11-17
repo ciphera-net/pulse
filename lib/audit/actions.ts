@@ -131,9 +131,10 @@ export const ACTION_LABELS = {
   funnel_created: 'Created funnel',
   funnel_updated: 'Updated funnel',
   funnel_deleted: 'Deleted funnel',
-  goal_created: 'Created goal',
-  goal_updated: 'Updated goal',
-  goal_deleted: 'Deleted goal',
+  // An event's name (the page was called Goals until 17-11-2026, R69). The action keys are the server's.
+  goal_created: 'Created event name',
+  goal_updated: 'Updated event name',
+  goal_deleted: 'Deleted event name',
   gsc_connected: 'Connected Google Search Console',
   gsc_disconnected: 'Disconnected Google Search Console',
   invite_link_created: 'Created invite link',

@@ -139,14 +139,15 @@ beforeEach(() => {
 })
 
 describe('GoalsPage: the list', () => {
-  it('leads with the page line and no section heading, lists each goal by its event, and puts Add goal in the masthead', () => {
+  it('leads with the page line and no section heading, lists each named event, and puts Name an event in the masthead', () => {
     renderPage()
     expect(
       screen.getByText(
-        "A goal gives one of your site's events a name. It shows by that name on the dashboard and in funnels, and growth reports list it.",
+        "Give one of your site's events a name. It shows by that name on the dashboard and in funnels, and growth reports list it.",
       ),
     ).toBeInTheDocument()
-    // §5.1: the page title already says Goals.
+    // §5.1: the page title already says Events (it said Goals until 17-11-2026).
+    expect(screen.queryByRole('heading', { name: 'Events' })).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Goals' })).toBeNull()
 
     expect(screen.getByText('Sign up')).toBeInTheDocument()
@@ -155,7 +156,7 @@ describe('GoalsPage: the list', () => {
     expect(screen.getByText('signup_click').tagName).toBe('CODE')
     expect(screen.getByText('signup_click').className).toMatch(/\bfont-mono\b/)
 
-    const add = screen.getByRole('button', { name: 'Add goal' })
+    const add = screen.getByRole('button', { name: 'Name an event' })
     expect(screen.getByTestId('masthead-slot').contains(add)).toBe(true)
   })
 
@@ -173,61 +174,61 @@ describe('GoalsPage: the list', () => {
     }
   })
 
-  it('shows no goals as Pulse\'s one empty state: the title, the caption and the guide link (R57)', () => {
+  it('shows no named events as Pulse\'s one empty state: the title, the caption and the guide link (R57)', () => {
     useGoals.mockReturnValue(goalsState({ data: [] }))
     renderPage()
-    expect(screen.getByText('No goals yet')).toBeInTheDocument()
-    expect(screen.getByText('Send an event from your site, like a sign-up or a purchase, then add it here.')).toBeInTheDocument()
+    expect(screen.getByText('No named events yet')).toBeInTheDocument()
+    expect(screen.getByText('Send an event from your site, like a sign-up or a purchase, then name it here.')).toBeInTheDocument()
     expect(document.querySelector('[data-goals-empty] [data-empty-state]')).not.toBeNull()
 
     const guide = screen.getByRole('link', { name: 'How to send an event' })
     expect(guide.getAttribute('href')).toMatch(/custom-events$/)
     expect(guide).toHaveAttribute('target', '_blank')
     expect(guide.getAttribute('rel')).toMatch(/noreferrer/)
-    // The masthead's Add goal stays the page's one call to action.
-    expect(screen.getAllByRole('button', { name: 'Add goal' })).toHaveLength(1)
+    // The masthead's Name an event stays the page's one call to action.
+    expect(screen.getAllByRole('button', { name: 'Name an event' })).toHaveLength(1)
   })
 
-  it('loads as three placeholder rows, with no list and no Add goal yet', () => {
+  it('loads as three placeholder rows, with no list and no Name an event yet', () => {
     useGoals.mockReturnValue(goalsState({ data: undefined, isLoading: true }))
     renderPage()
     const status = screen.getByRole('status', { name: 'Loading' })
     expect(status.querySelectorAll('[data-kit-row]')).toHaveLength(3)
-    expect(screen.queryByText('No goals yet')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Add goal' })).toBeNull()
+    expect(screen.queryByText('No named events yet')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Name an event' })).toBeNull()
   })
 
-  it("says the goals did not load, never that there are none, and Try again fetches them again", () => {
+  it("says the names did not load, never that there are none, and Try again fetches them again", () => {
     useGoals.mockReturnValue(goalsState({ data: undefined, error: new ApiError('Invalid credentials', 403) }))
     renderPage()
     const alert = screen.getByRole('alert')
-    expect(alert).toHaveTextContent("Couldn't load your goals")
+    expect(alert).toHaveTextContent("Couldn't load your named events")
     // Facet's sentence for the status is not the page's words (§5.6, finding 3).
     expect(alert).not.toHaveTextContent(/Invalid credentials|Something went wrong/)
-    expect(screen.queryByText('No goals yet')).toBeNull()
+    expect(screen.queryByText('No named events yet')).toBeNull()
     expect(alert.querySelector('[data-kit-icon="state"]')!.className).toMatch(/\btext-destructive\b/)
 
     fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
     expect(mutate).toHaveBeenCalledTimes(1)
   })
 
-  it('tells someone who cannot manage goals who can, with no list and no buttons', () => {
+  it('tells someone who cannot name events who can, with no list and no buttons', () => {
     mockCanManage = false
     renderPage()
     expect(screen.getByRole('heading', { name: 'Owners and admins only' })).toBeInTheDocument()
-    expect(screen.getByText("Only your team's owners and admins can add and change goals.")).toBeInTheDocument()
+    expect(screen.getByText("Only your team's owners and admins can name events.")).toBeInTheDocument()
     expect(screen.queryByText('Sign up')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Add goal' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Name an event' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit Sign up' })).toBeNull()
   })
 })
 
-describe('GoalsPage: adding a goal (R13)', () => {
-  it('opens the New goal form above the list, takes Add goal out of the masthead, and puts the cursor in Name', () => {
+describe('GoalsPage: naming an event (R13)', () => {
+  it('opens the Name an event form above the list, takes the button out of the masthead, and puts the cursor in Name', () => {
     const { container } = renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
 
-    const heading = screen.getByRole('heading', { name: 'New goal', level: 2 })
+    const heading = screen.getByRole('heading', { name: 'Name an event', level: 2 })
     expect(screen.queryByTestId('masthead-slot')!.childElementCount).toBe(0)
     expect(document.activeElement).toBe(nameInput())
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'nearest' }))
@@ -244,7 +245,7 @@ describe('GoalsPage: adding a goal (R13)', () => {
 
   it('carries the copy deck labels, captions and placeholders, the event name in mono', () => {
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
     expect(nameInput()).toHaveAttribute('placeholder', 'Sign up')
     expect(screen.getByText('Shown on the dashboard, in funnels and in growth reports.')).toBeInTheDocument()
     expect(eventInput()).toHaveAttribute('placeholder', 'signup_click')
@@ -256,25 +257,25 @@ describe('GoalsPage: adding a goal (R13)', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveAttribute('variant', 'outline')
   })
 
-  it('adds the goal with what was typed, says so, refreshes the list and closes the form', async () => {
+  it('adds the name with what was typed, says so, refreshes the list and closes the form', async () => {
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
     type(nameInput(), '  Trial started ')
     type(eventInput(), ' trial_start ')
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Goal added'))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Name added'))
     expect(createGoal).toHaveBeenCalledWith('s1', { name: 'Trial started', event_name: 'trial_start' })
     expect(mutate).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('heading', { name: 'New goal' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Add goal' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Name an event' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Name an event' })).toBeInTheDocument()
   })
 
   it('sends with Enter from a field, and shows Saving… while the request runs', async () => {
     let finish: (g: Goal) => void = () => {}
     createGoal.mockReturnValue(new Promise<Goal>((r) => (finish = r)))
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
     type(nameInput(), 'Trial started')
     type(eventInput(), 'trial_start')
     fireEvent.submit(eventInput().closest('form')!)
@@ -285,24 +286,24 @@ describe('GoalsPage: adding a goal (R13)', () => {
     expect(screen.getByRole('button', { name: 'Edit Purchase' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Delete Purchase' })).toBeDisabled()
     await act(async () => finish(goal('g3', 'Trial started', 'trial_start')))
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'New goal' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Name an event' })).toBeNull())
   })
 
   it.each([
-    ['', '', 'Give the goal a name.', 'Enter the event name your site sends.'],
+    ['', '', 'Give the event a name.', 'Enter the event name your site sends.'],
     ['x'.repeat(256), 'signup', 'Use 255 characters or fewer.', null],
     // 128 two-byte letters are 256 bytes: the server counts bytes.
     ['é'.repeat(128), 'signup', 'Use 255 characters or fewer.', null],
     ['Sign up', 'sign up', null, 'Use letters, numbers and underscores only.'],
     ['Sign up', 'a'.repeat(65), null, 'Use 64 characters or fewer.'],
-    ['Sign up', 'PageView', null, "pageview can't be a goal. Every pageview is counted already."],
-    ['Sign up', 'SIGNUP_CLICK', null, 'This event already has a goal.'],
+    ['Sign up', 'PageView', null, "pageview can't be named here. Every pageview is counted already."],
+    ['Sign up', 'SIGNUP_CLICK', null, 'This event already has a name.'],
   ])('refuses name %j with event %j in the form, sending nothing', async (name, event, nameWords, eventWords) => {
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
     type(nameInput(), name)
     type(eventInput(), event)
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
 
     if (nameWords) {
       expect(await screen.findByText(nameWords)).toBeInTheDocument()
@@ -322,62 +323,62 @@ describe('GoalsPage: adding a goal (R13)', () => {
 
   it('clears a field’s refusal as soon as that field changes', async () => {
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
-    expect(await screen.findByText('Give the goal a name.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
+    expect(await screen.findByText('Give the event a name.')).toBeInTheDocument()
     type(nameInput(), 'S')
-    expect(screen.queryByText('Give the goal a name.')).toBeNull()
+    expect(screen.queryByText('Give the event a name.')).toBeNull()
     expect(screen.getByText('Enter the event name your site sends.')).toBeInTheDocument()
   })
 
-  it("keeps the draft and says Couldn't add the goal when the request fails, in the page's own words", async () => {
+  it("keeps the draft and says Couldn't add the name when the request fails, in the page's own words", async () => {
     createGoal.mockRejectedValue(new ApiError('Something went wrong, please try again.', 500))
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
     type(nameInput(), 'Trial started')
     type(eventInput(), 'trial_start')
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't add the goal. Try again."))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't add the name. Try again."))
     expect(toast.success).not.toHaveBeenCalled()
     expect(nameInput().value).toBe('Trial started')
     expect(eventInput().value).toBe('trial_start')
-    expect(screen.getByRole('button', { name: 'Add goal' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add name' })).not.toBeDisabled()
   })
 
-  it('shows the server refusing a second goal for one event as the field’s own words', async () => {
+  it('shows the server refusing a second name for one event as the field’s own words', async () => {
     createGoal.mockRejectedValue(new ApiError('Bad request', 400, { error: 'A goal with this event name already exists' }))
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
     type(nameInput(), 'Trial started')
     type(eventInput(), 'trial_start')
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
 
-    expect(await screen.findByText('This event already has a goal.')).toBeInTheDocument()
+    expect(await screen.findByText('This event already has a name.')).toBeInTheDocument()
     expect(toast.error).not.toHaveBeenCalled()
     expect(eventInput().value).toBe('trial_start')
   })
 
-  it('Cancel closes the form, sends nothing, and gives Add goal back to the masthead', () => {
+  it('Cancel closes the form, sends nothing, and gives Name an event back to the masthead', () => {
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Add goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
     type(nameInput(), 'Trial started')
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(screen.queryByRole('heading', { name: 'New goal' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Name an event' })).toBeNull()
     expect(createGoal).not.toHaveBeenCalled()
-    expect(screen.getByTestId('masthead-slot')).toContainElement(screen.getByRole('button', { name: 'Add goal' }))
+    expect(screen.getByTestId('masthead-slot')).toContainElement(screen.getByRole('button', { name: 'Name an event' }))
   })
 })
 
-describe('GoalsPage: changing a goal (R13, R14)', () => {
-  it('opens Edit goal above the list with the goal filled in and its event name open to change', () => {
+describe('GoalsPage: changing a name (R13, R14)', () => {
+  it('opens Edit name above the list with the name filled in and its event name open to change', () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Sign up' }))
-    expect(screen.getByRole('heading', { name: 'Edit goal', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Edit name', level: 2 })).toBeInTheDocument()
     expect(nameInput().value).toBe('Sign up')
     expect(eventInput().value).toBe('signup_click')
     expect(eventInput()).not.toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Save goal' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save name' })).toBeInTheDocument()
   })
 
   it('brings the form into view and puts the cursor in Name when a pencil low on a long list is pressed', () => {
@@ -388,7 +389,7 @@ describe('GoalsPage: changing a goal (R13, R14)', () => {
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     const scrolled = scrollIntoView.mock.contexts[0] as Element
-    expect(scrolled.contains(screen.getByRole('heading', { name: 'Edit goal' }))).toBe(true)
+    expect(scrolled.contains(screen.getByRole('heading', { name: 'Edit name' }))).toBe(true)
     expect(document.activeElement).toBe(nameInput())
     expect(nameInput().value).toBe('Goal 29')
 
@@ -397,61 +398,61 @@ describe('GoalsPage: changing a goal (R13, R14)', () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(2)
   })
 
-  it('saves a new event name for the goal (R14) and says Goal saved', async () => {
+  it('saves a new event name under the same name (R14) and says Name saved', async () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Sign up' }))
     type(eventInput(), 'signup_done')
-    fireEvent.click(screen.getByRole('button', { name: 'Save goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Goal saved'))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Name saved'))
     expect(updateGoal).toHaveBeenCalledWith('s1', 'g1', { name: 'Sign up', event_name: 'signup_done' })
     expect(createGoal).not.toHaveBeenCalled()
     expect(mutate).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('heading', { name: 'Edit goal' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Edit name' })).toBeNull()
   })
 
-  it('lets a goal keep its own event name, and refuses another goal’s', async () => {
+  it('lets a name keep its own event, and refuses another name’s event', async () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Sign up' }))
     type(eventInput(), 'purchase')
-    fireEvent.click(screen.getByRole('button', { name: 'Save goal' }))
-    expect(await screen.findByText('This event already has a goal.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
+    expect(await screen.findByText('This event already has a name.')).toBeInTheDocument()
     expect(updateGoal).not.toHaveBeenCalled()
 
     type(eventInput(), 'signup_click')
-    fireEvent.click(screen.getByRole('button', { name: 'Save goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
     await waitFor(() => expect(updateGoal).toHaveBeenCalledWith('s1', 'g1', { name: 'Sign up', event_name: 'signup_click' }))
   })
 
-  it("keeps the draft and says Couldn't save the goal when the request fails, never Facet's sentence", async () => {
+  it("keeps the draft and says Couldn't save the name when the request fails, never Facet's sentence", async () => {
     updateGoal.mockRejectedValue(new ApiError('Invalid credentials', 403))
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Sign up' }))
     type(nameInput(), 'Signed up')
-    fireEvent.click(screen.getByRole('button', { name: 'Save goal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't save the goal. Try again."))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't save the name. Try again."))
     expect(toast.error).not.toHaveBeenCalledWith('Invalid credentials')
     expect(nameInput().value).toBe('Signed up')
-    expect(screen.getByRole('heading', { name: 'Edit goal' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Edit name' })).toBeInTheDocument()
   })
 })
 
-describe('GoalsPage: deleting a goal', () => {
-  it('names the goal in a hold dialog with a coral bin, and says what goes and what stays', () => {
+describe('GoalsPage: deleting a name', () => {
+  it('names the event in a hold dialog with a coral bin, and says what goes and what stays', () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Sign up' }))
-    const dialog = screen.getByRole('dialog', { name: 'Delete the goal "Sign up"?' })
+    const dialog = screen.getByRole('dialog', { name: 'Delete the name "Sign up"?' })
     expect(dialog.querySelector('[data-kit-icon="heading"]')!.className).toMatch(/\btext-destructive\b/)
     expect(within(dialog).getByTestId('hold-description')).toHaveTextContent(
-      'The name goes, and growth reports and exports stop listing signup_click as a goal. Every signup_click event stays counted on the dashboard. You can add the goal again at any time.',
+      'The name goes, and growth reports and exports stop listing signup_click. Every signup_click event stays counted on the dashboard. You can name it again at any time.',
     )
     // The carried finding: nothing recorded is deleted, and the dialog no longer says so.
     expect(dialog).not.toHaveTextContent(/everything recorded/)
     expect(within(dialog).getByRole('button', { name: 'Hold to delete' })).toBeInTheDocument()
   })
 
-  it('hides the goal at once on confirm, and sends the delete only when the Undo window runs out', async () => {
+  it('hides the name at once on confirm, and sends the delete only when the Undo window runs out', async () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Sign up' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
@@ -474,7 +475,7 @@ describe('GoalsPage: deleting a goal', () => {
     expect(deleteGoal).toHaveBeenCalledWith('s1', 'g1', { keepalive: true })
   })
 
-  it('Undo brings the goal back and sends nothing', () => {
+  it('Undo brings the name back and sends nothing', () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Sign up' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
@@ -483,7 +484,7 @@ describe('GoalsPage: deleting a goal', () => {
     expect(deleteGoal).not.toHaveBeenCalled()
   })
 
-  it("brings the goal back and says Couldn't delete in the page's own words when the request fails", async () => {
+  it("brings the name back and says Couldn't delete in the page's own words when the request fails", async () => {
     deleteGoal.mockRejectedValue(new ApiError('Invalid credentials', 403))
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Sign up' }))
@@ -494,12 +495,12 @@ describe('GoalsPage: deleting a goal', () => {
     expect(screen.getByText('Sign up')).toBeInTheDocument()
   })
 
-  it('closes the form when the goal open in it is deleted', () => {
+  it('closes the form when the name open in it is deleted', () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Sign up' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete Sign up' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
-    expect(screen.queryByRole('heading', { name: 'Edit goal' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Edit name' })).toBeNull()
   })
 
   it('Cancel closes the dialog and deletes nothing', () => {
@@ -520,5 +521,56 @@ describe('GoalsPage: words', () => {
       expect(code).not.toMatch(/[—–]/)
       expect(code).not.toMatch(/\bChoose\b/)
     }
+  })
+
+  // R69 (17-11-2026): the page is Events and a goal is called a named event. The word may stay in code (the
+  // stored record, its API, the server's refusal this page matches), never in a sentence a person reads.
+  it('says goal nowhere a person reads', async () => {
+    const read = () => {
+      expect(document.body.textContent).not.toMatch(/goal/i)
+      for (const el of document.querySelectorAll('[aria-label], [placeholder], [title]')) {
+        for (const attr of ['aria-label', 'placeholder', 'title']) expect(el.getAttribute(attr) ?? '').not.toMatch(/goal/i)
+      }
+    }
+    renderPage()
+    read()
+    // The form for a new name, with both fields refused.
+    fireEvent.click(screen.getByRole('button', { name: 'Name an event' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
+    expect(await screen.findByText('Give the event a name.')).toBeInTheDocument()
+    read()
+    // The two refusals that name the event: pageview, and an event that has a name already.
+    type(nameInput(), 'Trial started')
+    type(eventInput(), 'pageview')
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
+    expect(document.getElementById('goal-event-problem')).toHaveTextContent(/pageview/)
+    read()
+    type(eventInput(), 'purchase')
+    fireEvent.click(screen.getByRole('button', { name: 'Add name' }))
+    expect(document.getElementById('goal-event-problem')).toHaveTextContent(/already has a name/)
+    read()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    // The form for a name that exists, then the delete dialog.
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Sign up' }))
+    expect(screen.getByRole('button', { name: 'Save name' })).toBeInTheDocument()
+    read()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Sign up' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    read()
+  })
+
+  it('says goal in none of its other states: nothing named yet, the list not loaded, no permission', () => {
+    const read = () => expect(document.body.textContent).not.toMatch(/goal/i)
+    useGoals.mockReturnValue(goalsState({ data: [] }))
+    const empty = renderPage()
+    read()
+    empty.unmount()
+    useGoals.mockReturnValue(goalsState({ data: undefined, error: new ApiError('Invalid credentials', 403) }))
+    const failedLoad = renderPage()
+    read()
+    failedLoad.unmount()
+    mockCanManage = false
+    renderPage()
+    read()
   })
 })

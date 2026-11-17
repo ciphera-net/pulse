@@ -117,7 +117,7 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
     expect(deferred[1]!.message).toBe('3 kinds of data reset')
 
-    for (const label of ['Visits and events', 'Journeys', 'Funnels and goals', 'Uptime history', 'Performance history', 'Bunny CDN', 'Search Console']) {
+    for (const label of ['Visits and events', 'Journeys', 'Funnels and event names', 'Uptime history', 'Performance history', 'Bunny CDN', 'Search Console']) {
       selectModule(label)
     }
     fireEvent.click(screen.getByRole('button', { name: 'Hold to reset' }))
@@ -166,7 +166,7 @@ describe('ResetDataModal (hold-to-confirm, PUL-28)', () => {
 
   it('escalates the all-modules label as every module is picked', () => {
     renderModal()
-    for (const label of ['Visits and events', 'Journeys', 'Funnels and goals', 'Uptime history', 'Performance history', 'Bunny CDN', 'Search Console']) {
+    for (const label of ['Visits and events', 'Journeys', 'Funnels and event names', 'Uptime history', 'Performance history', 'Bunny CDN', 'Search Console']) {
       selectModule(label)
     }
     expect(screen.getByRole('checkbox', { name: /Everything/ }).getAttribute('aria-checked')).toBe('true')

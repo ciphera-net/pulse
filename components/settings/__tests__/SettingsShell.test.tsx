@@ -133,11 +133,11 @@ const BOLT: SiteLike = { id: 'site-b', name: 'Bolt', domain: 'bolt.example' }
 
 describe('SettingsShell: the site named in a site page\'s header', () => {
   it('names the site in place of "Settings", with a caret that opens the site switcher', () => {
-    pathname = '/settings/site/goals'
+    pathname = '/settings/site/events'
     activeSiteValue = { sites: [ACME, BOLT], activeSite: ACME, setActiveSiteId }
     render(<SettingsShell><div>page</div></SettingsShell>)
     const h1 = screen.getByRole('heading', { level: 1 })
-    expect(h1).toHaveTextContent(/Acme.*Goals/)
+    expect(h1).toHaveTextContent(/Acme.*Events/)
     expect(h1).not.toHaveTextContent(/Settings/)
     const trigger = within(h1).getByRole('button', { name: /Switch site/ })
     expect(trigger).toHaveAttribute('aria-haspopup', 'listbox')
@@ -156,10 +156,10 @@ describe('SettingsShell: the site named in a site page\'s header', () => {
   })
 
   it('shows "Site" until the active site resolves', () => {
-    pathname = '/settings/site/goals'
+    pathname = '/settings/site/events'
     render(<SettingsShell><div>page</div></SettingsShell>)
     const h1 = screen.getByRole('heading', { level: 1 })
-    expect(h1).toHaveTextContent(/Site.*Goals/)
+    expect(h1).toHaveTextContent(/Site.*Events/)
     expect(within(h1).queryByRole('button')).toBeNull()
   })
 

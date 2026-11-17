@@ -43,7 +43,7 @@ const CAPTIONS: Record<string, string> = {
   account: 'Two warnings before an inactive team is deleted, 30 and 7 days ahead, and the email that confirms the deletion.',
   uptime: 'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
   // The scheduled report email is in this group, so its line names growth reports (§13.2, found while drawing 1).
-  site: "Performance scores that drop or recover, pages losing visits, a goal's first conversion, finished imports and growth reports.",
+  site: "Performance scores that drop or recover, pages losing visits, a named event's first conversion, finished imports and growth reports.",
   // Sent to the member whose role changed, and to nobody else (pulse-backend announceRoleChange).
   team: 'A change to your role in the team.',
   system: 'Announcements and scheduled maintenance from Ciphera.',

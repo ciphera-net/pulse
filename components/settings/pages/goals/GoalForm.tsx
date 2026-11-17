@@ -7,7 +7,7 @@ import type { EventProblem, GoalProblems, NameProblem } from './checkGoal'
 
 // The copy deck's words for each refusal (§5.3).
 const NAME_WORDS: Record<NameProblem, React.ReactNode> = {
-  empty: 'Give the goal a name.',
+  empty: 'Give the event a name.',
   long: 'Use 255 characters or fewer.',
 }
 
@@ -17,16 +17,16 @@ const EVENT_WORDS: Record<EventProblem, React.ReactNode> = {
   long: 'Use 64 characters or fewer.',
   pageview: (
     <>
-      <code className="font-mono">pageview</code> can&apos;t be a goal. Every pageview is counted already.
+      <code className="font-mono">pageview</code> can&apos;t be named here. Every pageview is counted already.
     </>
   ),
-  taken: 'This event already has a goal.',
+  taken: 'This event already has a name.',
 }
 
 const INVALID = 'border-destructive focus:border-destructive'
 
 /**
- * Adding or changing a goal (R13: the form opens above the list): the two fields stacked, each with its label and
+ * Adding or changing an event's name (R13: the form opens above the list): the two fields stacked, each with its label and
  * caption over the input, then Cancel and the form's own button. The event name stays open while editing (R14).
  */
 export function GoalForm({
@@ -111,7 +111,7 @@ export function GoalForm({
           Cancel
         </Button>
         <Button type="submit" size="sm" disabled={saving}>
-          {saving ? 'Saving…' : mode === 'edit' ? 'Save goal' : 'Add goal'}
+          {saving ? 'Saving…' : mode === 'edit' ? 'Save name' : 'Add name'}
         </Button>
       </div>
     </form>

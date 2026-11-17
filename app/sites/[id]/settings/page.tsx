@@ -9,7 +9,9 @@ const TAB_MAP: Record<string, string> = {
   data:          'privacy',
   privacy:       'privacy',
   bot:           'general',
-  goals:         'goals',
+  // Events was called Goals until 17-11-2026 (R69): the first-conversion email's link says ?tab=goals.
+  goals:         'events',
+  events:        'events',
   integrations:  'integrations',
   // PULSE-121, design §3.10c M13-h: the M13 import notifications' link_url is
   // `/sites/:id/settings?tab=import` (pulse-backend's ImportTabURL). Import is

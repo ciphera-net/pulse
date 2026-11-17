@@ -11,7 +11,7 @@ export const ROLE_WORD: Record<TeamRole, string> = { owner: 'Owner', admin: 'Adm
 
 export const ROLE_LINE: Record<TeamRole, string> = {
   owner: "Everything, including billing, resetting a site's data and deleting the team. A team has one owner.",
-  admin: 'Changes sites, goals and connected services, and invites and removes people. Can see billing but not change it.',
+  admin: 'Changes sites, event names and connected services, and invites and removes people. Can see billing but not change it.',
   member: "Sees every site's stats and billing, and can export stats. Can't change settings.",
 }
 
