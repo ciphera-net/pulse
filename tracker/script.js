@@ -18,6 +18,13 @@
  * what it never records. If you are auditing what Pulse collects, read both files — this one
  * is not the whole story once interactions are on.
  *
+ * v1.10.0 (17-11-2026): a pageview or a custom event that cannot be delivered goes out again
+ * while the page stays open, for up to 30 minutes (send, below), so a short outage or a dropped
+ * connection no longer loses it. Each event carries its own random `idempotency_key`, made for
+ * that one event, so the server stores a retried event once. It names an event, never a
+ * visitor, and like everything else here it lives in this page's memory only. The bytes for it
+ * came from tightening code elsewhere, so the script stays under its 3 KB ceiling.
+ *
  * v1.9.0 (14-11-2026): every option is the SITE'S SETTINGS, sent by the server, never a flag
  * on the tag, so one tag serves every site and a setting applies without touching it. Most
  * browsers learn the settings from the answer to their first pageview; a browser sending Do
@@ -114,10 +121,6 @@
     (document.head || document.documentElement).appendChild(s);
   }
 
-  function showNote(outcome) {
-    load('script.note.js', outcome);
-  }
-
   // * Skip headless browsers and automated tools (Puppeteer, Playwright, Selenium). First, so that
   // * automation never asks for a site's settings either.
   if (navigator.webdriver) {
@@ -155,7 +158,7 @@
         // * warning: a browser that stores nothing can't hold the flag either.
         if (ignoreArg !== 'off') outcome = 'refused';
       }
-      showNote(outcome);
+      load('script.note.js', outcome);
     }
     try {
       if (localStorage.getItem(IGNORE_KEY)) {
@@ -188,7 +191,7 @@
         cfg = s;
       })
       .then(begin, () => {
-        if (askedIgnore) showNote('signal');
+        if (askedIgnore) load('script.note.js', 'signal');
       });
   } else {
     begin();
@@ -197,7 +200,9 @@
   // * Everything that measures and sends: run only once begin() has let this browser through.
   function run() {
     // * Identity is server-side, from the IP address and the browser string: no cookie, nothing
-    // * written to storage (the opt-out flag above is only read), no client-generated identifier.
+    // * written to storage (the opt-out flag above is only read), no client-generated identifier
+    // * of the visitor. (Since 1.10.0 each event carries its own random key, which names that one
+    // * event so a retry is stored once; two events never share one. See eventPayload.)
     // *
     // * v1.7.0 writes NOTHING to the browser. Earlier versions kept two records in
     // * sessionStorage: the tab's last pageview, so a reload did not count twice, and from
@@ -281,22 +286,21 @@
     if (navigator.languages && navigator.languages.length > 1) humanSignals |= 32;
     if (!document.hidden) humanSignals |= 4;
 
+    // * Bit 1: a person's own input (a pointer moved, a touch, a key). The listeners stay for the
+    // * page's life (1.10.0; they removed themselves before, which cost bytes and saved nothing:
+    // * setting a bit that is already set is free, and the idle window below listens to the same
+    // * events anyway).
     function onHumanInput() {
       humanSignals |= 1;
-      document.removeEventListener('mousemove', onHumanInput);
-      document.removeEventListener('touchstart', onHumanInput);
-      document.removeEventListener('keydown', onHumanInput);
     }
-    document.addEventListener('mousemove', onHumanInput, { passive: true });
-    document.addEventListener('touchstart', onHumanInput, { passive: true });
-    document.addEventListener('keydown', onHumanInput, { passive: true });
 
     // * Activity for the idle window: anything a person does to a page. Scroll is added
     // * below where it is measured.
-    var ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'pointerdown', 'keydown', 'touchstart', 'wheel', 'click'];
-    for (var ai = 0; ai < ACTIVITY_EVENTS.length; ai++) {
-      document.addEventListener(ACTIVITY_EVENTS[ai], noteActivity, { passive: true, capture: true });
-    }
+    ['mousemove', 'mousedown', 'pointerdown', 'keydown', 'touchstart', 'wheel', 'click'].forEach(function (name, i) {
+      document.addEventListener(name, noteActivity, { passive: true, capture: true });
+      // * mousemove, keydown and touchstart (0, 3, 4) are also the human-input signal above.
+      if (!i || i > 2 && i < 5) document.addEventListener(name, onHumanInput, { passive: true });
+    });
 
     // * Engagement goes out as a keepalive fetch, NOT sendBeacon (v1.6.1, PULSE-169). Browsers
     // * type a sendBeacon request as "ping", and EasyPrivacy's `*$ping,third-party` (on by
@@ -320,6 +324,35 @@
         headers: { 'Content-Type': 'application/json' },
         body: body,
         keepalive: true
+      });
+    }
+
+    // * A pageview or a custom event, sent again while the page stays open when it could not be
+    // * delivered (v1.10.0, after the 17-11-2026 outage: for 23 minutes every send failed and each
+    // * event was simply gone). A send that fails before an answer (offline, a dropped connection, an
+    // * edge whose error page carries no CORS header) or is answered 408, 429 or 5xx goes out again
+    // * after 2 s plus its age, at most every 5 minutes, so the gaps double (2 s, 4 s, 8 s ...), until
+    // * it is 30 minutes old. Any other answer is final: a 4xx says the event itself was refused.
+    // *
+    // * 🔑 Only an event that carries its `idempotency_key` (eventPayload) is sent again. The server
+    // * keeps the key of every event it accepted for an hour and answers a repeat with the same id
+    // * without storing it, so a send that WAS stored but whose answer was lost is not counted twice.
+    // * Without the key (no crypto.randomUUID: a page served over plain http, an old browser) a
+    // * retry could double an event, so there is none, as before 1.10.0.
+    // *
+    // * In memory only, like everything else here: a page that closes with a send still pending
+    // * loses it. Engagement is not retried: every report carries the whole page so far and the
+    // * server keeps the largest, so the next one covers a lost one.
+    function send(payload, done, first) {
+      first = first || Date.now();
+      post('/api/v1/events', JSON.stringify(payload)).then(function (res) {
+        if (res.status > 499 || res.status === 429 || res.status === 408) throw 0;
+        return res.json();
+      }).then(done, function () {
+        var age = Date.now() - first;
+        if (payload.idempotency_key && age < 1800000) {
+          setTimeout(function () { send(payload, done, first); }, Math.min(300000, 2000 + age));
+        }
       });
     }
 
@@ -396,17 +429,13 @@
 
     // * pagehide is the page's real end (navigation away, tab close, or entry into the
     // * back-forward cache). A restore from that cache is a new pageview, below.
-    window.addEventListener('pagehide', function() { sendMetrics(true, true); });
+    addEventListener('pagehide', function() { sendMetrics(true, true); });
 
     // * Normalize path: strip trailing slash, return pathname only.
     // * UTM extraction and query handling moved server-side.
     function cleanPath() {
-      var pathname = window.location.pathname;
-      // * Strip trailing slash (but keep root /)
-      if (pathname.length > 1 && pathname.charAt(pathname.length - 1) === '/') {
-        pathname = pathname.slice(0, -1);
-      }
-      return pathname;
+      // * Strip one trailing slash, but keep the root /: the slash must follow a character.
+      return location.pathname.replace(/([^])\/$/, '$1');
     }
 
     // * Refresh dedup: skip a pageview if this document tracked the same path within 5 seconds,
@@ -418,17 +447,14 @@
 
     // * The anchor: the most recent pageview id the server returned, in memory only. Most
     // * recent, not first, on purpose — a later pageview's identity was itself inherited, so
-    // * continuity is transitive.
+    // * continuity is transitive. Set where a pageview id is taken up (adoptPageview and the
+    // * pageview's answer), both of which hold a real id by then.
     var anchorId = null;
 
     // * The browser's own verdict that this document is a reload, sent with its first pageview
     // * only: later pageviews in the same document are navigations.
     var reloaded = false;
     try { reloaded = performance.getEntriesByType('navigation')[0].type === 'reload'; } catch (e) {}
-
-    function rememberAnchor(id) {
-      if (id) anchorId = id;
-    }
 
     function rememberPageview() {
       if (!currentEventId) return;
@@ -439,8 +465,7 @@
     }
 
     function adoptPageview(last) {
-      currentEventId = last.id;
-      rememberAnchor(last.id);
+      currentEventId = anchorId = last.id;
       pageStartTime = last.t;
       engagedMs = (last.e || 0) * 1000;
       visibleMs = (last.v || 0) * 1000;
@@ -523,14 +548,7 @@
     // * The identity anchor is what surfaced it: its profile guard compares the
     // * stored browser/OS of the anchoring pageview against this request's, so an
     // * iPad refused its own anchor and split into two visitors.
-    var clientOSHint = (function () {
-      try {
-        if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
-          return 'iPadOS';
-        }
-      } catch (e) {}
-      return '';
-    })();
+    var clientOSHint = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 ? 'iPadOS' : '';
 
     // * The fields every event carries, a pageview and a custom event alike.
     function eventPayload() {
@@ -539,17 +557,24 @@
         url: location.href,
         title: document.title,
         referrer: document.referrer || '',
-        screen: { width: window.innerWidth || window.screen.width, height: window.innerHeight || window.screen.height },
+        screen: { width: innerWidth || screen.width, height: innerHeight || screen.height },
         client_os_hint: clientOSHint,
       };
       if (anchorId) payload.anchor_id = anchorId;
+      // * The event's own random id (v1.10.0), made fresh for every event and never reused, so the
+      // * server can tell a retried send from a new event (send, above). It names one event, never a
+      // * visitor: two events from the same person carry unrelated ids. The server stores it as the
+      // * event's id. crypto.randomUUID exists only on https pages; elsewhere the event has no key
+      // * and is not retried.
+      try { payload.idempotency_key = crypto.randomUUID(); } catch (e) {}
       return payload;
     }
 
     function sendPageview(path) {
       const payload = eventPayload();
-      payload.language = navigator.language || '';
-      payload.timezone = (function() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })();
+      // * Either one missing is left out of the JSON, which the server reads as an empty string.
+      payload.language = navigator.language;
+      try { payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
       payload.hs = humanSignals;
       if (reloaded) {
         payload.reload = true;
@@ -558,23 +583,19 @@
 
       var startedAt = Date.now();
 
-      // * Send event
-      post('/api/v1/events', JSON.stringify(payload)).then(res => res.json())
-      .then(data => {
+      // * Send event (send() retries it while the page stays open; a final failure stays silent)
+      send(payload, data => {
         // * Every answer carries the site's settings, so a change made in the dashboard reaches an
         // * open page with its next pageview.
         if (data && data.c) settings(data.c);
-        // * The document navigated on while this was in flight: that page is gone.
+        // * The document navigated on while this was in flight (or being retried): that page is gone.
         if (cleanPath() !== path || currentEventId) return;
         if (data && data.id) {
-          currentEventId = data.id;
-          rememberAnchor(data.id);
+          currentEventId = anchorId = data.id;
           pageStartTime = startedAt;
           rememberPageview();
           startPageClocks();
         }
-      }).catch(() => {
-        // * Silently fail - don't interrupt user experience
       });
     }
 
@@ -590,7 +611,7 @@
     // * A page restored from the back-forward cache was closed by pagehide; the person is
     // * looking at it again, so it is a pageview again (the refresh dedup absorbs a fast
     // * back-and-forth).
-    window.addEventListener('pageshow', function(e) {
+    addEventListener('pageshow', function(e) {
       if (e && e.persisted) trackPageview();
     });
 
@@ -605,13 +626,13 @@
       }
     }
     new MutationObserver(onUrlChange).observe(document, { subtree: true, childList: true });
-    var _push = history.pushState;
-    var _replace = history.replaceState;
-    history.pushState = function() { _push.apply(this, arguments); onUrlChange(); };
-    history.replaceState = function() { _replace.apply(this, arguments); onUrlChange(); };
+    ['pushState', 'replaceState'].forEach(function (name) {
+      var original = history[name];
+      history[name] = function () { original.apply(this, arguments); onUrlChange(); };
+    });
 
     // * Track popstate (browser back/forward)
-    window.addEventListener('popstate', onUrlChange);
+    addEventListener('popstate', onUrlChange);
 
     // * Custom events / goals
     function trackCustomEvent(eventName, props, revenue) {
@@ -624,7 +645,7 @@
       if (typeof revenue === 'number' && isFinite(revenue) && revenue >= 0) {
         payload.revenue = revenue;
       }
-      post('/api/v1/events', JSON.stringify(payload)).catch(function() {});
+      send(payload);
     }
 
     // * Expose pulse.track() for custom events (e.g. pulse.track('signup_click'))
@@ -640,20 +661,20 @@
 
     function checkScroll() {
       var docHeight = document.documentElement.scrollHeight;
-      var viewHeight = window.innerHeight;
+      var viewHeight = innerHeight;
       if (docHeight <= viewHeight) {
         maxScrollPct = 100;
         scrollTicking = false;
         return;
       }
-      var scrollTop = window.scrollY;
+      var scrollTop = scrollY;
       var pct = Math.min(100, Math.round((scrollTop + viewHeight) / docHeight * 100));
       if (pct > maxScrollPct) maxScrollPct = pct;
       humanSignals |= 2;
       scrollTicking = false;
     }
 
-    window.addEventListener('scroll', function() {
+    addEventListener('scroll', function() {
       noteActivity();
       if (!scrollTicking) {
         scrollTicking = true;
@@ -663,7 +684,9 @@
 
     // * Outbound link clicks and file downloads, each unless the site's settings turn it off. Read at
     // * click time, because the settings arrive with the first answer.
-    var FILE_EXT_REGEX = /\.(pdf|zip|gz|tar|xlsx|xls|csv|docx|doc|pptx|ppt|mp4|mp3|wav|avi|mov|exe|dmg|pkg|deb|rpm|iso|7z|rar)($|\?|#)/i;
+    // * Tested against url.pathname, which never holds a query or a fragment, so the extension ends
+    // * the string (1.10.0 dropped a `($|\?|#)` that could never match the last two ways).
+    var FILE_EXT_REGEX = /\.(pdf|zip|gz|tar|xlsx?|csv|docx?|pptx?|mp[34]|wav|avi|mov|exe|dmg|pkg|deb|rpm|iso|7z|rar)$/i;
 
     document.addEventListener('click', function(e) {
       var el = e.target;
