@@ -195,6 +195,13 @@ export const TERMS: Record<string, GlossaryTerm> = {
       'Pageviews count page loads, so a reload more than five seconds later adds one. A reload adds no visitor, and neither does a return trip on the same day; a reader who returns on another day counts again. Visitors over a range add up each day’s unique visitors. Bounce and duration stay session-scoped: they describe a visit, not a visitor.',
     docs: 'dashboard#pages',
   },
+  // The Pages page's own columns (the list, 17-11-2026). No `docs` until the page has a section in the docs: an
+  // unpublished term carries no link rather than one that 404s.
+  pages_list: {
+    title: 'Pages',
+    definition:
+      'Change is a row\'s views against the period before. Bounce is the share of visits that started on a page and saw no other page. Exit rate is the share of a page\'s views that ended a visit. Time on page is the average time a page was on screen and in use. Scroll is how far down a page its visitors got, on average.',
+  },
   peak_hours: {
     title: 'Peak hours',
     definition:

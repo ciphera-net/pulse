@@ -25,6 +25,7 @@ import { toast } from '@ciphera-net/facet'
 import {
   getDashboard,
   getPagesTable,
+  getPageScroll,
   getCampaigns,
   getRealtime,
   getStats,
@@ -82,6 +83,8 @@ import type {
   CampaignStat,
   DashboardData,
   PagesTableData,
+  PageScrollBy,
+  PageScrollData,
 } from '@/lib/api/stats'
 
 // * SWR fetcher functions.
@@ -438,12 +441,14 @@ export function usePagesTable(
   end: string,
   limit = 500,
   filters?: string,
-  period?: string
+  period?: string,
+  /** Extra parts of the answer, by name: `hours` (on a one-day range, each page's views by the hour). */
+  include?: string
 ) {
   return useSiteSWR<PagesTableData>(
     siteId, 'demo',
-    (siteKey) => siteId && (period || (start && end)) ? ['pagesTable', siteKey, period ?? '', start, end, limit, filters] : null,
-    (ref) => getPagesTable(ref, start, end, limit, filters, period),
+    (siteKey) => siteId && (period || (start && end)) ? ['pagesTable', siteKey, period ?? '', start, end, limit, filters, include ?? ''] : null,
+    (ref) => getPagesTable(ref, start, end, limit, filters, period, include),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -453,6 +458,29 @@ export function usePagesTable(
       // cadence as the surfaces above.
       revalidateOnFocus: true,
       focusThrottleInterval: 30_000,
+    }
+  )
+}
+
+// * One page's scroll depth, for every visit and split by a device, a source or a country, in ONE read (the Pages
+// * page's Scroll depth tab). Asked only once a page is opened on that tab: an empty path asks for nothing.
+// * Route class `demo`, as the pages read it belongs to.
+export function usePageScroll(
+  siteId: string,
+  path: string,
+  by: PageScrollBy,
+  start: string,
+  end: string,
+  filters?: string,
+  period?: string
+) {
+  return useSiteSWR<PageScrollData>(
+    siteId, 'demo',
+    (siteKey) => siteId && path && (period || (start && end)) ? ['pageScroll', siteKey, period ?? '', start, end, path, by, filters] : null,
+    (ref) => getPageScroll(ref, path, by, start, end, filters, period),
+    {
+      ...dashboardSWRConfig,
+      dedupingInterval: 10_000,
     }
   )
 }

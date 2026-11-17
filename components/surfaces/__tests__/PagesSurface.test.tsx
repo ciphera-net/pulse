@@ -11,6 +11,8 @@ const mockUsePagesTable = vi.fn()
 const mockUseSite = vi.fn()
 const mockUseDataWindow = vi.fn()
 let mockPeriodReady = true
+/** What /me says of the list's beta flag for this team: on, off, or not known yet (null). */
+let mockListBeta: boolean | null = false
 
 vi.mock('next/navigation', () => ({
   useParams: () => {
@@ -38,6 +40,11 @@ vi.mock('@/components/pages/PagesTable', () => ({
   default: ({ rows }: { rows: unknown[] }) => <div data-testid="table">{rows.length} rows</div>,
 }))
 vi.mock('@/components/ui/DateRangePicker', () => ({ default: () => null }))
+// The list is its own suite (components/pages/list/__tests__); here it says which site it was handed.
+vi.mock('@/components/pages/list/PagesListPage', () => ({
+  default: ({ siteId }: { siteId: string }) => <div data-testid="list-page">{siteId}</div>,
+}))
+vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'new-pages' ? mockListBeta : false) }))
 
 import PagesSurface from '../PagesSurface'
 import { SITE_PAGES, SiteScopeProvider, memberScope, type SiteScope } from '@/lib/scope/SiteScope'
@@ -73,6 +80,7 @@ const renderUnder = (scope: SiteScope) =>
 
 beforeEach(() => {
   mockPeriodReady = true
+  mockListBeta = false
   mockUsePagesTable.mockReset().mockReturnValue(tableState({ pages: [ROW, { ...ROW, path: '/b' }] }))
   mockUseSite.mockReset().mockReturnValue({ data: { id: 'x', timezone: 'Europe/Oslo' } })
   mockUseDataWindow.mockReset().mockReturnValue(null)
@@ -146,5 +154,37 @@ describe('a scope that does not serve the page', () => {
     expect(mockUsePagesTable).not.toHaveBeenCalled()
     expect(mockUseSite).not.toHaveBeenCalled()
     expect(mockUseDataWindow).not.toHaveBeenCalled()
+  })
+})
+
+describe('the list in beta (new-pages)', () => {
+  it('draws the list for a team that has it, and never mounts the table or its read', () => {
+    mockListBeta = true
+    renderUnder(member)
+    expect(screen.getByTestId('list-page')).toHaveTextContent('site-1')
+    expect(screen.queryByTestId('table')).toBeNull()
+    expect(mockUsePagesTable).not.toHaveBeenCalled()
+  })
+
+  it('draws neither page while the team\'s betas are not known yet, so the table never flashes by', () => {
+    mockListBeta = null
+    const { container } = renderUnder(member)
+    expect(screen.queryByTestId('list-page')).toBeNull()
+    expect(screen.queryByTestId('table')).toBeNull()
+    expect(container.querySelector('[data-pages-gate="waiting"]')).not.toBeNull()
+    expect(mockUsePagesTable).not.toHaveBeenCalled()
+  })
+
+  it('keeps the table for a team without it', () => {
+    renderUnder(member)
+    expect(screen.getByTestId('table')).toBeInTheDocument()
+    expect(screen.queryByTestId('list-page')).toBeNull()
+  })
+
+  it('still refuses a scope that does not serve the page before it asks about the beta', () => {
+    mockListBeta = true
+    renderUnder(customerLink)
+    expect(screen.getByRole('heading', { name: "This page isn't shared." })).toBeInTheDocument()
+    expect(screen.queryByTestId('list-page')).toBeNull()
   })
 })

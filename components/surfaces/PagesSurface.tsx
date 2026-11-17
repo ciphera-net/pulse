@@ -3,6 +3,8 @@
 import { FileText } from '@phosphor-icons/react'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import PagesTable from '@/components/pages/PagesTable'
+import PagesListPage from '@/components/pages/list/PagesListPage'
+import { NEW_PAGES_FLAG } from '@/components/pages/list/flag'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { NotShared } from '@/components/public/states'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -10,6 +12,8 @@ import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useSite, usePagesTable, useDataWindow } from '@/lib/swr/dashboard'
 import { servesPage, useSiteScope } from '@/lib/scope/SiteScope'
+import { DashboardFrameProvider } from '@/lib/dashboard/frame'
+import { useFeature } from '@/lib/features'
 import { siteDaysCaption } from '@/lib/utils/timezones'
 import { SkeletonBar } from '@/components/skeletons'
 
@@ -48,10 +52,35 @@ function PagesNotAvailable() {
 export default function PagesSurface() {
   const scope = useSiteScope()
   if (!servesPage(scope, 'pages')) return <NotShared scope={scope} />
-  return <PagesList siteId={scope.siteId} />
+  return <PagesGate siteId={scope.siteId} />
 }
 
-function PagesList({ siteId }: { siteId: string }) {
+/**
+ * The Pages page as one list is in beta (`new-pages`, lib/betas.ts): a team that has it gets the list
+ * (components/pages/list/PagesListPage.tsx), every other team and the public pages keep the table below.
+ * While /me is on the way the answer is not known, and NEITHER page is drawn: a team in the beta never sees the
+ * table flash by, and no read is made for a page that is about to be replaced.
+ */
+function PagesGate({ siteId }: { siteId: string }) {
+  const list = useFeature(NEW_PAGES_FLAG)
+  if (list === null) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-4" aria-hidden="true" data-pages-gate="waiting">
+        <SkeletonBar className="rounded-none border border-border bg-card h-96 animate-pulse" />
+      </div>
+    )
+  }
+  if (list) {
+    return (
+      <DashboardFrameProvider>
+        <PagesListPage siteId={siteId} />
+      </DashboardFrameProvider>
+    )
+  }
+  return <PagesTablePage siteId={siteId} />
+}
+
+function PagesTablePage({ siteId }: { siteId: string }) {
   const { data: site } = useSite(siteId)
 
   const dataWindow = useDataWindow(siteId, 'pages')

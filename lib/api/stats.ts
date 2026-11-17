@@ -311,6 +311,8 @@ function buildQuery(
     // (?group=language) — a fixed, non-user value, unlike the free-text
     // params above.
     group?: string
+    /** Extra parts of an answer a read asks for by name, comma-separated (the pages read: `hours`). */
+    include?: string
   },
 ): string {
   const params = new URLSearchParams()
@@ -328,6 +330,7 @@ function buildQuery(
   if (opts.sort) params.append('sort', opts.sort)
   if (opts.filters) params.append('filters', opts.filters)
   if (opts.group) params.append('group', opts.group)
+  if (opts.include) params.append('include', opts.include)
   const query = params.toString()
   return query ? `?${query}` : ''
 }
@@ -525,6 +528,11 @@ export interface PageTableRow {
   avg_scroll_depth: number | null
   /** Daily pageviews across the selected range, oldest first, from page_daily. */
   trend: number[]
+  /**
+   * The page's pageviews by the site's hour of the day, 24 entries from midnight. Sent only when the read asks for
+   * them (`include=hours`) and its range is ONE day: the Pages page draws a day's row bars from it.
+   */
+  hours?: number[]
   /** Percent change against the preceding range of equal length; null = incomparable. */
   delta: number | null
 }
@@ -533,8 +541,34 @@ export interface PagesTableData {
   pages: PageTableRow[]
 }
 
-export function getPagesTable(site: SiteRef, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string): Promise<PagesTableData> {
-  return apiRequest<PagesTableData>(sitePath(site, `/pages/table${buildQuery({ startDate, endDate, period, limit, filters })}`))
+export function getPagesTable(site: SiteRef, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string, include?: string): Promise<PagesTableData> {
+  return apiRequest<PagesTableData>(sitePath(site, `/pages/table${buildQuery({ startDate, endDate, period, limit, filters, include })}`))
+}
+
+/** What one page's scroll depth is split by on the Pages page. */
+export type PageScrollBy = 'device' | 'referrer' | 'country'
+
+export interface PageScrollRow {
+  /** The device, the referrer or the country code, as the dashboard's lists name it. */
+  value: string
+  depth: ScrollDepthDistribution
+}
+
+/** One page's scroll depth: every visit, and the busiest values of one dimension, in ONE read. */
+export interface PageScrollData {
+  /** The dimension the answer was asked for: the rows are that dimension's and no other's. */
+  by: PageScrollBy
+  /** Every visit of the page: the dashboard's scroll depth filtered to it. */
+  all: ScrollDepthDistribution
+  /** Up to twenty values, the busiest first; a visit with no value is in `all` only. */
+  rows: PageScrollRow[]
+}
+
+export function getPageScroll(site: SiteRef, path: string, by: PageScrollBy, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<PageScrollData> {
+  const query = new URLSearchParams(buildQuery({ startDate, endDate, period, filters }).slice(1))
+  query.set('path', path)
+  query.set('by', by)
+  return apiRequest<PageScrollData>(sitePath(site, `/pages/scroll?${query.toString()}`))
 }
 
 // ─── Event Properties ────────────────────────────────────────────────

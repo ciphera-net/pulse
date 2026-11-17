@@ -33,4 +33,8 @@ export const BETAS: readonly Beta[] = [
   // Match any (R65): with two filters or more, the dashboard's filters box offers a switch between what fits every
   // filter and what fits at least one. The box reads useFeature (lib/filters.ts MATCH_ANY_FLAG).
   { flag: 'match-any', name: 'Match any filter', revalidates: [] },
+  // The Pages page as one list (R78, R82): every page with its days as bars and its change, and a page that opens
+  // in place with its trend and its scroll depth. PagesSurface reads useFeature (components/pages/list/flag.ts
+  // NEW_PAGES_FLAG); the table stays for every team without it.
+  { flag: 'new-pages', name: 'New Pages page', revalidates: [] },
 ]
