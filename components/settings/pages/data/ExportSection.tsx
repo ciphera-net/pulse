@@ -58,7 +58,7 @@ const TABLE_LABELS: Record<ExportTable, string> = {
   operating_systems: 'Operating systems',
   devices: 'Devices',
   languages: 'Languages',
-  goals: 'Named events',
+  named_events: 'Named events',
   events: 'Events',
   event_properties: 'Event properties',
 }
@@ -68,7 +68,7 @@ const TABLE_GROUPS: { label: string; tables: ExportTable[] }[] = [
   { label: 'Traffic', tables: ['daily', 'pages', 'entry_pages', 'exit_pages'] },
   { label: 'Acquisition', tables: ['referrers', 'channels', 'utm_source', 'utm_medium', 'utm_campaign'] },
   { label: 'Audience', tables: ['countries', 'regions', 'browsers', 'operating_systems', 'devices', 'languages'] },
-  { label: 'Outcomes', tables: ['goals', 'events', 'event_properties'] },
+  { label: 'Outcomes', tables: ['named_events', 'events', 'event_properties'] },
 ]
 
 /**
@@ -84,7 +84,7 @@ const BASIC_TABLES: { label: string; tables: ExportTable[] }[] = [
   { label: 'Countries', tables: ['countries'] },
   { label: 'Devices', tables: ['devices'] },
   { label: 'Campaigns', tables: ['utm_campaign'] },
-  { label: 'Events', tables: ['goals', 'events'] },
+  { label: 'Events', tables: ['named_events', 'events'] },
 ]
 const BASIC_TABLE_SET: ReadonlySet<ExportTable> = new Set(BASIC_TABLES.flatMap((b) => b.tables))
 

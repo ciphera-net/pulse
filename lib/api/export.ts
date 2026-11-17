@@ -28,7 +28,9 @@ export const EXPORT_TABLES = [
   'operating_systems',
   'devices',
   'languages',
-  'goals',
+  // The events a team named. The server called this table `goals` until 17-11-2026 and still takes that name in a
+  // request; the app asks by the name the downloads use.
+  'named_events',
   'events',
   'event_properties',
 ] as const
