@@ -32,9 +32,9 @@ export interface SortColumn<K extends string> {
  * The one column of a list whose rows show visitors alone: Sources, Locations, Technology and the Pages block's
  * Entries and Exits tabs (16-11-2026). No width: the number sits at the row's end, where the head ends too.
  */
-export const VISITORS_COLUMN: readonly SortColumn<'visitors'>[] = [{ key: 'visitors', label: 'visitors', className: '' }]
+export const VISITORS_COLUMN: readonly SortColumn<'visitors'>[] = [{ key: 'visitors', label: 'Visitors', className: '' }]
 /** The Pages block's Outbound tab: a link's clicks. */
-export const CLICKS_COLUMN: readonly SortColumn<'clicks'>[] = [{ key: 'clicks', label: 'clicks', className: '' }]
+export const CLICKS_COLUMN: readonly SortColumn<'clicks'>[] = [{ key: 'clicks', label: 'Clicks', className: '' }]
 /** A row's visitors for sortRows; a row without them counts as none. */
 export const byVisitors = (row: { visitors?: number | null }): number => row.visitors ?? 0
 /** The first order of every list: high to low, the order the server ranks by. */
@@ -182,7 +182,8 @@ export function SortHead<K extends string>({ columns, sort, onSort, className = 
             key={column.key}
             type="button"
             onClick={() => onSort(nextSort(sort, column.key))}
-            aria-label={`Sort by ${column.label}, ${on && sort.dir === 'desc' ? 'low to high' : 'high to low'}`}
+            // A column's name starts with a capital letter (17-11-2026); inside this sentence it is a common word.
+            aria-label={`Sort by ${column.label.toLowerCase()}, ${on && sort.dir === 'desc' ? 'low to high' : 'high to low'}`}
             className={cn('group/sort inline-flex items-center justify-end transition-colors duration-fast ease-apple hover:text-white', column.className, on && 'text-neutral-300')}
             data-sort={column.key}
             data-dir={on ? sort.dir : undefined}

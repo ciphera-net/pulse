@@ -99,13 +99,13 @@ export function MetricRowStat({ row, totals, views, className, overlay }: Metric
  * glyph explains the CARD (see DimensionInfoTip); the unit label is just a
  * label again.
  */
-export function MetricUnitLabel({ views, unit = 'visitors' }: { views?: boolean; /** What a single column counts, where it is not visitors (an outbound link's clicks). */ unit?: string }) {
+export function MetricUnitLabel({ views, unit = 'Visitors' }: { views?: boolean; /** What a single column counts, where it is not visitors (an outbound link's clicks). */ unit?: string }) {
   return views ? (
     // The same columns and the same gap as the numbers under them. A plain string, not cn(): the two `text-`
     // utilities here are a size and a colour, and a class merger may take them for one group.
     <span className={`inline-flex shrink-0 ${STAT_GAP} text-[11px] text-neutral-500`} data-testid="metric-unit">
-      <span className={STAT_COLUMN}>visitors</span>
-      <span className={STAT_COLUMN}>views</span>
+      <span className={STAT_COLUMN}>Visitors</span>
+      <span className={STAT_COLUMN}>Views</span>
     </span>
   ) : (
     <span className="shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">

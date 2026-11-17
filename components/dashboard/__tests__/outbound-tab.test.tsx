@@ -82,7 +82,7 @@ describe('where the tab is', () => {
   it('goes back to Pages when the read stops being served under it', () => {
     const view = inFrame(block())
     openOutbound()
-    expect(unit()).toBe('clicks')
+    expect(unit()).toBe('Clicks')
     // The same block, handed no outbound any more (a default parameter would put it back: spelled out here).
     view.rerender(
       <DashboardFrameProvider>
@@ -134,9 +134,9 @@ describe('what it reads', () => {
 describe('how it is drawn: the block\'s own rows', () => {
   it('counts clicks, in one column, and says so in the header', () => {
     inFrame(block())
-    expect(unit()).toBe('visitorsviews')
+    expect(unit()).toBe('VisitorsViews')
     openOutbound()
-    expect(unit()).toBe('clicks')
+    expect(unit()).toBe('Clicks')
     // The block's own info glyph, with the list's own sentence.
     expect(within(card()).getByRole('button', { name: 'About Outbound links' })).toBeTruthy()
   })
@@ -441,12 +441,12 @@ describe('the other three tabs are as they were', () => {
     inFrame(block())
     openOutbound()
     fireEvent.click(screen.getByRole('radio', { name: 'Pages' }))
-    expect(unit()).toBe('visitorsviews')
+    expect(unit()).toBe('VisitorsViews')
     expect(rows().map((r) => r.querySelector('.truncate')?.textContent)).toEqual(['/page-0', '/page-1', '/page-2'])
     expect(rows()[0].tagName).toBe('DIV')
     expect(within(card()).getByRole('button', { name: 'About Pages' })).toBeTruthy()
     fireEvent.click(screen.getByRole('radio', { name: 'Entries' }))
-    expect(unit()).toBe('visitors')
+    expect(unit()).toBe('Visitors')
   })
 })
 

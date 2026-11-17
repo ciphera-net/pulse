@@ -69,7 +69,7 @@ describe('labels and numbers share their columns', () => {
     )
     const label = screen.getByTestId('metric-unit')
     const labelColumns = [...label.children]
-    expect(labelColumns.map((el) => el.textContent)).toEqual(['visitors', 'views'])
+    expect(labelColumns.map((el) => el.textContent)).toEqual(['Visitors', 'Views'])
 
     const cluster = container.querySelector('[data-testid="stat-host"] > div') as HTMLElement
     const numbers = [...cluster.children].filter((el) => /^\d/.test(el.textContent ?? '') && !/%/.test(el.textContent ?? ''))
@@ -87,7 +87,7 @@ describe('labels and numbers share their columns', () => {
 
   it('a single-number card keeps its one plain label', () => {
     render(<MetricUnitLabel />)
-    expect(screen.getByTestId('metric-unit').textContent).toBe('visitors')
+    expect(screen.getByTestId('metric-unit').textContent).toBe('Visitors')
     expect(screen.getByTestId('metric-unit').children).toHaveLength(0)
   })
 })
