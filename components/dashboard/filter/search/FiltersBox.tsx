@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { BookmarkSimple, CaretRight, X } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { panelSurface, useGlassPanels } from '@/lib/dashboard/frame'
-import { OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
+import { OPERATOR_LABELS, canMatchAny, type DimensionFilter, type FilterMode } from '@/lib/filters'
 import { setFor, useSavedFilters, type SavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
 import { labelOf, type PageValues, type PlaceCountries } from './values'
 import { valueIcon } from './SearchFilter'
@@ -26,6 +26,12 @@ import { NameField, SavedAs, suggestName, valueText } from './saved'
 // Saved filters (R59 and R60; for every team since 16-11-2026): the box's list ends with "Save these filters", which names
 // the set in place; a single filter's pill has a bookmark beside its x that opens the same field. While the filters
 // on are a saved set, both say "Saved as …" instead. The sets themselves are listed in the Filter panel.
+//
+// Match any (R65 of 16-11-2026, the match-any beta; its place is R75 of 17-11-2026, "the word on the box"): where
+// the page offers it, the box says how its filters are joined in a word of its own, "all 3 filters", and one press
+// on that word makes it "any of 3 filters", as a press on a filter's "is" makes it "is not". The page then counts
+// what fits at least one filter. Beside an event filter the server reads Match all only: the word is plain text
+// there, not a control, and the box's list opens with a line that says why.
 // ---------------------------------------------------------------------------
 
 /** The one-press opposite of an operator. */
@@ -37,6 +43,8 @@ export const OPPOSITE: Record<DimensionFilter['operator'], DimensionFilter['oper
 }
 
 const excluded = (f: DimensionFilter) => f.operator === 'is_not' || f.operator === 'not_contains'
+/** Why the word cannot be pressed beside an event filter (the server reads Match all there). */
+export const MATCH_ANY_NEEDS_NO_EVENT = 'With an event filter on, every filter has to match.'
 const tone = (out: boolean) => (out ? 'border-white/[0.12] bg-white/[0.04] text-neutral-200' : 'border-brand-orange/20 bg-brand-orange/10 text-brand-ink')
 function Icon({ f, places }: { f: DimensionFilter; places?: PlaceCountries }) {
   return <span className="flex h-4 w-4 shrink-0 items-center justify-center [&>img]:h-4 [&>img]:w-4 [&>svg]:h-4 [&>svg]:w-4">{valueIcon(f.dimension, f.values[0], places?.[f.dimension]?.[f.values[0]])}</span>
@@ -50,6 +58,12 @@ interface FiltersBoxProps {
   pageValues: PageValues
   /** The country of each city and region the page lists: their pills draw that country's flag (placeCountriesFrom). */
   places?: PlaceCountries
+  /**
+   * Match all or Match any, as the page reads its filters (lib/filters.ts, modeFor), and its switch. Absent `onMode`:
+   * the page offers no switch (the match-any beta is off, or the page is not the dashboard).
+   */
+  mode?: FilterMode
+  onMode?: (mode: FilterMode) => void
 }
 
 interface BoxProps extends FiltersBoxProps {
@@ -120,9 +134,10 @@ function AnchoredMenu({ anchor, width, label, onClose, testid, children }: {
 }
 
 /** The box list's last row: saves the filters on under a name typed in place; once saved, says under which. */
-function SaveRow({ filters, saved, savedFilters, pageValues }: { filters: DimensionFilter[]; saved: SavedSet | null; savedFilters: SavedFilters; pageValues: PageValues }) {
+function SaveRow({ filters, saved, savedAsAny, savedFilters, pageValues, mode }: { filters: DimensionFilter[]; saved: SavedSet | null; savedAsAny: SavedSet | null; savedFilters: SavedFilters; pageValues: PageValues; mode: FilterMode }) {
   const [naming, setNaming] = useState(false)
   if (saved) return <SavedAs name={saved.name} />
+  if (savedAsAny) return <SavedAs name={savedAsAny.name} anyOff />
   if (!savedFilters.canEdit) return null
   if (naming) {
     return (
@@ -130,7 +145,7 @@ function SaveRow({ filters, saved, savedFilters, pageValues }: { filters: Dimens
         initial={suggestName(filters, pageValues)}
         placeholder="Name these filters"
         label="Name for these filters"
-        onSave={async (name) => { await savedFilters.save(name, filters); setNaming(false) }}
+        onSave={async (name) => { await savedFilters.save(name, filters, mode); setNaming(false) }}
         onCancel={() => setNaming(false)}
       />
     )
@@ -221,11 +236,18 @@ function Pill({ f, i, onApply, onRemove, pageValues, places, savedFilters }: { f
 }
 
 /** The list behind the box: each filter a row of its own, reaching the menu's edges, then the row that saves them. */
-function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, onClose, savedFilters }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
-  const saved = savedFilters.on ? setFor(filters, savedFilters.sets) : null
+function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, onClose, savedFilters, mode = 'all', onMode }: Omit<FiltersBoxProps, never> & { anchor: HTMLElement; onClose: () => void; savedFilters: SavedFilters }) {
+  const saved = savedFilters.on ? setFor(filters, savedFilters.sets, mode) : null
+  // A set saved with Match any, on a page that reads Match all and offers no switch (the beta is off): the list says
+  // so under the set's name, in place of offering to save filters that are saved already.
+  const savedAsAny = savedFilters.on && !saved && mode === 'all' && !onMode ? setFor(filters, savedFilters.sets, 'any') : null
   return (
     <AnchoredMenu anchor={anchor} width={340} label="Filters on" onClose={onClose} testid="filters-menu">
       <div data-menu-list="" className="divide-y divide-white/[0.06]">
+        {onMode && !canMatchAny(filters) && (
+          // The box's word cannot be pressed beside an event filter: the list says why, over the filters it is about.
+          <p className="px-4 py-3 text-xs text-neutral-500" data-testid="filters-match-why">{MATCH_ANY_NEEDS_NO_EVENT}</p>
+        )}
         {filters.map((f, i) => {
           const out = excluded(f)
           const kind = labelOf(f.dimension, pageValues)
@@ -249,13 +271,13 @@ function FiltersMenu({ anchor, filters, onApply, onRemove, pageValues, places, o
             </div>
           )
         })}
-        {savedFilters.on && <SaveRow filters={filters} saved={saved} savedFilters={savedFilters} pageValues={pageValues} />}
+        {savedFilters.on && <SaveRow filters={filters} saved={saved} savedAsAny={savedAsAny} savedFilters={savedFilters} pageValues={pageValues} mode={mode} />}
       </div>
     </AnchoredMenu>
   )
 }
 
-export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues, places }: BoxProps) {
+export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pageValues, places, mode = 'all', onMode }: BoxProps) {
   const savedFilters = useSavedFilters()
   // The list hangs from the whole box: the box and its x together.
   const ref = useRef<HTMLSpanElement>(null)
@@ -265,27 +287,60 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
   useEffect(() => { if (!many) setOpen(false) }, [many])
   if (filters.length === 0) return null
   if (!many) return <Pill f={filters[0]} i={0} onApply={onApply} onRemove={onRemove} pageValues={pageValues} places={places} savedFilters={savedFilters} />
+  const icons = (
+    <span className="flex items-center -space-x-1" aria-hidden="true">
+      {filters.slice(0, 3).map((f, i) => (
+        <span key={i} className="flex h-5 w-5 items-center justify-center bg-neutral-900 ring-1 ring-brand-orange/20"><Icon f={f} places={places} /></span>
+      ))}
+    </span>
+  )
+  // The date button's caret: a quarter turn while the list is open.
+  const caret = <CaretRight weight="bold" className={cn('h-3.5 w-3.5 text-brand-ink/60 transition-transform', open && 'rotate-90')} aria-hidden="true" />
   return (
     <>
       {/* The box and its x are one bordered control, as a single filter's pill and its x are. */}
       <span ref={ref} className={cn('inline-flex h-10 shrink-0 items-center border text-sm font-medium', tone(false))} data-testid="filters-box-control">
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-          className="inline-flex h-full items-center gap-1.5 px-3"
-          data-testid="filters-box"
-        >
-          <span className="flex items-center -space-x-1" aria-hidden="true">
-            {filters.slice(0, 3).map((f, i) => (
-              <span key={i} className="flex h-5 w-5 items-center justify-center bg-neutral-900 ring-1 ring-brand-orange/20"><Icon f={f} places={places} /></span>
-            ))}
-          </span>
-          {filters.length} filters
-          {/* The date button's caret: a quarter turn while the list is open. */}
-          <CaretRight weight="bold" className={cn('h-3.5 w-3.5 text-brand-ink/60 transition-transform', open && 'rotate-90')} aria-hidden="true" />
-        </button>
+        {onMode ? (
+          <>
+            {/* The icons open the list for a pointer; the count beside the word is the control a keyboard reaches. */}
+            <button type="button" tabIndex={-1} aria-hidden="true" onClick={() => setOpen((o) => !o)} className="inline-flex h-full items-center ps-3 pe-1.5" data-testid="filters-box-icons">
+              {icons}
+            </button>
+            {canMatchAny(filters) ? (
+              // The word is a control of its own, as a filter's "is" is: one press flips it.
+              <button
+                type="button"
+                onClick={() => onMode(mode === 'any' ? 'all' : 'any')}
+                title={mode === 'any' ? 'Press for "all": count what fits every filter' : 'Press for "any": count what fits at least one filter'}
+                aria-label={mode === 'any' ? 'Matching any filter: press to match all' : 'Matching all filters: press to match any'}
+                className="-ms-1.5 h-full px-1.5 text-brand-ink/70 underline decoration-dotted underline-offset-4 hover:text-brand-ink hover:decoration-solid"
+                data-testid="filters-box-mode"
+                data-mode={mode}
+              >
+                {mode === 'any' ? 'any of' : 'all'}
+              </button>
+            ) : (
+              <span className="-ms-1.5 px-1.5 text-brand-ink/70" title={MATCH_ANY_NEEDS_NO_EVENT} data-testid="filters-box-mode-fixed">all</span>
+            )}
+            <button type="button" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="inline-flex h-full items-center gap-1.5 ps-1 pe-3" data-testid="filters-box">
+              {filters.length} filters
+              {caret}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+            className="inline-flex h-full items-center gap-1.5 px-3"
+            data-testid="filters-box"
+          >
+            {icons}
+            {filters.length} filters
+            {caret}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => { setOpen(false); onClearAll() }}
@@ -299,7 +354,7 @@ export default function FiltersBox({ filters, onApply, onRemove, onClearAll, pag
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {open && ref.current && (
-            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} places={places} onClose={() => setOpen(false)} savedFilters={savedFilters} />
+            <FiltersMenu key="filters" anchor={ref.current} filters={filters} onApply={onApply} onRemove={onRemove} pageValues={pageValues} places={places} onClose={() => setOpen(false)} savedFilters={savedFilters} mode={mode} onMode={onMode} />
           )}
         </AnimatePresence>,
         document.body,

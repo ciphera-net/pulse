@@ -26,7 +26,7 @@ vi.mock('@/lib/api/savedFilters', async (importOriginal) => ({ ...(await importO
 
 import FiltersBox from '../FiltersBox'
 import SearchFilter from '../SearchFilter'
-import { describe as describeSet, suggestName } from '../saved'
+import { describe as describeSet, suggestName, SAVED_WITH_ANY_OFF } from '../saved'
 import { keyOf, setFor } from '@/lib/swr/savedFilters'
 import { ApiError } from '@/lib/api/client'
 
@@ -69,8 +69,28 @@ describe('how a set is named and matched', () => {
     const a: DimensionFilter[] = [NORWAY, { dimension: 'device', operator: 'is', values: ['mobile', 'tablet'] }]
     const b: DimensionFilter[] = [{ dimension: 'device', operator: 'is', values: ['tablet', 'mobile'] }, NORWAY]
     expect(keyOf(a)).toBe(keyOf(b))
-    expect(setFor(b, [{ id: 's', name: 'x', filters: a }])?.id).toBe('s')
-    expect(setFor([], [{ id: 's', name: 'x', filters: a }])).toBeNull()
+    expect(setFor(b, [{ id: 's', name: 'x', filters: a, mode: 'all' }])?.id).toBe('s')
+    expect(setFor([], [{ id: 's', name: 'x', filters: a, mode: 'all' }])).toBeNull()
+  })
+
+  it('keeps Match any apart: the same filters under the other mode are another set (R65)', () => {
+    const both: DimensionFilter[] = [NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }]
+    expect(keyOf(both, 'any')).not.toBe(keyOf(both, 'all'))
+    expect(keyOf(both)).toBe(keyOf(both, 'all'))
+    const sets = [{ id: 'any', name: 'Either', filters: both, mode: 'any' as const }, { id: 'all', name: 'Both', filters: both, mode: 'all' as const }]
+    expect(setFor(both, sets, 'any')?.id).toBe('any')
+    expect(setFor(both, sets, 'all')?.id).toBe('all')
+    expect(setFor(both, sets)?.id).toBe('all')
+    // One filter says the same under both, so its mode never tells two sets apart.
+    expect(keyOf([NORWAY], 'any')).toBe(keyOf([NORWAY], 'all'))
+  })
+
+  it('describes a set saved with Match any with "or", and one filter alone as before (R65)', () => {
+    expect(describeSet([NORWAY, NOT_MOBILE], PAGE, 'any')).toBe('Country is Norway or Device is not mobile')
+    expect(describeSet([NORWAY, NOT_MOBILE], PAGE, 'all')).toBe('Country is Norway and Device is not mobile')
+    expect(describeSet([NORWAY], PAGE, 'any')).toBe('Country is Norway')
+    // Beside an event filter Match any does not apply (lib/filters.ts modeFor), so the line keeps "and".
+    expect(describeSet([NORWAY, { dimension: 'event', operator: 'is', values: ['add_to_cart'] }], PAGE, 'any')).toContain(' and ')
   })
 })
 
@@ -118,6 +138,35 @@ describe('the filters box saves the filters on (R59: option A)', () => {
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Name for these filters' }), { key: 'Escape' })
     expect(screen.getByTestId('filters-save-row')).toBeTruthy()
     expect(screen.getAllByTestId('filters-menu-row')).toHaveLength(2)
+  })
+
+  it('says a set was saved with Match any where the page cannot read it that way, and offers no second save (R65)', async () => {
+    const either = { id: 'set-3', name: 'Norway or phones', filters: 'any:v2:country|is|NO,device|is|mobile', created_at: '2026-11-16T03:00:00Z' }
+    const both: DimensionFilter[] = [NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }]
+    api.listSavedFilters.mockResolvedValue([either])
+    // The page reads Match all and hands the box no switch: the match-any beta is off for the team.
+    box(both)
+    await settle()
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(await screen.findByText('Norway or phones')).toBeTruthy()
+    expect(document.querySelector('[data-saved-any-off]')?.textContent).toBe(SAVED_WITH_ANY_OFF)
+    expect(screen.queryByTestId('filters-save-row')).toBeNull()
+    cleanup()
+    // Its Match all twin is saved too: the page shows THAT set, and there is nothing to explain.
+    api.listSavedFilters.mockResolvedValue([either, SAVED[0]])
+    box(both)
+    await settle()
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(await screen.findByText('Phones in Norway')).toBeTruthy()
+    expect(document.querySelector('[data-saved-any-off]')).toBeNull()
+    cleanup()
+    // With the switch on offer (the beta on) and the page on Match all, the filters are simply not saved yet.
+    api.listSavedFilters.mockResolvedValue([either])
+    within_(memberScope('site-1'), <FiltersBox filters={both} onApply={vi.fn()} onRemove={vi.fn()} onClearAll={vi.fn()} pageValues={PAGE} mode="all" onMode={vi.fn()} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(screen.getByTestId('filters-save-row')).toBeTruthy()
+    expect(document.querySelector('[data-saved-any-off]')).toBeNull()
   })
 
   it('saves a single filter from the bookmark beside its x', async () => {
@@ -188,8 +237,29 @@ describe('the Filter panel lists the sets (R59)', () => {
     fireEvent.click(screen.getByTestId('search-filter-button'))
     fireEvent.click(within(await screen.findByText('Phones in Norway').then((n) => n.closest('[data-saved-row]') as HTMLElement)).getByRole('option'))
     expect(onApplySet).toHaveBeenCalledTimes(1)
-    expect(onApplySet).toHaveBeenCalledWith([NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }])
+    expect(onApplySet).toHaveBeenCalledWith([NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }], 'all')
     await waitFor(() => expect(screen.queryByTestId('search-filter-panel')).toBeNull())
+  })
+
+  it('puts a set saved under Match any on WITH its mode, and marks it only while the page is in that mode (R65)', async () => {
+    const either = { id: 'set-3', name: 'Norway or phones', filters: 'any:v2:country|is|NO,device|is|mobile', created_at: '2026-11-16T03:00:00Z' }
+    api.listSavedFilters.mockResolvedValue([either, ...SAVED])
+    const onApplySet = vi.fn()
+    const both: DimensionFilter[] = [NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }]
+    within_(memberScope('site-1'), <SearchFilter filters={both} onApply={vi.fn()} fetchSuggestions={async () => []} pageValues={PAGE} onApplySet={onApplySet} mode="any" />)
+    await settle()
+    fireEvent.click(screen.getByTestId('search-filter-button'))
+    await screen.findByTestId('saved-filters-heading')
+    const rows = [...document.querySelectorAll('[data-saved-row]')]
+    // The page holds the two filters under Match any: the Any set is the one on, its Match all twin is not.
+    expect(rows.map((r) => [r.getAttribute('data-saved-row'), r.getAttribute('data-on')])).toEqual([
+      ['Norway or phones', 'true'], ['Phones in Norway', 'false'], ['Norway', 'false'],
+    ])
+    // Each row's line says how its set joins its filters.
+    expect(rows[0].textContent).toContain('Country is Norway or Device is mobile')
+    expect(rows[1].textContent).toContain('Country is Norway and Device is mobile')
+    fireEvent.click(within(rows[0] as HTMLElement).getByRole('option'))
+    expect(onApplySet).toHaveBeenCalledWith(both, 'any')
   })
 
   it('reaches the sets from the keyboard first: Enter on the first row puts it on', async () => {
@@ -199,7 +269,7 @@ describe('the Filter panel lists the sets (R59)', () => {
     fireEvent.click(screen.getByTestId('search-filter-button'))
     await screen.findByTestId('saved-filters-heading')
     fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })
-    expect(onApplySet).toHaveBeenCalledWith([NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }])
+    expect(onApplySet).toHaveBeenCalledWith([NORWAY, { dimension: 'device', operator: 'is', values: ['mobile'] }], 'all')
   })
 
   it('deletes a set from its bin, for whoever may edit; a reader sees no bin', async () => {

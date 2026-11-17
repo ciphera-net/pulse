@@ -7,6 +7,9 @@ import {
   filterLabel,
   DIMENSIONS,
   OPERATORS,
+  canMatchAny,
+  modeFor,
+  parseFilterMode,
   type DimensionFilter,
 } from '../filters'
 
@@ -271,5 +274,50 @@ describe('the event filter kinds (R45)', () => {
     expect(kindLabel(eventPropertyKind('signup', 'plan'), (e) => (e === 'signup' ? 'Sign-ups' : e))).toBe('Sign-ups: plan')
     expect(filterLabel({ dimension: OUTBOUND_KIND, operator: 'is', values: ['shop.example/cart'] })).toBe('Outbound link is shop.example/cart')
     expect(filterLabel({ dimension: eventPropertyKind('signup', 'plan'), operator: 'is_not', values: ['pro'] })).toBe('signup: plan is not pro')
+  })
+})
+
+// Match any (R65 of 16-11-2026): the mode travels inside the filters string, in front of the version.
+describe('Match any', () => {
+  const germany: DimensionFilter = { dimension: 'country', operator: 'is', values: ['DE'] }
+  const google: DimensionFilter = { dimension: 'referrer', operator: 'is', values: ['google'] }
+  const signup: DimensionFilter = { dimension: 'event', operator: 'is', values: ['signup'] }
+  const oldEvent: DimensionFilter = { dimension: 'event_name', operator: 'is', values: ['signup'] }
+
+  it('writes any: in front of the version, and leaves Match all byte for byte as it was', () => {
+    expect(serializeFilters([germany, google])).toBe('v2:country|is|DE,referrer|is|google')
+    expect(serializeFilters([germany, google], 'all')).toBe('v2:country|is|DE,referrer|is|google')
+    expect(serializeFilters([germany, google], 'any')).toBe('any:v2:country|is|DE,referrer|is|google')
+  })
+
+  it('reads the mode and the filters apart, and the two round-trip', () => {
+    const text = serializeFilters([germany, google], 'any')
+    expect(parseFilterMode(text)).toBe('any')
+    expect(parseFiltersFromURL(text)).toEqual([germany, google])
+    expect(parseFilterMode('v2:country|is|DE,referrer|is|google')).toBe('all')
+    expect(parseFilterMode('')).toBe('all')
+    expect(parseFilterMode(null)).toBe('all')
+  })
+
+  it('takes any: only in front of the version', () => {
+    // A legacy (unversioned) string that starts with "any:" is a dimension the allowlist refuses, never a mode.
+    expect(parseFilterMode('any:country|is|DE')).toBe('all')
+    expect(parseFiltersFromURL('any:country|is|DE')).toEqual([{ dimension: 'any:country', operator: 'is', values: ['DE'] }])
+  })
+
+  it('one filter says the same under both, so it is written as Match all', () => {
+    expect(canMatchAny([germany])).toBe(false)
+    expect(modeFor([germany], 'any')).toBe('all')
+    expect(serializeFilters([germany], 'any')).toBe('v2:country|is|DE')
+  })
+
+  it('an event filter keeps the set on Match all: the server refuses Any beside one', () => {
+    for (const event of [signup, oldEvent]) {
+      expect(canMatchAny([germany, google, event])).toBe(false)
+      expect(modeFor([germany, google, event], 'any')).toBe('all')
+      expect(serializeFilters([germany, event], 'any').startsWith('v2:')).toBe(true)
+    }
+    expect(canMatchAny([germany, google])).toBe(true)
+    expect(modeFor([germany, google], 'any')).toBe('any')
   })
 })

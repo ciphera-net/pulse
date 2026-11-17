@@ -129,7 +129,8 @@ describe('the dashboard surface: what a share link is refused is not asked for',
     // The toolbar's filter (R36, 15-11-2026): the Search filter's button and the box of the filters on, under the
     // one guard. The old pills, button and popover left with today's arrangement (16-11-2026).
     expect(page.match(/<SearchFilter /g)?.length).toBe(1)
-    expect(page.match(/<FiltersBox /g)?.length).toBe(1)
+    // The box's props are written a line each since it took its mode and its switch (Match any, R65).
+    expect(page.match(/<FiltersBox\s/g)?.length).toBe(1)
     expect(page).not.toContain('<FilterBuilder')
     // Nothing of the filter is drawn outside that guard.
     expect(page.match(/caps\.filters &&/g)?.length).toBe(1)

@@ -8,7 +8,7 @@
 // The seams are those of dashboard-scopes.test.tsx: the data hooks are spies and the cards are prop-capturing
 // stubs (their own files test what a block does inside the frame).
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
-import { render, act, screen } from '@testing-library/react'
+import { render, act, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import type { DashboardData } from '@/lib/api/stats'
 import { SiteScopeProvider, memberScope } from '@/lib/scope/SiteScope'
@@ -333,5 +333,124 @@ describe('the new frame', () => {
     for (const name of ['Sources', 'ContentStats', 'Audience', 'TechSpecs', 'ContentSignals']) {
       expect(typeof h.captured[name].liveMinutes, name).toBe('number')
     }
+  })
+})
+
+// Match any (R65 of 16-11-2026; lib/filters.ts): the mode is part of the ONE filters string, so it reaches every read
+// and the address or none of them. The team's beta decides whether the page may be in it at all.
+describe('Match any', () => {
+  const ANY = 'any:v2:country|is|NO,device|is|mobile'
+  const ALL = 'v2:country|is|NO,device|is|mobile'
+  const flag = (value: boolean | null) => h.feature.mockImplementation((name: string) => (name === 'match-any' ? value : true))
+  /** The filters the dashboard's own read, the previous period's read and a block were last handed, and the address's. */
+  const sent = () => ({
+    dashboard: h.useDashboard.mock.calls.at(-1)?.[4],
+    previous: h.useStats.mock.calls.at(-1)?.[3],
+    block: h.captured.Sources?.filters,
+    address: new URL(window.location.href).searchParams.get('filters'),
+  })
+  const everywhere = (filters: string) => ({ dashboard: filters, previous: filters, block: filters, address: filters })
+
+  it('an address that asks for Any reads Any everywhere, for a team with the beta', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ANY))
+  })
+
+  it('is believed while /me has not answered: the reads go out once, as the address asks', async () => {
+    flag(null)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ANY))
+    // No read of this page ever went out as Match all.
+    expect(h.useDashboard.mock.calls.every((call) => call[4] === ANY)).toBe(true)
+  })
+
+  it('a team without the beta reads Match all, and the address is rewritten to say so', async () => {
+    flag(false)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ALL))
+  })
+
+  it('Match all stays byte for byte what it was', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ALL })
+    await mount()
+    expect(sent()).toEqual(everywhere(ALL))
+  })
+
+  it('one filter alone is Match all whatever the address says', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: 'any:v2:country|is|NO' })
+    await mount()
+    expect(sent()).toEqual(everywhere('v2:country|is|NO'))
+  })
+
+  it('an event filter beside the others keeps the page on Match all (the server refuses Any there)', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: 'any:v2:country|is|NO,device|is|mobile,event|is|signup' })
+    await mount()
+    expect(sent()).toEqual(everywhere('v2:country|is|NO,device|is|mobile,event|is|signup'))
+    // The box's word says "all" and cannot be pressed.
+    expect(screen.queryByTestId('filters-box-mode')).toBeNull()
+    expect(screen.getByTestId('filters-box-mode-fixed').textContent).toBe('all')
+  })
+
+  it('one press on the box\'s word puts every read and the address on Any, and one more puts them back', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ALL })
+    await mount()
+    expect(sent()).toEqual(everywhere(ALL))
+    // R75 (17-11-2026): the box reads "all 2 filters", and its first word is the switch.
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('all')
+    expect(screen.getByTestId('filters-box').textContent).toBe('2 filters')
+    fireEvent.click(screen.getByTestId('filters-box-mode'))
+    await act(async () => {})
+    expect(sent()).toEqual(everywhere(ANY))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('any of')
+    expect(screen.getByTestId('filters-box').textContent).toBe('2 filters')
+    // The press changed the mode and nothing else: the list of filters stayed folded.
+    expect(screen.queryByTestId('filters-menu')).toBeNull()
+    fireEvent.click(screen.getByTestId('filters-box-mode'))
+    await act(async () => {})
+    expect(sent()).toEqual(everywhere(ALL))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('all')
+  })
+
+  it.each([
+    ['a team without the beta', false],
+    ['a page that has not heard from /me yet', null],
+  ])('offers no switch to %s', async (_who, value) => {
+    flag(value)
+    mockSearchParams = new URLSearchParams({ filters: ALL })
+    await mount()
+    // The box is what it was: no word in front of its count, pressable or not.
+    expect(screen.queryByTestId('filters-box-mode')).toBeNull()
+    expect(screen.queryByTestId('filters-box-mode-fixed')).toBeNull()
+    expect(screen.getByTestId('filters-box').textContent).toBe('2 filters')
+    fireEvent.click(screen.getByTestId('filters-box'))
+    expect(screen.getAllByTestId('filters-menu-row')).toHaveLength(2)
+    expect(screen.queryByTestId('filters-match-why')).toBeNull()
+  })
+
+  it('leaves Any with its second filter, and a second filter added later starts on Match all', async () => {
+    flag(true)
+    mockSearchParams = new URLSearchParams({ filters: ANY })
+    await mount()
+    expect(sent()).toEqual(everywhere(ANY))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('any of')
+    // The box's list, the second filter's x: one filter says the same under both, and is sent as Match all.
+    fireEvent.click(screen.getByTestId('filters-box'))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Device filter' }))
+    await act(async () => {})
+    expect(sent()).toEqual(everywhere('v2:country|is|NO'))
+    // A row of a block adds a second filter: the switch does not come back on by itself.
+    await act(async () => {
+      (h.captured.Sources.onFilter as (f: { dimension: string; operator: string; values: string[] }) => void)({ dimension: 'browser', operator: 'is', values: ['Chrome'] })
+    })
+    expect(sent()).toEqual(everywhere('v2:country|is|NO,browser|is|Chrome'))
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('all')
   })
 })

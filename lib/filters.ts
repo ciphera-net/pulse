@@ -123,18 +123,53 @@ export function unescapeFilterValue(value: string): string {
     .replaceAll('%25', '%')
 }
 
-/** Serialize filters to query param format: "v2:browser|is|Chrome,country|is|US" */
-export function serializeFilters(filters: DimensionFilter[]): string {
+// ---------------------------------------------------------------------------
+// Match any (R65, 16-11-2026; design Pulse/docs/plans/16-11-2026-match-any-filter-design.md).
+// With two filters or more a page can count what fits EVERY filter (All, as always) or what fits AT LEAST ONE (Any).
+// The mode travels INSIDE the filters string, in front of the version: `any:v2:country|is|DE,device|is|mobile`.
+// Every carrier of filters already carries that string (the address, a saved set), and a reader that does not know
+// the prefix refuses the whole string: it can never answer All for an Any request.
+//
+// The server takes Any across dimension filters. Beside an event filter (or the old `event_name`) it refuses, and
+// one filter alone says the same under both, so `modeFor` is the ONE place that decides the mode a set is really in.
+// ---------------------------------------------------------------------------
+
+/** The beta that offers the switch (lib/betas.ts; read with useFeature). */
+export const MATCH_ANY_FLAG = 'match-any'
+export type FilterMode = 'all' | 'any'
+export const FILTERS_ANY_PREFIX = 'any:'
+
+/** Whether these filters can be matched by Any at all: two or more, none of them an event filter. */
+export function canMatchAny(filters: DimensionFilter[]): boolean {
+  return filters.length >= 2 && !filters.some((f) => isEventKind(f.dimension) || f.dimension === 'event_name')
+}
+
+/** The mode the filters are really in: Any only where it can apply. */
+export function modeFor(filters: DimensionFilter[], mode: FilterMode): FilterMode {
+  return mode === 'any' && canMatchAny(filters) ? 'any' : 'all'
+}
+
+/** The mode a filters string (an address's, a saved set's) asks for. `any:` counts only in front of the version. */
+export function parseFilterMode(raw: string | null | undefined): FilterMode {
+  return raw?.startsWith(FILTERS_ANY_PREFIX + FILTERS_V2_PREFIX) ? 'any' : 'all'
+}
+
+/**
+ * Serialize filters to query param format: "v2:browser|is|Chrome,country|is|US", and under Match any
+ * "any:v2:browser|is|Chrome,country|is|US". Match all keeps its bytes, so no address or cached read changes.
+ */
+export function serializeFilters(filters: DimensionFilter[], mode: FilterMode = 'all'): string {
   if (!filters.length) return ''
   const body = filters
     .map(f => `${f.dimension}|${f.operator}|${f.values.map(escapeFilterValue).join(';')}`)
     .join(',')
-  return FILTERS_V2_PREFIX + body
+  return (modeFor(filters, mode) === 'any' ? FILTERS_ANY_PREFIX : '') + FILTERS_V2_PREFIX + body
 }
 
-/** Parse filters from URL search param string (v2-prefixed or legacy). */
-export function parseFiltersFromURL(raw: string): DimensionFilter[] {
-  if (!raw) return []
+/** Parse filters from URL search param string (v2-prefixed or legacy). The mode is read apart: parseFilterMode. */
+export function parseFiltersFromURL(text: string): DimensionFilter[] {
+  if (!text) return []
+  const raw = parseFilterMode(text) === 'any' ? text.slice(FILTERS_ANY_PREFIX.length) : text
   const isV2 = raw.startsWith(FILTERS_V2_PREFIX)
   const body = isV2 ? raw.slice(FILTERS_V2_PREFIX.length) : raw
   if (!body) return []

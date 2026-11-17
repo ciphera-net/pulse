@@ -91,9 +91,9 @@ describe('the surface mounts the frame for every reader, and holds nothing of th
 
   it('mounts the frame for every reader: no flag is read, public pages included (15-11-2026)', () => {
     expect(page).not.toMatch(/const frame\b/)
-    // The one flag the page reads is a beta's that decides what its filter offers (the event filter, R45), never the
-    // frame's.
-    expect(page.match(/useFeature\([^)]*\)/g) ?? []).toEqual(['useFeature(EVENT_FILTERS_FLAG)'])
+    // The two flags the page reads are betas that decide what its filter offers (Match any's switch, R65, and the
+    // event filter, R45), never the frame's.
+    expect(page.match(/useFeature\([^)]*\)/g) ?? []).toEqual(['useFeature(MATCH_ANY_FLAG)', 'useFeature(EVENT_FILTERS_FLAG)'])
     expect(page).not.toContain('NEW_DASHBOARD_FLAG')
   })
 

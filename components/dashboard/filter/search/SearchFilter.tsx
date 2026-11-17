@@ -12,7 +12,7 @@ import { FILTER_KEY, isPageShortcut } from '@/lib/keyboard/shortcuts'
 import KeyCap from '@/components/ui/KeyCap'
 import { formatCompactNumber } from '@/lib/utils/format'
 import { getFilterValueIcon } from '@/lib/utils/icons'
-import { EVENT_KIND, TOO_MANY_EVENT_FILTERS, eventFilterRoomFor, propertyKeysEvent, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
+import { EVENT_KIND, TOO_MANY_EVENT_FILTERS, eventFilterRoomFor, propertyKeysEvent, type DimensionFilter, type FilterMode, type FilterSuggestion } from '@/lib/filters'
 import { DIMENSION_ICONS, iconKeyOf } from '../dimensionIcons'
 import { setFor, useSavedFilters, type SavedSet } from '@/lib/swr/savedFilters'
 import { SavedRow } from './saved'
@@ -105,7 +105,9 @@ export interface SearchFilterProps {
    * Puts a saved set on the page IN PLACE of the filters that are on, in one change (saved filters, R59).
    * Without it the panel lists no saved set.
    */
-  onApplySet?: (filters: DimensionFilter[]) => void
+  onApplySet?: (filters: DimensionFilter[], mode: FilterMode) => void
+  /** Match all or Match any, as the page reads its filters: the saved set that is on is found with it. */
+  mode?: FilterMode
   /**
    * The event-filters beta is on (R45): the Events group offers an event and an outbound link, each keeping or leaving
    * out whole visitors, in place of the row test `event_name`. At most MAX_EVENT_FILTERS of them at once.
@@ -115,7 +117,7 @@ export interface SearchFilterProps {
 
 
 /** The Filter button and its panel. The panel is drawn in a portal, so it outlives the page's loading states. */
-export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues, onApplySet, eventFilters = false }: SearchFilterProps) {
+export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues, onApplySet, eventFilters = false, mode = 'all' }: SearchFilterProps) {
   const glass = useGlassPanels()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -137,7 +139,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   // Saved filters: listed at the top of the first view while the page can put one on.
   const savedFilters = useSavedFilters()
   const sets = useMemo(() => (savedFilters.on && onApplySet ? savedFilters.sets : []), [savedFilters.on, savedFilters.sets, onApplySet])
-  const current = setFor(filters, sets)
+  const current = setFor(filters, sets, mode)
 
   // The later steps of "Event property" are read when they open; its first lists the events the Event kind reads.
   const scopeRead = useScopeList({ scope, fetchSuggestions, filters, known: dimensions })
@@ -269,7 +271,7 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
     else if (item.kind === 'set') {
       // One press: the set in place of the filters on. The page reads again, so the panel closes first.
       close()
-      onApplySet?.(item.set.filters)
+      onApplySet?.(item.set.filters, item.set.mode)
     } else narrow(item.dimension, null)
   }
 
