@@ -46,8 +46,11 @@ import PressedCard from './PressedCard'
 
 /** The pointer's journey: the brand orange. */
 const ORANGE = '#FD5E0F'
-/** The pressed journey: pale (owner, 18-11-2026: "& lets go for pale btw."). */
-const PRESSED = '#FFD3B6'
+/**
+ * The pressed journey: pale on the dark theme (owner, 18-11-2026: "& lets go for pale btw."), and on the light theme
+ * the same shade moved toward that theme's ink, so it still reads on white (styles/globals.css --journeys-pressed).
+ */
+const PRESSED = 'rgb(var(--journeys-pressed))'
 const HEAD = 34
 /** The chart's most height; "Other pages" opened draws more pages at one step, and takes more. */
 const HEIGHT = 520
