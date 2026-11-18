@@ -199,15 +199,18 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
     const n = layout?.nodes.filter((x) => x.step === 0 && x.path !== '(other)').sort((a, b) => a.y - b.y)[0]
     return n ? { kind: 'node', id: n.id } : null
   }, [layout])
-  // A press that names nothing on this chart (the steps changed under it) is let go.
+  // A press that names nothing on this chart (the steps changed under it) is let go. "Other pages" opened is the one
+  // exception: where its step has no more pages than the chart opens, nothing is left under the cut and its strip is
+  // gone, yet the press still names the pages it opened.
   const pinned: Lit = useMemo(() => {
     if (!layout || pin === 'none') return null
     if (pin === undefined) return first
     const p = pin
     if (!p) return null
+    if (p.kind === 'node' && pathOfNode(p.id) === '(other)' && stepOfNode(p.id) === opened) return p
     if (p.kind === 'node') return layout.nodes.some((n) => n.id === p.id) ? p : null
     return layout.links.some((l) => l.source === p.source && l.target === p.target) ? p : null
-  }, [pin, first, layout])
+  }, [pin, first, layout, opened])
   useEffect(() => {
     const u = new URL(window.location.href)
     // The first journey is the page's own default: the address names a press only when the visitor made one.
