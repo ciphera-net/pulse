@@ -21,13 +21,51 @@ const FETCH_TIMEOUT_MS = 30_000
 export const STALLED_READ_RETRY_MS = 10_000
 
 /**
+ * How long a READ that failed at once (no answer at all: the browser's TypeError) waits before its one more try
+ * (18-11-2026). Measured that day: the edge answered 2.6 % of the API's requests with a 502 for an hour, every one a
+ * failed CORS preflight the browser reports as a network error, and the dashboard showed "failed to load" for each.
+ * A second try a moment later succeeds unless the next one fails too (0.07 % at that rate). A write is never sent twice.
+ */
+export const NETWORK_RETRY_DELAY_MS = 1_500
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/** A failure with no answer at all: a refused connection, a failed preflight, a dropped network. Not an abort. */
+function isNetworkFailure(e: unknown): boolean {
+  return e instanceof TypeError
+}
+
+/**
  * One request with the client's timeouts. A GET the caller cannot cancel itself gets two tries: STALLED_READ_RETRY_MS,
  * then FETCH_TIMEOUT_MS. Anything else gets one try of FETCH_TIMEOUT_MS. A caller's own signal replaces the timeouts,
  * as it always has: that caller decides when the request ends.
+ *
+ * Any GET that fails AT ONCE with a network error is also sent once more after NETWORK_RETRY_DELAY_MS, with or
+ * without a caller's signal (never once that signal has aborted). One such retry per request, on top of the stall
+ * retry: a request that stalls and then fails at once still gets it, a request that keeps failing ends in the error.
  */
 async function fetchWithTimeouts(url: string, init: RequestInit, method: string): Promise<Response> {
-  if (init.signal) return fetch(url, init)
-  const tries = method === 'GET' ? [STALLED_READ_RETRY_MS, FETCH_TIMEOUT_MS] : [FETCH_TIMEOUT_MS]
+  const isRead = method === 'GET'
+  let networkRetried = false
+  const retryAfterNetworkFailure = async (e: unknown): Promise<boolean> => {
+    if (!isRead || networkRetried || !isNetworkFailure(e) || init.signal?.aborted) return false
+    networkRetried = true
+    logger.warn(`pulse-api: a read failed with no answer and is sent again in ${NETWORK_RETRY_DELAY_MS / 1000}s`)
+    await sleep(NETWORK_RETRY_DELAY_MS)
+    return !init.signal?.aborted
+  }
+
+  if (init.signal) {
+    for (;;) {
+      try {
+        return await fetch(url, init)
+      } catch (e) {
+        if (!(await retryAfterNetworkFailure(e))) throw e
+      }
+    }
+  }
+
+  const tries = isRead ? [STALLED_READ_RETRY_MS, FETCH_TIMEOUT_MS] : [FETCH_TIMEOUT_MS]
   for (let i = 0; ; i++) {
     const controller = new AbortController()
     let timedOut = false
@@ -38,9 +76,17 @@ async function fetchWithTimeouts(url: string, init: RequestInit, method: string)
     try {
       return await fetch(url, { ...init, signal: controller.signal })
     } catch (e) {
-      // Only our own timer starts another try: a refused connection or a caller's abort is answered at once.
-      if (!timedOut || i === tries.length - 1) throw e
-      logger.warn(`pulse-api: a read had no answer in ${tries[i] / 1000}s and is sent again`)
+      clearTimeout(timer)
+      if (timedOut && i < tries.length - 1) {
+        logger.warn(`pulse-api: a read had no answer in ${tries[i] / 1000}s and is sent again`)
+        continue
+      }
+      // A failure with no answer is sent once more with the same time budget, so the try index stays put.
+      if (!timedOut && (await retryAfterNetworkFailure(e))) {
+        i--
+        continue
+      }
+      throw e
     } finally {
       clearTimeout(timer)
     }
