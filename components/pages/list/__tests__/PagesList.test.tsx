@@ -266,6 +266,41 @@ describe('the first page', () => {
     expect(new URLSearchParams(window.location.search).get('tab')).toBe('scroll')
     expect(new URLSearchParams(window.location.search).has('show')).toBe(false)
   })
+
+  // The page mounts its list before the rows are there (and again once they are): the tab must outlive the wait.
+  it('keeps that tab while the list has no row yet, so the first page that arrives opens on it', () => {
+    search = 'tab=scroll'
+    window.history.replaceState({}, '', '/sites/s/pages?tab=scroll')
+    const scroll = (p: string) => <div data-testid="scroll">{p}</div>
+    const { rerender } = render(<PagesList {...base} rows={[]} prevRows={undefined} renderScroll={scroll} />)
+    expect(opened()).toEqual([])
+    expect(new URLSearchParams(window.location.search).get('tab')).toBe('scroll')
+    rerender(<PagesList {...base} renderScroll={scroll} />)
+    expect(screen.getByTestId('scroll')).toHaveTextContent('/')
+    expect(new URLSearchParams(window.location.search).get('tab')).toBe('scroll')
+    expect(new URLSearchParams(window.location.search).has('show')).toBe(false)
+  })
+
+  it('opens on that tab in a list mounted again once its rows are there', () => {
+    search = 'tab=scroll'
+    window.history.replaceState({}, '', '/sites/s/pages?tab=scroll')
+    const scroll = (p: string) => <div data-testid="scroll">{p}</div>
+    const waiting = render(<PagesList {...base} rows={[]} prevRows={undefined} renderScroll={scroll} />)
+    waiting.unmount()
+    // The second list starts from the address the first one left behind.
+    search = window.location.search.slice(1)
+    render(<PagesList {...base} renderScroll={scroll} />)
+    expect(screen.getByTestId('scroll')).toHaveTextContent('/')
+  })
+
+  it('names no tab once the reader closed the page', () => {
+    search = 'tab=scroll'
+    render(<PagesList {...base} renderScroll={(p) => <div data-testid="scroll">{p}</div>} />)
+    fireEvent.click(within(line('/')).getByRole('button'))
+    const at = new URLSearchParams(window.location.search)
+    expect(at.get('show')).toBe('none')
+    expect(at.has('tab')).toBe(false)
+  })
 })
 
 describe('the address', () => {

@@ -137,7 +137,11 @@ export default function PagesListPage({ siteId }: { siteId: string }) {
   let body: React.ReactNode
   if (error) {
     body = <ErrorCard title="Could not load pages" description="The request failed. This is usually temporary." />
-  } else if (isLoading && rows.length === 0) {
+  } else if (!periodReady || (isLoading && rows.length === 0)) {
+    // `!periodReady` counts as loading, as on the dashboard (DashboardSurface, `showSkeleton`). Until the site's
+    // timezone and data window are known there is no range to ask for, and SWR reports isLoading false for a read
+    // that was not asked: without this the page drew an EMPTY LIST ("0 pages", "No page was viewed") for as long as
+    // those two reads took, then its skeleton, then the list.
     body = (
       <div className="flex flex-col gap-3" aria-hidden="true" data-pages-skeleton="">
         <SkeletonCard className="h-[98px]" />

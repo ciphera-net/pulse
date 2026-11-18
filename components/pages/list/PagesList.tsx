@@ -53,6 +53,8 @@ import { bucketsFor, hourName, seconds, type Bucket, type BucketKind } from './b
 // the opened page IS the list's first (its first state, as an unsorted list and an empty search are), names the
 // page once it is any other, and says `show=none` once the reader has closed every page (every page's address
 // starts with "/", so that word is no page's). So a reload always opens what was open, or keeps the list closed.
+// The tab is the opened page's, and the first page's while the list still waits for its rows: `tab=scroll` alone
+// opens the list's first page on its Scroll depth.
 // ---------------------------------------------------------------------------
 
 type Key = 'pageviews' | 'change' | 'visitors' | 'entry_bounce_rate' | 'avg_time_on_page' | 'exit_rate' | 'avg_scroll_depth'
@@ -369,11 +371,14 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
     if (shown) {
       // The list's first page is what an address without the word opens: only another page is named.
       if (shown !== firstPath) url.searchParams.set('show', shown)
-      if (tab !== 'trend') url.searchParams.set('tab', tab)
     } else if (!owed) {
       // Nothing is open and the first page is no longer owed: the reader closed it, and a reload keeps it closed.
       url.searchParams.set('show', NONE_SHOWN)
     }
+    // The opened page's tab. While the first page is still OWED (the list has no row yet), the tab it will open on
+    // stays in the address too: a list can be mounted before its rows and mounted again when they arrive, and the
+    // address is all the second one starts from. Dropping the word there lost the tab over a reload.
+    if ((shown || owed) && tab !== 'trend') url.searchParams.set('tab', tab)
     if (phone !== 'pageviews') url.searchParams.set('col', phone)
     window.history.replaceState({}, '', url.toString())
   }, [query, sort, shown, tab, phone, owed, firstPath])

@@ -16,6 +16,8 @@ const h = vi.hoisted(() => ({
   useDashboard: vi.fn(),
   useStats: vi.fn(),
   range: { period: '30', dateRange: { start: '2026-10-19', end: '2026-11-17' }, siteNow: new Date(2026, 10, 17, 14, 30) },
+  /** Whether the period is known (the site's timezone and data window have arrived). */
+  ready: true,
   list: null as Record<string, unknown> | null,
   strip: null as Record<string, unknown> | null,
 }))
@@ -29,7 +31,7 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useStats: (...a: unknown[]) => h.useStats(...a),
 }))
 vi.mock('@/lib/hooks/useUrlDateRange', () => ({
-  useUrlDateRange: () => ({ period: h.range.period, dateRange: h.range.dateRange, periodReady: true, picker: {}, siteNow: h.range.siteNow }),
+  useUrlDateRange: () => ({ period: h.range.period, dateRange: h.range.dateRange, periodReady: h.ready, picker: {}, siteNow: h.range.siteNow }),
 }))
 vi.mock('@/lib/hooks/useFilterSuggestions', () => ({ useFilterSuggestions: () => vi.fn() }))
 vi.mock('@/lib/import/core/dates', () => ({ todayIn: () => '2026-11-17' }))
@@ -56,6 +58,7 @@ const tableReads = () => h.usePagesTable.mock.calls.map((c) => [c[1], c[2], c[6]
 beforeEach(() => {
   window.history.replaceState({}, '', '/sites/s/pages')
   h.range = { period: '30', dateRange: { start: '2026-10-19', end: '2026-11-17' }, siteNow: new Date(2026, 10, 17, 14, 30) }
+  h.ready = true
   h.list = null
   h.strip = null
   h.usePagesTable.mockReset().mockReturnValue({ data: { pages: [ROW] }, error: undefined, isLoading: false })
@@ -155,6 +158,18 @@ describe('what is drawn', () => {
     const { getByText, queryByTestId } = show()
     expect(getByText('This page is not available')).toBeInTheDocument()
     expect(queryByTestId('list')).toBeNull()
+  })
+
+  it('draws its skeleton until the period is known, never an empty list', () => {
+    // The site's timezone or its data window is still on the way: there is no range, so no read is asked, and a read
+    // that was not asked is "not loading, nothing in hand".
+    h.ready = false
+    h.usePagesTable.mockReturnValue({ data: undefined, error: undefined, isLoading: false })
+    const { queryByTestId, queryByText } = show()
+    expect(document.querySelector('[data-pages-skeleton]')).not.toBeNull()
+    expect(queryByTestId('list')).toBeNull()
+    expect(queryByTestId('strip')).toBeNull()
+    expect(queryByText('This page is not available')).toBeNull()
   })
 
   it('shows an error card for a failed read and a skeleton for the first load', () => {
