@@ -75,10 +75,60 @@ describe('a stalled read (R68)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('is not sent again on a refused connection: that error is answered at once', async () => {
-    const fetchMock = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')))
+})
+
+// 18-11-2026: the edge answered 2.6 % of the API's requests with a 502 for an hour; each was a failed CORS preflight,
+// which the browser reports as TypeError("Failed to fetch"), and the dashboard showed "failed to load" for each. A read
+// that fails at once is now sent once more after NETWORK_RETRY_DELAY_MS. (Until then, R68 answered it at once.)
+describe('a read that fails with no answer (18-11-2026)', () => {
+  const refused = () => Promise.reject(new TypeError('Failed to fetch'))
+
+  it('is sent once more after the delay, and the second answer is the result', async () => {
+    const fetchMock = vi.fn(() => (fetchMock.mock.calls.length === 1 ? refused() : answered({ ok: 3 })))
     global.fetch = fetchMock as unknown as typeof fetch
-    await expect(apiRequest(endpoint())).rejects.toMatchObject({ status: 0 })
+    const result = apiRequest<{ ok: number }>(endpoint())
+    await vi.advanceTimersByTimeAsync(client.NETWORK_RETRY_DELAY_MS - 1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(result).resolves.toEqual({ ok: 3 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('ends in the network error when the second try fails too, and is not tried a third time', async () => {
+    const fetchMock = vi.fn(refused)
+    global.fetch = fetchMock as unknown as typeof fetch
+    const settled = apiRequest(endpoint()).then(() => 'resolved', (e: { status?: number; message?: string }) => e)
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(await settled).toMatchObject({ status: 0, message: 'Network error, please try again.' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('is retried for a caller holding its own signal, unless that signal aborted', async () => {
+    const fetchMock = vi.fn(() => (fetchMock.mock.calls.length === 1 ? refused() : answered({ ok: 4 })))
+    global.fetch = fetchMock as unknown as typeof fetch
+    const own = new AbortController()
+    const result = apiRequest<{ ok: number }>(endpoint(), { signal: own.signal })
+    await vi.advanceTimersByTimeAsync(client.NETWORK_RETRY_DELAY_MS)
+    await expect(result).resolves.toEqual({ ok: 4 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    const aborted = vi.fn(refused)
+    global.fetch = aborted as unknown as typeof fetch
+    const own2 = new AbortController()
+    const settled = apiRequest(endpoint(), { signal: own2.signal }).then(() => 'resolved', (e: { status?: number }) => e)
+    own2.abort()
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(await settled).toMatchObject({ status: 0 })
+    expect(aborted).toHaveBeenCalledTimes(1)
+  })
+
+  it('a write that fails with no answer is never sent again', async () => {
+    const fetchMock = vi.fn(refused)
+    global.fetch = fetchMock as unknown as typeof fetch
+    const settled = apiRequest('/sites/00000000-0000-4000-8000-000000000001/saved-filters', { method: 'POST', body: '{}' })
+      .then(() => 'resolved', (e: { status?: number }) => e)
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(await settled).toMatchObject({ status: 0 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
