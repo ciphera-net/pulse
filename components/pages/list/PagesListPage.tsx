@@ -22,6 +22,7 @@ import { todayIn } from '@/lib/import/core/dates'
 import { displayDomain } from '@/lib/utils/displayDomain'
 import { formatDate } from '@/lib/utils/format'
 import type { PageValues } from '@/components/dashboard/filter/search/values'
+import type { PageScrollBy } from '@/lib/api/stats'
 import PagesList, { LIST_PARAMS } from './PagesList'
 import PagesStrip from './PagesStrip'
 import PageHours from './PageHours'
@@ -77,6 +78,9 @@ export default function PagesListPage({ siteId }: { siteId: string }) {
     return raw ? parseFiltersFromURL(raw).filter((f) => f.dimension !== 'event' && !f.dimension.startsWith('event_property:')) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+  // What an opened page's Scroll depth is split by (ScrollWho.tsx). Held here, over every opened page, as a block's
+  // tab is held by its block: the choice is kept from one page to the next and over a trip to Trend.
+  const [scrollBy, setScrollBy] = useState<PageScrollBy>('device')
   useEffect(() => {
     const url = new URL(window.location.href)
     if (filtersParam) url.searchParams.set('filters', filtersParam)
@@ -133,7 +137,11 @@ export default function PagesListPage({ siteId }: { siteId: string }) {
   let body: React.ReactNode
   if (error) {
     body = <ErrorCard title="Could not load pages" description="The request failed. This is usually temporary." />
-  } else if (isLoading && rows.length === 0) {
+  } else if (!periodReady || (isLoading && rows.length === 0)) {
+    // `!periodReady` counts as loading, as on the dashboard (DashboardSurface, `showSkeleton`). Until the site's
+    // timezone and data window are known there is no range to ask for, and SWR reports isLoading false for a read
+    // that was not asked: without this the page drew an EMPTY LIST ("0 pages", "No page was viewed") for as long as
+    // those two reads took, then its skeleton, then the list.
     body = (
       <div className="flex flex-col gap-3" aria-hidden="true" data-pages-skeleton="">
         <SkeletonCard className="h-[98px]" />
@@ -160,7 +168,7 @@ export default function PagesListPage({ siteId }: { siteId: string }) {
           nowHour={live ? siteNow.getHours() : undefined}
           domain={site?.domain}
           renderScroll={(path) => (
-            <ScrollWho siteId={siteId} path={path} start={range.start} end={range.end} apiPeriod={apiPeriod} filters={filtersParam || undefined} />
+            <ScrollWho siteId={siteId} path={path} start={range.start} end={range.end} apiPeriod={apiPeriod} filters={filtersParam || undefined} by={scrollBy} onBy={setScrollBy} />
           )}
           // A range of one day (Today, Yesterday, a day from the calendar): the opened page draws its HOURS, as the
           // dashboard's chart draws a day, and minutes while today is younger than three hours.
