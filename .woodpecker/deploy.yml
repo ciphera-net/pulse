@@ -1,4 +1,5 @@
-# Cluster-only deploy: SKS. Both branches (main -> prod, staging -> the staging pair).
+# main -> production, which is the Magic Containers copy (`bunny-push`) since 18-11-2026: Stage 5.4 retired the
+# cluster's pulse-frontend Deployment. staging -> the cluster's staging pair, unchanged.
 # Originally generated from
 # Infra/Kubernetes/workloads/_shared/ci-deploy/deploy.yml.template.
 #
@@ -20,7 +21,8 @@
 # then purged the edge, which re-filled from the CLUSTER origin running the OLD image — a
 # green pipeline that shipped nothing.
 #
-# ⚠️ PURGE NOW GATES ON THE CLUSTER ROLLOUT, not the Nomad one. Purging while the origin
+# ⚠️ PURGE GATES ON THE ROLLOUT THAT SERVES: on main `bunny-push` since 18-11-2026, on staging the cluster's.
+# (It gated on the cluster rollout from 25-07, on the Nomad one before.) Purging while the origin
 # is half old / half new re-caches the old build's 404s for the new chunk paths, and
 # /_next/static carries a 30-day max-age — the failure that blanked pulse-staging on
 # 22-07-2026.
@@ -198,101 +200,6 @@ steps:
         })().catch(e => { console.error("FAIL: " + e.message); process.exit(1); });
         '
 
-  deploy-k8s:
-    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
-    pull: true
-    backend_options:
-      kubernetes:
-        resources:
-          requests: { memory: 128Mi, cpu: 100m }
-          limits: { memory: 512Mi }
-    # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
-    # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
-    # ~1/node_count of those connections are black-holed. Pin the name at
-    # Traefik's ClusterIP so the request never leaves the cluster.
-    extra_hosts:
-      - "registry.ops.ciphera.net:10.101.182.27"
-    depends_on: [digest, upload-static]
-    when:
-      - event: push
-        branch: main
-    # NO volume, deliberately — this is the whole point of running in-cluster.
-    #
-    # On ci-ops this step bind-mounted /opt/woodpecker/secrets:/run/ci:ro, a host
-    # directory into which the agent's `token-sync` task republished a 30-minute
-    # Vault-issued ServiceAccount token plus the SKS control-plane CA every 30s.
-    # All of that existed only because CI ran OUTSIDE the cluster and had no
-    # Kubernetes identity of its own.
-    #
-    # A step pod has one automatically: the kubelet projects a rotating token and
-    # the API server's CA at /var/run/secrets/kubernetes.io/serviceaccount/, and
-    # the API is reachable in-cluster at kubernetes.default.svc. So the token-sync
-    # mechanism, the host mount and the Vault round trip all disappear, and the
-    # credential is now bound to this pod instead of readable by anything sharing
-    # a VM. Permissions come from the ci-deployer RoleBinding
-    # (Infra/Kubernetes/workloads/_shared/ci-deployer.yaml), which binds
-    # woodpecker-builds/default.
-    environment:
-      KUBE_API: https://kubernetes.default.svc
-    commands:
-      - |
-        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
-        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
-        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
-        [ -n "$DEPLOY_SHA" ] || { echo "empty deploy_sha handoff"; exit 1; }
-        export DIGEST DEPLOY_SHA
-      - |
-        BODY=$(jq -nc \
-          --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST" \
-          --arg sha "$DEPLOY_SHA" \
-          '{spec:{template:{metadata:{annotations:{"ciphera.net/deploy-sha":$sha}},
-                            spec:{containers:[{name:"nextjs",image:$img}]}}}}')
-        curl -fsS --max-time 30 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -X PATCH \
-          -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-          -H "Content-Type: application/strategic-merge-patch+json" \
-          -d "$BODY" \
-          "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend?fieldManager=woodpecker-ci" >/dev/null
-      # Convergence gate. status.replicas == updatedReplicas is the load-bearing clause:
-      # availableReplicas sums across ALL ReplicaSets, so without it the gate passes while
-      # an OLD pod is still serving and purge-cdn caches that build's 404s for 30 days.
-      - |
-        CONVERGED=no
-        for i in $(seq 1 90); do
-          S=$(curl -fsS --max-time 15 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
-            -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-            "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend") \
-            || { echo "api read failed (iter $i) — retrying"; S=''; }
-          echo "$S" | jq -e '
-            ((.status.observedGeneration // 0) >= .metadata.generation)
-            and ((.status.updatedReplicas // 0) == .spec.replicas)
-            and ((.status.replicas // 0) == (.status.updatedReplicas // 0))
-            and ((.status.availableReplicas // 0) == (.status.updatedReplicas // 0))' >/dev/null \
-            && { echo "k8s rollout converged"; CONVERGED=yes; break; }
-          echo "$S" | jq -e '.status.conditions[]? | select(.type=="Progressing" and .reason=="ProgressDeadlineExceeded")' >/dev/null \
-            && { echo "k8s rollout FAILED (ProgressDeadlineExceeded)"; break; }
-          sleep 4
-        done
-        if [ "$CONVERGED" != "yes" ]; then
-          curl -fsS --max-time 15 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
-            -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-            "$KUBE_API/api/v1/namespaces/apps/pods" \
-            | jq -r '.items[] | select(.metadata.name | startswith("pulse-frontend")) | "\(.metadata.name) \(.status.phase)"' || true
-          echo "k8s rollout did NOT converge for pulse-frontend"
-          exit 1
-        fi
-      - |
-        O=$(curl -fsS --max-time 15 --retry 3 --retry-all-errors --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
-          -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-          "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend")
-        echo "$O" | jq -e \
-          --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST" \
-          --arg sha "$DEPLOY_SHA" '
-          ([.spec.template.spec.containers[].name] == ["nextjs"])
-          and ((.spec.template.spec.containers[] | select(.name=="nextjs") | .image) == $img)
-          and (.spec.template.metadata.annotations["ciphera.net/deploy-sha"] == $sha)' >/dev/null \
-          || { echo "POST-DEPLOY MISMATCH — running spec is not what we shipped:"; \
-               echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
-      - echo "Deployed pulse-frontend to SKS ($DEPLOY_SHA)"
   digest-staging:
     image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
     pull: true
@@ -594,8 +501,8 @@ steps:
                echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
       - echo "Deployed pulse-frontend-staging to SKS ($DEPLOY_SHA)"
   # ═══ MAGIC CONTAINERS: keep this app's MC copy on THIS build (Stage 5) ═══
-  # MC app `pulse-frontend`. Until Stage 5b points the dashboard's edge rules at it it serves nobody; from then on
-  # it serves every dashboard path, which is why `purge-cdn` waits for this step as well as deploy-k8s. The probe is
+  # MC app `pulse-frontend`. It serves every dashboard path since Stage 5b (18-11-2026) and is the only production
+  # copy since 5.4 (same day), so `purge-cdn` and `cdn-scripts` wait for this step. The probe is
   # /login because this app's `/` answers 307.
   # The MC app id is the repo secret `mc_app_id`; `mc-deploy-check` raises McImageBehindMain when the MC app's tag
   # lags `main` for 30 minutes, so a failure here is reported even when nobody reads this pipeline.
@@ -719,14 +626,14 @@ steps:
           echo "--- invariants after:  $A_INV"
           if [ "$A_INV" != "$WANT" ]; then
             echo "🔴 THE PATCH CHANGED SOMETHING IT DID NOT SEND. If the endpoint or its pull zone moved, $MC_HOSTNAME is gone."
-            echo "🔴 After Stage 5b the dashboard's edge rules point at that host: point them back at the cluster (one call), then rebuild the endpoint."
+            echo "🔴 The dashboard's edge rules point at that host and the cluster copy is retired: rebuild the endpoint at once, or restore the cluster copy from its retirement snapshot (18-11-2026)"
           fi
           echo "FAIL: MC did not converge on this build with its configuration intact"
           exit 1
         fi
 
-  # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
-  # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
+  # Purge AFTER the production deploy: `bunny-push` reads back that MC runs this build's digest (the cluster copy
+  # it used to wait for was retired 18-11-2026). Purging mid-rollout re-caches the old build's 404s for the new chunk
   # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
   purge-cdn:
     image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
@@ -736,8 +643,7 @@ steps:
         resources:
           requests: { memory: 128Mi, cpu: 100m }
           limits: { memory: 512Mi }
-    # After Stage 5b the dashboard is served from the MC copy, so this waits for both deploys.
-    depends_on: [deploy-k8s, bunny-push]
+    depends_on: [bunny-push]
     when:
       - event: push
         branch: main
@@ -823,13 +729,13 @@ steps:
   # AFTER THE ROLLOUT (since 07-11-2026). Woodpecker runs a workflow's steps in dependency levels and starts a level
   # only when the whole previous level has finished (pipeline/frontend/yaml/compiler/dag.go). With no depends_on this
   # step sat in the first level beside digest and upload-static, so its sleep and verify loop (up to about five
-  # minutes) held deploy-k8s back on every merge. The tracker scripts and the dashboard do not depend on each other;
+  # minutes) held the dashboard's deploy back on every merge. The tracker scripts and the dashboard do not depend on each other;
   # it now runs beside purge-cdn. A failed upload fails the pipeline after the dashboard has shipped, which
   # CiDefaultBranchPipelineFailed reports, instead of holding the dashboard back.
   cdn-scripts:
     image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
     pull: true
-    depends_on: [deploy-k8s]
+    depends_on: [bunny-push]
     backend_options:
       kubernetes:
         resources:
