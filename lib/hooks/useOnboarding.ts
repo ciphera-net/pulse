@@ -23,6 +23,8 @@ export interface OnboardingItem {
   countsTowardCompletion?: boolean
   /** Why this step cannot be taken yet. Set only while it is unreachable. */
   lockedReason?: string
+  /** A short tag on a done step saying how it was done, when that differs from the label ("Invite sent"). */
+  note?: string
 }
 
 /**
@@ -32,6 +34,15 @@ export interface OnboardingItem {
  * mounts share. SWR is that store; localStorage is only the persistence layer
  * behind the dismissed key.
  */
+/**
+ * `has_invite`: the workspace holds an invite link somebody can still join with. Optional because a backend that
+ * predates the field leaves it out, and then the step waits for a second member as before.
+ */
+interface OnboardingStatus {
+  has_goal: boolean
+  has_invite?: boolean
+}
+
 export function useOnboarding() {
   const { user } = useAuth()
   const orgId = user?.org_id
@@ -47,9 +58,9 @@ export function useOnboarding() {
   // matters for readiness: against a backend predating the endpoint (a
   // rollback), data stays undefined forever, and readiness gating on data
   // alone would hide the chip for good.
-  const { data: onboarding, error: onboardingError } = useSWR<{ has_goal: boolean }>(
+  const { data: onboarding, error: onboardingError } = useSWR<OnboardingStatus>(
     orgId ? ['onboarding-status', orgId] : null,
-    () => apiRequest<{ has_goal: boolean }>('/onboarding/status'),
+    () => apiRequest<OnboardingStatus>('/onboarding/status'),
     { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30_000 }
   )
 
@@ -73,6 +84,8 @@ export function useOnboarding() {
   // happened; now they say what unlocks them.
   const needsSite = firstSiteId ? undefined : 'add a site first'
 
+  const hasInvite = onboarding?.has_invite ?? false
+
   const items: OnboardingItem[] = [
     { key: 'site', label: 'Add your first site', href: '/sites/new', completed: sites.length > 0 },
     // Point directly at the settings tabs. The old `/sites/{id}/settings` /
@@ -84,8 +97,18 @@ export function useOnboarding() {
     // "the known false green"). The server's derived install status is what
     // actually knows whether events arrived.
     { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.install_status && s.install_status !== 'never_installed'), lockedReason: needsSite },
-    { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1, countsTowardCompletion: false },
     { key: 'goal', label: 'Name an event', href: firstSiteId ? '/settings/site/events' : undefined, completed: onboarding?.has_goal ?? false, lockedReason: needsSite },
+    // Optional steps come after the ones that count, so the first open row is one that finishes the checklist. A
+    // workspace that made an invite link has done this step before anyone joins; left open, the step kept drawing
+    // clicks away from the one that closes the checklist.
+    {
+      key: 'teammate',
+      label: 'Invite a teammate',
+      href: '/settings/organization/members',
+      completed: members.length > 1 || hasInvite,
+      countsTowardCompletion: false,
+      note: members.length <= 1 && hasInvite ? 'Invite sent' : undefined,
+    },
   ]
 
   // Completion counts only the steps that gate it — see countsTowardCompletion.
@@ -93,6 +116,8 @@ export function useOnboarding() {
   const completedCount = counted.filter(i => i.completed).length
   const total = counted.length
   const allDone = completedCount === total
+  // The step that keeps the checklist open, named in the panel's header so the count says what to do next.
+  const nextItem = counted.find(i => !i.completed) ?? null
 
   // Gate visibility on the data actually being there. The chip is top-bar
   // chrome: appearing with a provisional 0/5 and then settling (or vanishing
@@ -105,5 +130,5 @@ export function useOnboarding() {
     (onboarding !== undefined || onboardingError !== undefined)
   const visible = Boolean(orgId) && dismissed === false && dataReady && !allDone
 
-  return { items, completedCount, total, allDone, visible, dismiss }
+  return { items, completedCount, total, allDone, nextItem, visible, dismiss }
 }

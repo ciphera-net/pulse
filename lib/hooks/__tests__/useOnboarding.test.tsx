@@ -16,6 +16,7 @@ import { renderHook } from '@testing-library/react'
 let sites: Array<Record<string, unknown>> = []
 let members: unknown[] = [{ id: 'u1' }]
 let hasGoal: boolean | undefined = false
+let hasInvite: boolean | undefined = undefined
 
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { org_id: 'org1' } }) }))
 vi.mock('@/lib/swr/sites', () => ({ useSites: () => ({ sites, isLoading: false }) }))
@@ -31,7 +32,7 @@ vi.mock('swr', () => ({
     if (name === 'onboarding-status') {
       return hasGoal === undefined
         ? { data: undefined, error: undefined, mutate: vi.fn() }
-        : { data: { has_goal: hasGoal }, error: undefined, mutate: vi.fn() }
+        : { data: { has_goal: hasGoal, ...(hasInvite === undefined ? {} : { has_invite: hasInvite }) }, error: undefined, mutate: vi.fn() }
     }
     if (name === 'onboarding-dismissed') return { data: false, mutate: vi.fn() }
     return { data: undefined, mutate: vi.fn() }
@@ -47,6 +48,7 @@ beforeEach(() => {
   sites = [{ id: 's1', install_status: 'never_installed' }]
   members = [{ id: 'u1' }]
   hasGoal = false
+  hasInvite = undefined
 })
 
 describe('useOnboarding', () => {
@@ -112,5 +114,49 @@ describe('useOnboarding', () => {
     hasGoal = true
     const { result } = renderHook(() => useOnboarding())
     expect(item(result.current, 'goal').completed).toBe(true)
+  })
+
+  // An invite link made, the optional step still open and listed first: it drew the clicks while "Name an event", the
+  // step that closes the checklist, sat below it.
+  it('lists the steps that count before the optional one', () => {
+    const { result } = renderHook(() => useOnboarding())
+    expect(result.current.items.map((i) => i.key)).toEqual(['site', 'script', 'goal', 'teammate'])
+  })
+
+  it('ticks the teammate step once the workspace holds an invite link, and says so', () => {
+    hasInvite = true
+    const { result } = renderHook(() => useOnboarding())
+    const teammate = item(result.current, 'teammate')
+    expect(teammate.completed).toBe(true)
+    expect(teammate.note).toBe('Invite sent')
+  })
+
+  it('ticks it without the note once somebody has joined', () => {
+    members = [{ id: 'u1' }, { id: 'u2' }]
+    hasInvite = true
+    const { result } = renderHook(() => useOnboarding())
+    expect(item(result.current, 'teammate').completed).toBe(true)
+    expect(item(result.current, 'teammate').note).toBeUndefined()
+  })
+
+  it('waits for a second member when the backend does not say has_invite', () => {
+    const { result } = renderHook(() => useOnboarding())
+    expect(item(result.current, 'teammate').completed).toBe(false)
+  })
+
+  it('names the first step that keeps the checklist open', () => {
+    sites = [{ id: 's1', install_status: 'active' }]
+    hasInvite = false
+    const { result } = renderHook(() => useOnboarding())
+    expect(result.current.nextItem?.key).toBe('goal')
+    expect(result.current.nextItem?.label).toBe('Name an event')
+  })
+
+  it('never names the optional step as next', () => {
+    sites = [{ id: 's1', install_status: 'active' }]
+    hasGoal = true
+    const { result } = renderHook(() => useOnboarding())
+    expect(result.current.allDone).toBe(true)
+    expect(result.current.nextItem).toBeNull()
   })
 })
