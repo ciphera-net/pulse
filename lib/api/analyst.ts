@@ -307,6 +307,11 @@ export function updateAnalystMemory(siteId: string, memoryId: string, body: stri
 }
 
 /** Deletes a memory (204); 404 when it is already gone. */
+/** Deletes one of the person's own chats about the site, every turn in it (the Recent chats list's trash button). */
+export function deleteAnalystConversation(siteId: string, conversationId: string, send: SendOptions = {}) {
+  return apiRequest<{ deleted: number }>(`/sites/${siteId}/barry/conversations/${conversationId}`, { method: 'DELETE', keepalive: send.keepalive })
+}
+
 export function deleteAnalystMemory(siteId: string, memoryId: string, send: SendOptions = {}) {
   return apiRequest<void>(`/sites/${siteId}/barry/memories/${memoryId}`, { method: 'DELETE', keepalive: send.keepalive })
 }

@@ -33,13 +33,17 @@ import {
   NotePencil,
   StarFour,
   Stop,
+  Trash,
   TrendDown,
   TrendUp,
   Warning,
 } from '@phosphor-icons/react'
+import { toast } from '@ciphera-net/facet'
+import { useUndo } from '@ciphera-net/facet-hold'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import {
   askAnalystStream,
+  deleteAnalystConversation,
   getAnalystConversations,
   getAnalystFinding,
   getAnalystFindings,
@@ -52,6 +56,7 @@ import {
 } from '@/lib/api/analyst'
 import { ApiError } from '@/lib/api/client'
 import { useFeature } from '@/lib/features'
+import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useSite } from '@/lib/swr/dashboard'
 import { cn } from '@/lib/utils'
@@ -601,7 +606,9 @@ const FindingHeading: FC = () => {
 }
 
 // * Past chats (round 6, pick 3): the newest under the suggestions, all of them a click away. Picking one reopens it,
-// * and a question asked there carries on that chat. Times follow Account › Profile › Show times in.
+// * and a question asked there carries on that chat. Times follow Account › Profile › Show times in. Each row has a
+// * trash button (option A, 18-11-2026): the chat leaves the list at once and is deleted when the Undo bar runs out,
+// * as a memory is (PUL-28).
 const PageRecent: FC<{ siteId: string; siteTimezone: string | null; onOpen: (chat: AnalystConversation) => void }> = ({
   siteId,
   siteTimezone,
@@ -613,7 +620,21 @@ const PageRecent: FC<{ siteId: string; siteTimezone: string | null; onOpen: (cha
   })
   const { zone } = useDisplayZone(siteTimezone)
   const [all, setAll] = useState(false)
-  const rows = useMemo(() => recentChats(data?.conversations ?? []), [data])
+  const { defer } = useUndo()
+  const pendingKeys = usePendingKeys()
+  const rows = useMemo(() => recentChats(data?.conversations ?? []).filter(({ chat }) => !pendingKeys.has(`chat:${chat.id}`)), [data, pendingKeys])
+  const remove = (chat: AnalystConversation) =>
+    defer(
+      whilePending(`chat:${chat.id}`, {
+        message: 'Chat deleted',
+        commit: ({ keepalive }) => deleteAnalystConversation(siteId, chat.id, { keepalive }),
+        // Awaited before the key is released, so a deleted chat never flashes back while the list refetches.
+        onCommitted: () => mutate(),
+        onError: () => {
+          toast.error("Couldn't delete the chat. Try again.")
+        },
+      }),
+    )
 
   if (error && !data) {
     return (
@@ -646,16 +667,25 @@ const PageRecent: FC<{ siteId: string; siteTimezone: string | null; onOpen: (cha
       </div>
       <ul className="flex flex-col border-t border-white/[0.06]">
         {shown.map(({ chat, title, lastAt }) => (
-          <li key={chat.id} className="border-b border-white/[0.06]">
+          <li key={chat.id} className="flex items-center border-b border-white/[0.06]">
             <button
               type="button"
               onClick={() => onOpen(chat)}
               title={title}
-              className="group flex w-full items-center gap-3 p-2.5 text-left text-sm text-neutral-400 transition-colors hover:bg-white/[0.03] hover:text-white"
+              className="group flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left text-sm text-neutral-400 transition-colors hover:bg-white/[0.03] hover:text-white"
             >
               <ClockCounterClockwise className="h-[15px] w-[15px] shrink-0 text-neutral-600 transition-colors group-hover:text-brand-orange" />
               <span className="min-w-0 flex-1 truncate">{title}</span>
               <span className="shrink-0 text-xs tabular-nums text-neutral-500">{chatWhenLabel(lastAt, zone)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(chat)}
+              aria-label={`Delete chat: ${title}`}
+              title="Delete chat"
+              className="shrink-0 p-2.5 text-neutral-600 transition-colors hover:text-white"
+            >
+              <Trash className="h-[15px] w-[15px]" />
             </button>
           </li>
         ))}

@@ -12,6 +12,8 @@ import { ApiError } from '@/lib/api/client'
 import type { AnalystAnswer, AnalystConversation, AnalystStreamEvent, AnalystUsage } from '@/lib/api/analyst'
 import { RECOVERY_LIMIT_MS } from '../recover'
 import { findingFigures, findingHeading, findingNoticed, findingWeekLabel } from '../findings'
+import { act } from 'react'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const askAnalyst = vi.hoisted(() => vi.fn())
 const askAnalystStream = vi.hoisted(() => vi.fn())
@@ -20,6 +22,7 @@ const getAnalystConversations = vi.hoisted(() => vi.fn())
 const getAnalystTurn = vi.hoisted(() => vi.fn())
 const getAnalystFindings = vi.hoisted(() => vi.fn())
 const getAnalystFinding = vi.hoisted(() => vi.fn())
+const deleteAnalystConversation = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/api/analyst', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/analyst')>()),
   askAnalyst,
@@ -29,7 +32,10 @@ vi.mock('@/lib/api/analyst', async (importOriginal) => ({
   getAnalystTurn,
   getAnalystFindings,
   getAnalystFinding,
+  deleteAnalystConversation,
 }))
+// * The Undo window is facet-hold's own suite: each deferred delete is committed or undone by the test.
+vi.mock('@ciphera-net/facet-hold', async () => (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 // * The watchers beta (design §12) and the address the summary's link lands on: off and empty unless a test sets them.
 const flags = vi.hoisted(() => ({ watchers: false as boolean | null, search: '' }))
 vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'barry-watchers' ? flags.watchers : null) }))
@@ -159,6 +165,9 @@ beforeEach(() => {
   getAnalystFinding.mockReset()
   getAnalystConversations.mockReset()
   getAnalystConversations.mockResolvedValue(chats())
+  deleteAnalystConversation.mockReset()
+  deleteAnalystConversation.mockResolvedValue({ deleted: 1 })
+  resetDeferred()
   getAnalystTurn.mockReset()
   getAnalystTurn.mockResolvedValue(null)
 })
@@ -371,6 +380,28 @@ describe('the Analyst page', () => {
     expect(screen.queryByText('Q four')).toBeNull()
   })
 
+  it('takes a chat off the list at once with its trash button, and deletes it only when the Undo window runs out', async () => {
+    getAnalystConversations.mockResolvedValue(chats(chat('c1', 'Q one', 'A one', 1), chat('c2', 'Q two', 'A two', 2)))
+    mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chat: Q one' }))
+    expect(screen.queryByText('Q one')).toBeNull()
+    expect(screen.getByText('Q two')).toBeInTheDocument()
+    expect(deleteAnalystConversation).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Chat deleted')
+    await act(() => commitLast({ keepalive: true }))
+    expect(deleteAnalystConversation).toHaveBeenCalledWith('s1', 'c1', { keepalive: true })
+  })
+
+  it('brings a chat back on Undo, sending nothing', async () => {
+    getAnalystConversations.mockResolvedValue(chats(chat('c1', 'Q one', 'A one', 1)))
+    mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete chat: Q one' }))
+    expect(screen.queryByText('Q one')).toBeNull()
+    act(() => undoLast())
+    expect(await screen.findByText('Q one')).toBeInTheDocument()
+    expect(deleteAnalystConversation).not.toHaveBeenCalled()
+  })
+
   it('shows no list, and no Show all, for someone with no chats', async () => {
     mount()
     await screen.findByText('3 of 50 questions this month')
@@ -410,7 +441,7 @@ describe('the Analyst page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /New chat/ }))
     expect(await screen.findByText('Recent chats')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Which pages grew\?/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Which pages grew\?/ })).toBeInTheDocument()
   })
 
   it('says in one line when the past chats did not load, and Try again reads them again', async () => {

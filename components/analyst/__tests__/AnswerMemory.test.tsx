@@ -38,6 +38,8 @@ vi.mock('@/components/funnels/FunnelRail', () => ({
   RailDelta: ({ change }: { change: number | null }) => <span data-testid="delta">{String(change)}</span>,
 }))
 
+// * The page's Recent chats delete through the Undo window (facet-hold's own suite); none is deleted here.
+vi.mock('@ciphera-net/facet-hold', async () => (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 import AnalystPage from '../AnalystPage'
 
 beforeAll(() => {
