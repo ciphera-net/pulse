@@ -286,6 +286,12 @@ steps:
       #
       # The `name=` value carries a comma to publish two tags, so it must be QUOTED
       # INSIDE the CSV or buildctl reads `latest` as a separate attribute.
+      # 🔴 `oci-mediatypes=false` is LOAD-BEARING for Bunny Magic Containers. BuildKit defaults
+      # to OCI media types, and Magic Containers' image puller sends an Accept header listing ONLY
+      # the Docker types, so it cannot read an OCI manifest. Measured 18-11-2026 against our
+      # registry with that header: this repo's OCI image answered 404, a Docker v2 image of
+      # ciphera-net/website answered 200. The cluster reads Docker v2 too, so this is strictly
+      # more compatible, not a trade. Same flag as ciphera-net/website's push.yml.
       - |
         buildctl build \
           --frontend dockerfile.v0 \
@@ -295,7 +301,7 @@ steps:
           --opt build-arg:NEXT_PUBLIC_CDN_URL="$NEXT_PUBLIC_CDN_URL" \
           --import-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME" \
           --export-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME,mode=max,ignore-error=true,touch_refresh=87600h" \
-          --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true" \
+          --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true,oci-mediatypes=false" \
           --progress plain
       - echo "pushed $REGISTRY/$IMAGE_REPO:$IMAGE_TAG and :latest"
   cache-restore-staging:
@@ -523,6 +529,6 @@ steps:
           --opt build-arg:NEXT_PUBLIC_CDN_URL="$NEXT_PUBLIC_CDN_URL" \
           --import-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME" \
           --export-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME,mode=max,ignore-error=true,touch_refresh=87600h" \
-          --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true" \
+          --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true,oci-mediatypes=false" \
           --progress plain
       - echo "pushed $REGISTRY/$IMAGE_REPO:$IMAGE_TAG and :latest"

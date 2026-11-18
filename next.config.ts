@@ -182,6 +182,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,
   },
   reactStrictMode: true,
+  // * No `X-Powered-By: Next.js`. The cluster's ingress stripped it on the way out; served
+  // * from anywhere else, nothing would, so the app stops sending it.
+  poweredByHeader: false,
   // * Production only — `next dev` must keep serving its own assets, and an empty
   // * prefix must stay a no-op rather than emitting `//_next/...`.
   ...(process.env.NODE_ENV === 'production' && ASSET_PREFIX ? { assetPrefix: ASSET_PREFIX } : {}),
