@@ -53,4 +53,22 @@ describe('FlowChart', () => {
     expect(slot.querySelector('[data-journeys-card="other"]')).not.toBeNull()
     slot.remove()
   })
+
+  it("lights the pressed page's own way out of the site in red, and no other page's", () => {
+    const slot = document.createElement('div')
+    document.body.appendChild(slot)
+    const flow = smallSite()
+    const { container } = render(<FlowChart flow={flow} deep={flow} cardSlot={slot} />)
+    // Five of each step-2 page's ten visitors leave: pressing /p0 lights its route into "Left the site" and its share
+    // of the bar.
+    fireEvent.click(container.querySelector('[data-journeys-node="1:/p0"]') as Element)
+    const feed = container.querySelector('[data-journeys-drop-feed="1:/p0"]')
+    expect(feed?.getAttribute('stroke')).toBe('rgb(var(--red-400))')
+    expect(feed?.getAttribute('data-journeys-drop-lit')).toBe('pressed')
+    expect(container.querySelector('[data-journeys-drop-band="1:/p0"]')).not.toBeNull()
+    // Another page's way out stays as it was, and the bar carries one lit share.
+    expect(container.querySelector('[data-journeys-drop-feed="1:/p1"]')?.getAttribute('stroke')).toBe('rgb(var(--neutral-600))')
+    expect(container.querySelectorAll('[data-journeys-drop-band]').length).toBe(1)
+    slot.remove()
+  })
 })
