@@ -200,7 +200,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   journeys_flow: {
     title: 'Journeys',
     definition:
-      'Each column is a step of a visit: the page it started on, then its second page, and so on. A count sits beside every page, and the rest of a step is grouped as Other pages. Left the site counts the visits that ended at that step. Press a page or a line between two pages to follow its journeys, and press Other pages to see the pages it holds.',
+      'Each column is one step of a visitor\'s day on the site: the page they started on, then their second page, and so on. A count sits beside every page, and the rest of a step is grouped as Other pages. Left the site counts the visitors who went no further. Press a page or a line between two pages to follow its journeys, and press Other pages to see the pages it holds.',
   },
   pages_list: {
     title: 'Pages',

@@ -160,9 +160,9 @@ export default function JourneysFlowPage({ siteId }: { siteId: string }) {
     body = <EmptyState icon={<TreeStructure />} title="This page is not available" description="The site owner has not shared it." />
   } else if (!any) {
     body = entry ? (
-      <EmptyState icon={<TreeStructure />} title={`No journeys start at ${entry}`} description="No visit began on this page in this period. Try another entry page or a longer range." action={{ label: 'Remove the entry page filter', onClick: () => setFilters((p) => p.filter((f) => f.dimension !== ENTRY_DIMENSION)) }} />
+      <EmptyState icon={<TreeStructure />} title={`No journeys start at ${entry}`} description="No visitor started on this page in this period. Try another entry page or a longer range." action={{ label: 'Remove the entry page filter', onClick: () => setFilters((p) => p.filter((f) => f.dimension !== ENTRY_DIMENSION)) }} />
     ) : filters.length > 0 ? (
-      <EmptyState icon={<TreeStructure />} title="No journeys match these filters" description="No visit matches the filters in this period. Try fewer filters or a longer range." action={{ label: 'Clear filters', onClick: handleClearFilters }} />
+      <EmptyState icon={<TreeStructure />} title="No journeys match these filters" description="No visitor matches the filters in this period. Try fewer filters or a longer range." action={{ label: 'Clear filters', onClick: handleClearFilters }} />
     ) : (
       <EmptyState
         icon={<TreeStructure />}
@@ -182,7 +182,7 @@ export default function JourneysFlowPage({ siteId }: { siteId: string }) {
             <TermInfoTip term="journeys_flow" />
           </span>
           <span className="me-auto text-[11px] text-neutral-500" data-journeys-count="">
-            {onePage > 0 ? `${formatNumber(all)} visits, ${formatNumber(deep.total_sessions)} went past their first page` : `${formatNumber(deep.total_sessions)} visits went past their first page`}
+            {onePage > 0 ? `${formatNumber(all)} visitors, ${formatNumber(deep.total_sessions)} went past their first page` : `${formatNumber(deep.total_sessions)} visitors went past their first page`}
           </span>
           <Switcher size="sm" tone="solid" aria-label="Steps" options={STEP_OPTIONS} value={String(steps)} onChange={(v) => setSteps(Number(v))} />
         </div>

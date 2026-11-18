@@ -40,7 +40,7 @@ function nextCell(next: ReturnType<typeof nextOf>, visits: number, whose: 'its' 
     icon: <ArrowBendDownRight />,
     name: 'Top next page',
     figure: next.top ? <span className="block truncate" title={next.top.path}>{next.top.path}</span> : dash,
-    context: next.top ? `${formatNumber(next.top.n)} visits, ${pct(next.top.n, visits)} of ${whose} visits` : 'No page after it',
+    context: next.top ? `${formatNumber(next.top.n)} visitors, ${pct(next.top.n, visits)} of ${whose} visitors` : 'No page after it',
   }
 }
 const pagesNext = (next: ReturnType<typeof nextOf>) => `${formatNumber(next.named)}${next.more ? '+' : ''}`
@@ -88,9 +88,9 @@ export default function PressedCard({ flow, deep, pin, links, kept, route, onFun
     )
     where = `${stepName(step)} to step ${step + 2}`
     cells = [
-      { key: 'visits', icon: <Eye />, name: 'Visits', figure: formatNumber(value), context: `went from ${label(a)} straight to ${label(b)}` },
-      { key: 'of-a', icon: <ArrowRight />, name: `Share of ${label(a)}`, figure: pct(value, visitsOf(step, a)), context: `of its visits ${atStep(step)}` },
-      { key: 'of-b', icon: <ArrowBendDownRight />, name: `Share of ${label(b)}`, figure: pct(value, visitsOf(step + 1, b)), context: `of its visits ${atStep(step + 1)}` },
+      { key: 'visits', icon: <Eye />, name: 'Visitors', figure: formatNumber(value), context: `went from ${label(a)} straight to ${label(b)}` },
+      { key: 'of-a', icon: <ArrowRight />, name: `Share of ${label(a)}`, figure: pct(value, visitsOf(step, a)), context: `of its visitors ${atStep(step)}` },
+      { key: 'of-b', icon: <ArrowBendDownRight />, name: `Share of ${label(b)}`, figure: pct(value, visitsOf(step + 1, b)), context: `of its visitors ${atStep(step + 1)}` },
     ]
   } else {
     const step = stepOfNode(pin.id)
@@ -108,16 +108,16 @@ export default function PressedCard({ flow, deep, pin, links, kept, route, onFun
       where = stepName(step)
       cells = firstUncounted
         ? [
-            { key: 'visits', icon: <Eye />, name: 'Visits', figure: formatNumber(visits), context: `${pct(visits, total)} of journeys began on them` },
+            { key: 'visits', icon: <Eye />, name: 'Visitors', figure: formatNumber(visits), context: `${pct(visits, total)} of journeys began on them` },
             { key: 'pages', icon: <Files />, name: 'Pages', figure: formatNumber(pages), context: `past the ${kept} busiest ${atStep(step)}` },
             nextCell(next, visits, 'their'),
             { key: 'spread', icon: <Files />, name: 'Next pages', figure: pagesNext(next), context: 'different pages seen next' },
           ]
         : [
-            { key: 'visits', icon: <Eye />, name: 'Visits', figure: formatNumber(visits), context: `${pct(visits, total)} of the visits ${atStep(step)}` },
+            { key: 'visits', icon: <Eye />, name: 'Visitors', figure: formatNumber(visits), context: `${pct(visits, total)} of the visitors ${atStep(step)}` },
             { key: 'pages', icon: <Files />, name: 'Pages', figure: formatNumber(pages), context: `past the ${kept} busiest ${atStep(step)}` },
-            { key: 'on', icon: <ArrowRight />, name: 'Went on', figure: known ? formatNumber(next.on) : dash, context: known ? `${pct(next.on, visits)} of their visits` : `Not read past step ${step + 1}` },
-            { key: 'left', icon: <SignOut />, name: 'Left the site', figure: known ? formatNumber(visits - next.on) : dash, context: known ? `${pct(visits - next.on, visits)} of their visits` : `Not read past step ${step + 1}` },
+            { key: 'on', icon: <ArrowRight />, name: 'Went on', figure: known ? formatNumber(next.on) : dash, context: known ? `${pct(next.on, visits)} of their visitors` : `Not read past step ${step + 1}` },
+            { key: 'left', icon: <SignOut />, name: 'Left the site', figure: known ? formatNumber(visits - next.on) : dash, context: known ? `${pct(visits - next.on, visits)} of their visitors` : `Not read past step ${step + 1}` },
           ]
     } else {
       const i = col?.top.findIndex(([p]) => p === path) ?? -1
@@ -128,14 +128,14 @@ export default function PressedCard({ flow, deep, pin, links, kept, route, onFun
       where = stepName(step)
       cells = firstUncounted
         ? [
-            { key: 'visits', icon: <Eye />, name: 'Visits', figure: formatNumber(visits), context: `${pct(visits, total)} of journeys began here` },
+            { key: 'visits', icon: <Eye />, name: 'Visitors', figure: formatNumber(visits), context: `${pct(visits, total)} of journeys began here` },
             nextCell(next, visits, 'its'),
             { key: 'spread', icon: <Files />, name: 'Next pages', figure: pagesNext(next), context: 'different pages seen next' },
           ]
         : [
-            { key: 'visits', icon: <Eye />, name: 'Visits', figure: formatNumber(visits), context: `${pct(visits, total)} of the visits ${atStep(step)}` },
-            { key: 'on', icon: <ArrowRight />, name: 'Went on', figure: known ? formatNumber(next.on) : dash, context: known ? `${pct(next.on, visits)} of its visits` : `Not read past step ${step + 1}` },
-            { key: 'left', icon: <SignOut />, name: 'Left the site', figure: known ? formatNumber(visits - next.on) : dash, context: known ? `${pct(visits - next.on, visits)} of its visits` : `Not read past step ${step + 1}` },
+            { key: 'visits', icon: <Eye />, name: 'Visitors', figure: formatNumber(visits), context: `${pct(visits, total)} of the visitors ${atStep(step)}` },
+            { key: 'on', icon: <ArrowRight />, name: 'Went on', figure: known ? formatNumber(next.on) : dash, context: known ? `${pct(next.on, visits)} of its visitors` : `Not read past step ${step + 1}` },
+            { key: 'left', icon: <SignOut />, name: 'Left the site', figure: known ? formatNumber(visits - next.on) : dash, context: known ? `${pct(visits - next.on, visits)} of its visitors` : `Not read past step ${step + 1}` },
             known ? nextCell(next, visits, 'its') : { key: 'next', icon: <ArrowBendDownRight />, name: 'Top next page', figure: dash, context: `Not read past step ${step + 1}` },
           ]
     }

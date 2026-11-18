@@ -300,9 +300,9 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
     if (n.path === '(other)') {
       const keep = keptAt(n.step)
       const names = (flow.columns[n.step]?.top ?? []).slice(keep, keep + 3).map(([p]) => p)
-      setTip({ ...at, title: 'Other pages', sub: `${formatNumber(visits)} visits on ${formatNumber(otherPages(flow, n.step, keep))} more pages`, more: names.length ? `Busiest: ${names.join(', ')}` : undefined })
+      setTip({ ...at, title: 'Other pages', sub: `${formatNumber(visits)} visitors on ${formatNumber(otherPages(flow, n.step, keep))} more pages`, more: names.length ? `Busiest: ${names.join(', ')}` : undefined })
     } else {
-      setTip({ ...at, title: n.path, sub: `${formatNumber(visits)} visits${left ? `, ${formatNumber(left)} left the site here` : ''}` })
+      setTip({ ...at, title: n.path, sub: `${formatNumber(visits)} visitors${left ? `, ${formatNumber(left)} left the site here` : ''}` })
     }
   }
   const clear = () => { setHover(null); setTip(null) }
@@ -326,7 +326,7 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                   <g key={s.index} style={{ pointerEvents: 'none' }}>
                     <text x={s.x} y={12} fontSize={13} fontWeight={500} fill="rgb(var(--neutral-200))">{stepName(s.index)}</text>
                     <text x={s.x} y={28} fontSize={11} fill="rgb(var(--neutral-500))">
-                      {formatNumber(visits)} visits{prev > 0 ? `, ${Math.round((visits / prev) * 100)}% went on` : ''}
+                      {formatNumber(visits)} visitors{prev > 0 ? `, ${Math.round((visits / prev) * 100)}% went on` : ''}
                     </text>
                   </g>
                 )
@@ -350,7 +350,7 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                     strokeWidth={Math.max(10, l.strokeWidth * sy)}
                     className="cursor-pointer"
                     data-journeys-link={linkKey(l.source, l.target)}
-                    onPointerMove={(e) => { if (e.pointerType !== 'mouse') return; const at = place(e); setHover({ kind: 'link', source: l.source, target: l.target }); if (at) setTip({ ...at, title: `${pageName(pathOfNode(l.source))} → ${pageName(pathOfNode(l.target))}`, sub: `${formatNumber(l.value)} visits` }) }}
+                    onPointerMove={(e) => { if (e.pointerType !== 'mouse') return; const at = place(e); setHover({ kind: 'link', source: l.source, target: l.target }); if (at) setTip({ ...at, title: `${pageName(pathOfNode(l.source))} → ${pageName(pathOfNode(l.target))}`, sub: `${formatNumber(l.value)} visitors` }) }}
                     onClick={() => press({ kind: 'link', source: l.source, target: l.target })}
                   />
                 ))}
@@ -369,7 +369,7 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                     height={Math.max(2, b.height * sy)}
                     fill="rgb(var(--neutral-700))"
                     data-journeys-drop={b.step}
-                    onPointerMove={(e) => { if (e.pointerType !== 'mouse') return; const at = place(e); setHover(null); if (at) setTip({ ...at, title: `Left the site after ${stepName(b.step - 1).toLowerCase()}`, sub: `${formatNumber(b.left)} visits, ${Math.round((b.left / Math.max(1, b.of)) * 100)}% of ${stepName(b.step - 1).toLowerCase()}` }) }}
+                    onPointerMove={(e) => { if (e.pointerType !== 'mouse') return; const at = place(e); setHover(null); if (at) setTip({ ...at, title: `Left the site after ${stepName(b.step - 1).toLowerCase()}`, sub: `${formatNumber(b.left)} visitors, ${Math.round((b.left / Math.max(1, b.of)) * 100)}% of ${stepName(b.step - 1).toLowerCase()}` }) }}
                   />
                 ))}
                 {layout.nodes.map((n) => {
