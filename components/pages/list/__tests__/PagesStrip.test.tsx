@@ -43,6 +43,37 @@ describe('PagesStrip', () => {
     expect(figure('pageviews')).toHaveTextContent('800 in the period before')
   })
 
+  it('lays itself out by its own room: five in a row from 880 px, and the change where a cell has room for it', () => {
+    render(<PagesStrip rows={rows} prevRows={rows} stats={stats} prevStats={before} limit={500} />)
+    const strip = document.querySelector('[data-pages-strip]') as HTMLElement
+    // A block cannot ask its own width: the wrapper is the container.
+    expect(strip.parentElement!.className).toContain('[container-type:inline-size]')
+    expect(strip.className).toContain('grid-cols-2 cq-[880px]:grid-cols-5')
+    const tile = figure('pageviews')
+    const atRowEnd = tile.querySelector('[data-figure-change]') as HTMLElement
+    const besideFigure = tile.querySelector('[data-figure-value]')!.nextElementSibling as HTMLElement
+    // At the row's end in a wide cell (two a row from 400 px, five a row from 1000 px), beside the figure otherwise.
+    expect(atRowEnd.className).toContain('hidden shrink-0 cq-[400px]:inline-flex cq-[880px]:hidden cq-[1000px]:inline-flex')
+    expect(besideFigure.className).toContain('shrink-0 cq-[400px]:hidden cq-[880px]:inline-flex cq-[1000px]:hidden')
+    expect(atRowEnd).toHaveTextContent('↑ 25%')
+    expect(besideFigure).toHaveTextContent('↑ 25%')
+    // A line of context is never cut: it may take a second line.
+    expect(tile.querySelector('[data-figure-context]')!.className).not.toContain('truncate')
+  })
+
+  // The steps are arithmetic on what a cell holds, as measured on the page: 40 px of padding, an icon and its gap
+  // (24 px), the widest name (86 px), the widest change and its gap (48 px).
+  it('gives a cell 198 px wherever a name and a change stand side by side, and 163 px wherever five stand in a row', () => {
+    render(<PagesStrip rows={rows} prevRows={rows} stats={stats} prevStats={before} limit={500} />)
+    const strip = document.querySelector('[data-pages-strip]') as HTMLElement
+    const five = Number(/cq-\[(\d+)px\]:grid-cols-5/.exec(strip.className)![1])
+    const steps = [...(figure('pageviews').querySelector('[data-figure-change]') as HTMLElement).className.matchAll(/cq-\[(\d+)px\]:inline-flex/g)].map((m) => Number(m[1]))
+    const [twoARow, fiveARow] = steps
+    expect(twoARow / 2).toBeGreaterThanOrEqual(198)
+    expect(fiveARow / 5).toBeGreaterThanOrEqual(198)
+    expect(five / 5).toBeGreaterThanOrEqual(163)
+  })
+
   it('draws a dash, never a nought, for what was not measured', () => {
     render(<PagesStrip rows={[page('/', 10, null, null)]} prevRows={undefined} limit={500} />)
     expect(figure('time')).toHaveTextContent('—')

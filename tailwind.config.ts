@@ -32,6 +32,20 @@ const skeletonDitherPlugin = plugin(({ addBase }) => {
   })
 })
 
+// * Container queries, without a dependency. `cq-[700px]:flex` applies where the nearest CONTAINER (an ancestor
+// * carrying `[container-type:inline-size]`) is at least that wide; `cqmax-[699.98px]:` where it is at most that (one word:
+// * `cq-max-[...]` would be read as the first variant with a value it does not know, and build nothing).
+// * For a part that must lay itself out by the room IT has: the app's sidebar, open or closed, changes a page's
+// * room by about 190 px, which a window breakpoint (`lg:`) cannot see. The Pages page was the first to need it
+// * (18-11-2026: at a 1024 px window with the sidebar open its list had 655 px and drew the columns of 1024).
+// * Sorted by size, so of two rules that both hold the wider one wins. (An arbitrary `[@container(...)]:` variant
+// * is sorted by its text instead: "1100px" would come before "380px" and lose.)
+const containerQueryPlugin = plugin(({ matchVariant }) => {
+  const px = (v: { value: string }) => parseFloat(v.value)
+  matchVariant('cq', (value) => `@container (min-width: ${value})`, { sort: (a, z) => px(a) - px(z) })
+  matchVariant('cqmax', (value) => `@container (max-width: ${value})`, { sort: (a, z) => px(z) - px(a) })
+})
+
 const config: Config = {
   presets: [
     require('@ciphera-net/facet-tailwind').default,
@@ -154,6 +168,7 @@ const config: Config = {
   plugins: [
     themeRampPlugin,
     skeletonDitherPlugin,
+    containerQueryPlugin,
     require('@tailwindcss/typography'),
     require('tailwindcss-animate'),
   ],

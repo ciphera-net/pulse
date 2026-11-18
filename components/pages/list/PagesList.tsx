@@ -55,6 +55,19 @@ import { bucketsFor, hourName, seconds, type Bucket, type BucketKind } from './b
 // starts with "/", so that word is no page's). So a reload always opens what was open, or keeps the list closed.
 // The tab is the opened page's, and the first page's while the list still waits for its rows: `tab=scroll` alone
 // opens the list's first page on its Scroll depth.
+//
+// THE LIST LAYS ITSELF OUT BY THE ROOM IT HAS, never by the window's width (18-11-2026). The app's sidebar, open or
+// closed, changes that room by about 190 px: at a 1024 px window with the sidebar open the list has 655 px, and on
+// window breakpoints it drew the seven columns and the bars of a 1024 px page there, which left the addresses no
+// room at all and pushed the last column over the card's edge. The list's block is a CONTAINER and every rule
+// below asks its width (`cq-[...]`, tailwind.config.ts). The steps are worked out from what a row holds, each
+// leaving an address 180 px or more:
+//   under 380 px   one number column, the reader's pick (a phone)
+//   380 px         Views, Change, Scroll
+//   550 px         and Visitors, Time on page
+//   700 px         all seven
+//   800 px         an opened page sets its measures beside its chart (under it below that)
+//   880 px         and the bars
 // ---------------------------------------------------------------------------
 
 type Key = 'pageviews' | 'change' | 'visitors' | 'entry_bounce_rate' | 'avg_time_on_page' | 'exit_rate' | 'avg_scroll_depth'
@@ -72,24 +85,25 @@ const ROW = 'w-[calc(100%+1rem)] text-left relative flex items-center justify-be
 
 /**
  * The columns. Change is a page's views against the period before, the opened page's own figure.
- * On a phone one number column fits, and the reader picks which (a menu beside the heading). So a column has two
- * sets of classes: `on` when it is the phone's column (shown from the narrowest page; hidden again only where it
- * was hidden before, between the phone and its own turn), `off` when it is not (shown where the room allows).
- * Written out whole, so the stylesheet holds every class.
+ * In the narrowest list one number column fits, and the reader picks which (a menu beside the heading). So a column
+ * has two sets of classes: `on` when it is the picked column (shown from the narrowest list; hidden again only
+ * where it was hidden before, between the narrowest list and its own turn), `off` when it is not (shown where the
+ * room allows). The room is the LIST's (see the head of this file). Written out whole, so the stylesheet holds
+ * every class.
  */
 const COLUMNS: readonly { key: Key; label: string; on: string; off: string }[] = [
-  { key: 'pageviews', label: 'Views', on: 'w-14 inline-flex', off: 'w-14 hidden sm:inline-flex' },
-  { key: 'change', label: 'Change', on: 'w-14 inline-flex', off: 'w-14 hidden sm:inline-flex' },
-  { key: 'visitors', label: 'Visitors', on: 'w-14 inline-flex sm:hidden md:inline-flex', off: 'w-14 hidden md:inline-flex' },
-  { key: 'entry_bounce_rate', label: 'Bounce', on: 'w-14 inline-flex sm:hidden lg:inline-flex', off: 'w-14 hidden lg:inline-flex' },
-  { key: 'avg_time_on_page', label: 'Time on page', on: 'w-[84px] inline-flex sm:hidden md:inline-flex', off: 'w-[84px] hidden md:inline-flex' },
-  { key: 'exit_rate', label: 'Exit rate', on: 'w-16 inline-flex sm:hidden lg:inline-flex', off: 'w-16 hidden lg:inline-flex' },
-  { key: 'avg_scroll_depth', label: 'Scroll', on: 'w-12 inline-flex', off: 'w-12 hidden sm:inline-flex' },
+  { key: 'pageviews', label: 'Views', on: 'w-14 inline-flex', off: 'w-14 hidden cq-[380px]:inline-flex' },
+  { key: 'change', label: 'Change', on: 'w-14 inline-flex', off: 'w-14 hidden cq-[380px]:inline-flex' },
+  { key: 'visitors', label: 'Visitors', on: 'w-14 inline-flex cq-[380px]:hidden cq-[550px]:inline-flex', off: 'w-14 hidden cq-[550px]:inline-flex' },
+  { key: 'entry_bounce_rate', label: 'Bounce', on: 'w-14 inline-flex cq-[380px]:hidden cq-[700px]:inline-flex', off: 'w-14 hidden cq-[700px]:inline-flex' },
+  { key: 'avg_time_on_page', label: 'Time on page', on: 'w-[84px] inline-flex cq-[380px]:hidden cq-[550px]:inline-flex', off: 'w-[84px] hidden cq-[550px]:inline-flex' },
+  { key: 'exit_rate', label: 'Exit rate', on: 'w-16 inline-flex cq-[380px]:hidden cq-[700px]:inline-flex', off: 'w-16 hidden cq-[700px]:inline-flex' },
+  { key: 'avg_scroll_depth', label: 'Scroll', on: 'w-12 inline-flex', off: 'w-12 hidden cq-[380px]:inline-flex' },
 ]
 const PHONE_OPTIONS = COLUMNS.map((c) => ({ value: c.key as string, label: c.label }))
 const percent = (v: number | null | undefined): string => (v == null ? DASH : `${Math.round(v)}%`)
-/** The bars' column, and the room over it in the head. */
-const BARS = 'hidden w-[168px] shrink-0 lg:block'
+/** The bars' column, and the room over it in the head: drawn where the list has room for them beside all seven columns. */
+const BARS = 'hidden w-[168px] shrink-0 cq-[880px]:block'
 
 /** A row of the list: a page and its views against the period before. */
 interface Line {
@@ -199,7 +213,7 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-      className="mt-2 grid border border-white/[0.08] lg:grid-cols-[minmax(0,1fr)_340px]"
+      className="mt-2 grid border border-white/[0.08] cq-[800px]:grid-cols-[minmax(0,1fr)_340px]"
       data-page-open={row.path}
     >
       <div className="flex min-w-0 flex-col">
@@ -219,7 +233,7 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
           ) : (
             <span className="text-xs font-medium text-neutral-400">Views a day</span>
           )}
-          <div className={cn('flex items-center gap-4 md:ml-auto', view !== 'trend' && 'hidden')}>
+          <div className={cn('flex items-center gap-4 cq-[550px]:ml-auto', view !== 'trend' && 'hidden')}>
             <span className="flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-neutral-400">
               <LegendLine color="var(--chart-1)" />
               This period
@@ -235,7 +249,7 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
         {view === 'scroll' && scroll ? (
           // Who reads furthest (ScrollWho.tsx): it fills the room the chart has on the other tab, so the opened page
           // keeps one height on both.
-          <div className="min-h-[264px] px-4 pb-4 pt-3 lg:flex-1" data-page-scroll-tab="">
+          <div className="min-h-[264px] px-4 pb-4 pt-3 cq-[800px]:flex-1" data-page-scroll-tab="">
             <div className="h-full">{scroll}</div>
           </div>
         ) : (
@@ -246,36 +260,49 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
         )}
       </div>
 
-      <div className="flex min-w-0 flex-col border-t border-white/[0.08] lg:border-l lg:border-t-0">
+      <div className="flex min-w-0 flex-col border-t border-white/[0.08] cq-[800px]:border-l cq-[800px]:border-t-0">
         <div className="grid flex-1 grid-cols-2" data-page-measures="">
           {measures.map((m, i) => (
-            <div key={m.name} className={cn('min-w-0 border-white/[0.08] px-4 py-3', i % 2 === 0 && 'border-r', i < 4 && 'border-b')}>
+            <div key={m.name} className={cn('min-w-0 border-white/[0.08] px-3 py-3 cq-[380px]:px-4', i % 2 === 0 && 'border-r', i < 4 && 'border-b')} data-page-measure="">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="truncate text-[13px] text-neutral-400">{m.name}</span>
-                <RailDelta change={m.change && m.change.type !== 'new' && m.change.value === 0 ? null : m.change} invert={m.invert} />
+                <span className="truncate text-[13px] text-neutral-400" data-measure-name="">{m.name}</span>
+                {/* The change sits at the name's row end where a cell holds both side by side. In the narrowest
+                    list (a phone: a cell of about 150 px) it sits beside the figure, so the name has its row and
+                    is never cut. */}
+                <span className="hidden shrink-0 cq-[380px]:inline-flex" data-measure-change="">
+                  <RailDelta change={m.change && m.change.type !== 'new' && m.change.value === 0 ? null : m.change} invert={m.invert} />
+                </span>
               </div>
-              <span className="mt-0.5 block text-xl font-semibold tabular-nums text-white">{m.now}</span>
-              <span className="mt-0.5 block truncate text-[11px] tabular-nums text-neutral-500">
+              <span className="mt-0.5 flex items-baseline justify-between gap-2">
+                <span className="text-xl font-semibold tabular-nums text-white" data-measure-figure="">{m.now}</span>
+                <span className="shrink-0 cq-[380px]:hidden">
+                  <RailDelta change={m.change && m.change.type !== 'new' && m.change.value === 0 ? null : m.change} invert={m.invert} />
+                </span>
+              </span>
+              {/* Never cut: a line too long for its cell takes a second line. */}
+              <span className="mt-0.5 block text-[11px] tabular-nums text-neutral-500" data-measure-context="">
                 {m.before != null ? `${m.before} in the period before` : compared ? 'no views in the period before' : 'no period before'}
               </span>
             </div>
           ))}
         </div>
         {/* The two ways out of the row, as two cells of the measures' own grid: a hairline between them, and each
-            fills its cell, so the hover band is the whole box. One alone takes the row. */}
+            fills its cell, so the hover band is the whole box. One alone takes the row. In the narrowest list a
+            cell is 138 px on a 360 px phone: the measures' own narrower padding there, so "Open the page" fits. */}
         <div className="grid grid-cols-2 border-t border-white/[0.08]" data-page-actions="">
           {dashboardHref && (
-            <Button asChild variant="ghost" size="sm" className={cn('h-11 w-full min-w-0 justify-start gap-1.5 rounded-none px-4 text-[13px] font-normal text-neutral-300 [&_svg]:size-3.5 [&_svg]:shrink-0', host ? 'border-r border-white/[0.08]' : 'col-span-2')}>
+            <Button asChild variant="ghost" size="sm" className={cn('h-11 w-full min-w-0 justify-start gap-1.5 rounded-none px-3 text-[13px] font-normal text-neutral-300 cq-[380px]:px-4 [&_svg]:size-3.5 [&_svg]:shrink-0', host ? 'border-r border-white/[0.08]' : 'col-span-2')}>
               <Link href={dashboardHref}>
                 <Layout className="text-muted-foreground" aria-hidden="true" />
-                {/* A cell is 170 px beside the chart and about 150 px on a phone: the words that fit each, never cut. */}
-                <span className="truncate sm:hidden">Dashboard</span>
-                <span className="hidden truncate sm:inline">Open in dashboard</span>
+                {/* A cell is 170 px beside the chart and about 150 px in the narrowest list: the words that fit
+                    each, never cut. */}
+                <span className="truncate cq-[380px]:hidden">Dashboard</span>
+                <span className="hidden truncate cq-[380px]:inline">Open in dashboard</span>
               </Link>
             </Button>
           )}
           {host && (
-            <Button asChild variant="ghost" size="sm" className={cn('h-11 w-full min-w-0 justify-start gap-1.5 rounded-none px-4 text-[13px] font-normal text-neutral-300 [&_svg]:size-3.5 [&_svg]:shrink-0', !dashboardHref && 'col-span-2')}>
+            <Button asChild variant="ghost" size="sm" className={cn('h-11 w-full min-w-0 justify-start gap-1.5 rounded-none px-3 text-[13px] font-normal text-neutral-300 cq-[380px]:px-4 [&_svg]:size-3.5 [&_svg]:shrink-0', !dashboardHref && 'col-span-2')}>
               {/* An outbound link's arrow turns orange under the pointer, as every one in the app does. The link
                   is its own group, so the arrow answers to this cell and to no row around it. */}
               <a href={`https://${host}${row.path}`} target="_blank" rel="noopener noreferrer" className="group">
@@ -399,7 +426,7 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
   const cls = (key: Key) => columns.find((c) => c.key === key)!.className
 
   return (
-    <section className={`${FRAME_SURFACE} min-w-0 p-6`} data-pages-list="" data-sort-block="">
+    <section className={`${FRAME_SURFACE} min-w-0 p-6 [container-type:inline-size]`} data-pages-list="" data-sort-block="">
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="flex items-center gap-1.5">
           <span className={FRAME_CARD_NAME}>Pages</span>
@@ -409,8 +436,8 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
         <span className="me-auto text-[11px] text-neutral-500" data-pages-count="">
           {rows.length >= limit ? `${formatNumber(limit)}+` : formatNumber(rows.length)} {rows.length === 1 ? 'page' : 'pages'}
         </span>
-        {/* A phone has room for one number column; this picks it. A wider page shows the columns themselves. */}
-        <div className="sm:hidden" data-phone-column="">
+        {/* The narrowest list has room for one number column; this picks it. A wider one shows the columns. */}
+        <div className="cq-[380px]:hidden" data-phone-column="">
           <Select
             aria-label="The column to show"
             options={PHONE_OPTIONS}
@@ -419,7 +446,7 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
             className="h-8 min-w-[8.5rem] text-xs"
           />
         </div>
-        <div className="w-full sm:w-60">
+        <div className="w-full cq-[380px]:w-60">
           <Input
             icon={<MagnifyingGlass className="h-4 w-4" aria-hidden="true" />}
             value={query}
