@@ -44,6 +44,13 @@ export interface JourneyFlow {
   /** Exactly `depth` entries; a column no session reached is all zeros. */
   columns: JourneyFlowColumn[]
   links: JourneyFlowLink[]
+  /**
+   * The visits that saw ONE page only, by that page: the visits that left after their first page, which no column
+   * holds. Aligned with columns[0].top; entry_only_other is the rest (pages outside that top). Since 18-11-2026
+   * (pulse-backend's flow read): absent from an older server, so a reader treats a missing value as none known.
+   */
+  entry_only?: number[]
+  entry_only_other?: number
 }
 
 export interface EntryPoint {

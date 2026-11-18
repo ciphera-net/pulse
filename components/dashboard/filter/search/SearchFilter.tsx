@@ -22,6 +22,7 @@ import {
   dimensionsFor,
   drillOf,
   groupsFor,
+  groupsOnly,
   isTextKind,
   labelOf,
   placeholderOf,
@@ -113,11 +114,17 @@ export interface SearchFilterProps {
    * out whole visitors, in place of the row test `event_name`. At most MAX_EVENT_FILTERS of them at once.
    */
   eventFilters?: boolean
+  /**
+   * A page whose read answers fewer kinds than the dashboard's offers only these (the Journeys page:
+   * JOURNEY_FILTER_DIMENSIONS), with a group for the entry page (values.ts groupsOnly). A module constant, so the
+   * lists below are made once. Absent: every kind.
+   */
+  only?: readonly string[]
 }
 
 
 /** The Filter button and its panel. The panel is drawn in a portal, so it outlives the page's loading states. */
-export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues, onApplySet, eventFilters = false, mode = 'all' }: SearchFilterProps) {
+export default function SearchFilter({ filters, onApply, fetchSuggestions, pageValues, onApplySet, eventFilters = false, mode = 'all', only }: SearchFilterProps) {
   const glass = useGlassPanels()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -133,8 +140,8 @@ export default function SearchFilter({ filters, onApply, fetchSuggestions, pageV
   // The steps above the scope ("Event property", then an event's keys): Backspace in an empty field goes back to the last.
   const [trail, setTrail] = useState<string[]>([])
   const [index, setIndex] = useState(0)
-  const groups = groupsFor(eventFilters)
-  const dimensions = useMemo(() => dimensionsFor(eventFilters), [eventFilters])
+  const groups = useMemo(() => groupsOnly(groupsFor(eventFilters), only), [eventFilters, only])
+  const dimensions = useMemo(() => (only ? groups.flatMap((g) => g.dimensions).filter((d) => d !== EVENT_PROPERTY_SCOPE) : dimensionsFor(eventFilters)), [groups, only, eventFilters])
   const { values, ready } = useFilterValues({ on: open || warm, fetchSuggestions, pageValues, filters, dimensions })
   // Saved filters: listed at the top of the first view while the page can put one on.
   const savedFilters = useSavedFilters()

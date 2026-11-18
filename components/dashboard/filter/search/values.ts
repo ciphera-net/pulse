@@ -50,6 +50,23 @@ export const EVENT_FILTER_GROUPS: { label: string; dimensions: string[] }[] = GR
     : g,
 )
 
+/**
+ * The groups of a page whose read answers fewer kinds than the dashboard's (the Journeys page:
+ * lib/hooks/useJourneyFilters): only the kinds in `only`, in the groups' order, and first a group for each kind the
+ * default groups leave out (the entry page: lib/filters.ts names its group, "Journey"). No `only`: every group.
+ */
+export function groupsOnly(groups: { label: string; dimensions: string[] }[], only?: readonly string[]): { label: string; dimensions: string[] }[] {
+  if (!only) return groups
+  const allowed = new Set(only)
+  const kept = groups.map((g) => ({ ...g, dimensions: g.dimensions.filter((d) => allowed.has(d)) })).filter((g) => g.dimensions.length > 0)
+  const missing = only.filter((d) => !kept.some((g) => g.dimensions.includes(d)))
+  const added = missing.flatMap((d) => {
+    const named = DIMENSION_CATEGORIES.find((c) => (c.dimensions as readonly string[]).includes(d))
+    return named ? [{ label: named.label as string, dimensions: [d] }] : []
+  })
+  return [...added, ...kept]
+}
+
 /** The groups a page offers: the event filter's while its beta is on. */
 export function groupsFor(eventFilters: boolean): { label: string; dimensions: string[] }[] {
   return eventFilters ? EVENT_FILTER_GROUPS : GROUPS

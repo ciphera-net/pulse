@@ -197,6 +197,11 @@ export const TERMS: Record<string, GlossaryTerm> = {
   },
   // The Pages page's own columns (the list, 17-11-2026). No `docs` until the page has a section in the docs: an
   // unpublished term carries no link rather than one that 404s.
+  journeys_flow: {
+    title: 'Journeys',
+    definition:
+      'Each column is a step of a visit: the page it started on, then its second page, and so on. A count sits beside every page, and the rest of a step is grouped as Other pages. Left the site counts the visits that ended at that step. Press a page or a line between two pages to follow its journeys, and press Other pages to see the pages it holds.',
+  },
   pages_list: {
     title: 'Pages',
     definition:
