@@ -61,7 +61,21 @@ const PAGES = 6
 const EXTRA = 10
 /** The room the last step's labels take, right of the chart. */
 const GUTTER = 210
-const LABEL_GAP = 17
+const LABEL_GAP = 18
+/**
+ * The page names stand out from the routes (the owner, 18-11-2026, of names "barely visible (too small & sometimes not
+ * visible due to the color)"; picked from two rounds of options: "Quieter routes, louder names"): 14 px semibold names
+ * over routes drawn at ROUTE_STRENGTH of their old opacity, the pointer's orange left as it was. A name off a lit
+ * journey stays readable in grey 400 (it was grey 700, close to the block's own colour, and the page always opens with
+ * a journey pressed). Pulse/docs/plans/18-11-2026-journeys-page-overhaul-plan.md, "The page names".
+ */
+const NAME_SIZE = 14
+const COUNT_SIZE = 12
+const ROUTE_STRENGTH = 0.55
+/** The average advance of a name's character at NAME_SIZE semibold (measured on the lab, 8.5 px), for fitting a name. */
+const NAME_CHAR = 8.6
+/** A count's digit at COUNT_SIZE. */
+const COUNT_CHAR = 7.2
 /** The least room a step has. Narrower (a phone), the chart keeps it and scrolls sideways. */
 const STEP_MIN = 190
 /** The layout's own constants (lib/journeys/sankeyLayout.ts): its busiest link, its gap and its smallest strip. */
@@ -270,7 +284,7 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
         const y = Math.max((n.y + n.height / 2) * sy, last + LABEL_GAP)
         last = y
         const count = visitsOf(n)
-        out.push({ id: n.id, x: n.x + NODE_WIDTH + 6, y, text: fitPath(n.path, room - String(count).length * 6.6 - 10), count, step: n.step, path: n.path })
+        out.push({ id: n.id, x: n.x + NODE_WIDTH + 6, y, text: fitPath(n.path, room - String(count).length * COUNT_CHAR - 10, NAME_CHAR), count, step: n.step, path: n.path })
       }
       const bar = drawing.bars.find((b) => b.step === s.index)
       if (bar) {
@@ -338,7 +352,7 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                   const ofPin = pinChain?.linkKeys.has(l.key) ?? false
                   const c = tone(ofHover, ofPin)
                   return (
-                    <path key={l.key} d={curve(l.sourceX, l.sourceY * sy, l.targetX, l.targetY * sy)} fill="none" stroke={c ?? 'rgb(var(--neutral-500))'} strokeOpacity={lit ? (ofHover ? 0.45 : ofPin ? 0.6 : 0.07) : 0.2} strokeWidth={Math.max(1, l.strokeWidth * sy)} style={{ pointerEvents: 'none', transition: 'stroke-opacity 150ms' }} data-journeys-link-tone={ofHover ? 'hover' : ofPin ? 'pressed' : ''} />
+                    <path key={l.key} d={curve(l.sourceX, l.sourceY * sy, l.targetX, l.targetY * sy)} fill="none" stroke={c ?? 'rgb(var(--neutral-500))'} strokeOpacity={ofHover ? 0.45 : (lit ? (ofPin ? 0.6 : 0.07) : 0.2) * ROUTE_STRENGTH} strokeWidth={Math.max(1, l.strokeWidth * sy)} style={{ pointerEvents: 'none', transition: 'stroke-opacity 150ms' }} data-journeys-link-tone={ofHover ? 'hover' : ofPin ? 'pressed' : ''} />
                   )
                 })}
                 {layout.links.map((l) => (
@@ -357,7 +371,7 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                 {drawing.feeds.map((d) => {
                   const on = lit ? inChains(d.source) : true
                   return (
-                    <path key={d.key} d={curve(d.sourceX, d.sourceY * sy, d.targetX, d.targetY * sy)} fill="none" stroke="rgb(var(--neutral-600))" strokeOpacity={lit ? (on ? 0.2 : 0.04) : 0.12} strokeWidth={Math.max(1, d.width * sy)} style={{ pointerEvents: 'none', transition: 'stroke-opacity 150ms' }} data-journeys-drop-feed={d.source} />
+                    <path key={d.key} d={curve(d.sourceX, d.sourceY * sy, d.targetX, d.targetY * sy)} fill="none" stroke="rgb(var(--neutral-600))" strokeOpacity={(lit ? (on ? 0.2 : 0.04) : 0.12) * ROUTE_STRENGTH} strokeWidth={Math.max(1, d.width * sy)} style={{ pointerEvents: 'none', transition: 'stroke-opacity 150ms' }} data-journeys-drop-feed={d.source} />
                   )
                 })}
                 {drawing.bars.map((b) => (
@@ -398,9 +412,9 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                 {labels.map((l) => {
                   if (l.path === '(left)') {
                     return (
-                      <text key={`label:${l.id}`} x={l.x} y={l.y} dominantBaseline="middle" fontSize={12} fill={lit ? 'rgb(var(--neutral-700))' : 'rgb(var(--neutral-400))'} style={{ pointerEvents: 'none' }} data-journeys-drop-label={l.step}>
+                      <text key={`label:${l.id}`} x={l.x} y={l.y} dominantBaseline="middle" fontSize={NAME_SIZE} fill={lit ? 'rgb(var(--neutral-500))' : 'rgb(var(--neutral-400))'} style={{ pointerEvents: 'none' }} data-journeys-drop-label={l.step}>
                         {l.text}
-                        <tspan dx={6} fill={lit ? 'rgb(var(--neutral-700))' : 'rgb(var(--neutral-500))'}>{formatNumber(l.count)}</tspan>
+                        <tspan dx={6} fontSize={COUNT_SIZE} fill={lit ? 'rgb(var(--neutral-600))' : 'rgb(var(--neutral-500))'}>{formatNumber(l.count)}</tspan>
                       </text>
                     )
                   }
@@ -412,16 +426,16 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                       x={l.x}
                       y={l.y}
                       dominantBaseline="middle"
-                      fontSize={12}
-                      fontWeight={isPin ? 600 : 400}
-                      fill={isPin ? 'rgb(var(--neutral-50))' : on ? 'rgb(var(--neutral-200))' : 'rgb(var(--neutral-700))'}
+                      fontSize={NAME_SIZE}
+                      fontWeight={600}
+                      fill={isPin ? 'rgb(var(--neutral-50))' : on ? 'rgb(var(--neutral-100))' : 'rgb(var(--neutral-400))'}
                       className="cursor-pointer"
                       data-journeys-label={l.id}
                       onPointerMove={(e) => onNode(e, { id: l.id, step: l.step, path: l.path })}
                       onClick={() => press({ kind: 'node', id: l.id })}
                     >
                       {l.text}
-                      <tspan dx={6} fill={on ? 'rgb(var(--neutral-500))' : 'rgb(var(--neutral-700))'}>{formatNumber(l.count)}</tspan>
+                      <tspan dx={6} fontSize={COUNT_SIZE} fontWeight={400} fill={on ? 'rgb(var(--neutral-400))' : 'rgb(var(--neutral-600))'}>{formatNumber(l.count)}</tspan>
                     </text>
                   )
                 })}
