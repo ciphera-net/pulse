@@ -27,6 +27,13 @@ import type { PageScrollBy, PageScrollRow, ScrollDepthDistribution } from '@/lib
 // ONE read a tab (lib/swr/dashboard usePageScroll): the page's scroll depth for every visit and for the busiest
 // values of the tab's dimension. The answer names the dimension it was asked for, so the rows of the tab before
 // are never drawn under the next tab's name while its own read is on the way.
+//
+// THE TABS ARE THE BLOCKS' OWN (ruling R85, 18-11-2026): the orange Switcher of every dashboard block, and like
+// them always on the page. Until then a tab whose read was on the way replaced the whole panel, tabs included, by
+// a placeholder: the group left the page for the length of the read and came back with its highlight already
+// moved (no glide), and an arrow key lost its focus with it. Now only what the read answers waits: the tabs
+// stay, the highlight glides, and Everyone's row (the same on every tab) stays while the rows under it load.
+// The tab is held by the page (PagesListPage), so it is kept from page to page and over a trip to Trend.
 // ---------------------------------------------------------------------------
 
 const QUARTERS = ['25%', '50%', '75%', 'The end'] as const
@@ -60,6 +67,7 @@ const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 function countryName(code: string): string {
   try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) ?? code } catch { return code }
 }
+const sameDepth = (a: ScrollDepthDistribution, b: ScrollDepthDistribution) => a.total_sessions === b.total_sessions && KEYS.every((k) => a[k] === b[k])
 const sum = (a: ScrollDepthDistribution, b: ScrollDepthDistribution): ScrollDepthDistribution => ({
   scroll_25: a.scroll_25 + b.scroll_25,
   scroll_50: a.scroll_50 + b.scroll_50,
@@ -96,12 +104,23 @@ export interface ScrollWhoProps {
   apiPeriod?: string
   /** The page's filters as the dashboard sends them, WITHOUT the page itself (the read names it by `path`). */
   filters?: string
+  /** What the rows are. Held by the page, so the choice is kept from one opened page to the next. */
+  by: PageScrollBy
+  onBy: (by: PageScrollBy) => void
 }
 
-export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters }: ScrollWhoProps) {
-  const [dim, setDim] = useState<PageScrollBy>('device')
+export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters, by: dim, onBy }: ScrollWhoProps) {
   const [over, setOver] = useState<{ row: number; col: number } | null>(null)
-  const { data, isLoading, error } = usePageScroll(siteId, path, dim, start, end, filters, apiPeriod)
+  const { data, error } = usePageScroll(siteId, path, dim, start, end, filters, apiPeriod)
+
+  // Everyone's row is every visit of the page: the same whichever tab asked. The last answer's is kept while the
+  // next tab's read is on the way, for as long as the page, the range and the filters are the ones it was read for.
+  const ask = [path, start, end, filters ?? '', apiPeriod ?? ''].join('\n')
+  const [kept, setKept] = useState<{ ask: string; all: ScrollDepthDistribution } | null>(null)
+  // Set while rendering, and only when its numbers differ: one more render at most, and none that the same answer
+  // handed over again as a new object could start.
+  if (data && (kept?.ask !== ask || !sameDepth(kept.all, data.all))) setKept({ ask, all: data.all })
+  const everyone = data?.all ?? (kept && kept.ask === ask ? kept.all : null)
 
   // A cell named by a finger stays named until the finger presses outside the grid: there is no "leave" on touch.
   useEffect(() => {
@@ -121,31 +140,14 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
   // A read that failed with nothing in hand is said, never drawn as rows that wait for good. A range the server
   // will not break down for one page (a 422: too many rows in it) is a limit and is said as one: waiting does not
   // lift it, a shorter range does, and so can one filter fewer.
-  if (!data && error) {
-    const refused = error instanceof ApiError && error.status === 422
-    return (
-      <div className="flex h-full min-h-[232px] items-center justify-center" data-page-scroll={refused ? 'refused' : 'failed'}>
-        {refused
-          ? <ErrorCard title="Scroll depth can't be shown for this range" description={filters ? 'Choose a shorter range or remove a filter.' : 'Choose a shorter range.'} />
-          : <ErrorCard title="Could not load scroll depth" description="The request failed. This is usually temporary." />}
-      </div>
-    )
-  }
-
-  if (!data && isLoading) {
-    return (
-      <div className="flex h-full min-h-[232px] flex-col" aria-hidden="true" data-page-scroll="loading">
-        <div className="flex min-h-[3.25rem] flex-col justify-center gap-2">
-          <SkeletonLine className="h-6 w-40 max-w-full" />
-          <SkeletonLine className="h-3 w-64 max-w-full" />
-        </div>
-        <SkeletonLine className="mt-2 min-h-0 w-full flex-1" />
-      </div>
-    )
-  }
+  const failed = !data && Boolean(error)
+  const refused = failed && error instanceof ApiError && error.status === 422
+  // Nothing in hand at all: the first read of this page, or of a new range.
+  const waiting = !failed && !everyone
+  const state = failed ? (refused ? 'refused' : 'failed') : waiting ? 'loading' : 'who'
 
   const rows: { key: string; name: string; icon: ReactNode; depth: ScrollDepthDistribution | null; loaded: boolean }[] = [
-    { key: 'all', name: 'Everyone', icon: null, depth: data?.all ?? null, loaded: Boolean(data) },
+    { key: 'all', name: 'Everyone', icon: null, depth: everyone, loaded: Boolean(everyone) },
     ...(who
       ? who.map((w) => ({ ...w, loaded: true }))
       : Array.from({ length: ROWS }, (_, i) => ({ key: `wait:${i}`, name: '', icon: null, depth: null, loaded: false }))),
@@ -179,10 +181,10 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
   const by = DIMS.find((d) => d.value === dim)!.label.toLowerCase()
 
   return (
-    <div className="flex h-full min-h-[232px] flex-col" data-page-scroll="who" data-who-dim={dim} data-who-rows={who ? rows.length : 0}>
+    <div className="flex h-full min-h-[232px] flex-col" data-page-scroll={state} data-who-dim={dim} data-who-rows={who ? rows.length : 0}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-h-[3.25rem] min-w-0" aria-live="polite" data-who-headline="" data-who-ready={who ? 'yes' : 'no'}>
-          {figure === '' ? (
+          {failed ? null : figure === '' ? (
             // The loaded headline's own two lines, so nothing moves when the rows arrive.
             <div className="flex min-h-[3.25rem] flex-col justify-center gap-2" aria-hidden="true">
               <SkeletonLine className="h-6 w-40 max-w-full" />
@@ -195,9 +197,18 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
             </>
           )}
         </div>
-        <Switcher size="sm" aria-label="Who reads furthest, by" options={DIMS} value={dim} onChange={(v) => { setDim(v as PageScrollBy); setOver(null) }} />
+        {/* The blocks' own tabs, and always here: while a tab's read is on the way, and after one that failed (so
+            another tab can still be pressed). */}
+        <Switcher size="sm" tone="solid" aria-label="Who reads furthest, by" options={DIMS} value={dim} onChange={(v) => { onBy(v as PageScrollBy); setOver(null) }} />
       </div>
-      {/* On a phone the names take less and the heads lose "Reached": four cells of 50 px hold a share each. */}
+      {failed ? (
+        <div className="flex flex-1 items-center justify-center">
+          {refused
+            ? <ErrorCard title="Scroll depth can't be shown for this range" description={filters ? 'Choose a shorter range or remove a filter.' : 'Choose a shorter range.'} />
+            : <ErrorCard title="Could not load scroll depth" description="The request failed. This is usually temporary." />}
+        </div>
+      ) : (
+      // On a phone the names take less and the heads lose "Reached": four cells of 50 px hold a share each.
       <div
         className="mt-2 grid flex-1 grid-cols-[minmax(72px,96px)_repeat(4,minmax(0,1fr))] gap-y-0 sm:grid-cols-[minmax(84px,150px)_repeat(4,minmax(0,1fr))]"
         onPointerLeave={() => setOver(null)}
@@ -241,6 +252,7 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }

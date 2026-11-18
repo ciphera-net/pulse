@@ -10,6 +10,8 @@ import type { PageTableRow } from '@/lib/api/stats'
 //   the order     every column both ways, a row without a figure last in both;
 //   the address   the search, the order, the opened page, its tab and a phone's column start from the address and
 //                 are written back to it;
+//   the first     the list's first page is open when the list arrives, unless the address names a page or says
+//                 the reader closed them all; it is chosen once and then stays with its row;
 //   one day       the rows' bars are the day's hours, up to the hour a day still being counted has reached;
 //   a phone       one number column, the one picked.
 // ---------------------------------------------------------------------------
@@ -58,6 +60,8 @@ const paths = () => Array.from(document.querySelectorAll('[data-page-line]')).ma
 const line = (path: string) => document.querySelector(`[data-page-line="${path}"]`) as HTMLElement
 const change = (path: string) => line(path).querySelector('[data-line-change]') as HTMLElement
 const head = (label: string) => screen.getByRole('button', { name: new RegExp(`^Sort by ${label},`, 'i') })
+/** The name over the rows' bars. Read by its mark: the list's first page is open, and its panel has words of its own. */
+const barsHead = () => document.querySelector('[data-bars-head]') as HTMLElement | null
 
 beforeEach(() => {
   search = ''
@@ -123,9 +127,9 @@ describe('the change', () => {
   })
 
   it('agrees with the opened page\'s own figure', () => {
+    // The list's first page, /, is open as the list arrives.
     render(<PagesList {...base} />)
-    fireEvent.click(within(line('/')).getByRole('button'))
-    const views = document.querySelector('[data-page-measures] > div') as HTMLElement
+    const views = document.querySelector('[data-page-open="/"] [data-page-measures] > div') as HTMLElement
     expect(views).toHaveTextContent('Views')
     expect(views).toHaveTextContent('↓ 20%')
     expect(views).toHaveTextContent('1,250 in the period before')
@@ -154,7 +158,6 @@ describe('the order', () => {
 describe('the opened page', () => {
   it('opens in place under its row with its line, six measures, two tabs and two ways out', () => {
     render(<PagesList {...base} domain="https://example.com/" renderScroll={(p) => <div data-testid="scroll">{p}</div>} dashboardHref={(p) => `/sites/s?filters=page${p}`} />)
-    expect(document.querySelector('[data-page-open]')).toBeNull()
     fireEvent.click(within(line('/pricing')).getByRole('button'))
     const opened = document.querySelector('[data-page-open="/pricing"]') as HTMLElement
     expect(opened).not.toBeNull()
@@ -168,7 +171,7 @@ describe('the opened page', () => {
 
   it('shows one page at a time, on its trend', () => {
     render(<PagesList {...base} renderScroll={(p) => <div data-testid="scroll">{p}</div>} />)
-    fireEvent.click(within(line('/')).getByRole('button'))
+    // / is open as the list arrives.
     fireEvent.click(screen.getByRole('radio', { name: 'Scroll depth' }))
     expect(screen.getByTestId('scroll')).toHaveTextContent('/')
     fireEvent.click(within(line('/pricing')).getByRole('button'))
@@ -188,6 +191,80 @@ describe('the opened page', () => {
     fireEvent.click(within(line('/')).getByRole('button'))
     expect(screen.getByTestId('trend')).toHaveAttribute('data-prev', 'true')
     expect(screen.getByText('Previous period')).toBeInTheDocument()
+  })
+})
+
+describe('the first page', () => {
+  const opened = () => Array.from(document.querySelectorAll('[data-page-open]')).map((o) => o.getAttribute('data-page-open'))
+
+  it('is open when the list arrives, on its trend, and the address says nothing', () => {
+    render(<PagesList {...base} />)
+    expect(opened()).toEqual(['/'])
+    expect(within(line('/')).getByRole('button')).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('trend')).toBeInTheDocument()
+    for (const word of LIST_PARAMS) expect(new URLSearchParams(window.location.search).has(word), word).toBe(false)
+  })
+
+  it('is the first of the list as the address orders and searches it', () => {
+    search = 'q=blog&sort=pageviews.asc'
+    render(<PagesList {...base} />)
+    expect(paths()).toEqual(['/blog/b', '/blog/a'])
+    expect(opened()).toEqual(['/blog/b'])
+  })
+
+  it('gives way to a page the address names', () => {
+    search = 'show=/pricing'
+    render(<PagesList {...base} />)
+    expect(opened()).toEqual(['/pricing'])
+  })
+
+  it('stays closed where the address says the reader closed every page', () => {
+    search = 'show=none'
+    render(<PagesList {...base} />)
+    expect(opened()).toEqual([])
+    expect(new URLSearchParams(window.location.search).get('show')).toBe('none')
+  })
+
+  it('is chosen once: it stays with its row through a sort and a search, and the address then names it', () => {
+    render(<PagesList {...base} />)
+    fireEvent.click(head('views'))
+    expect(paths()).toEqual(['/new', '/blog/b', '/blog/a', '/pricing', '/'])
+    expect(opened()).toEqual(['/'])
+    // No longer the list's first page: a reload must open / again, so the address names it.
+    expect(new URLSearchParams(window.location.search).get('show')).toBe('/')
+    fireEvent.click(head('views'))
+    expect(new URLSearchParams(window.location.search).has('show')).toBe(false)
+    fireEvent.change(screen.getByLabelText('Search pages'), { target: { value: 'pricing' } })
+    expect(opened()).toEqual([])
+    fireEvent.change(screen.getByLabelText('Search pages'), { target: { value: '' } })
+    expect(opened()).toEqual(['/'])
+  })
+
+  it('once closed by the reader stays closed, and the address says so', () => {
+    render(<PagesList {...base} />)
+    fireEvent.click(within(line('/')).getByRole('button'))
+    expect(opened()).toEqual([])
+    expect(new URLSearchParams(window.location.search).get('show')).toBe('none')
+    // Sorting or searching does not open a page again behind the reader's back.
+    fireEvent.click(head('visitors'))
+    fireEvent.change(screen.getByLabelText('Search pages'), { target: { value: 'blog' } })
+    expect(opened()).toEqual([])
+  })
+
+  it('waits for the list: nothing is opened on an empty one, and the first page that arrives is', () => {
+    const { rerender } = render(<PagesList {...base} rows={[]} prevRows={undefined} />)
+    expect(opened()).toEqual([])
+    expect(new URLSearchParams(window.location.search).has('show')).toBe(false)
+    rerender(<PagesList {...base} />)
+    expect(opened()).toEqual(['/'])
+  })
+
+  it('keeps the tab the address names for it', () => {
+    search = 'tab=scroll'
+    render(<PagesList {...base} renderScroll={(p) => <div data-testid="scroll">{p}</div>} />)
+    expect(screen.getByTestId('scroll')).toHaveTextContent('/')
+    expect(new URLSearchParams(window.location.search).get('tab')).toBe('scroll')
+    expect(new URLSearchParams(window.location.search).has('show')).toBe(false)
   })
 })
 
@@ -230,7 +307,8 @@ describe('the address', () => {
     render(<PagesList {...base} />)
     fireEvent.change(screen.getByLabelText('Search pages'), { target: { value: '' } })
     fireEvent.click(head('views'))
-    fireEvent.click(within(line('/blog/a')).getByRole('button'))
+    // The first state has the list's first page open.
+    fireEvent.click(within(line('/')).getByRole('button'))
     const at = new URLSearchParams(window.location.search)
     for (const word of LIST_PARAMS) expect(at.has(word), word).toBe(false)
   })
@@ -240,7 +318,7 @@ describe('a range of one day', () => {
   it('draws each row\'s hours, and heads the column by the hour', () => {
     const hours = Array.from({ length: 24 }, (_, h) => h)
     render(<PagesList {...base} rows={[page('/', 276, { hours, trend: [276] })]} prevRows={undefined} hourly />)
-    expect(screen.getByText('Views an hour')).toBeInTheDocument()
+    expect(barsHead()).toHaveTextContent('Views an hour')
     expect(screen.getByTestId('bars')).toHaveTextContent(hours.join(','))
     expect(screen.getByTestId('bars')).toHaveAttribute('data-hours', '24')
   })
@@ -255,14 +333,14 @@ describe('a range of one day', () => {
   it('leaves the bars out where one day has no hours to draw: one bar says nothing', () => {
     render(<PagesList {...base} rows={[page('/', 50, { trend: [50] })]} prevRows={undefined} />)
     expect(screen.queryByTestId('bars')).toBeNull()
-    expect(screen.queryByText(/Views an? /)).toBeNull()
+    expect(barsHead()).toBeNull()
   })
 
   it('leaves the bars out, and heads nothing by the hour, where the day came back without its hours', () => {
     // The server answers a day without hours when it cannot read it by the hour: the list asked, and has none.
     render(<PagesList {...base} rows={[page('/', 50, { trend: [50] }), page('/pricing', 20, { trend: [20] })]} prevRows={undefined} hourly />)
     expect(screen.queryByTestId('bars')).toBeNull()
-    expect(screen.queryByText(/Views an? /)).toBeNull()
+    expect(barsHead()).toBeNull()
     // The rows and their numbers are still there.
     expect(line('/')).toBeInTheDocument()
     expect(line('/pricing')).toBeInTheDocument()
@@ -270,7 +348,7 @@ describe('a range of one day', () => {
 
   it('draws days over a longer range', () => {
     render(<PagesList {...base} />)
-    expect(screen.getByText('Views a day')).toBeInTheDocument()
+    expect(barsHead()).toHaveTextContent('Views a day')
     expect(screen.getAllByTestId('bars')[0]).toHaveTextContent('1,2,3')
   })
 })

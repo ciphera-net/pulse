@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 
 // ---------------------------------------------------------------------------
@@ -113,6 +113,20 @@ describe('the reads', () => {
     show()
     expect(h.usePagesTable.mock.calls.every((c) => c[4] === 'v2:country|is|NO')).toBe(true)
     expect(h.useDashboard.mock.calls.at(-1)?.[4]).toBe('v2:country|is|NO')
+  })
+})
+
+describe('an opened page\'s scroll depth', () => {
+  type ScrollProps = { path: string; by: string; onBy: (by: string) => void; filters?: string }
+  const scrollOf = (path: string) => (h.list?.renderScroll as (path: string) => ReactElement<ScrollProps>)(path).props
+
+  it('is split by the dimension the page holds: the choice made on one page is the next page\'s too', () => {
+    show()
+    expect(scrollOf('/a').by).toBe('device')
+    act(() => scrollOf('/a').onBy('country'))
+    expect(scrollOf('/a').by).toBe('country')
+    expect(scrollOf('/b').by).toBe('country')
+    expect(scrollOf('/b').path).toBe('/b')
   })
 })
 

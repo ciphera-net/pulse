@@ -46,6 +46,13 @@ import { bucketsFor, hourName, seconds, type Bucket, type BucketKind } from './b
 // THE ADDRESS HOLDS THE PLACE: the search, the order, the opened page, its tab and a phone's column start from the
 // address and are written back to it, as the period and the filters are. So a reload, Back from the dashboard and
 // a shared link all show the same list.
+//
+// THE FIRST PAGE IS OPEN (ruling R84, 18-11-2026): a reader who opens the page meets the list's first page already
+// opened, so what a row holds is on screen without a press. It is chosen ONCE, on the first rows, and is then an
+// opened page like any other: it stays with its row through a sort or a search. The address says nothing while
+// the opened page IS the list's first (its first state, as an unsorted list and an empty search are), names the
+// page once it is any other, and says `show=none` once the reader has closed every page (every page's address
+// starts with "/", so that word is no page's). So a reload always opens what was open, or keeps the list closed.
 // ---------------------------------------------------------------------------
 
 type Key = 'pageviews' | 'change' | 'visitors' | 'entry_bounce_rate' | 'avg_time_on_page' | 'exit_rate' | 'avg_scroll_depth'
@@ -289,6 +296,8 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
 export const LIST_PARAMS = ['q', 'sort', 'show', 'tab', 'col'] as const
 
 const FIRST_SORT: Sort<Key> = { key: 'pageviews', dir: 'desc' }
+/** The address's word for "the reader closed every page". No page's address is it: they all start with "/". */
+const NONE_SHOWN = 'none'
 const isKey = (word: string | null | undefined): word is Key => COLUMNS.some((c) => c.key === word)
 
 function readSort(word: string | null): Sort<Key> {
@@ -327,22 +336,12 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
   const asked = useSearchParams()
   const [query, setQuery] = useState(() => asked.get('q') ?? '')
   const [sort, setSort] = useState<Sort<Key>>(() => readSort(asked.get('sort')))
-  const [shown, setShown] = useState<string | null>(() => asked.get('show'))
+  const [shown, setShown] = useState<string | null>(() => { const word = asked.get('show'); return word && word !== NONE_SHOWN ? word : null })
+  // Whether the list still owes its reader an opened first page: only an address that says nothing about it does.
+  const [owed, setOwed] = useState(() => asked.get('show') === null)
   const [tab, setTab] = useState<PageView>(() => readTab(asked.get('tab')))
   // The one number column a phone shows.
   const [phone, setPhone] = useState<Key>(() => { const word = asked.get('col'); return isKey(word) ? word : 'pageviews' })
-  useEffect(() => {
-    const url = new URL(window.location.href)
-    for (const word of LIST_PARAMS) url.searchParams.delete(word)
-    if (query.trim()) url.searchParams.set('q', query.trim())
-    if (sort.key !== FIRST_SORT.key || sort.dir !== FIRST_SORT.dir) url.searchParams.set('sort', `${sort.key}.${sort.dir}`)
-    if (shown) {
-      url.searchParams.set('show', shown)
-      if (tab !== 'trend') url.searchParams.set('tab', tab)
-    }
-    if (phone !== 'pageviews') url.searchParams.set('col', phone)
-    window.history.replaceState({}, '', url.toString())
-  }, [query, sort, shown, tab, phone])
   const host = domain ? domain.replace(/^https?:\/\//, '').replace(/\/$/, '') : null
 
   const prev = useMemo(() => new Map((prevRows ?? []).map((r) => [r.path, r])), [prevRows])
@@ -352,6 +351,32 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
     const found = q ? rows.filter((r) => r.path.toLowerCase().includes(q)) : rows
     return sortRows(found.map((row): Line => ({ row, ...versus(row.pageviews, prev.get(row.path)?.pageviews, compared) })), sort, (l, key) => rank(l, key, sort))
   }, [rows, prev, compared, q, sort])
+
+  // The first page of the list, opened once the list has rows (set while rendering, so the list is never painted
+  // closed first). After it, `shown` is the reader's.
+  if (owed && lines.length > 0) {
+    setOwed(false)
+    setShown(lines[0].row.path)
+  }
+
+  // The address holds the place (see the head of this file).
+  const firstPath = lines[0]?.row.path ?? null
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    for (const word of LIST_PARAMS) url.searchParams.delete(word)
+    if (query.trim()) url.searchParams.set('q', query.trim())
+    if (sort.key !== FIRST_SORT.key || sort.dir !== FIRST_SORT.dir) url.searchParams.set('sort', `${sort.key}.${sort.dir}`)
+    if (shown) {
+      // The list's first page is what an address without the word opens: only another page is named.
+      if (shown !== firstPath) url.searchParams.set('show', shown)
+      if (tab !== 'trend') url.searchParams.set('tab', tab)
+    } else if (!owed) {
+      // Nothing is open and the first page is no longer owed: the reader closed it, and a reload keeps it closed.
+      url.searchParams.set('show', NONE_SHOWN)
+    }
+    if (phone !== 'pageviews') url.searchParams.set('col', phone)
+    window.history.replaceState({}, '', url.toString())
+  }, [query, sort, shown, tab, phone, owed, firstPath])
 
   const days = rows[0]?.trend?.length ?? 0
   const { kind, buckets } = useMemo<{ kind: BucketKind; buckets: Bucket[] }>(() => bucketsFor(start, days, MAX_BARS), [start, days])
@@ -403,7 +428,7 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
 
       <div className="mb-1 flex h-6 items-center justify-between">
         <span className="min-w-0 flex-1 text-[11px] text-neutral-500">Page</span>
-        {showBars && <span className={`${BARS} ml-4 text-[11px] text-neutral-500`}>{perBar}</span>}
+        {showBars && <span className={`${BARS} ml-4 text-[11px] text-neutral-500`} data-bars-head="">{perBar}</span>}
         <SortHead columns={columns} sort={sort} onSort={setSort} className="ml-4 gap-3" />
       </div>
 
@@ -420,7 +445,7 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
             const { row } = line
             const isOpen = shown === row.path
             // A page opens on its Trend; the tab it was left on is kept only while it stays open.
-            const press = () => { setShown(isOpen ? null : row.path); setTab('trend') }
+            const press = () => { setOwed(false); setShown(isOpen ? null : row.path); setTab('trend') }
             return (
               <CascadeRow key={row.path} index={Math.min(i, 14)}>
                 <div className={`interactive-row ${ROW} cursor-pointer${isOpen ? ' bg-white/[0.04]' : ''}`} data-page-line={row.path}>
