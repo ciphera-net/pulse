@@ -13,6 +13,7 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import { CompactNumber } from '@/components/ui/compact-number'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { SkeletonLine } from '@/components/skeletons'
 import { FRAME_CARD_NAME, FRAME_SURFACE } from '@/lib/dashboard/frameClasses'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
@@ -23,6 +24,7 @@ import PathLabel from '../PathLabel'
 import DayBars from './DayBars'
 import PageTrend, { PREV_INK, type TrendPoint } from './PageTrend'
 import { bucketsFor, hourName, seconds, type Bucket, type BucketKind } from './buckets'
+import { beforeLine, NOT_MEASURED_BEFORE, type BeforeState } from './before'
 
 // ---------------------------------------------------------------------------
 // The Pages page: EVERY PAGE IN ONE LIST (rulings R78 and R82, 17-11-2026). All of a site's pages at once, each with
@@ -55,6 +57,10 @@ import { bucketsFor, hourName, seconds, type Bucket, type BucketKind } from './b
 // starts with "/", so that word is no page's). So a reload always opens what was open, or keeps the list closed.
 // The tab is the opened page's, and the first page's while the list still waits for its rows: `tab=scroll` alone
 // opens the list's first page on its Scroll depth.
+//
+// WHAT IT SAYS OF THE PERIOD BEFORE follows what the page knows of it (before.ts): none, loading, failed or ready.
+// While it loads, the Change column and an opened page's lines show the loading mark, never "no period before"; a
+// figure with no value then is said in words ("not measured in the period before"), never as a dash in a sentence.
 //
 // THE LIST LAYS ITSELF OUT BY THE ROOM IT HAS, never by the window's width (18-11-2026). The app's sidebar, open or
 // closed, changes that room by about 190 px: at a 1024 px window with the sidebar open the list has 655 px, and on
@@ -143,8 +149,10 @@ function LegendLine({ color, dash }: { color: string; dash?: string }) {
 interface Measure {
   name: string
   now: string
-  /** The figure in the period before, or null where there was none. */
-  before: string | null
+  /** The figure in the period before, or null where the page had no value for it then. */
+  then: string | null
+  /** Why the page had no value for it then, though it had views: the words of its line. */
+  missing: string
   change: PctChangeResult
   /** Up is worse: the arrow keeps the number's direction, the colour turns. */
   invert?: boolean
@@ -157,8 +165,8 @@ interface OpenedPageProps {
   row: PageTableRow
   /** The page's row of the period before; undefined where it had no view then, or nothing is compared. */
   before?: PageTableRow
-  /** Whether a period before was read at all. */
-  compared: boolean
+  /** What the page knows of the period before (before.ts). */
+  beforeState: BeforeState
   start: string
   prevStart?: string
   live: boolean
@@ -175,7 +183,7 @@ interface OpenedPageProps {
   onView: (view: PageView) => void
 }
 
-function OpenedPage({ row, before, compared, start, prevStart, live, host, scroll, dashboardHref, hours, hoursCompare, view, onView }: OpenedPageProps) {
+function OpenedPage({ row, before, beforeState, start, prevStart, live, host, scroll, dashboardHref, hours, hoursCompare, view, onView }: OpenedPageProps) {
   const now = useMemo(() => row.trend ?? [], [row.trend])
   const then = useMemo(() => before?.trend ?? [], [before?.trend])
   const n = now.length
@@ -194,18 +202,24 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
 
   const base = before?.pageviews ?? 0
   const rate = (a: number | null | undefined, b: number | null | undefined, weight: number): PctChangeResult => (a != null && b != null ? guardedPointChange(a, b, weight) : null)
+  // A figure of the period before, or null where the page had no value for it then. The server sends null, never 0,
+  // where a figure has nothing to stand on (pulse-backend, pages_table_ch_sql.go): time and scroll when no view
+  // reported them, bounce when no visit started on the page, exit rate when it had no view.
+  const of = <T,>(v: T | null | undefined, f: (v: T) => string): string | null => (v == null ? null : f(v))
   const measures: Measure[] = [
-    { name: 'Views', now: formatNumber(row.pageviews), before: before ? formatNumber(before.pageviews) : null, change: before ? guardedPctChange(row.pageviews, before.pageviews, base) : null },
-    { name: 'Visitors', now: formatNumber(row.visitors), before: before ? formatNumber(before.visitors) : null, change: before ? guardedPctChange(row.visitors, before.visitors, before.visitors) : null },
+    { name: 'Views', now: formatNumber(row.pageviews), then: of(before?.pageviews, formatNumber), missing: NOT_MEASURED_BEFORE, change: before ? guardedPctChange(row.pageviews, before.pageviews, base) : null },
+    { name: 'Visitors', now: formatNumber(row.visitors), then: of(before?.visitors, formatNumber), missing: NOT_MEASURED_BEFORE, change: before ? guardedPctChange(row.visitors, before.visitors, before.visitors) : null },
     {
       name: 'Time on page',
       now: seconds(row.avg_time_on_page),
-      before: before ? seconds(before.avg_time_on_page) : null,
+      then: of(before?.avg_time_on_page, seconds),
+      missing: NOT_MEASURED_BEFORE,
       change: before && row.avg_time_on_page != null && before.avg_time_on_page != null ? guardedPctChange(row.avg_time_on_page, before.avg_time_on_page, base) : null,
     },
-    { name: 'Scroll depth', now: percent(row.avg_scroll_depth), before: before ? percent(before.avg_scroll_depth) : null, change: rate(row.avg_scroll_depth, before?.avg_scroll_depth, base) },
-    { name: 'Bounce', now: percent(row.entry_bounce_rate), before: before ? percent(before.entry_bounce_rate) : null, change: rate(row.entry_bounce_rate, before?.entry_bounce_rate, before?.entries ?? 0), invert: true },
-    { name: 'Exit rate', now: percent(row.exit_rate), before: before ? percent(before.exit_rate) : null, change: rate(row.exit_rate, before?.exit_rate, base), invert: true },
+    { name: 'Scroll depth', now: percent(row.avg_scroll_depth), then: of(before?.avg_scroll_depth, percent), missing: NOT_MEASURED_BEFORE, change: rate(row.avg_scroll_depth, before?.avg_scroll_depth, base) },
+    // A bounce is a visit that started on the page and saw no other: without such a visit there is no rate.
+    { name: 'Bounce', now: percent(row.entry_bounce_rate), then: of(before?.entry_bounce_rate, percent), missing: 'no visit started here in the period before', change: rate(row.entry_bounce_rate, before?.entry_bounce_rate, before?.entries ?? 0), invert: true },
+    { name: 'Exit rate', now: percent(row.exit_rate), then: of(before?.exit_rate, percent), missing: NOT_MEASURED_BEFORE, change: rate(row.exit_rate, before?.exit_rate, base), invert: true },
   ]
 
   return (
@@ -279,10 +293,16 @@ function OpenedPage({ row, before, compared, start, prevStart, live, host, scrol
                   <RailDelta change={m.change && m.change.type !== 'new' && m.change.value === 0 ? null : m.change} invert={m.invert} />
                 </span>
               </span>
-              {/* Never cut: a line too long for its cell takes a second line. */}
-              <span className="mt-0.5 block text-[11px] tabular-nums text-neutral-500" data-measure-context="">
-                {m.before != null ? `${m.before} in the period before` : compared ? 'no views in the period before' : 'no period before'}
-              </span>
+              {/* Never cut: a line too long for its cell takes a second line. While the period before loads, the
+                  loading mark stands in it (before.ts). */}
+              {(() => {
+                const said = beforeLine(beforeState, before ? m.then : null, 'no period before', before ? m.missing : 'no views in the period before')
+                return (
+                  <div className="mt-0.5 min-h-4 text-[11px] tabular-nums text-neutral-500" data-measure-context="" data-before={beforeState}>
+                    {said ?? <SkeletonLine className="mt-1 h-2.5 w-24 max-w-full" />}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </div>
@@ -339,6 +359,11 @@ export interface PagesListProps {
   rows: PageTableRow[]
   /** The same read for the period before; undefined while it loads or where nothing is compared. */
   prevRows?: PageTableRow[]
+  /**
+   * What the page knows of the period before (before.ts). Without it: in hand where `prevRows` is, none where it
+   * is not (so a list handed no period before never claims one is loading).
+   */
+  before?: BeforeState
   /** The pages read's row limit. At it the list holds the busiest pages only, and its count says so. */
   limit: number
   /** The range's first day, YYYY-MM-DD, and the first day of the period before. */
@@ -361,7 +386,7 @@ export interface PagesListProps {
   hoursCompare?: boolean
 }
 
-export default function PagesList({ rows, prevRows, limit, start, prevStart, live, hourly, nowHour, domain, renderScroll, dashboardHref, renderHours, hoursCompare }: PagesListProps) {
+export default function PagesList({ rows, prevRows, before: beforeGiven, limit, start, prevStart, live, hourly, nowHour, domain, renderScroll, dashboardHref, renderHours, hoursCompare }: PagesListProps) {
   const asked = useSearchParams()
   const [query, setQuery] = useState(() => asked.get('q') ?? '')
   const [sort, setSort] = useState<Sort<Key>>(() => readSort(asked.get('sort')))
@@ -374,7 +399,9 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
   const host = domain ? domain.replace(/^https?:\/\//, '').replace(/\/$/, '') : null
 
   const prev = useMemo(() => new Map((prevRows ?? []).map((r) => [r.path, r])), [prevRows])
-  const compared = prevRows !== undefined
+  // Rows in hand are the period before; without them the page's word stands ("ready" with no rows is nothing to compare).
+  const before: BeforeState = prevRows !== undefined ? 'ready' : beforeGiven && beforeGiven !== 'ready' ? beforeGiven : 'none'
+  const compared = before === 'ready'
   const q = query.trim().toLowerCase()
   const lines = useMemo(() => {
     const found = q ? rows.filter((r) => r.path.toLowerCase().includes(q)) : rows
@@ -521,14 +548,17 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
                   <div className="pointer-events-none relative ml-4 flex shrink-0 items-center gap-3">
                     <CompactNumber value={row.pageviews} className={cn(cls('pageviews'), 'justify-end text-sm font-semibold tabular-nums text-white')} />
                     {/* The deck's change mark. A dash where nothing is compared; a change that rounds to nothing is
-                        written as that, in grey, never as a fall of 0%. */}
-                    <span className={`${cls('change')} justify-end`} data-line-change={line.change ?? ''}>
-                      {line.changeMark == null
-                        ? <span className="text-sm text-neutral-600">{DASH}</span>
-                        : line.change === 0
-                          ? <span className="text-[11px] font-medium tabular-nums text-neutral-500">0%</span>
-                          : <RailDelta change={line.changeMark} />}
-                    </span>
+                        written as that, in grey, never as a fall of 0%; the loading mark while the period before
+                        loads (a dash there would say there is nothing to compare). */}
+                    <div className={`${cls('change')} items-center justify-end`} data-line-change={line.change ?? ''}>
+                      {before === 'loading'
+                        ? <SkeletonLine className="h-2.5 w-8" />
+                        : line.changeMark == null
+                          ? <span className="text-sm text-neutral-600">{DASH}</span>
+                          : line.change === 0
+                            ? <span className="text-[11px] font-medium tabular-nums text-neutral-500">0%</span>
+                            : <RailDelta change={line.changeMark} />}
+                    </div>
                     <CompactNumber value={row.visitors} className={cn(ROW_NUMBER, cls('visitors'), 'justify-end')} />
                     <span className={`${cls('entry_bounce_rate')} justify-end text-sm tabular-nums text-neutral-500`}>{percent(row.entry_bounce_rate)}</span>
                     <span className={`${cls('avg_time_on_page')} justify-end text-sm tabular-nums text-neutral-500`}>{seconds(row.avg_time_on_page)}</span>
@@ -540,7 +570,7 @@ export default function PagesList({ rows, prevRows, limit, start, prevStart, liv
                   <OpenedPage
                     row={row}
                     before={prev.get(row.path)}
-                    compared={compared}
+                    beforeState={before}
                     start={start}
                     prevStart={prevStart}
                     live={live}

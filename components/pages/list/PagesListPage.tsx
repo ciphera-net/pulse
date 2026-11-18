@@ -27,6 +27,7 @@ import PagesList, { LIST_PARAMS } from './PagesList'
 import PagesStrip from './PagesStrip'
 import PageHours from './PageHours'
 import ScrollWho from './ScrollWho'
+import { beforeState } from './before'
 
 // ---------------------------------------------------------------------------
 // The Pages page as one list (rulings R78 and R82, 17-11-2026; in beta behind `new-pages`, lib/betas.ts). From the
@@ -117,9 +118,13 @@ export default function PagesListPage({ siteId }: { siteId: string }) {
     () => (caps.comparison && resolved && period !== 'all' ? previousDateRange(resolved) : null),
     [caps.comparison, resolved, period],
   )
-  const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', filtersParam || undefined)
-  const { data: prevData } = usePagesTable(siteId, prevRange?.start ?? '', prevRange?.end ?? '', PAGES_LIMIT, filtersParam || undefined)
-  const prevRows = prevRange ? prevData?.pages : undefined
+  const { data: prevStats, error: prevStatsError } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', filtersParam || undefined)
+  const { data: prevData, error: prevError } = usePagesTable(siteId, prevRange?.start ?? '', prevRange?.end ?? '', PAGES_LIMIT, filtersParam || undefined)
+  // What the page knows of the period before (before.ts): none, on its way, failed, or in hand. Every line about it
+  // follows this, so nothing says "no period before" while it loads or after its read failed.
+  const beforeRows = beforeState(Boolean(prevRange), prevData, prevError)
+  const beforeStats = beforeState(Boolean(prevRange), prevStats, prevStatsError)
+  const prevRows = beforeRows === 'ready' ? prevData?.pages : undefined
 
   const toolbar = (
     <FrameToolbar>
@@ -156,10 +161,11 @@ export default function PagesListPage({ siteId }: { siteId: string }) {
     const pageFilters = (path: string) => serializeFilters([...filters, { dimension: 'page', operator: 'is', values: [path] }])
     body = (
       <div className="flex flex-col gap-3">
-        <PagesStrip rows={rows} prevRows={prevRows} stats={dashboard?.stats} prevStats={prevRange ? prevStats : undefined} limit={PAGES_LIMIT} />
+        <PagesStrip rows={rows} prevRows={prevRows} stats={dashboard?.stats} prevStats={prevRange ? prevStats : undefined} limit={PAGES_LIMIT} beforeRows={beforeRows} beforeStats={beforeStats} />
         <PagesList
           rows={rows}
           prevRows={prevRows}
+          before={beforeRows}
           limit={PAGES_LIMIT}
           start={range.start}
           prevStart={prevRange?.start}

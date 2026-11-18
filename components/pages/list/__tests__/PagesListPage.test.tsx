@@ -133,6 +133,41 @@ describe('an opened page\'s scroll depth', () => {
   })
 })
 
+describe('what it knows of the period before', () => {
+  /** The period before's reads answer as `prev`; the range's own as before. */
+  const prevAnswers = (prev: { data?: unknown; error?: unknown; isLoading?: boolean }) => {
+    h.usePagesTable.mockImplementation((_s: string, start: string) => (start === '2026-09-19' ? { data: undefined, error: undefined, isLoading: false, ...prev } : { data: { pages: [ROW] }, error: undefined, isLoading: false }))
+    h.useStats.mockImplementation((_s: string, start: string) => (start === '2026-09-19' ? { data: undefined, error: undefined, ...prev } : { data: { pageviews: 8 } }))
+  }
+
+  it('says it is on its way while its reads are, to the list and the strip alike', () => {
+    prevAnswers({ isLoading: true })
+    show()
+    expect(h.list).toMatchObject({ before: 'loading', prevRows: undefined })
+    expect(h.strip).toMatchObject({ beforeRows: 'loading', beforeStats: 'loading' })
+  })
+
+  it('says its read failed', () => {
+    prevAnswers({ error: new Error('boom') })
+    show()
+    expect(h.list).toMatchObject({ before: 'failed' })
+    expect(h.strip).toMatchObject({ beforeRows: 'failed', beforeStats: 'failed' })
+  })
+
+  it('hands the rows over once they are in', () => {
+    show()
+    expect(h.list).toMatchObject({ before: 'ready', prevRows: [ROW] })
+    expect(h.strip).toMatchObject({ beforeRows: 'ready', beforeStats: 'ready' })
+  })
+
+  it('says there is none over All time', () => {
+    h.range = { period: 'all', dateRange: { start: '2026-01-01', end: '2026-11-17' }, siteNow: new Date(2026, 10, 17, 14, 30) }
+    show()
+    expect(h.list).toMatchObject({ before: 'none', prevRows: undefined })
+    expect(h.strip).toMatchObject({ beforeRows: 'none', beforeStats: 'none' })
+  })
+})
+
 describe('the way out', () => {
   it('links a page to the dashboard filtered to it, with the range and none of the list\'s own words', () => {
     window.history.replaceState({}, '', '/sites/s/pages?period=7&q=blog&sort=change.asc&show=%2Fa&tab=scroll&col=exit_rate')

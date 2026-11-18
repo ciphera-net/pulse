@@ -303,6 +303,65 @@ describe('the first page', () => {
   })
 })
 
+describe('what an opened page says of the period before', () => {
+  const lines = () => Array.from(document.querySelectorAll('[data-measure-context]')).map((l) => l.textContent)
+  const changes = () => Array.from(document.querySelectorAll('[data-line-change]')).map((c) => c.textContent)
+
+  // 18-11-2026, the owner, of "— in the period before": "this needs fixing". The server sends null where a figure
+  // had nothing to stand on: time and scroll when no view reported them, bounce when no visit started on the page.
+  it('says in words why a figure had no value then, and never puts a dash in a sentence', () => {
+    const quiet = [page('/', 1250, { avg_time_on_page: null, avg_scroll_depth: null, entry_bounce_rate: null }), ...PREV.slice(1)]
+    render(<PagesList {...base} prevRows={quiet} />)
+    expect(lines()).toEqual([
+      '1,250 in the period before',
+      '1,125 in the period before',
+      'not measured in the period before',
+      'not measured in the period before',
+      'no visit started here in the period before',
+      '25% in the period before',
+    ])
+    for (const l of lines()) expect(l).not.toContain('—')
+  })
+
+  it('says the page had no views then, where it had none', () => {
+    search = 'show=/new'
+    render(<PagesList {...base} />)
+    expect(new Set(lines())).toEqual(new Set(['no views in the period before']))
+  })
+
+  it('says there is no period before only where there is none', () => {
+    render(<PagesList {...base} prevRows={undefined} />)
+    expect(new Set(lines())).toEqual(new Set(['no period before']))
+    expect(new Set(changes())).toEqual(new Set(['—']))
+  })
+
+  it('says the period before did not load when its read failed, never that there is none', () => {
+    render(<PagesList {...base} prevRows={undefined} before="failed" />)
+    expect(new Set(lines())).toEqual(new Set(['the period before did not load']))
+  })
+
+  it('shows the loading mark while the period before loads: in its lines and in the Change column, no dash', () => {
+    render(<PagesList {...base} prevRows={undefined} before="loading" />)
+    const contexts = Array.from(document.querySelectorAll('[data-measure-context]'))
+    expect(contexts).toHaveLength(6)
+    for (const c of contexts) {
+      expect(c.textContent).toBe('')
+      expect(c.getAttribute('data-before')).toBe('loading')
+      expect(c.children).toHaveLength(1)
+    }
+    for (const c of Array.from(document.querySelectorAll('[data-line-change]'))) {
+      expect(c.textContent).toBe('')
+      expect(c.children).toHaveLength(1)
+    }
+  })
+
+  it('takes the rows in hand over a word that says otherwise', () => {
+    render(<PagesList {...base} before="loading" />)
+    expect(lines()[0]).toBe('1,250 in the period before')
+    expect(change('/')).toHaveTextContent('↓ 20%')
+  })
+})
+
 describe('the address', () => {
   it('starts the list as the address says', () => {
     search = 'q=blog&sort=change.asc&show=/blog/a&tab=scroll&col=exit_rate'

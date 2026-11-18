@@ -74,6 +74,48 @@ describe('PagesStrip', () => {
     expect(five / 5).toBeGreaterThanOrEqual(163)
   })
 
+  const context = (key: string) => figure(key).querySelector('[data-figure-context]') as HTMLElement
+
+  it('shows the loading mark in a tile\'s line while the period before loads, never "no period before"', () => {
+    render(<PagesStrip rows={rows} stats={stats} limit={500} beforeRows="loading" beforeStats="loading" />)
+    for (const key of ['pageviews', 'per-visit', 'time', 'scroll']) {
+      expect(context(key).textContent, key).toBe('')
+      expect(context(key).children, key).toHaveLength(1)
+    }
+    // Bounce speaks of the period it shows: its own two counts.
+    expect(context('bounce')).toHaveTextContent('210 of 500 visits')
+    expect(document.body).not.toHaveTextContent('no period before')
+  })
+
+  it('says the period before did not load when its reads failed', () => {
+    render(<PagesStrip rows={rows} stats={stats} limit={500} beforeRows="failed" beforeStats="failed" />)
+    for (const key of ['pageviews', 'per-visit', 'time', 'scroll']) expect(context(key), key).toHaveTextContent('the period before did not load')
+  })
+
+  it('says in words why a figure had no value then', () => {
+    const quiet = [page('/', 10, null, null)]
+    const noVisits = { ...before, pageviews: 0, visits: 0, bounce_rate: null } as unknown as Stats
+    render(<PagesStrip rows={rows} prevRows={quiet} stats={{ ...stats, bounce_visits: undefined } as unknown as Stats} prevStats={noVisits} limit={500} />)
+    expect(context('time')).toHaveTextContent('not measured in the period before')
+    expect(context('scroll')).toHaveTextContent('not measured in the period before')
+    expect(context('per-visit')).toHaveTextContent('no visits in the period before')
+    expect(context('bounce')).toHaveTextContent('no visits in the period before')
+    expect(context('pageviews')).toHaveTextContent('0 in the period before')
+    for (const key of ['pageviews', 'per-visit', 'time', 'scroll', 'bounce']) expect(context(key).textContent, key).not.toContain('—')
+  })
+
+  it('says no page had a view then, where the period before has no page', () => {
+    render(<PagesStrip rows={rows} prevRows={[]} stats={stats} prevStats={before} limit={500} />)
+    expect(context('time')).toHaveTextContent('no views in the period before')
+    expect(context('scroll')).toHaveTextContent('no views in the period before')
+  })
+
+  it('says there is no period before to compare only where there is none', () => {
+    render(<PagesStrip rows={rows} stats={stats} limit={500} />)
+    expect(context('time')).toHaveTextContent('no period before to compare')
+    expect(context('pageviews')).toHaveTextContent('no period before to compare')
+  })
+
   it('draws a dash, never a nought, for what was not measured', () => {
     render(<PagesStrip rows={[page('/', 10, null, null)]} prevRows={undefined} limit={500} />)
     expect(figure('time')).toHaveTextContent('—')

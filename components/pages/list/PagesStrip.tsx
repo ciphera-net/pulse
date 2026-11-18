@@ -5,12 +5,14 @@ import { ArrowLineDown, Clock, Eye, SignOut, Stack } from '@phosphor-icons/react
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import { CompactNumber } from '@/components/ui/compact-number'
+import { SkeletonLine } from '@/components/skeletons'
 import { FRAME_SURFACE } from '@/lib/dashboard/frameClasses'
 import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { formatNumber } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 import type { PageTableRow, Stats } from '@/lib/api/stats'
 import { seconds } from './buckets'
+import { beforeLine, NOT_MEASURED_BEFORE, type BeforeState } from './before'
 
 // ---------------------------------------------------------------------------
 // The Pages page's strip: five headline figures over the list, each against the period before. The dashboard's
@@ -31,6 +33,9 @@ import { seconds } from './buckets'
 //                       beside the figure below that (a phone)
 //   880 px              five in a row (176 px each), the change beside the figure
 //   1000 px             and the change at the name's row end (200 px each)
+//
+// A tile's line about the period before follows what the page knows of it (before.ts): the loading mark while it
+// loads, "the period before did not load" when its read failed, and a figure with no value then in words.
 // ---------------------------------------------------------------------------
 
 const DASH = '—'
@@ -46,7 +51,8 @@ interface Figure {
   change: PctChangeResult
   /** Up is worse (bounce): the arrow keeps the number's direction, the colour turns. */
   invert?: boolean
-  context: string
+  /** The line under the figure; null while the period before loads (the loading mark is drawn). */
+  context: string | null
   term?: string
 }
 
@@ -58,6 +64,13 @@ export interface PagesStripProps {
   prevStats?: Stats
   /** The pages read's row limit: at it, the figures worked out from the rows are over the busiest pages only. */
   limit: number
+  /**
+   * What the page knows of the period before (before.ts), for the figures worked out from the rows (time on page,
+   * scroll depth) and for the site's own (pageviews, views per visit, bounce rate). Without them: in hand where the
+   * figures are, none where they are not.
+   */
+  beforeRows?: BeforeState
+  beforeStats?: BeforeState
 }
 
 function weighted(rows: PageTableRow[], value: (r: PageTableRow) => number | null, weight: (r: PageTableRow) => number): number | null {
@@ -79,7 +92,10 @@ const moved = (change: PctChangeResult): PctChangeResult => (change && change.ty
 const timeOnPage = (rows: PageTableRow[] | undefined): number | null => (rows ? weighted(rows, (r) => r.avg_time_on_page, (r) => r.pageviews) : null)
 const scrollDepth = (rows: PageTableRow[] | undefined): number | null => (rows ? weighted(rows, (r) => r.avg_scroll_depth, (r) => r.pageviews) : null)
 
-export default function PagesStrip({ rows, prevRows, stats, prevStats, limit }: PagesStripProps) {
+export default function PagesStrip({ rows, prevRows, stats, prevStats, limit, beforeRows: rowsGiven, beforeStats: statsGiven }: PagesStripProps) {
+  const of = (inHand: boolean, given?: BeforeState): BeforeState => (inHand ? 'ready' : given && given !== 'ready' ? given : 'none')
+  const beforeRows = of(prevRows !== undefined, rowsGiven)
+  const beforeStats = of(prevStats !== undefined, statsGiven)
   const figures = useMemo<Figure[]>(() => {
     const views = stats?.pageviews ?? rows.reduce((n, r) => n + r.pageviews, 0)
     const viewsBefore = prevStats?.pageviews
@@ -91,10 +107,14 @@ export default function PagesStrip({ rows, prevRows, stats, prevStats, limit }: 
     const scrollBefore = scrollDepth(prevRows)
     const bounce = stats?.bounce_rate ?? null
     const bounceBefore = prevStats?.bounce_rate ?? null
-    const before = (v: string | null) => (v == null ? 'no period before to compare' : `${v} in the period before`)
+    const NONE = 'no period before to compare'
+    // The site's own figures: a ratio has no value then where the period before had no visit.
+    const ofStats = (v: string | null, missing = NOT_MEASURED_BEFORE) => beforeLine(beforeStats, v, NONE, missing)
     // A figure worked out from the rows is over the pages listed. At the read's limit that is the busiest pages,
     // and its line says so in the place of the period before.
-    const ofRows = (v: string | null) => (rows.length >= limit ? `over the ${formatNumber(limit)} busiest pages` : before(v))
+    // No page had a view in the period before: there is nothing a figure could have been measured on.
+    const rowsMissing = prevRows && prevRows.length === 0 ? 'no views in the period before' : NOT_MEASURED_BEFORE
+    const ofRows = (v: string | null) => (rows.length >= limit ? `over the ${formatNumber(limit)} busiest pages` : beforeLine(beforeRows, v, NONE, rowsMissing))
     return [
       {
         key: 'pageviews',
@@ -103,7 +123,7 @@ export default function PagesStrip({ rows, prevRows, stats, prevStats, limit }: 
         value: formatNumber(views),
         count: views,
         change: viewsBefore == null ? null : guardedPctChange(views, viewsBefore, viewsBefore),
-        context: before(viewsBefore == null ? null : formatNumber(viewsBefore)),
+        context: ofStats(viewsBefore == null ? null : formatNumber(viewsBefore)),
         term: 'pageviews',
       },
       {
@@ -112,7 +132,7 @@ export default function PagesStrip({ rows, prevRows, stats, prevStats, limit }: 
         label: 'Views per visit',
         value: perVisit == null ? null : perVisit.toFixed(2),
         change: perVisit != null && perVisitBefore != null ? guardedPctChange(perVisit, perVisitBefore, prevStats?.visits ?? 0) : null,
-        context: before(perVisitBefore == null ? null : perVisitBefore.toFixed(2)),
+        context: ofStats(perVisitBefore == null ? null : perVisitBefore.toFixed(2), 'no visits in the period before'),
         term: 'pages_per_visit',
       },
       {
@@ -141,11 +161,11 @@ export default function PagesStrip({ rows, prevRows, stats, prevStats, limit }: 
         // The server's own two counts, never a share multiplied out here.
         context: stats?.bounce_visits != null && stats.visits != null
           ? `${formatNumber(stats.bounce_visits)} of ${formatNumber(stats.visits)} visits`
-          : before(bounceBefore == null ? null : `${Math.round(bounceBefore)}%`),
+          : ofStats(bounceBefore == null ? null : `${Math.round(bounceBefore)}%`, 'no visits in the period before'),
         term: 'bounce_rate',
       },
     ]
-  }, [rows, prevRows, stats, prevStats, limit])
+  }, [rows, prevRows, stats, prevStats, limit, beforeRows, beforeStats])
 
   return (
     // The wrapper is the container the cells ask for their room (a block cannot ask its own width).
@@ -178,8 +198,11 @@ export default function PagesStrip({ rows, prevRows, stats, prevStats, limit }: 
               <span data-figure-value="">{f.value == null ? <span className="text-neutral-600">{DASH}</span> : f.count != null ? <CompactNumber value={f.count} /> : f.value}</span>
               <span className="shrink-0 cq-[400px]:hidden cq-[880px]:inline-flex cq-[1000px]:hidden"><RailDelta change={moved(f.change)} invert={f.invert} /></span>
             </div>
-            {/* Never cut: a line too long for its cell takes a second line. */}
-            <p className="mt-0.5 text-[11px] text-neutral-500" data-figure-context="">{f.context}</p>
+            {/* Never cut: a line too long for its cell takes a second line. The loading mark while the period
+                before loads (before.ts). */}
+            <div className="mt-0.5 min-h-4 text-[11px] text-neutral-500" data-figure-context="">
+              {f.context ?? <SkeletonLine className="mt-1 h-2.5 w-24 max-w-full" />}
+            </div>
           </div>
         ))}
       </section>
