@@ -24,7 +24,7 @@ import { Circle as CircleIcon, LockSimple as LockSimpleIcon } from '@phosphor-ic
 const PANEL_WIDTH = 288 // w-72
 
 export default function OnboardingChip() {
-  const { items, completedCount, total, visible, dismiss } = useOnboarding()
+  const { items, completedCount, total, nextItem, visible, dismiss } = useOnboarding()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -113,7 +113,9 @@ export default function OnboardingChip() {
                 <XIcon className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="text-xs text-neutral-500">{completedCount} of {total} completed</p>
+            <p className="text-xs text-neutral-500">
+              {completedCount} of {total} completed{nextItem ? `. Next: ${nextItem.label}` : ''}
+            </p>
           </div>
 
           <div className="h-1 bg-neutral-800">
@@ -152,6 +154,11 @@ export default function OnboardingChip() {
                   <span className={item.completed ? 'line-through' : ''}>{item.label}</span>
                   {locked && item.lockedReason && (
                     <span className="ml-auto shrink-0 text-[11px] text-neutral-600">{item.lockedReason}</span>
+                  )}
+                  {item.completed && item.note && (
+                    <span className="ml-auto shrink-0 rounded-none border border-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500">
+                      {item.note}
+                    </span>
                   )}
                   {optional && (
                     <span className="ml-auto shrink-0 rounded-none border border-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500">
