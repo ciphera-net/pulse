@@ -37,4 +37,8 @@ export const BETAS: readonly Beta[] = [
   // in place with its trend and its scroll depth. PagesSurface reads useFeature (components/pages/list/flag.ts
   // NEW_PAGES_FLAG); the table stays for every team without it.
   { flag: 'new-pages', name: 'New Pages page', revalidates: [] },
+  // The new Journeys page (R87 to R96, 18-11-2026): the flow in the dashboard's frame, a count on every page, where
+  // visits left at every step, a pressed journey and its card. JourneysSurface reads useFeature
+  // (components/journeys/flow/flag.ts NEW_JOURNEYS_FLAG); today's page stays for every team without it.
+  { flag: 'new-journeys', name: 'New Journeys page', revalidates: [] },
 ]

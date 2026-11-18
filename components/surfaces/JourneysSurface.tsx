@@ -24,6 +24,10 @@ import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { TERMS } from '@/lib/dashboard/terms'
 import { EVENT_FILTERS_FLAG, type DimensionFilter } from '@/lib/filters'
 import { useFeature } from '@/lib/features'
+import { DashboardFrameProvider } from '@/lib/dashboard/frame'
+import { SkeletonBar } from '@/components/skeletons'
+import JourneysFlowPage from '@/components/journeys/flow/JourneysFlowPage'
+import { NEW_JOURNEYS_FLAG } from '@/components/journeys/flow/flag'
 import {
   useJourneyFilters,
   JOURNEY_FILTER_DIMENSIONS,
@@ -64,6 +68,30 @@ function JourneysNotAvailable() {
 export default function JourneysSurface() {
   const scope = useSiteScope()
   if (!servesPage(scope, 'journeys')) return <NotShared scope={scope} />
+  return <JourneysGate scope={scope} />
+}
+
+/**
+ * The new Journeys page is in beta (`new-journeys`, lib/betas.ts): a team that has it gets the flow in the dashboard's
+ * frame (components/journeys/flow/JourneysFlowPage.tsx), every other team and the public pages keep the page below.
+ * While /me is on the way the answer is not known, and NEITHER page is drawn (as the Pages page's gate does).
+ */
+function JourneysGate({ scope }: { scope: SiteScope }) {
+  const flow = useFeature(NEW_JOURNEYS_FLAG)
+  if (flow === null) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-4" aria-hidden="true" data-journeys-gate="waiting">
+        <SkeletonBar className="rounded-none border border-border bg-card h-96 animate-pulse" />
+      </div>
+    )
+  }
+  if (flow) {
+    return (
+      <DashboardFrameProvider>
+        <JourneysFlowPage siteId={scope.siteId} />
+      </DashboardFrameProvider>
+    )
+  }
   return <Journeys scope={scope} />
 }
 
