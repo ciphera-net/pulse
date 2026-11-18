@@ -593,6 +593,138 @@ steps:
           || { echo "POST-DEPLOY MISMATCH — running spec is not what we shipped:"; \
                echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
       - echo "Deployed pulse-frontend-staging to SKS ($DEPLOY_SHA)"
+  # ═══ MAGIC CONTAINERS: keep this app's MC copy on THIS build (Stage 5) ═══
+  # MC app `pulse-frontend`. Until Stage 5b points the dashboard's edge rules at it it serves nobody; from then on
+  # it serves every dashboard path, which is why `purge-cdn` waits for this step as well as deploy-k8s. The probe is
+  # /login because this app's `/` answers 307.
+  # The MC app id is the repo secret `mc_app_id`; `mc-deploy-check` raises McImageBehindMain when the MC app's tag
+  # lags `main` for 30 minutes, so a failure here is reported even when nobody reads this pipeline.
+  #
+  # The body and every check below are the ones proven on the estate's five MC apps (ciphera-net/website's
+  # `bunny-push`):
+  #   * PATCH /mc/apps/{id} REPLACES the container template. A partial body answers 200 and deletes the env vars,
+  #     the probes and the endpoint, and the endpoint's pull zone goes with it. So the full template is rebuilt from
+  #     a GET, in the WRITE shape (cdn.portMappings), every endpoint keeps its existing id, and the step refuses to
+  #     send a body with no endpoint, an endpoint without an id, or a PORT that is not PROBE_PORT.
+  #   * A 2xx is not proof: the step re-reads until MC runs the digest this pipeline resolved AND the endpoint ids,
+  #     the pull zone and the package are what they were before.
+  # The image comes from registry.ops.ciphera.net (MC registry 12602, pull-only), which works because push.yml
+  # pushes Docker-format manifests (`oci-mediatypes=false`); MC's puller asks for Docker types only.
+  bunny-push:
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
+    # After upload-static: the HTML this image serves names chunks that must already be on the static CDN.
+    depends_on: [digest, upload-static]
+    when:
+      - event: push
+        branch: main
+    environment:
+      MC_APP_ID:
+        from_secret: mc_app_id
+      # The MC app's own hostname: what is lost if the endpoint is lost, so it is what the failure text names.
+      MC_HOSTNAME: mc-g2hf2plnao.bunny.run
+      # A Next.js standalone server has no separate health route. PROBE_PORT must equal the app's PORT.
+      PROBE_PATH: /login
+      PROBE_PORT: "3002"
+      BUNNY_API_KEY:
+        from_secret: bunny_api_key
+    commands:
+      - |
+        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
+        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
+        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
+        [ -n "$DEPLOY_SHA" ] || { echo "empty deploy_sha handoff"; exit 1; }
+        echo "TAG=sha-$DEPLOY_SHA  DIGEST=$DIGEST" > /tmp/mc-target
+        cat /tmp/mc-target
+      # Record what the PATCH does not send, before sending it.
+      - |
+        HTTP=$(curl -s --max-time 20 -o /tmp/mc-before.json -w '%{http_code}' \
+              -H "AccessKey: $BUNNY_API_KEY" "https://api.bunny.net/mc/apps/$MC_APP_ID") \
+          || { echo "FAIL: GET /mc/apps/$MC_APP_ID: curl transport error"; exit 1; }
+        [ "$HTTP" = "200" ] \
+          || { echo "FAIL: GET /mc/apps/$MC_APP_ID -> HTTP $HTTP"; head -c 300 /tmp/mc-before.json; echo; exit 1; }
+        jq -c '{packageId: .containerTemplates[0].packageId,
+                endpoints: ([.containerTemplates[0].endpoints[] | {id, pullZoneId}] | sort_by(.id))}' \
+          /tmp/mc-before.json > /tmp/mc-invariants.json
+        echo "invariants before: $(cat /tmp/mc-invariants.json)"
+        [ "$(jq '.endpoints | length' /tmp/mc-invariants.json)" -ge 1 ] \
+          || { echo "FAIL: the MC app already has no endpoint; refusing to touch it"; exit 1; }
+        MCREG=$(jq -r '.containerTemplates[0].imageRegistryId' /tmp/mc-before.json)
+        [ "$MCREG" = "12602" ] \
+          || { echo "FAIL: the MC app is on image registry [$MCREG], expected 12602 (registry.ops.ciphera.net)"; exit 1; }
+      - |
+        DEPLOY_SHA=$(cat /woodpecker/deploy_sha)
+        jq --arg tag "sha-$DEPLOY_SHA" --arg pp "$PROBE_PATH" --argjson pn "$PROBE_PORT" '
+          .containerTemplates[0] as $t
+          | {containerTemplates: [{
+              id: $t.id, name: $t.name,
+              imageRegistryId: $t.imageRegistryId,
+              imageNamespace:  $t.imageNamespace,
+              imageName:       $t.imageName,
+              imageTag:        $tag,
+              imagePullPolicy: "Always",
+              environmentVariables: $t.environmentVariables,
+              probes: {
+                liveness:  {httpGet:{request:{path:$pp,portNumber:$pn}}},
+                readiness: {httpGet:{request:{path:$pp,portNumber:$pn}}}
+              },
+              endpoints: [ $t.endpoints[] | {
+                id: .id, displayName: .displayName,
+                cdn: {portMappings: [ .portMappings[] | {containerPort: .containerPort} ]}
+              }]
+            }]}' /tmp/mc-before.json > /tmp/mc-patch.json \
+          || { echo "FAIL: building the patch body"; exit 1; }
+        EPC=$(jq '.containerTemplates[0].endpoints | length' /tmp/mc-patch.json)
+        [ "$EPC" -ge 1 ] || { echo "FAIL: the patch body has no endpoint; refusing to send"; exit 1; }
+        NOID=$(jq '[.containerTemplates[0].endpoints[] | select(.id == null)] | length' /tmp/mc-patch.json)
+        [ "$NOID" = "0" ] \
+          || { echo "FAIL: $NOID endpoint(s) without an id; sending would create a new pull zone and destroy $MC_HOSTNAME"; exit 1; }
+        PORTV=$(jq -r '[.containerTemplates[0].environmentVariables[] | select(.name=="PORT") | .value] | first // ""' /tmp/mc-patch.json)
+        [ "$PORTV" = "$PROBE_PORT" ] \
+          || { echo "FAIL: PORT in the patch body is [$PORTV], expected $PROBE_PORT"; exit 1; }
+        echo "patch body: $EPC endpoint(s) with ids, PORT=$PORTV, tag sha-$DEPLOY_SHA"
+      - |
+        HTTP=$(curl -s --max-time 30 -o /tmp/mc-patch-resp -w '%{http_code}' \
+          -X PATCH -H "AccessKey: $BUNNY_API_KEY" -H 'Content-Type: application/json' \
+          -d @/tmp/mc-patch.json "https://api.bunny.net/mc/apps/$MC_APP_ID") \
+          || { echo "FAIL: PATCH /mc/apps/$MC_APP_ID: curl transport error"; exit 1; }
+        case "$HTTP" in
+          2*) echo "PATCH accepted (HTTP $HTTP)" ;;
+          *) echo "FAIL: PATCH /mc/apps/$MC_APP_ID -> HTTP $HTTP"; head -c 400 /tmp/mc-patch-resp; echo; exit 1 ;;
+        esac
+      - |
+        DIGEST=$(cat /woodpecker/digest)
+        OK=no; A_DIG=""; A_INV=""
+        WANT=$(cat /tmp/mc-invariants.json)
+        for i in $(seq 1 24); do
+          A=$(curl -sf --max-time 20 -H "AccessKey: $BUNNY_API_KEY" "https://api.bunny.net/mc/apps/$MC_APP_ID") \
+            || { echo "re-read failed (try $i), retrying"; sleep 5; continue; }
+          A_DIG=$(echo "$A" | jq -r '.containerTemplates[0].imageDigest')
+          A_INV=$(echo "$A" | jq -c '{packageId: .containerTemplates[0].packageId,
+                                      endpoints: ([.containerTemplates[0].endpoints[] | {id, pullZoneId}] | sort_by(.id))}')
+          if [ "$A_DIG" = "$DIGEST" ] && [ "$A_INV" = "$WANT" ]; then
+            OK=yes; echo "MC now runs $A_DIG; invariants intact: $A_INV"; break
+          fi
+          sleep 5
+        done
+        if [ "$OK" != "yes" ]; then
+          echo "--- expected digest: $DIGEST"
+          echo "--- actual digest:   $A_DIG"
+          echo "--- invariants before: $WANT"
+          echo "--- invariants after:  $A_INV"
+          if [ "$A_INV" != "$WANT" ]; then
+            echo "🔴 THE PATCH CHANGED SOMETHING IT DID NOT SEND. If the endpoint or its pull zone moved, $MC_HOSTNAME is gone."
+            echo "🔴 After Stage 5b the dashboard's edge rules point at that host: point them back at the cluster (one call), then rebuild the endpoint."
+          fi
+          echo "FAIL: MC did not converge on this build with its configuration intact"
+          exit 1
+        fi
+
   # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
   # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
   # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
@@ -604,7 +736,8 @@ steps:
         resources:
           requests: { memory: 128Mi, cpu: 100m }
           limits: { memory: 512Mi }
-    depends_on: [deploy-k8s]
+    # After Stage 5b the dashboard is served from the MC copy, so this waits for both deploys.
+    depends_on: [deploy-k8s, bunny-push]
     when:
       - event: push
         branch: main
