@@ -20,6 +20,15 @@ import { seconds } from './buckets'
 // Pageviews, views per visit and the bounce rate are the site's own figures (the dashboard's read). Time on page
 // and scroll depth are the listed pages' own, weighted by their views: exact while the list holds every page, and
 // said to be over the busiest pages once the read is at its limit.
+//
+// THE STRIP LAYS ITSELF OUT BY THE ROOM IT HAS (18-11-2026), as the list under it does (PagesList.tsx): the app's
+// sidebar changes that room, and on window breakpoints five cells stood in a row from a 1024 px window, where the
+// sidebar left each 140 px and every name was cut ("Pag…", "Vie…"). Its wrapper is a container, and the steps
+// follow from the widest name row (an icon, "Views per visit", its info circle, and a change):
+//   under 900 px        two cells a row and the fifth across
+//   900 px              five in a row, each with room for its name (the change beside the figure)
+//   1100 px             and the change at the name's row end
+// In the two-a-row layout the change is at the row's end from 480 px, beside the figure below it (a phone).
 // ---------------------------------------------------------------------------
 
 const DASH = '—'
@@ -137,34 +146,41 @@ export default function PagesStrip({ rows, prevRows, stats, prevStats, limit }: 
   }, [rows, prevRows, stats, prevStats, limit])
 
   return (
-    <section className={`${FRAME_SURFACE} grid grid-cols-2 lg:grid-cols-5`} data-pages-strip="" aria-label="The period at a glance">
-      {figures.map((f, i) => (
-        <div
-          key={f.key}
-          data-pages-figure={f.key}
-          className={cn(
-            'min-w-0 border-white/[0.08] px-5 py-4',
-            // Five cells: a row of five on a wide page; two by two and the fifth across on a narrow one.
-            'max-lg:odd:border-r max-lg:[&:nth-child(-n+4)]:border-b max-lg:last:col-span-2 max-lg:last:border-r-0',
-            i > 0 && 'lg:border-l',
-          )}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-2 text-[13px] text-neutral-400">
-              <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{f.icon}</span>
-              <span className="truncate">{f.label}</span>
-              {f.term && <TermInfoTip term={f.term} />}
-            </span>
-            {/* On a phone the change sits beside the figure, so the name has its row and is never cut. */}
-            <span className="hidden shrink-0 sm:inline-flex"><RailDelta change={moved(f.change)} invert={f.invert} /></span>
+    // The wrapper is the container the cells ask for their room (a block cannot ask its own width).
+    <div className="[container-type:inline-size]">
+      <section className={`${FRAME_SURFACE} grid grid-cols-2 cq-[900px]:grid-cols-5`} data-pages-strip="" aria-label="The period at a glance">
+        {figures.map((f, i) => (
+          <div
+            key={f.key}
+            data-pages-figure={f.key}
+            className={cn(
+              'min-w-0 border-white/[0.08] px-5 py-4',
+              // Five cells: a row of five where each has room for its name; two by two and the fifth across below.
+              'cqmax-[899.98px]:odd:border-r cqmax-[899.98px]:[&:nth-child(-n+4)]:border-b cqmax-[899.98px]:last:col-span-2 cqmax-[899.98px]:last:border-r-0',
+              i > 0 && 'cq-[900px]:border-l',
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2 text-[13px] text-neutral-400">
+                <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{f.icon}</span>
+                <span className="truncate" data-figure-name="">{f.label}</span>
+                {f.term && <TermInfoTip term={f.term} />}
+              </span>
+              {/* The change is at the row's end where the cell holds a name and a change side by side. In a narrower
+                  cell it sits beside the figure, so the name has its row and is never cut. */}
+              <span className="hidden shrink-0 cq-[480px]:inline-flex cq-[900px]:hidden cq-[1100px]:inline-flex" data-figure-change="">
+                <RailDelta change={moved(f.change)} invert={f.invert} />
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xl font-semibold tabular-nums text-white">
+              <span data-figure-value="">{f.value == null ? <span className="text-neutral-600">{DASH}</span> : f.count != null ? <CompactNumber value={f.count} /> : f.value}</span>
+              <span className="shrink-0 cq-[480px]:hidden cq-[900px]:inline-flex cq-[1100px]:hidden"><RailDelta change={moved(f.change)} invert={f.invert} /></span>
+            </div>
+            {/* Never cut: a line too long for its cell takes a second line. */}
+            <p className="mt-0.5 text-[11px] text-neutral-500" data-figure-context="">{f.context}</p>
           </div>
-          <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xl font-semibold tabular-nums text-white">
-            <span>{f.value == null ? <span className="text-neutral-600">{DASH}</span> : f.count != null ? <CompactNumber value={f.count} /> : f.value}</span>
-            <span className="shrink-0 sm:hidden"><RailDelta change={moved(f.change)} invert={f.invert} /></span>
-          </div>
-          <p className="mt-0.5 text-[11px] text-neutral-500 sm:truncate">{f.context}</p>
-        </div>
-      ))}
-    </section>
+        ))}
+      </section>
+    </div>
   )
 }

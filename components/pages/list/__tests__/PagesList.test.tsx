@@ -388,22 +388,77 @@ describe('a range of one day', () => {
   })
 })
 
-describe('a phone', () => {
+describe('the room the list has', () => {
   const cell = (path: string, text: string) => within(line(path)).getByText(text)
 
-  it('shows the views alone at first, the other columns as the page widens', () => {
+  it('shows the views alone in the narrowest list, the other columns as the LIST widens', () => {
     render(<PagesList {...base} rows={[page('/', 1000)]} prevRows={undefined} />)
     expect(head('views').className).toContain('inline-flex')
     expect(head('views').className).not.toContain('hidden')
-    expect(head('bounce').className).toContain('hidden lg:inline-flex')
-    expect(cell('/', '50%').className).toContain('hidden lg:inline-flex')
+    expect(head('bounce').className).toContain('hidden cq-[700px]:inline-flex')
+    expect(cell('/', '50%').className).toContain('hidden cq-[700px]:inline-flex')
+    // The list's own block is the container those rules ask.
+    expect(document.querySelector('[data-pages-list]')!.className).toContain('[container-type:inline-size]')
   })
 
-  it('shows the picked column from the narrowest page, and the views only where there is room again', () => {
+  it('shows the picked column from the narrowest list, and the views only where there is room again', () => {
     search = 'col=entry_bounce_rate'
     render(<PagesList {...base} rows={[page('/', 1000)]} prevRows={undefined} />)
-    expect(head('bounce').className).toContain('inline-flex sm:hidden lg:inline-flex')
-    expect(cell('/', '50%').className).toContain('inline-flex sm:hidden lg:inline-flex')
-    expect(head('views').className).toContain('hidden sm:inline-flex')
+    expect(head('bounce').className).toContain('inline-flex cq-[380px]:hidden cq-[700px]:inline-flex')
+    expect(cell('/', '50%').className).toContain('inline-flex cq-[380px]:hidden cq-[700px]:inline-flex')
+    expect(head('views').className).toContain('hidden cq-[380px]:inline-flex')
+  })
+
+  // The steps are arithmetic on what a row holds. A column added or widened without moving its step fails here.
+  it('leaves an address 180 px or more at every step, by the widths of what the step shows', () => {
+    render(<PagesList {...base} />)
+    const width = (cls: string) => { const m = /(?:^|\s)w-(?:\[(\d+)px\]|(\d+))(?=\s|$)/.exec(cls); return m ? (m[1] ? Number(m[1]) : Number(m[2]) * 4) : 0 }
+    /** The list width from which a part is shown: 0 for one that is never hidden. */
+    const since = (cls: string) => (/(?:^|\s)hidden(?=\s|$)/.test(cls) ? Number(/cq-\[(\d+)px\]:(?:inline-flex|block)/.exec(cls)?.[1] ?? Infinity) : 0)
+    const columns = ['views', 'change', 'visitors', 'bounce', 'time on page', 'exit rate', 'scroll'].map((label) => head(label).className).map((cls) => ({ width: width(cls), since: since(cls) }))
+    const bars = { width: width(barsHead()!.className), since: since(barsHead()!.className) }
+    expect(columns.map((c) => c.width)).toEqual([56, 56, 56, 56, 84, 64, 48])
+    expect(bars.width).toBe(168)
+    const steps = [...new Set([...columns.map((c) => c.since), bars.since])].filter((at) => at > 0).sort((x, y) => x - y)
+    expect(steps).toEqual([380, 550, 700, 880])
+    for (const step of steps) {
+      const shown = columns.filter((c) => c.since <= step)
+      // The numbers with the 12 px between them and the 16 px before them, and the bars with their 16 px.
+      const drawn = shown.reduce((n, c) => n + c.width, 0) + 12 * (shown.length - 1) + 16 + (bars.since <= step ? bars.width + 16 : 0)
+      expect(step - drawn, `the address's room in a list of ${step} px`).toBeGreaterThanOrEqual(180)
+    }
+  })
+
+  it('draws a measure\'s change for both rooms a cell can have: at the name\'s row end, and beside the figure in the narrowest list', () => {
+    render(<PagesList {...base} />)
+    const views = document.querySelector('[data-page-measure]') as HTMLElement
+    const atRowEnd = views.querySelector('[data-measure-change]') as HTMLElement
+    const besideFigure = views.querySelector('[data-measure-figure]')!.nextElementSibling as HTMLElement
+    expect(atRowEnd).toHaveTextContent('↓ 20%')
+    expect(atRowEnd.className).toContain('hidden shrink-0 cq-[380px]:inline-flex')
+    expect(besideFigure).toHaveTextContent('↓ 20%')
+    expect(besideFigure.className).toContain('cq-[380px]:hidden')
+    // Its line of context is never cut: it may take a second line.
+    expect(views.querySelector('[data-measure-context]')).toHaveTextContent('1,250 in the period before')
+    expect(views.querySelector('[data-measure-context]')!.className).not.toContain('truncate')
+  })
+
+  it('sets an opened page\'s measures beside its chart only where the list has 800 px', () => {
+    render(<PagesList {...base} />)
+    expect(document.querySelector('[data-page-open]')!.className).toContain('cq-[800px]:grid-cols-[minmax(0,1fr)_340px]')
+  })
+})
+
+// The page lays itself out by the room IT has: the app's sidebar, open or closed, changes that room by about 190 px,
+// and a window breakpoint cannot see it (18-11-2026: at a 1024 px window with the sidebar open the list drew the
+// columns of a 1024 px page in 655 px). So none of its three drawings may ask the window.
+describe('the window is never asked', () => {
+  it.each(['PagesList.tsx', 'PagesStrip.tsx', 'ScrollWho.tsx'])('%s holds no window breakpoint', async (file) => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const source = readFileSync(join(process.cwd(), 'components/pages/list', file), 'utf8')
+    // Classes only: comments may name a breakpoint to say why there is none.
+    const code = source.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
+    expect(code.match(/(?<![\w-])(?:max-)?(?:sm|md|lg|xl|2xl):[\w[]+/g) ?? []).toEqual([])
   })
 })

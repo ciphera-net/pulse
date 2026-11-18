@@ -34,6 +34,11 @@ import type { PageScrollBy, PageScrollRow, ScrollDepthDistribution } from '@/lib
 // moved (no glide), and an arrow key lost its focus with it. Now only what the read answers waits: the tabs
 // stay, the highlight glides, and Everyone's row (the same on every tab) stays while the rows under it load.
 // The tab is held by the page (PagesListPage), so it is kept from page to page and over a trip to Trend.
+//
+// IT LAYS ITSELF OUT BY THE ROOM IT HAS (18-11-2026), as the list does (PagesList.tsx): the panel is a container.
+// From 470 px its columns are named in full ("Reached 25%") and its cells take the wider type; below that (a phone,
+// or beside the measures of a narrow list) a column of 55 px is named "25%", and the sentence over the grid takes
+// two lines where it was cut before.
 // ---------------------------------------------------------------------------
 
 const QUARTERS = ['25%', '50%', '75%', 'The end'] as const
@@ -181,19 +186,23 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
   const by = DIMS.find((d) => d.value === dim)!.label.toLowerCase()
 
   return (
-    <div className="flex h-full min-h-[232px] flex-col" data-page-scroll={state} data-who-dim={dim} data-who-rows={who ? rows.length : 0}>
+    <div className="flex h-full min-h-[232px] flex-col [container-type:inline-size]" data-page-scroll={state} data-who-dim={dim} data-who-rows={who ? rows.length : 0}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="min-h-[3.25rem] min-w-0" aria-live="polite" data-who-headline="" data-who-ready={who ? 'yes' : 'no'}>
+        {/* The headline keeps one height whatever it says, so the grid under it never moves: a figure and one line
+            in a wide panel, a figure and two lines in a narrow one (where the sentence does not fit on one). */}
+        <div className="min-h-[4.25rem] min-w-0 cq-[470px]:min-h-[3.25rem]" aria-live="polite" data-who-headline="" data-who-ready={who ? 'yes' : 'no'}>
           {failed ? null : figure === '' ? (
-            // The loaded headline's own two lines, so nothing moves when the rows arrive.
-            <div className="flex min-h-[3.25rem] flex-col justify-center gap-2" aria-hidden="true">
+            // The loaded headline's own lines, so nothing moves when the rows arrive.
+            <div className="flex min-h-[4.25rem] flex-col justify-center gap-2 cq-[470px]:min-h-[3.25rem]" aria-hidden="true">
               <SkeletonLine className="h-6 w-40 max-w-full" />
               <SkeletonLine className="h-3 w-64 max-w-full" />
             </div>
           ) : (
             <>
               <span className="block truncate text-2xl font-semibold tabular-nums text-white">{figure}</span>
-              <p className="truncate text-xs text-neutral-400">{line}</p>
+              {/* In a narrow panel the sentence wraps and is whole. In a wide one it has its line; one too long
+                  for it (a long source name) is cut there and whole under the pointer. */}
+              <p className="text-xs text-neutral-400 cq-[470px]:truncate" title={line} data-who-line="">{line}</p>
             </>
           )}
         </div>
@@ -208,16 +217,24 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
             : <ErrorCard title="Could not load scroll depth" description="The request failed. This is usually temporary." />}
         </div>
       ) : (
-      // On a phone the names take less and the heads lose "Reached": four cells of 50 px hold a share each.
+      // In a narrow panel the names take less and the heads lose "Reached": four cells of 50 px hold a share each.
       <div
-        className="mt-2 grid flex-1 grid-cols-[minmax(72px,96px)_repeat(4,minmax(0,1fr))] gap-y-0 sm:grid-cols-[minmax(84px,150px)_repeat(4,minmax(0,1fr))]"
+        className="mt-2 grid flex-1 grid-cols-[minmax(72px,96px)_repeat(4,minmax(0,1fr))] gap-y-0 cq-[470px]:grid-cols-[minmax(84px,150px)_repeat(4,minmax(0,1fr))]"
         onPointerLeave={() => setOver(null)}
         role="img"
         aria-label={`How far this page's visits scroll, by ${by}`}
         data-who-grid=""
       >
         <span />
-        {QUARTERS.map((q) => <span key={q} className="truncate pb-1 pl-1 text-[11px] text-neutral-500">{q === 'The end' ? q : <><span className="hidden sm:inline">Reached </span>{q}</>}</span>)}
+        {/* A narrow panel's column is 37 px on a 360 px phone: its heads are "25%" and "End", the wide one's
+            "Reached 25%" and "The end". */}
+        {QUARTERS.map((q) => (
+          <span key={q} className="truncate pb-1 pl-1 text-[11px] text-neutral-500">
+            {q === 'The end'
+              ? <><span className="cq-[470px]:hidden">End</span><span className="hidden cq-[470px]:inline">The end</span></>
+              : <><span className="hidden cq-[470px]:inline">Reached </span>{q}</>}
+          </span>
+        ))}
         {rows.map((r, i) => (
           <div key={r.key} className="contents">
             <span className={`flex min-w-0 items-center gap-2 pr-2 text-sm ${i === 0 ? 'text-neutral-400' : 'text-white'}`}>
@@ -241,7 +258,7 @@ export default function ScrollWho({ siteId, path, start, end, apiPeriod, filters
                   {/* The cell under the pointer is marked by its outline's colour alone: the cells touch, and a cell
                       that changed its opacity or size there would trade the pointer with its neighbour. */}
                   <div
-                    className={`pointer-events-none flex h-full min-h-[30px] w-full items-center px-1 text-xs font-semibold tabular-nums outline outline-1 transition-[outline-color] duration-150 ease-apple sm:px-2 sm:text-sm ${on ? 'outline-white/70' : 'outline-transparent'} ${v != null && v > 0 ? 'text-white' : 'text-neutral-500'}`}
+                    className={`pointer-events-none flex h-full min-h-[30px] w-full items-center px-1 text-xs font-semibold tabular-nums outline outline-1 transition-[outline-color] duration-150 ease-apple cq-[470px]:px-2 cq-[470px]:text-sm ${on ? 'outline-white/70' : 'outline-transparent'} ${v != null && v > 0 ? 'text-white' : 'text-neutral-500'}`}
                     style={{ backgroundImage: `linear-gradient(${shade}, ${shade})` }}
                   >
                     {!r.loaded ? <SkeletonLine className="h-3 w-8" /> : v == null ? '—' : pct(v)}

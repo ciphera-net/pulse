@@ -43,6 +43,24 @@ describe('PagesStrip', () => {
     expect(figure('pageviews')).toHaveTextContent('800 in the period before')
   })
 
+  it('lays itself out by its own room: five in a row from 900 px, and the change where a cell has room for it', () => {
+    render(<PagesStrip rows={rows} prevRows={rows} stats={stats} prevStats={before} limit={500} />)
+    const strip = document.querySelector('[data-pages-strip]') as HTMLElement
+    // A block cannot ask its own width: the wrapper is the container.
+    expect(strip.parentElement!.className).toContain('[container-type:inline-size]')
+    expect(strip.className).toContain('grid-cols-2 cq-[900px]:grid-cols-5')
+    const tile = figure('pageviews')
+    const atRowEnd = tile.querySelector('[data-figure-change]') as HTMLElement
+    const besideFigure = tile.querySelector('[data-figure-value]')!.nextElementSibling as HTMLElement
+    // At the row's end in a wide cell (two a row from 480 px, five a row from 1100 px), beside the figure otherwise.
+    expect(atRowEnd.className).toContain('hidden shrink-0 cq-[480px]:inline-flex cq-[900px]:hidden cq-[1100px]:inline-flex')
+    expect(besideFigure.className).toContain('shrink-0 cq-[480px]:hidden cq-[900px]:inline-flex cq-[1100px]:hidden')
+    expect(atRowEnd).toHaveTextContent('↑ 25%')
+    expect(besideFigure).toHaveTextContent('↑ 25%')
+    // A line of context is never cut: it may take a second line.
+    expect(tile.querySelector('[data-figure-context]')!.className).not.toContain('truncate')
+  })
+
   it('draws a dash, never a nought, for what was not measured', () => {
     render(<PagesStrip rows={[page('/', 10, null, null)]} prevRows={undefined} limit={500} />)
     expect(figure('time')).toHaveTextContent('—')

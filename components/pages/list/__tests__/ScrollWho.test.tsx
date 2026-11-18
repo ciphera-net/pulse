@@ -71,6 +71,26 @@ describe('whoRows', () => {
   })
 })
 
+describe('the room it has', () => {
+  it('is a container: its heads, its cells and its sentence follow the panel\'s width, never the window\'s', () => {
+    render(<Tab />)
+    expect(panel().className).toContain('[container-type:inline-size]')
+    const grid = document.querySelector('[data-who-grid]') as HTMLElement
+    expect(grid.className).toContain('cq-[470px]:grid-cols-[minmax(84px,150px)_repeat(4,minmax(0,1fr))]')
+    // "Reached" is said only where a column has room for it.
+    expect(within(grid).getAllByText('Reached', { exact: false })[0].className).toContain('hidden cq-[470px]:inline')
+  })
+
+  it('says its sentence whole: it wraps in a narrow panel, and a wide one carries it under the pointer too', () => {
+    render(<Tab />)
+    const line = document.querySelector('[data-who-line]') as HTMLElement
+    expect(line).toHaveTextContent('Furthest reader · 50% of its visits reach the end, 20% for Mobile')
+    expect(line.className).toContain('cq-[470px]:truncate')
+    expect(line.className.split(/\s+/)).not.toContain('truncate')
+    expect(line).toHaveAttribute('title', 'Furthest reader · 50% of its visits reach the end, 20% for Mobile')
+  })
+})
+
 describe('its tabs (the blocks\' own)', () => {
   /** Devices is in hand; a tab named in `waits` is still being read, one named in `fails` failed. */
   const answers = ({ waits = [] as string[], fails = [] as string[] } = {}) =>
