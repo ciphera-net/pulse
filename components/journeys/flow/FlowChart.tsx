@@ -51,6 +51,14 @@ const ORANGE = '#FD5E0F'
  * the same shade moved toward that theme's ink, so it still reads on white (styles/globals.css --journeys-pressed).
  */
 const PRESSED = 'rgb(var(--journeys-pressed))'
+/**
+ * A page's way out of the site (18-11-2026, picked from four options): the hovered page's route into "Left the site"
+ * and its own share of the bar light in red, the pressed page's more quietly, so where its visitors went on (orange)
+ * and where they left (red) read apart. Only the page's OWN way out lights: further along a journey a page's leavers
+ * include visitors who came from other pages. The themed status red, the app's red for a fall (the funnel rail's step
+ * change). Pulse/docs/plans/18-11-2026-journeys-page-overhaul-plan.md, "The way out".
+ */
+const RED = 'rgb(var(--red-400))'
 const HEAD = 34
 /** The chart's most height; "Other pages" opened draws more pages at one step, and takes more. */
 const HEIGHT = 520
@@ -370,8 +378,10 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                 ))}
                 {drawing.feeds.map((d) => {
                   const on = lit ? inChains(d.source) : true
+                  const ofHover = hover?.kind === 'node' && hover.id === d.source
+                  const out = ofHover || (pinned?.kind === 'node' && pinned.id === d.source)
                   return (
-                    <path key={d.key} d={curve(d.sourceX, d.sourceY * sy, d.targetX, d.targetY * sy)} fill="none" stroke="rgb(var(--neutral-600))" strokeOpacity={(lit ? (on ? 0.2 : 0.04) : 0.12) * ROUTE_STRENGTH} strokeWidth={Math.max(1, d.width * sy)} style={{ pointerEvents: 'none', transition: 'stroke-opacity 150ms' }} data-journeys-drop-feed={d.source} />
+                    <path key={d.key} d={curve(d.sourceX, d.sourceY * sy, d.targetX, d.targetY * sy)} fill="none" stroke={out ? RED : 'rgb(var(--neutral-600))'} strokeOpacity={out ? (ofHover ? 0.55 : 0.3) : (lit ? (on ? 0.2 : 0.04) : 0.12) * ROUTE_STRENGTH} strokeWidth={Math.max(1, d.width * sy)} style={{ pointerEvents: 'none', transition: 'stroke-opacity 150ms' }} data-journeys-drop-feed={d.source} data-journeys-drop-lit={out ? (ofHover ? 'hover' : 'pressed') : ''} />
                   )
                 })}
                 {drawing.bars.map((b) => (
@@ -386,6 +396,12 @@ export default function FlowChart({ flow, deep, cardSlot, onFunnel }: FlowChartP
                     onPointerMove={(e) => { if (e.pointerType !== 'mouse') return; const at = place(e); setHover(null); if (at) setTip({ ...at, title: `Left the site after ${stepName(b.step - 1).toLowerCase()}`, sub: `${formatNumber(b.left)} visitors, ${Math.round((b.left / Math.max(1, b.of)) * 100)}% of ${stepName(b.step - 1).toLowerCase()}` }) }}
                   />
                 ))}
+                {/* The lit page's own share of its "Left the site" bar, over the bar. */}
+                {drawing.feeds.map((d) => {
+                  const ofHover = hover?.kind === 'node' && hover.id === d.source
+                  if (!ofHover && !(pinned?.kind === 'node' && pinned.id === d.source)) return null
+                  return <rect key={`band:${d.key}`} x={d.targetX} y={(d.targetY - d.width / 2) * sy} width={NODE_WIDTH} height={Math.max(2, d.width * sy)} fill={RED} fillOpacity={ofHover ? 1 : 0.7} style={{ pointerEvents: 'none' }} data-journeys-drop-band={d.source} />
+                })}
                 {layout.nodes.map((n) => {
                   const on = lit ? inChains(n.id) : true
                   const c = tone(hoverChain?.nodeIds.has(n.id) ?? false, pinChain?.nodeIds.has(n.id) ?? false)
