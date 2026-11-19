@@ -777,17 +777,28 @@ steps:
         done
         [ "$OK" = "yes" ] || { echo "FAIL: Magic Containers did not report active on $DIGEST within 20 minutes (last: $ST $DG)"; exit 1; }
       - |
-        URLS=""; BUILDS=""
-        for i in 1 2 3; do
-          HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse.ciphera.net/login?verify=$i") \
-            || { echo "FAIL: could not fetch the live /login"; exit 1; }
-          B=$(printf '%s' "$HTML" | grep -oE '\\"b\\":\\"[A-Za-z0-9_-]{21}\\"' | head -1 | grep -oE '[A-Za-z0-9_-]{21}' | head -1)
-          [ -n "$B" ] || { echo "FAIL: no build id in the live /login (this check reads the flight data's \"b\" key)"; exit 1; }
+        # Three good reads, retried for about three minutes: the first deploy with this step (19-11-2026, 20:22)
+        # read a 2xx /login without a build id one second after MC reported active, while every read a minute
+        # later had one. A page without a build id is logged with its status and title, never trusted.
+        URLS=""; BUILDS=""; GOT=0
+        for i in $(seq 1 12); do
+          R=$(curl -sS --max-time 30 --retry 3 --retry-all-errors -w '\nHTTPSTATUS %{http_code} %{size_download}' \
+            "https://pulse.ciphera.net/login?verify=$i") || R="HTTPSTATUS 000 0"
+          ST=$(printf '%s' "$R" | tail -1)
+          B=$(printf '%s' "$R" | grep -oE '\\"b\\":\\"[A-Za-z0-9_-]{21}\\"' | head -1 | grep -oE '[A-Za-z0-9_-]{21}' | head -1)
+          if [ -z "$B" ]; then
+            echo "read $i: no build id ($ST, title: $(printf '%s' "$R" | grep -oE '<title>[^<]*' | head -1 | cut -c8-90)); retrying"
+            sleep 15
+            continue
+          fi
+          GOT=$((GOT + 1))
           case " $BUILDS " in *" $B "*) ;; *) BUILDS="$BUILDS $B" ;; esac
-          URLS="$URLS $(printf '%s' "$HTML" | grep -oE 'https://ciphera-app-static\.b-cdn\.net/pulse/_next/static/[^"\\ ]+\.(js|css)')"
+          URLS="$URLS $(printf '%s' "$R" | grep -oE 'https://ciphera-app-static\.b-cdn\.net/pulse/_next/static/[^"\\ ]+\.(js|css)')"
           URLS="$URLS https://ciphera-app-static.b-cdn.net/pulse/_next/static/$B/_buildManifest.js"
+          [ "$GOT" -ge 3 ] && break
           sleep 10
         done
+        [ "$GOT" -ge 3 ] || { echo "FAIL: the live /login carried no build id in 12 reads (this check reads the flight data's \"b\" key)"; exit 1; }
         MISSING=""; N=0
         for U in $(printf '%s\n' $URLS | sort -u); do
           N=$((N + 1))
