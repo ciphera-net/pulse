@@ -126,8 +126,13 @@ steps:
   # ⚠️ The image tag below uses the ONE deliberate dollar-brace substitution in this file
   # (the short commit sha). Woodpecker substitutes it before the YAML is parsed, and writing
   # that form anywhere else — INCLUDING IN A COMMENT — has broken the compiler before.
+  # 🔴 pull: true (19-11-2026). A RESTARTED main pipeline rebuilds the SAME commit and moves this tag to a new digest.
+  # Without a fresh pull, the node ran its cached copy of the tag: this step uploaded the PREVIOUS build's files, the
+  # new build went live without its root layout chunk, and every dashboard page fell to the error screen for two
+  # hours while every HTTP check stayed 200. `verify-live-assets` (after purge-cdn) is the check that catches it.
   upload-static:
     image: registry.ops.ciphera.net/ciphera-net/pulse-frontend:sha-${CI_COMMIT_SHA:0:7}
+    pull: true
     when:
       - event: push
         branch: main
@@ -196,7 +201,10 @@ steps:
           if (!rb.ok) { console.error("FAIL: readback " + probe + " -> " + rb.status); process.exit(1); }
           const got = Buffer.from(await rb.arrayBuffer());
           if (got.length !== fs.statSync(files[0]).size) { console.error("FAIL: readback size mismatch on " + probe); process.exit(1); }
-          console.log("uploaded " + ok + " static files to " + process.env.DEST_PREFIX + "; readback OK (" + probe + ")");
+          // Name the build: compare it with the "b" build id in the live HTML when a deploy looks wrong.
+          let build = "unknown";
+          try { build = fs.readFileSync("/app/.next/BUILD_ID", "utf8").trim(); } catch (e) {}
+          console.log("uploaded " + ok + " static files of build " + build + " to " + process.env.DEST_PREFIX + "; readback OK (" + probe + ")");
         })().catch(e => { console.error("FAIL: " + e.message); process.exit(1); });
         '
 
@@ -255,8 +263,10 @@ steps:
   # ⚠️ The image tag below uses the ONE deliberate dollar-brace substitution in this file
   # (the short commit sha). Woodpecker substitutes it before the YAML is parsed, and writing
   # that form anywhere else — INCLUDING IN A COMMENT — has broken the compiler before.
+  # pull: true for the same reason as upload-static: a restarted staging pipeline moves this tag too.
   upload-static-staging:
     image: registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging:sha-${CI_COMMIT_SHA:0:7}
+    pull: true
     when:
       - event: push
         branch: staging
@@ -725,6 +735,73 @@ steps:
             echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
             exit 1 ;;
         esac
+  # ═══ 🔴 EVERY ASSET THE LIVE DASHBOARD NAMES MUST LOAD (19-11-2026) ═══
+  # The HTML can answer 200 while a script it needs is missing from ciphera-app-static: the app then crashes in the
+  # browser on every page and no HTTP check notices. On 19-11-2026 a restarted pipeline shipped exactly that for two
+  # hours (see upload-static). This waits until Magic Containers reports the app active on the digest this pipeline
+  # resolved, reads the live /login three times, and requires every /_next/static file it references, plus the live
+  # build's own _buildManifest.js (present only if upload-static uploaded THIS build), to answer 200.
+  # A failure means the deploy SHIPPED broken and every dashboard page is down: copy the missing files from the
+  # running image's /app/.next/static into ciphera-app-static/pulse/_next/static (content-addressed, so adding them is
+  # safe), then find out why upload-static did not.
+  verify-live-assets:
+    image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
+    pull: true
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 256Mi }
+    depends_on: [purge-cdn]
+    when:
+      - event: push
+        branch: main
+    environment:
+      MC_APP_ID:
+        from_secret: mc_app_id
+      BUNNY_API_KEY:
+        from_secret: bunny_api_key
+    commands:
+      - |
+        DIGEST=$(cat /woodpecker/digest)
+        OK=no; ST=""; DG=""
+        for i in $(seq 1 80); do
+          A=$(curl -sf --max-time 20 -H "AccessKey: $BUNNY_API_KEY" "https://api.bunny.net/mc/apps/$MC_APP_ID") \
+            || { echo "re-read failed (try $i), retrying"; sleep 15; continue; }
+          ST=$(echo "$A" | jq -r '.status')
+          DG=$(echo "$A" | jq -r '.containerTemplates[0].imageDigest')
+          if [ "$ST" = "active" ] && [ "$DG" = "$DIGEST" ]; then
+            OK=yes; echo "MC reports active on $DIGEST (check $i)"; break
+          fi
+          sleep 15
+        done
+        [ "$OK" = "yes" ] || { echo "FAIL: Magic Containers did not report active on $DIGEST within 20 minutes (last: $ST $DG)"; exit 1; }
+      - |
+        URLS=""; BUILDS=""
+        for i in 1 2 3; do
+          HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse.ciphera.net/login?verify=$i") \
+            || { echo "FAIL: could not fetch the live /login"; exit 1; }
+          B=$(printf '%s' "$HTML" | grep -oE '\\"b\\":\\"[A-Za-z0-9_-]{21}\\"' | head -1 | grep -oE '[A-Za-z0-9_-]{21}' | head -1)
+          [ -n "$B" ] || { echo "FAIL: no build id in the live /login (this check reads the flight data's \"b\" key)"; exit 1; }
+          case " $BUILDS " in *" $B "*) ;; *) BUILDS="$BUILDS $B" ;; esac
+          URLS="$URLS $(printf '%s' "$HTML" | grep -oE 'https://ciphera-app-static\.b-cdn\.net/pulse/_next/static/[^"\\ ]+\.(js|css)')"
+          URLS="$URLS https://ciphera-app-static.b-cdn.net/pulse/_next/static/$B/_buildManifest.js"
+          sleep 10
+        done
+        MISSING=""; N=0
+        for U in $(printf '%s\n' $URLS | sort -u); do
+          N=$((N + 1))
+          C=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 --retry 2 "$U")
+          [ "$C" = "200" ] || MISSING="$MISSING $C:$U"
+        done
+        if [ -n "$MISSING" ]; then
+          echo "🔴 DEPLOY SHIPPED BROKEN: the live dashboard (build$BUILDS) references files the asset zone does not serve:"
+          for M in $MISSING; do echo "  $M"; done
+          echo "🔴 Every dashboard page fails in the browser while this lasts. Copy the missing files from the running"
+          echo "🔴 image's /app/.next/static into ciphera-app-static/pulse/_next/static (safe to add), then fix upload-static."
+          exit 1
+        fi
+        echo "live dashboard build$BUILDS: all $N referenced assets answer 200 (incl. the build manifest)"
 
   # AFTER THE ROLLOUT (since 07-11-2026). Woodpecker runs a workflow's steps in dependency levels and starts a level
   # only when the whole previous level has finished (pipeline/frontend/yaml/compiler/dag.go). With no depends_on this
