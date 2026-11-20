@@ -31,6 +31,43 @@ export interface VisitorRow {
   entry_path: string | null
 
   active_now: boolean
+
+  /**
+   * The new Visitors page (in beta): the visitor's count of the site's OWN events in range, the ones its code sent
+   * (every event but a pageview, an outbound link, a download, a 404 and the interactions script's `pulse_` ones).
+   * Present with `include=day` or on a filtered, tabbed or own-events-sorted list; absent otherwise.
+   */
+  own_events?: number
+  /** The visitor's day for the row's marks (`include=day`): its visits in order, each its steps. */
+  day?: VisitorDayVisit[]
+}
+
+/** One visit of a listed visitor's day: its steps in the trail's order and shape, at most 200 for the whole day. */
+export interface VisitorDayVisit {
+  steps: VisitEvent[]
+}
+
+/** A quick tab over the list: visitors who fired a NAMED event, who went past their first page, or who did not. */
+export type VisitorOnly = 'converted' | 'went_on' | 'one_page'
+
+/** The strip's figures for one range. `seconds` is null when no visit had a measured time. */
+export interface VisitorSummaryFigures {
+  visitors: number
+  pageviews: number
+  visits: number
+  seconds: number | null
+  /** The visitors who fired one of the site's named events (Settings, Events); null when the site has named none. */
+  converted: number | null
+}
+
+export interface VisitorsSummaryResponse {
+  current: VisitorSummaryFigures
+  /** The period of the same length just before, under the same filter; null when it reaches back past the floor. */
+  previous: VisitorSummaryFigures | null
+  /** How many events the site has named. None: Converted has no figure, and the page says how to name one. */
+  named_events: number
+  range_floor: string
+  site_timezone: string
 }
 
 export interface VisitorsResponse {
@@ -94,6 +131,14 @@ export interface VisitRow {
   entry_path: string | null
   exit_path: string | null
   referrer: string | null
+  /** The visit's campaign, its first pageview's tags (`include=campaign`); absent for a visit without tags. */
+  campaign?: VisitCampaign
+}
+
+export interface VisitCampaign {
+  utm_source: string | null
+  utm_medium: string | null
+  utm_campaign: string | null
 }
 
 export interface VisitsResponse {
@@ -185,7 +230,7 @@ function rangeQuery(range: VisitorRange, extra?: Record<string, string | number 
 export function getVisitors(
   siteId: string,
   range: VisitorRange,
-  opts?: { sort?: string; order?: 'asc' | 'desc'; page?: number; pageSize?: number },
+  opts?: { sort?: string; order?: 'asc' | 'desc'; page?: number; pageSize?: number; filters?: string; only?: VisitorOnly; include?: 'day' },
 ): Promise<VisitorsResponse> {
   return apiRequest<VisitorsResponse>(
     `/sites/${siteId}/visitors${rangeQuery(range, {
@@ -193,6 +238,9 @@ export function getVisitors(
       order: opts?.order,
       page: opts?.page,
       page_size: opts?.pageSize,
+      filters: opts?.filters,
+      only: opts?.only,
+      include: opts?.include,
     })}`,
     // A 403 here is the site's toggle being off, which is a STATE the page
     // renders (the enable room), not an error to retry. It surfaces as an
@@ -227,14 +275,20 @@ export function getVisitorVisits(
   siteId: string,
   key: string,
   range: VisitorRange,
-  opts?: { page?: number; pageSize?: number },
+  opts?: { page?: number; pageSize?: number; include?: 'campaign' },
 ): Promise<VisitsResponse> {
   return apiRequest<VisitsResponse>(
     `/sites/${siteId}/visitors/${encodeURIComponent(key)}/visits${rangeQuery(range, {
       page: opts?.page,
       page_size: opts?.pageSize,
+      include: opts?.include,
     })}`,
   ).then((r) => r ?? { visits: [], total: 0, page: 1, page_size: 20, site_timezone: '' })
+}
+
+/** The new Visitors page's strip: the range and the period before, under the same filter (never a quick tab). */
+export function getVisitorsSummary(siteId: string, range: VisitorRange, filters?: string): Promise<VisitorsSummaryResponse> {
+  return apiRequest<VisitorsSummaryResponse>(`/sites/${siteId}/visitors/summary${rangeQuery(range, { filters })}`)
 }
 
 export function getVisitEvents(
