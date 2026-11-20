@@ -21,8 +21,8 @@ import { Marks, Place, ROW, Source, VisitorName } from './parts'
 // The new Visitors page's list (look C, rulings R98 to R116; plan Pulse/docs/plans/18-11-2026-visitors-page-overhaul-
 // plan.md): one line a visitor in the Pages page's list grammar (components/pages/list/PagesList.tsx), its 36 px rows
 // with the full-row press, the caret, SortHead's capital names, the lead number in white and the rest dimmer; on every
-// row their day as marks (DayMarks). A press unfolds the visitor under the row (OpenedVisitor), the first open on
-// arrival. The server sorts and pages (25 a page); the dashboard blocks' pager pages it (R116).
+// row their day as marks (DayMarks). A press unfolds the visitor under the row (OpenedVisitor); none opens by itself
+// (R119). The server sorts and pages (25 a page); the dashboard blocks' pager pages it (R116).
 //
 // THE LIST LAYS ITSELF OUT BY THE ROOM IT HAS (the Pages page's rule): the block is a container, and each step leaves a
 // visitor's name its whole width (the longest with its avatar and the caret: 212 px).
@@ -85,9 +85,10 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
   const cls = (key: Key) => columns.find((c) => c.key === key)!.className
   const zone = useDisplayZone(siteTimezone).zone
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE))
-  // The first visitor of a page is open on arrival; a close is kept until the next arrival (new rows: a page or order).
+  // No visitor is open on arrival: only a press opens one (R119, 20-11-2026; until then the first visitor of a page
+  // opened by itself). What a press opened stays open until the next arrival (new rows: a page or an order).
   const [open, setOpen] = useState<{ at: string; key: string | null } | null>(null)
-  const openKey = open && open.at === arrival ? open.key : (rows[0]?.visitor_key ?? null)
+  const openKey = open && open.at === arrival ? open.key : null
 
   return (
     <div className="[container-type:inline-size]" data-visitors-list="">

@@ -1419,7 +1419,7 @@ export function useVisitorVisits(
  * twice, once on the old rows the moment Next was pressed and once when the new rows arrived).
  */
 export interface VisitorsListAnswer extends VisitorsResponse {
-  /** The range, the filter and the tab: a new value is a new list, whose first visitor opens. */
+  /** The range, the filter and the tab: a new value is a new list, which starts afresh with nothing open. */
   listOf: string
   /** Within the list, the order and the page: a new value is one page flip. */
   pageOf: string
