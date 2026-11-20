@@ -279,10 +279,12 @@ export interface OpenedVisitorProps {
   siteTimezone: string
   links: VisitorLinks
   onFilter: (filters: DimensionFilter[]) => void
+  /** A line over the visitor (the split view's panel names them there, with their carets: R120). */
+  header?: ReactNode
   className?: string
 }
 
-export default function OpenedVisitor({ siteId, row, range, siteTimezone, links, onFilter, className = '' }: OpenedVisitorProps) {
+export default function OpenedVisitor({ siteId, row, range, siteTimezone, links, onFilter, header, className = '' }: OpenedVisitorProps) {
   const [tab, setTab] = useState<Tab>('activity')
   const zone = useDisplayZone(siteTimezone).zone
   const { data: visitsData, error: visitsError } = useVisitorCampaignVisits(siteId, row.visitor_key, range)
@@ -370,6 +372,7 @@ export default function OpenedVisitor({ siteId, row, range, siteTimezone, links,
       className={cn('border border-white/[0.08] [container-type:inline-size]', className)}
       data-visitor-open={row.visitor_key}
     >
+      {header && <div className="border-b border-white/[0.08] px-4 py-3" data-visitor-head="">{header}</div>}
       {/* Areas: t the tabs and what they show, m the measures, a the actions. Beside each other from 800 px of room
           (s holds the measures and the actions, top down); below that one over the other, the measures first. */}
       <div className="grid [grid-template-areas:'m'_'t'_'a'] cq-[800px]:grid-cols-[minmax(0,1fr)_340px] cq-[800px]:[grid-template-areas:'t_s']">

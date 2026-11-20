@@ -1,19 +1,29 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest'
 import { render, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import type { VisitorRow } from '@/lib/api/visitors'
 
-// The new Visitors page's list (look C, R115, R116, R119): the server's page of rows, no visitor open until a press
-// opens one, a press opening and closing a visitor in place, the site's own events in the Events column, and the
-// dashboard blocks' pager (CardPager) over the server's pages of 25.
+// The new Visitors page's list (look C, R115, R116, R119, R120): the server's page of rows, no visitor open until a
+// press opens one, a press opening and closing a visitor in place, the site's own events in the Events column, the
+// dashboard blocks' pager (CardPager) over the server's pages of 25, and from 820 px of block the visitor beside the
+// list (jsdom lays nothing out, so every width reads 0: the in-place tests run as a phone, the split tests give the
+// block its width).
 
 vi.mock('@/lib/hooks/useDisplayZone', () => ({ useDisplayZone: () => ({ zone: 'UTC' }) }))
-vi.mock('../OpenedVisitor', () => ({ default: ({ row }: { row: VisitorRow }) => <div data-opened={row.visitor_key} /> }))
+vi.mock('../OpenedVisitor', () => ({ default: ({ row, header }: { row: VisitorRow; header?: ReactNode }) => <div data-opened={row.visitor_key}>{header}</div> }))
 
 beforeAll(() => {
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver
 })
 
-import VisitorsList, { FIRST_SORT, PER_PAGE, SERVER_SORT } from '../VisitorsList'
+import VisitorsList, { FIRST_SORT, PER_PAGE, SERVER_SORT, SPLIT_FROM } from '../VisitorsList'
+
+/** A block of the given width: every element measures so (jsdom measures 0). */
+const blockOf = (width: number) =>
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ width, height: 0, top: 0, left: 0, right: width, bottom: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect)
+afterEach(() => { vi.restoreAllMocks() })
+const panel = () => document.querySelector('[data-split-panel]')?.getAttribute('data-split-panel') ?? null
+const opened = () => Array.from(document.querySelectorAll('[data-opened]')).map((o) => o.getAttribute('data-opened'))
 
 const row = (n: number, over: Partial<VisitorRow> = {}): VisitorRow => ({
   visitor_key: `key-${n}`, month: '2026-11', first_seen: '2026-11-20T10:00:00Z', last_seen: '2026-11-20T11:00:00Z', visits: 2, pageviews: 5, events: 4,
@@ -91,5 +101,56 @@ describe('VisitorsList', () => {
 
   it('asks the server to sort Events by the site\'s own events', () => {
     expect(SERVER_SORT).toEqual({ pageviews: 'pageviews', visits: 'visits', events: 'own_events', last_seen: 'last_seen' })
+  })
+
+  // R120: the visitor beside the list, from 820 px of block.
+  it('puts the visitor beside the list on a wide block: the first on arrival, a press picks another, the carets step', () => {
+    blockOf(SPLIT_FROM)
+    render(<VisitorsList {...base} rows={[row(1), row(2), row(3)]} total={3} page={1} onPage={() => {}} />)
+    expect(document.querySelector('[data-visitors-split]')).not.toBeNull()
+    // The page's first visitor is in the panel, and only there: nothing unfolds under a row.
+    expect(panel()).toBe('key-1')
+    expect(opened()).toEqual(['key-1'])
+    expect(document.querySelector('[data-visitor-line="key-1"] button')?.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(document.querySelector('[data-visitor-line="key-3"] button') as HTMLElement)
+    expect(panel()).toBe('key-3')
+    expect(opened()).toEqual(['key-3'])
+    // A second press keeps them: the panel always shows a visitor.
+    fireEvent.click(document.querySelector('[data-visitor-line="key-3"] button') as HTMLElement)
+    expect(panel()).toBe('key-3')
+    expect(screen.getByRole('button', { name: 'The visitor below' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'The visitor above' }))
+    expect(panel()).toBe('key-2')
+    fireEvent.click(screen.getByRole('button', { name: 'The visitor above' }))
+    expect(panel()).toBe('key-1')
+    expect(screen.getByRole('button', { name: 'The visitor above' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'The visitor below' }))
+    expect(panel()).toBe('key-2')
+  })
+
+  it('shows a new page\'s first visitor beside the list once its rows are here', async () => {
+    blockOf(1200)
+    const first = Array.from({ length: PER_PAGE }, (_, i) => row(i))
+    const { rerender } = render(<VisitorsList {...base} rows={first} total={60} page={1} onPage={() => {}} />)
+    fireEvent.click(document.querySelector('[data-visitor-line="key-4"] button') as HTMLElement)
+    expect(panel()).toBe('key-4')
+    // Next asked: the rows shown are still page 1's, so the visitor picked stays.
+    rerender(<VisitorsList {...base} rows={first} total={60} page={2} onPage={() => {}} />)
+    expect(panel()).toBe('key-4')
+    const second = Array.from({ length: PER_PAGE }, (_, i) => row(PER_PAGE + i))
+    rerender(<VisitorsList {...base} rows={second} total={60} page={2} arrival="last_seen.desc.2" onPage={() => {}} />)
+    expect(panel()).toBe(`key-${PER_PAGE}`)
+    await waitFor(() => expect(document.querySelector(`[data-visitor-line="key-${PER_PAGE}"]`)).not.toBeNull())
+  })
+
+  it('has no panel under 820 px of block: nothing opens by itself, a press unfolds the visitor in place (R119)', () => {
+    blockOf(SPLIT_FROM - 1)
+    render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
+    expect(document.querySelector('[data-visitors-split]')).toBeNull()
+    expect(document.querySelector('[data-split-panel]')).toBeNull()
+    expect(opened()).toEqual([])
+    fireEvent.click(document.querySelector('[data-visitor-line="key-2"] button') as HTMLElement)
+    expect(opened()).toEqual(['key-2'])
+    expect(document.querySelector('[data-visitor-line="key-2"] button')?.getAttribute('aria-expanded')).toBe('true')
   })
 })
