@@ -119,6 +119,16 @@ export const HOOK_CASES: HookCase[] = [
   armed('useVisitorVisits', 'member', () => hooks.useVisitorVisits(S, 'visitor-1', RANGE, 2, 10)),
   armed('useVisitEvents', 'member', () => hooks.useVisitEvents(S, 'visitor-1', 'visit-1', RANGE, 1)),
   idle('useVisitEvents#collapsed', 'member', () => hooks.useVisitEvents(S, 'visitor-1', null, RANGE, 1)),
+  // The new Visitors page (beta, 20-11-2026): the list with each row's day, under a filter and a quick tab; its strip;
+  // an opened visitor's visits with their campaign. Member reads like the roster's.
+  armed('useVisitorsList', 'member', () => hooks.useVisitorsList(S, RANGE, VISITOR_OPTS)),
+  armed('useVisitorsList#scoped', 'member', () => hooks.useVisitorsList(S, RANGE, { ...VISITOR_OPTS, sort: 'own_events', filters: F, only: 'converted' })),
+  idle('useVisitorsList#off', 'member', () => hooks.useVisitorsList(S, RANGE, { ...VISITOR_OPTS, enabled: false })),
+  armed('useVisitorsSummary', 'member', () => hooks.useVisitorsSummary(S, RANGE)),
+  armed('useVisitorsSummary#filtered', 'member', () => hooks.useVisitorsSummary(S, LIVE_RANGE, F)),
+  idle('useVisitorsSummary#off', 'member', () => hooks.useVisitorsSummary(S, RANGE, undefined, false)),
+  armed('useVisitorCampaignVisits', 'member', () => hooks.useVisitorCampaignVisits(S, 'visitor-1', RANGE)),
+  idle('useVisitorCampaignVisits#closed', 'member', () => hooks.useVisitorCampaignVisits(S, null, RANGE)),
 ]
 
 /** The hooks the module exports, for the "every hook is covered" guard. */

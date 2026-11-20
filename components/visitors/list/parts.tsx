@@ -38,7 +38,7 @@ export function VisitorName({ v, size = 24, sub }: { v: Pick<VisitorRow, 'visito
               <span
                 aria-hidden="true"
                 className={cn('shrink-0 rounded-full bg-brand-orange', big ? 'size-2' : 'size-1.5')}
-                style={{ boxShadow: big ? '0 0 0 4px rgb(255 92 0 / 0.18)' : '0 0 0 3px rgb(255 92 0 / 0.18)' }}
+                style={{ boxShadow: `0 0 0 ${big ? 4 : 3}px rgb(255 92 0 / 0.18)` }}
                 data-active-now=""
               />
               <span className="sr-only">on the site now</span>

@@ -34,7 +34,7 @@ const rec = vi.hoisted(() => {
 
 vi.mock('@/lib/api/dataWindow', () => rec.make('dataWindow', ['getDataWindow']))
 vi.mock('@/lib/api/bing', () => rec.make('bing', ['getBingStatus', 'getBingOverview', 'getBingDailyTotals']))
-vi.mock('@/lib/api/visitors', () => rec.make('visitors', ['getVisitors', 'getVisitorProfile', 'getVisitorVisits', 'getVisitEvents']))
+vi.mock('@/lib/api/visitors', () => rec.make('visitors', ['getVisitors', 'getVisitorProfile', 'getVisitorVisits', 'getVisitEvents', 'getVisitorsSummary']))
 vi.mock('@/lib/api/stats', () => rec.make('stats', [
   'getDashboard', 'getPagesTable', 'getPageScroll', 'getCampaigns', 'getRealtime', 'getStats', 'getDailyStats', 'getTopPages',
   'getEntryPages', 'getExitPages', 'getTopReferrers', 'getCountries', 'getCities', 'getRegions', 'getLanguages',
