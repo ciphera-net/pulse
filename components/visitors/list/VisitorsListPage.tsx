@@ -93,11 +93,8 @@ function isToggleOff(error: unknown): boolean {
   return e?.status === 403 && e?.data?.error === 'visitor_views_disabled'
 }
 
-/** A read the server refused as too large (422): its own words say the limit, never "try again". */
-function limitOf(error: unknown): string | null {
-  const e = error as { status?: number; data?: { error?: string } } | undefined
-  return e?.status === 422 ? (e.data?.error ?? 'This range is too large for this view. Choose a shorter range.') : null
-}
+/** A read the server refused as too large (a 422): a limit, said as one (the Pages page's device), never "try again". */
+const refusedAsTooLarge = (error: unknown): boolean => (error as { status?: number } | undefined)?.status === 422
 
 export default function VisitorsListPage({ siteId }: { siteId: string }) {
   const scope = useSiteScope()
@@ -249,8 +246,9 @@ export default function VisitorsListPage({ siteId }: { siteId: string }) {
 
   let listBody: React.ReactNode
   if (list.error) {
-    const limit = limitOf(list.error)
-    listBody = <ErrorCard title="Couldn't load visitors" description={limit ?? "The visitor list didn't come back. Try again."} />
+    listBody = refusedAsTooLarge(list.error)
+      ? <ErrorCard title="Visitors can't be shown for this range" description={filters.length ? 'Choose a shorter range or remove a filter.' : 'Choose a shorter range.'} />
+      : <ErrorCard title="Couldn't load visitors" description="The visitor list didn't come back. Try again." />
   } else if (!list.data) {
     listBody = (
       <div className="space-y-2" aria-hidden="true" data-visitors-skeleton="">

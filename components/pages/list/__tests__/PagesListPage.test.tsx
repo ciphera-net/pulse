@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render } from '@testing-library/react'
+import { ApiError } from '@/lib/api/client'
 import type { ReactElement, ReactNode } from 'react'
 
 // ---------------------------------------------------------------------------
@@ -215,5 +216,13 @@ describe('what is drawn', () => {
     h.usePagesTable.mockReturnValue({ data: undefined, error: undefined, isLoading: true })
     show()
     expect(document.querySelector('[data-pages-skeleton]')).not.toBeNull()
+  })
+
+  it('says a range the server refuses as too large is a limit, never "usually temporary"', () => {
+    h.usePagesTable.mockReturnValue({ data: undefined, error: new ApiError('too large', 422, { error: 'This range is too large to break down. Choose a shorter range.' }), isLoading: false })
+    const refused = show()
+    expect(refused.getByText("Pages can't be shown for this range")).toBeInTheDocument()
+    expect(refused.getByText('Choose a shorter range.')).toBeInTheDocument()
+    expect(refused.queryByText(/usually temporary/)).toBeNull()
   })
 })

@@ -9,6 +9,7 @@ import SearchFilter from '@/components/dashboard/filter/search/SearchFilter'
 import FiltersBox from '@/components/dashboard/filter/search/FiltersBox'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import { ApiError } from '@/lib/api/client'
 import { SkeletonCard } from '@/components/skeletons'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
@@ -141,7 +142,11 @@ export default function PagesListPage({ siteId }: { siteId: string }) {
 
   let body: React.ReactNode
   if (error) {
-    body = <ErrorCard title="Could not load pages" description="The request failed. This is usually temporary." />
+    // A range the server refuses as too large (a 422: over the raw read's budgets) is a limit, said as one, as the
+    // opened page's scroll depth says it (ScrollWho). Every other failure is the one a retry can fix.
+    body = error instanceof ApiError && error.status === 422
+      ? <ErrorCard title="Pages can't be shown for this range" description={filters.length ? 'Choose a shorter range or remove a filter.' : 'Choose a shorter range.'} />
+      : <ErrorCard title="Could not load pages" description="The request failed. This is usually temporary." />
   } else if (!periodReady || (isLoading && rows.length === 0)) {
     // `!periodReady` counts as loading, as on the dashboard (DashboardSurface, `showSkeleton`). Until the site's
     // timezone and data window are known there is no range to ask for, and SWR reports isLoading false for a read
