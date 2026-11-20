@@ -1412,6 +1412,23 @@ export function useVisitorVisits(
 // * The new Visitors page (in beta, components/visitors/list): the list with the dashboard's filter, a quick tab and
 // * each row's day for the marks (include=day), paged by the server; the strip; and an opened visitor's visits with
 // * their campaign. Member reads, like the four above.
+/**
+ * A page of the new Visitors list, with the query it answers. The list keeps the previous answer on screen while the
+ * next loads (keepPreviousData), so the page tells which query its rows belong to from the answer itself, never from
+ * the query it has just asked: its page flip and its opened visitor follow the rows shown (20-11-2026: the flip ran
+ * twice, once on the old rows the moment Next was pressed and once when the new rows arrived).
+ */
+export interface VisitorsListAnswer extends VisitorsResponse {
+  /** The range, the filter and the tab: a new value is a new list, whose first visitor opens. */
+  listOf: string
+  /** Within the list, the order and the page: a new value is one page flip. */
+  pageOf: string
+}
+
+/** The list part of a Visitors list query (VisitorsListAnswer.listOf). */
+export const visitorsListOf = (range: VisitorRange, filters?: string, only?: VisitorOnly): string =>
+  JSON.stringify([range.startDate ?? '', range.endDate ?? '', range.minutes ?? null, range.period ?? '', filters ?? '', only ?? ''])
+
 export function useVisitorsList(
   siteId: string,
   range: VisitorRange,
@@ -1421,12 +1438,16 @@ export function useVisitorsList(
   const { enabled, ...query } = opts
   // 🔴 Gated on the page's periodReady as useVisitors is: a first render's placeholder period is never asked for.
   const ready = enabled !== false && Boolean(siteId) && visitorRangeReady(range)
-  return useSiteSWR<VisitorsResponse>(
+  return useSiteSWR<VisitorsListAnswer>(
     siteId, 'member',
     (siteKey) => ready
       ? ['visitorsList', siteKey, startDate, endDate, minutes, period, query.sort, query.order, query.page, query.pageSize, query.filters ?? '', query.only ?? '']
       : null,
-    () => getVisitors(siteId, range, { ...query, include: 'day' }),
+    () => getVisitors(siteId, range, { ...query, include: 'day' }).then((r) => ({
+      ...r,
+      listOf: visitorsListOf(range, query.filters, query.only),
+      pageOf: `${query.sort}.${query.order}.${query.page}`,
+    })),
     { ...dashboardSWRConfig, refreshInterval: minutes != null ? 20 * 1000 : 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
   )
 }

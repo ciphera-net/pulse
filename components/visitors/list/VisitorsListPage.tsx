@@ -272,12 +272,14 @@ export default function VisitorsListPage({ siteId }: { siteId: string }) {
   } else {
     listBody = (
       <VisitorsList
-        // A new list (range, filter, tab) starts with its first visitor open.
-        key={listKey}
+        // A new list (range, filter, tab) starts with its first visitor open: keyed by the list the rows SHOWN belong
+        // to, so a tab pressed while its rows load does not run the old rows' entrance first.
+        key={list.data.listOf}
         siteId={siteId}
         rows={rows}
         total={list.data.total}
         page={page}
+        arrival={list.data.pageOf}
         onPage={setPage}
         sort={sort}
         onSort={setSort}

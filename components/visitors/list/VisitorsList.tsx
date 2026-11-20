@@ -62,8 +62,13 @@ export interface VisitorsListProps {
   rows: readonly VisitorRow[]
   /** Every visitor the list holds (the scope's size), for the pager. */
   total: number
-  /** 1-based, as the pager counts. */
+  /** The page asked for, 1-based, as the pager counts: the pager shows it at once. */
   page: number
+  /**
+   * Which order and page the rows SHOWN are (VisitorsListAnswer.pageOf): the page flip and the opened visitor follow
+   * it, never the page asked for, so a flip runs once, when the rows it flips to are here.
+   */
+  arrival: string
   onPage: (page: number) => void
   sort: Sort<Key>
   onSort: (sort: Sort<Key>) => void
@@ -75,13 +80,12 @@ export interface VisitorsListProps {
   onFilter: (filters: DimensionFilter[]) => void
 }
 
-export default function VisitorsList({ siteId, rows, total, page, onPage, sort, onSort, phone, range, siteTimezone, links, onFilter }: VisitorsListProps) {
+export default function VisitorsList({ siteId, rows, total, page, arrival, onPage, sort, onSort, phone, range, siteTimezone, links, onFilter }: VisitorsListProps) {
   const columns: SortColumn<Key>[] = COLUMN_SETS.map((c) => ({ key: c.key, label: c.label, className: c.key === phone ? c.on : c.off }))
   const cls = (key: Key) => columns.find((c) => c.key === key)!.className
   const zone = useDisplayZone(siteTimezone).zone
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE))
-  // The first visitor of a page is open on arrival; a close is kept until the next arrival (a new page or order).
-  const arrival = `${sort.key}.${sort.dir}.${page}`
+  // The first visitor of a page is open on arrival; a close is kept until the next arrival (new rows: a page or order).
   const [open, setOpen] = useState<{ at: string; key: string | null } | null>(null)
   const openKey = open && open.at === arrival ? open.key : (rows[0]?.visitor_key ?? null)
 
