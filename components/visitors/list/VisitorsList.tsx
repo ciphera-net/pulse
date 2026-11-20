@@ -23,7 +23,7 @@ import { Marks, Place, ROW, Source, VisitorName } from './parts'
 // with the full-row press, the caret, SortHead's capital names, the lead number in white and the rest dimmer; on every
 // row their day as marks (DayMarks). The server sorts and pages (25 a page); the dashboard blocks' pager pages it (R116).
 //
-// THE VISITOR BESIDE THE LIST (R120, 20-11-2026, a client's layout): from 820 px of block the list takes three fifths
+// THE VISITOR BESIDE THE LIST (R120, 20-11-2026): from 820 px of block the list takes three fifths
 // and a panel beside it holds the visitor it points at (OpenedVisitor, under a line naming them with their carets to the
 // visitor above and below); the panel shows the page's first visitor until a press picks another, and sticks under the
 // frame's toolbar while the list scrolls. The visitor shown has the open row's tint and the orange caret. Under 820 px
