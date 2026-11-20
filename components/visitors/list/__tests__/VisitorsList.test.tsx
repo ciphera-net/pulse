@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest'
-import { render, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, render, fireEvent, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import type { VisitorRow } from '@/lib/api/visitors'
 
-// The new Visitors page's list (look C, R115, R116, R119, R120): the server's page of rows, no visitor open until a
-// press opens one, a press opening and closing a visitor in place, the site's own events in the Events column, the
+// The new Visitors page's list (look C, R115, R116, R119, R120, R121): the server's page of rows, no visitor open until
+// a press opens one, a press opening and closing a visitor in place, the site's own events in the Events column, the
 // dashboard blocks' pager (CardPager) over the server's pages of 25, and from 820 px of block the visitor beside the
-// list (jsdom lays nothing out, so every width reads 0: the in-place tests run as a phone, the split tests give the
-// block its width).
+// list in a slim panel that folds (jsdom lays nothing out, so every width reads 0: the in-place tests run as a phone,
+// the split tests give the block its width).
 
 vi.mock('@/lib/hooks/useDisplayZone', () => ({ useDisplayZone: () => ({ zone: 'UTC' }) }))
-vi.mock('../OpenedVisitor', () => ({ default: ({ row, header }: { row: VisitorRow; header?: ReactNode }) => <div data-opened={row.visitor_key}>{header}</div> }))
+vi.mock('../OpenedVisitor', () => ({
+  default: ({ row, header, compact }: { row: VisitorRow; header?: ReactNode; compact?: boolean }) => <div data-opened={row.visitor_key} data-compact={compact ? 'yes' : 'no'}>{header}</div>,
+}))
 
 beforeAll(() => {
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver
@@ -152,5 +154,110 @@ describe('VisitorsList', () => {
     fireEvent.click(document.querySelector('[data-visitor-line="key-2"] button') as HTMLElement)
     expect(opened()).toEqual(['key-2'])
     expect(document.querySelector('[data-visitor-line="key-2"] button')?.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  // R121: the slim panel beside the list, and its fold.
+  const root = () => document.querySelector('[data-visitors-list]') as HTMLElement
+  const fold = () => root().getAttribute('data-split-fold')
+  /** A column's name in the list's head row (the first leaf that says it: the head comes before the rows). */
+  const headOf = (word: string) => Array.from(root().querySelectorAll('span')).find((e) => e.children.length === 0 && e.textContent === word) as HTMLElement
+
+  it('keeps Place, Device and Source beside the slim panel and leaves Events out, the panel compact', () => {
+    blockOf(1200)
+    render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
+    expect(root().className).toContain('grid-cols-[minmax(0,1fr)_300px]')
+    expect(headOf('Place').className).toContain('cq-[700px]:block')
+    expect(headOf('Device').className).toContain('cq-[700px]:block')
+    expect(headOf('Source').className).toContain('cq-[760px]:block')
+    // Events steps out of the list (the panel counts it), on every width the list has beside the panel.
+    expect(document.querySelector('[data-visitor-events]')?.className).toMatch(/(^|\s)hidden(\s|$)/)
+    expect(document.querySelector('[data-visitor-events]')?.className).not.toContain('cq-[960px]:inline-flex')
+    expect(document.querySelector('[data-opened]')?.getAttribute('data-compact')).toBe('yes')
+    // The head: the place, the source and the device one to a line, and no dot between them.
+    expect(document.querySelector('[data-panel-meta]')?.children).toHaveLength(3)
+    expect(document.querySelector('[data-panel-head]')?.textContent).not.toContain('·')
+  })
+
+  it('keeps the list\'s own steps when it stands alone', () => {
+    blockOf(SPLIT_FROM - 1)
+    render(<VisitorsList {...base} rows={[row(1)]} total={1} page={1} onPage={() => {}} />)
+    expect(headOf('Place').className).toContain('cq-[960px]:block')
+    expect(headOf('Source').className).toContain('cq-[1180px]:block')
+    expect(document.querySelector('[data-visitor-events]')?.className).toContain('cq-[960px]:inline-flex')
+    expect(root().getAttribute('data-split-fold')).toBeNull()
+  })
+
+  it('folds the panel into a strip with », and the strip opens it again on the same visitor', () => {
+    blockOf(1200)
+    render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
+    expect(fold()).toBe('open')
+    fireEvent.click(screen.getByRole('button', { name: 'Fold the panel' }))
+    expect(fold()).toBe('shut')
+    expect(root().className).toContain('grid-cols-[minmax(0,1fr)_44px]')
+    expect(opened()).toEqual([])
+    expect(panel()).toBe('key-1')
+    const strip = document.querySelector('[data-split-strip]') as HTMLElement
+    expect(strip.getAttribute('aria-label')).toMatch(/^Show .+ beside the list$/)
+    fireEvent.click(strip)
+    expect(fold()).toBe('open')
+    expect(opened()).toEqual(['key-1'])
+  })
+
+  it('folds on Esc, never on an Esc that closes something else, is typed in a field or was handled', () => {
+    blockOf(1200)
+    render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
+    // An Esc closing a menu: its trigger is still expanded while the press is dispatched (somethingIsOpen).
+    const menu = document.createElement('button')
+    menu.setAttribute('aria-expanded', 'true')
+    document.body.appendChild(menu)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(fold()).toBe('open')
+    menu.remove()
+    const field = document.createElement('input')
+    document.body.appendChild(field)
+    fireEvent.keyDown(field, { key: 'Escape' })
+    expect(fold()).toBe('open')
+    field.remove()
+    act(() => {
+      const handled = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      handled.preventDefault()
+      window.dispatchEvent(handled)
+    })
+    expect(fold()).toBe('open')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(fold()).toBe('shut')
+  })
+
+  it('opens a folded panel on the visitor a row press picks, and stays folded across a new page', async () => {
+    blockOf(1200)
+    const { rerender } = render(<VisitorsList {...base} rows={[row(1), row(2), row(3)]} total={60} page={1} onPage={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Fold the panel' }))
+    fireEvent.click(document.querySelector('[data-visitor-line="key-3"] button') as HTMLElement)
+    expect(fold()).toBe('open')
+    expect(opened()).toEqual(['key-3'])
+    fireEvent.click(screen.getByRole('button', { name: 'Fold the panel' }))
+    // The next page arrives folded, the strip on its first visitor.
+    rerender(<VisitorsList {...base} rows={[row(4), row(5)]} total={60} page={2} arrival="last_seen.desc.2" onPage={() => {}} />)
+    expect(fold()).toBe('shut')
+    expect(panel()).toBe('key-4')
+    await waitFor(() => expect(document.querySelector('[data-visitor-line="key-5"]')).not.toBeNull())
+    fireEvent.click(document.querySelector('[data-visitor-line="key-5"] button') as HTMLElement)
+    expect(fold()).toBe('open')
+    expect(opened()).toEqual(['key-5'])
+  })
+
+  it('hands the focus to the strip on a fold from the keyboard and back to » on an unfold, and leaves a pointer\'s focus be', () => {
+    blockOf(1200)
+    render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
+    const button = screen.getByRole('button', { name: 'Fold the panel' })
+    button.focus()
+    fireEvent.click(button)
+    expect(document.activeElement).toBe(document.querySelector('[data-split-strip]'))
+    fireEvent.click(document.activeElement as HTMLElement)
+    expect(document.activeElement).toBe(document.querySelector('[data-panel-fold]'))
+    // A press with the focus elsewhere (a pointer on the page) moves nothing.
+    ;(document.activeElement as HTMLElement).blur()
+    fireEvent.click(screen.getByRole('button', { name: 'Fold the panel' }))
+    expect(document.activeElement).toBe(document.body)
   })
 })
