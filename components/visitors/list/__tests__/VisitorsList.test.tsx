@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
-import { render, fireEvent, screen } from '@testing-library/react'
+import { render, fireEvent, screen, waitFor } from '@testing-library/react'
 import type { VisitorRow } from '@/lib/api/visitors'
 
 // The new Visitors page's list (look C, R115, R116): the server's page of rows, the first visitor open on arrival, a
@@ -21,7 +21,7 @@ const row = (n: number, over: Partial<VisitorRow> = {}): VisitorRow => ({
   referrer: null, entry_path: '/', active_now: false, own_events: 1, day: [], ...over,
 })
 const links = { dashboard: () => '/d', journeys: () => '/j', visitor: () => '/v' }
-const base = { siteId: 's', range: { startDate: '2026-11-20', endDate: '2026-11-20' }, siteTimezone: 'UTC', links, onFilter: () => {}, onSort: () => {}, phone: 'last_seen' as const, sort: FIRST_SORT }
+const base = { siteId: 's', range: { startDate: '2026-11-20', endDate: '2026-11-20' }, siteTimezone: 'UTC', links, onFilter: () => {}, onSort: () => {}, phone: 'last_seen' as const, sort: FIRST_SORT, arrival: 'last_seen.desc.1' }
 
 describe('VisitorsList', () => {
   it('opens the first visitor on arrival and opens another in its place on a press', () => {
@@ -52,6 +52,26 @@ describe('VisitorsList', () => {
   it('draws no pager for one page', () => {
     render(<VisitorsList {...base} rows={[row(1)]} total={1} page={1} onPage={() => {}} />)
     expect(screen.queryByRole('navigation', { name: 'Pages of visitors' })).toBeNull()
+  })
+
+  it('flips once a page: asking for the next page leaves the rows shown in place until the next rows are here', async () => {
+    const onPage = vi.fn()
+    const first = Array.from({ length: PER_PAGE }, (_, i) => row(i))
+    const { rerender } = render(<VisitorsList {...base} rows={first} total={60} page={1} onPage={onPage} />)
+    const shown = document.querySelector('[data-visitor-line="key-0"]')
+    fireEvent.click(document.querySelector('[data-visitor-line="key-0"] button') as HTMLElement)
+    expect(document.querySelector('[data-opened]')).toBeNull()
+    // Next is pressed: the pager shows page 2 at once, while the rows on screen are still page 1's (the answer kept
+    // while page 2 loads). Nothing flips and the close is kept: they are the same rows, in the same element.
+    rerender(<VisitorsList {...base} rows={first} total={60} page={2} onPage={onPage} />)
+    expect(document.querySelector('[data-visitor-line="key-0"]')).toBe(shown)
+    expect(document.querySelector('[data-opened]')).toBeNull()
+    // Page 2's rows arrive: the one flip, and their first visitor opens.
+    const second = Array.from({ length: PER_PAGE }, (_, i) => row(PER_PAGE + i))
+    rerender(<VisitorsList {...base} rows={second} total={60} page={2} arrival="last_seen.desc.2" onPage={onPage} />)
+    // The flip waits for the old page's exit before the new rows mount (AnimatePresence mode="wait").
+    await waitFor(() => expect(document.querySelector(`[data-opened="key-${PER_PAGE}"]`)).not.toBeNull())
+    expect(document.querySelector('[data-visitor-line="key-0"]')).toBeNull()
   })
 
   it('asks the server to sort Events by the site\'s own events', () => {
