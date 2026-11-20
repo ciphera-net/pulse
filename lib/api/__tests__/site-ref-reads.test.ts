@@ -144,6 +144,8 @@ const MEMBER_ONLY_READS: Array<{ name: string; call: (id: string) => Promise<unk
   { name: 'visitors.getVisitorProfile', call: (id) => visitors.getVisitorProfile(id, 'v1', { startDate: D1, endDate: D2 }), rest: `/visitors/v1?${RANGE}` },
   { name: 'visitors.getVisitorVisits', call: (id) => visitors.getVisitorVisits(id, 'v1', { startDate: D1, endDate: D2 }), rest: `/visitors/v1/visits?${RANGE}` },
   { name: 'visitors.getVisitEvents', call: (id) => visitors.getVisitEvents(id, 'v1', 'k1', { startDate: D1, endDate: D2 }), rest: `/visitors/v1/visits/k1/events?${RANGE}` },
+  // The new Visitors page's strip (beta, 20-11-2026): a member read like the roster's.
+  { name: 'visitors.getVisitorsSummary', call: (id) => visitors.getVisitorsSummary(id, { startDate: D1, endDate: D2 }), rest: `/visitors/summary?${RANGE}` },
 ]
 
 let fetchSpy: ReturnType<typeof vi.fn>

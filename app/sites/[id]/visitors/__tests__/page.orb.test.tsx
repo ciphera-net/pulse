@@ -46,7 +46,7 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useVisitors: (...a: unknown[]) => mockUseVisitors(...a),
 }))
 
-import VisitorsPage from '../page'
+import VisitorsPage from '@/components/visitors/VisitorsRoster'
 import { REALTIME_EMPTY_LINE } from '@/lib/dashboard/realtimeRange'
 
 const SITE = {

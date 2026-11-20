@@ -2577,5 +2577,251 @@
       "onErrorRetry": "fn"
     },
     "api": []
+  },
+  "useVisitorsList": {
+    "key": [
+      "visitorsList",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__",
+      "last_seen",
+      "desc",
+      1,
+      25,
+      "",
+      ""
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitors",
+        [
+          "site-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          },
+          {
+            "sort": "last_seen",
+            "order": "desc",
+            "page": 1,
+            "pageSize": 25,
+            "include": "day"
+          }
+        ]
+      ]
+    ]
+  },
+  "useVisitorsList#scoped": {
+    "key": [
+      "visitorsList",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__",
+      "own_events",
+      "desc",
+      1,
+      25,
+      "v2:country|is|NL",
+      "converted"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitors",
+        [
+          "site-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          },
+          {
+            "sort": "own_events",
+            "order": "desc",
+            "page": 1,
+            "pageSize": 25,
+            "filters": "v2:country|is|NL",
+            "only": "converted",
+            "include": "day"
+          }
+        ]
+      ]
+    ]
+  },
+  "useVisitorsList#off": {
+    "key": null,
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useVisitorsSummary": {
+    "key": [
+      "visitorsSummary",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__",
+      ""
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitorsSummary",
+        [
+          "site-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          },
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useVisitorsSummary#filtered": {
+    "key": [
+      "visitorsSummary",
+      "site-1",
+      "__undefined__",
+      "__undefined__",
+      5,
+      "__undefined__",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 20000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitorsSummary",
+        [
+          "site-1",
+          {
+            "minutes": 5
+          },
+          "v2:country|is|NL"
+        ]
+      ]
+    ]
+  },
+  "useVisitorsSummary#off": {
+    "key": null,
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useVisitorCampaignVisits": {
+    "key": [
+      "visitorCampaignVisits",
+      "site-1",
+      "visitor-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitorVisits",
+        [
+          "site-1",
+          "visitor-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          },
+          {
+            "page": 1,
+            "pageSize": 100,
+            "include": "campaign"
+          }
+        ]
+      ]
+    ]
+  },
+  "useVisitorCampaignVisits#closed": {
+    "key": null,
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
   }
 }

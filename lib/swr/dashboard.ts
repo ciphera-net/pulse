@@ -15,11 +15,14 @@ import {
   getVisitorProfile,
   getVisitorVisits,
   getVisitEvents,
+  getVisitorsSummary,
   type VisitorsResponse,
   type VisitorProfileResponse,
   type VisitsResponse,
   type VisitEventsResponse,
   type VisitorRange,
+  type VisitorOnly,
+  type VisitorsSummaryResponse,
 } from '@/lib/api/visitors'
 import { toast } from '@ciphera-net/facet'
 import {
@@ -1403,6 +1406,51 @@ export function useVisitorVisits(
     (siteKey) => ready ? ['visitorVisits', siteKey, key, startDate, endDate, minutes, period, page, pageSize] : null,
     () => getVisitorVisits(siteId, key, range, { page, pageSize }),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
+  )
+}
+
+// * The new Visitors page (in beta, components/visitors/list): the list with the dashboard's filter, a quick tab and
+// * each row's day for the marks (include=day), paged by the server; the strip; and an opened visitor's visits with
+// * their campaign. Member reads, like the four above.
+export function useVisitorsList(
+  siteId: string,
+  range: VisitorRange,
+  opts: { sort: string; order: 'asc' | 'desc'; page: number; pageSize: number; filters?: string; only?: VisitorOnly; enabled?: boolean },
+) {
+  const { startDate, endDate, minutes, period } = range
+  const { enabled, ...query } = opts
+  // 🔴 Gated on the page's periodReady as useVisitors is: a first render's placeholder period is never asked for.
+  const ready = enabled !== false && Boolean(siteId) && visitorRangeReady(range)
+  return useSiteSWR<VisitorsResponse>(
+    siteId, 'member',
+    (siteKey) => ready
+      ? ['visitorsList', siteKey, startDate, endDate, minutes, period, query.sort, query.order, query.page, query.pageSize, query.filters ?? '', query.only ?? '']
+      : null,
+    () => getVisitors(siteId, range, { ...query, include: 'day' }),
+    { ...dashboardSWRConfig, refreshInterval: minutes != null ? 20 * 1000 : 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
+  )
+}
+
+export function useVisitorsSummary(siteId: string, range: VisitorRange, filters?: string, enabled = true) {
+  const { startDate, endDate, minutes, period } = range
+  const ready = enabled && Boolean(siteId) && visitorRangeReady(range)
+  return useSiteSWR<VisitorsSummaryResponse>(
+    siteId, 'member',
+    (siteKey) => ready ? ['visitorsSummary', siteKey, startDate, endDate, minutes, period, filters ?? ''] : null,
+    () => getVisitorsSummary(siteId, range, filters),
+    { ...dashboardSWRConfig, refreshInterval: minutes != null ? 20 * 1000 : 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
+  )
+}
+
+/** An opened visitor's visits with each one's campaign (one page of up to 100: a visitor is one site-day). */
+export function useVisitorCampaignVisits(siteId: string, key: string | null, range: VisitorRange) {
+  const { startDate, endDate, minutes, period } = range
+  const ready = Boolean(siteId && key) && visitorRangeReady(range)
+  return useSiteSWR<VisitsResponse>(
+    siteId, 'member',
+    (siteKey) => ready && key ? ['visitorCampaignVisits', siteKey, key, startDate, endDate, minutes, period] : null,
+    () => getVisitorVisits(siteId, key ?? '', range, { page: 1, pageSize: 100, include: 'campaign' }),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000 },
   )
 }
 

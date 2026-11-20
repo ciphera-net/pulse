@@ -41,4 +41,8 @@ export const BETAS: readonly Beta[] = [
   // visits left at every step, a pressed journey and its card. JourneysSurface reads useFeature
   // (components/journeys/flow/flag.ts NEW_JOURNEYS_FLAG); today's page stays for every team without it.
   { flag: 'new-journeys', name: 'New Journeys page', revalidates: [] },
+  // The new Visitors page (R98 to R116, 18 to 20-11-2026): every visitor in one list in the dashboard's frame, their day
+  // as marks, quick tabs, a strip of four figures and a visitor opened in place. app/sites/[id]/visitors/page.tsx reads
+  // useFeature (components/visitors/list/flag.ts NEW_VISITORS_FLAG); today's roster stays for every team without it.
+  { flag: 'new-visitors', name: 'New Visitors page', revalidates: [] },
 ]
