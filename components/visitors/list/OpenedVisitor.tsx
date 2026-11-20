@@ -103,10 +103,12 @@ interface VisitRowsProps {
   steps: VisitEvent[]
   title: string
   zone: string
+  /** The split view's slim panel (R121): a page's time and how far it was read in narrower columns, always both. */
+  compact: boolean
 }
 
 /** One visit, step by step: the time, the page or what happened, and on a page its time and how far it was read. */
-function VisitRows({ siteId, visitorKey, range, visit, steps, title, zone }: VisitRowsProps) {
+function VisitRows({ siteId, visitorKey, range, visit, steps, title, zone, compact }: VisitRowsProps) {
   // A visit past the day's cap reads its own steps (one page of them), as the visit trail does.
   const own = useVisitEvents(siteId, visitorKey, steps.length ? null : visit.visit_key, range, 1)
   const list = orderTrail(steps.length ? steps : (own.data?.events ?? []))
@@ -153,9 +155,11 @@ function VisitRows({ siteId, visitorKey, range, visit, steps, title, zone }: Vis
                 )}
               </span>
               {e.type === 'pageview' && (
-                <span className="relative ml-4 flex shrink-0 items-center gap-3 text-sm tabular-nums text-neutral-500">
-                  <span className="w-16 whitespace-nowrap text-right">{formatDuration(e.duration)}</span>
-                  <span className="hidden w-12 text-right cq-[400px]:inline">{e.scroll_depth != null ? `${e.scroll_depth}%` : '—'}</span>
+                // The slim panel keeps how far each page was read (R121), as a wider box does from 400 px: two narrower
+                // columns, the time growing past 40 px only for a long one ("12m 30s").
+                <span className={cn('relative flex shrink-0 items-center text-sm tabular-nums text-neutral-500', compact ? 'ml-3 gap-2' : 'ml-4 gap-3')}>
+                  <span className={cn('whitespace-nowrap text-right', compact ? 'min-w-[40px]' : 'w-16')} data-activity-time="">{formatDuration(e.duration)}</span>
+                  <span className={compact ? 'w-10 text-right' : 'hidden w-12 text-right cq-[400px]:inline'} data-activity-scroll="">{e.scroll_depth != null ? `${e.scroll_depth}%` : '—'}</span>
                 </span>
               )}
             </div>
@@ -281,10 +285,16 @@ export interface OpenedVisitorProps {
   onFilter: (filters: DimensionFilter[]) => void
   /** A line over the visitor (the split view's panel names them there, with their carets: R120). */
   header?: ReactNode
+  /**
+   * The split view's slim panel (R121): the four figures in one row, each cell as wide as its figure needs (a long time
+   * such as "12m 30s" takes room from the short counts), with no glyph and no line under; a page's time and how far it
+   * was read in narrower columns.
+   */
+  compact?: boolean
   className?: string
 }
 
-export default function OpenedVisitor({ siteId, row, range, siteTimezone, links, onFilter, header, className = '' }: OpenedVisitorProps) {
+export default function OpenedVisitor({ siteId, row, range, siteTimezone, links, onFilter, header, compact = false, className = '' }: OpenedVisitorProps) {
   const [tab, setTab] = useState<Tab>('activity')
   const zone = useDisplayZone(siteTimezone).zone
   const { data: visitsData, error: visitsError } = useVisitorCampaignVisits(siteId, row.visitor_key, range)
@@ -315,7 +325,7 @@ export default function OpenedVisitor({ siteId, row, range, siteTimezone, links,
     {
       name: 'Time on site',
       icon: <Clock />,
-      figure: pending ? <SkeletonLine className="mt-1.5 h-4 w-14" /> : formatDuration(secs),
+      figure: pending ? <SkeletonLine className={cn('mt-1.5 h-4', compact ? 'w-10' : 'w-14')} /> : formatDuration(secs),
       context: pending ? null : secs == null ? 'not measured' : `${formatDuration(Math.round(secs / Math.max(1, row.visits)))} a visit`,
     },
     {
@@ -388,9 +398,9 @@ export default function OpenedVisitor({ siteId, row, range, siteTimezone, links,
             />
             {/* The activity's columns are named here, at the row's end, as the Pages page names its chart's lines. */}
             {tab === 'activity' && (
-              <span className="ml-auto flex items-center gap-3 text-[11px] text-neutral-500" aria-hidden="true">
-                <span className="w-16 text-right">Time</span>
-                <span className="hidden w-12 text-right cq-[432px]:inline">Scroll</span>
+              <span className={cn('ml-auto flex items-center text-[11px] text-neutral-500', compact ? 'gap-2' : 'gap-3')} aria-hidden="true">
+                <span className={compact ? 'min-w-[40px] text-right' : 'w-16 text-right'} data-activity-head="time">Time</span>
+                <span className={compact ? 'w-10 text-right' : 'hidden w-12 text-right cq-[432px]:inline'} data-activity-head="scroll">Scroll</span>
               </span>
             )}
           </div>
@@ -418,6 +428,7 @@ export default function OpenedVisitor({ siteId, row, range, siteTimezone, links,
                       steps={steps.get(x.visit_key) ?? []}
                       title={n === 0 ? 'Last visit' : `Visit ${latestFirst.length - n}`}
                       zone={zone}
+                      compact={compact}
                     />
                   ))}
                 </div>
@@ -437,23 +448,27 @@ export default function OpenedVisitor({ siteId, row, range, siteTimezone, links,
         </div>
         <div className="contents border-white/[0.08] cq-[800px]:flex cq-[800px]:min-w-0 cq-[800px]:flex-col cq-[800px]:border-l cq-[800px]:[grid-area:s]">
           <div className="min-w-0 border-b border-white/[0.08] [container-type:inline-size] [grid-area:m] cq-[800px]:border-b-0" data-visitor-measures="">
-            <div className="grid grid-cols-2 cq-[560px]:grid-cols-4">
+            <div className={compact ? 'grid grid-cols-[repeat(4,auto)]' : 'grid grid-cols-2 cq-[560px]:grid-cols-4'}>
               {measures.map((m, i) => (
                 <div
                   key={m.name}
-                  className={cn(
-                    'min-w-0 border-white/[0.08] px-3 py-3 cq-[380px]:px-4',
-                    'cqmax-[559.98px]:odd:border-r cqmax-[559.98px]:[&:nth-child(-n+2)]:border-b',
-                    i > 0 && 'cq-[560px]:border-l',
-                  )}
+                  className={
+                    compact
+                      ? cn('min-w-0 border-white/[0.08] px-3 py-2.5', i > 0 && 'border-l')
+                      : cn(
+                          'min-w-0 border-white/[0.08] px-3 py-3 cq-[380px]:px-4',
+                          'cqmax-[559.98px]:odd:border-r cqmax-[559.98px]:[&:nth-child(-n+2)]:border-b',
+                          i > 0 && 'cq-[560px]:border-l',
+                        )
+                  }
                   data-visitor-measure={m.name}
                 >
                   <span className="flex min-w-0 items-center gap-2 text-[13px] text-neutral-400">
-                    <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{m.icon}</span>
-                    <span className="truncate">{m.name}</span>
+                    {!compact && <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{m.icon}</span>}
+                    <span className="truncate">{compact && m.name === 'Time on site' ? 'Time' : m.name}</span>
                   </span>
-                  <span className="mt-0.5 block text-xl font-semibold tabular-nums text-white">{m.figure}</span>
-                  <div className="mt-0.5 min-h-4 text-[11px] tabular-nums text-neutral-500">{m.context}</div>
+                  <span className={cn('mt-0.5 block font-semibold tabular-nums text-white', compact ? 'whitespace-nowrap text-lg' : 'text-xl')} data-visitor-figure="">{m.figure}</span>
+                  {!compact && <div className="mt-0.5 min-h-4 text-[11px] tabular-nums text-neutral-500">{m.context}</div>}
                 </div>
               ))}
             </div>
