@@ -777,15 +777,19 @@ steps:
         done
         [ "$OK" = "yes" ] || { echo "FAIL: Magic Containers did not report active on $DIGEST within 20 minutes (last: $ST $DG)"; exit 1; }
       - |
-        # Three good reads, retried for about three minutes: the first deploy with this step (19-11-2026, 20:22)
-        # read a 2xx /login without a build id one second after MC reported active, while every read a minute
-        # later had one. A page without a build id is logged with its status and title, never trusted.
+        # The build id sits in the page's flight data as \"b\":\"<21 characters>\". The pattern matches each of those
+        # backslashes with a dot and holds none itself, and neither does any pattern below: Woodpecker turns every
+        # doubled backslash in this file into a single one before the shell runs it (measured from this step's own
+        # trace, 19-11-2026). The escaped pattern this replaced reached grep as a bare quote and found no build id on
+        # a healthy page, which is why deploys 2857 and 2859 went red while the dashboard was fine.
+        # Three reads must carry a build id; a read without one is logged with its status and title, and retried for
+        # about three minutes.
         URLS=""; BUILDS=""; GOT=0
         for i in $(seq 1 12); do
           R=$(curl -sS --max-time 30 --retry 3 --retry-all-errors -w '\nHTTPSTATUS %{http_code} %{size_download}' \
             "https://pulse.ciphera.net/login?verify=$i") || R="HTTPSTATUS 000 0"
           ST=$(printf '%s' "$R" | tail -1)
-          B=$(printf '%s' "$R" | grep -oE '\\"b\\":\\"[A-Za-z0-9_-]{21}\\"' | head -1 | grep -oE '[A-Za-z0-9_-]{21}' | head -1)
+          B=$(printf '%s' "$R" | grep -oE '"b.":."[A-Za-z0-9_-]{21}' | head -1 | grep -oE '[A-Za-z0-9_-]{21}' | head -1)
           if [ -z "$B" ]; then
             echo "read $i: no build id ($ST, title: $(printf '%s' "$R" | grep -oE '<title>[^<]*' | head -1 | cut -c8-90)); retrying"
             sleep 15
@@ -793,7 +797,7 @@ steps:
           fi
           GOT=$((GOT + 1))
           case " $BUILDS " in *" $B "*) ;; *) BUILDS="$BUILDS $B" ;; esac
-          URLS="$URLS $(printf '%s' "$R" | grep -oE 'https://ciphera-app-static\.b-cdn\.net/pulse/_next/static/[^"\\ ]+\.(js|css)')"
+          URLS="$URLS $(printf '%s' "$R" | grep -oE 'https://ciphera-app-static\.b-cdn\.net/pulse/_next/static/[^"\ ]+\.(js|css)')"
           URLS="$URLS https://ciphera-app-static.b-cdn.net/pulse/_next/static/$B/_buildManifest.js"
           [ "$GOT" -ge 3 ] && break
           sleep 10
