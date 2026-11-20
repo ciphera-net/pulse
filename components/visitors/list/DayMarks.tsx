@@ -49,14 +49,17 @@ const WEIGHT: Record<TrailKind, number> = { event: 6, outbound: 5, download: 4, 
 const weightOf = (it: DayItem) => (it.own ? 7 : it.plain ? 0.5 : WEIGHT[it.kind])
 export const topItem = (p: DayPage): DayItem | null =>
   p.items.reduce<DayItem | null>((best, it) => (!best || weightOf(it) > weightOf(best) ? it : best), null)
-const glyphOf = (it: DayItem): Icon => (it.own ? Tag : it.plain ? WarningCircle : KIND_GLYPH[it.kind === 'pageview' ? 'event' : it.kind])
+/** A mark's glyph, by key: the kinds Pulse captures itself, the site's own events (a tag) and a plain mark (a 404). */
+type GlyphKey = Exclude<TrailKind, 'pageview'> | 'own' | 'plain'
+const GLYPHS: Record<GlyphKey, Icon> = { ...KIND_GLYPH, own: Tag, plain: WarningCircle }
+const glyphKey = (it: DayItem): GlyphKey => (it.own ? 'own' : it.plain ? 'plain' : it.kind === 'pageview' ? 'event' : it.kind)
 const edgeOf = (p: DayPage) => (topItem(p) ? ICON_R : DOT_R)
 
 /** One page's mark. `on`: under the pointer (a lighter colour, never opacity). */
 function Mark({ cx, page, on }: { cx: number; page: DayPage; on: boolean }) {
   const top = topItem(page)
   if (!top) return <circle cx={cx} cy={CY} r={DOT_R} className={on ? 'fill-neutral-100' : 'fill-neutral-500'} />
-  const Glyph = glyphOf(top)
+  const Glyph = GLYPHS[glyphKey(top)]
   const g = ICON_GLYPH / 2
   if (top.own) {
     return (
@@ -106,7 +109,7 @@ export function layoutMarks(visits: readonly DayPage[][], limit: number, budget:
       const page = visits[vi][pi]
       const edge = edgeOf(page)
       const apart = pi === 0 && marks.length > 0 ? VISIT_GAP : 0
-      const x = last === null ? 2 + edge : last.cx + edgeOf(last.page) + ICON_GAP + edge + apart
+      const x: number = last === null ? 2 + edge : last.cx + edgeOf(last.page) + ICON_GAP + edge + apart
       if (budget > 0 && x + edge + 2 > budget) return { marks, full: false }
       last = { cx: x, page, visit: vi, at: pi }
       marks.push(last)
@@ -178,7 +181,7 @@ export function DayMarks({ day }: { day: readonly VisitorDayVisit[] | undefined 
             </div>
             {lit.page.seconds != null && <div className="text-xs font-normal tabular-nums text-neutral-400">{formatDuration(lit.page.seconds)} on the page</div>}
             {lit.page.items.map((it, i) => {
-              const Glyph = glyphOf(it)
+              const Glyph = GLYPHS[glyphKey(it)]
               return (
                 <div key={i} className={cn('mt-1 flex items-center gap-1.5 text-xs font-normal', it.own ? 'text-brand-ink' : 'text-neutral-300')} data-mark-tip-item={it.own ? 'own' : it.plain ? 'plain' : it.kind}>
                   <Glyph className="h-3 w-3 shrink-0 text-brand-ink" aria-hidden="true" />

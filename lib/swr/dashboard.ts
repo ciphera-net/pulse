@@ -1415,23 +1415,25 @@ export function useVisitorVisits(
 export function useVisitorsList(
   siteId: string,
   range: VisitorRange,
-  opts: { sort: string; order: 'asc' | 'desc'; page: number; pageSize: number; filters?: string; only?: VisitorOnly },
+  opts: { sort: string; order: 'asc' | 'desc'; page: number; pageSize: number; filters?: string; only?: VisitorOnly; enabled?: boolean },
 ) {
   const { startDate, endDate, minutes, period } = range
-  const ready = Boolean(siteId) && visitorRangeReady(range)
+  const { enabled, ...query } = opts
+  // 🔴 Gated on the page's periodReady as useVisitors is: a first render's placeholder period is never asked for.
+  const ready = enabled !== false && Boolean(siteId) && visitorRangeReady(range)
   return useSiteSWR<VisitorsResponse>(
     siteId, 'member',
     (siteKey) => ready
-      ? ['visitorsList', siteKey, startDate, endDate, minutes, period, opts.sort, opts.order, opts.page, opts.pageSize, opts.filters ?? '', opts.only ?? '']
+      ? ['visitorsList', siteKey, startDate, endDate, minutes, period, query.sort, query.order, query.page, query.pageSize, query.filters ?? '', query.only ?? '']
       : null,
-    () => getVisitors(siteId, range, { ...opts, include: 'day' }),
+    () => getVisitors(siteId, range, { ...query, include: 'day' }),
     { ...dashboardSWRConfig, refreshInterval: minutes != null ? 20 * 1000 : 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
   )
 }
 
-export function useVisitorsSummary(siteId: string, range: VisitorRange, filters?: string) {
+export function useVisitorsSummary(siteId: string, range: VisitorRange, filters?: string, enabled = true) {
   const { startDate, endDate, minutes, period } = range
-  const ready = Boolean(siteId) && visitorRangeReady(range)
+  const ready = enabled && Boolean(siteId) && visitorRangeReady(range)
   return useSiteSWR<VisitorsSummaryResponse>(
     siteId, 'member',
     (siteKey) => ready ? ['visitorsSummary', siteKey, startDate, endDate, minutes, period, filters ?? ''] : null,
