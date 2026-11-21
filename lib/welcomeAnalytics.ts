@@ -23,6 +23,7 @@ type WelcomeEventName =
   | 'welcome_completed'
   | 'site_created_from_dashboard'
   | 'site_created_script_copied'
+  | 'site_first_data'
   | 'onboarding_chip_opened'
   | 'onboarding_item_clicked'
   | 'onboarding_dismissed'
@@ -105,6 +106,20 @@ export function trackSiteCreatedFromDashboard() {
 
 export function trackSiteCreatedScriptCopied() {
   emit('site_created_script_copied')
+}
+
+// The setup screen saw a new site's first event arrive. Following the welcome
+// events earlier in the same visit, it lets the sign-up funnel on Pulse's own
+// site count the sites that start sending data. Once per site per page
+// lifetime: /setup/install and /setup/done both show the install state, and a
+// client-side move from one to the other must not count the same site twice.
+// The site id only keys that memory; it is never sent.
+const firstDataSites = new Set<string>()
+
+export function trackSiteFirstData(siteId: string) {
+  if (firstDataSites.has(siteId)) return
+  firstDataSites.add(siteId)
+  emit('site_first_data')
 }
 
 export function trackOnboardingChipOpened(completedCount: number) {

@@ -16,6 +16,8 @@ type PulseEventMap = {
   login_flow_started: Record<string, never>
   site_created_from_dashboard: Record<string, never>
   site_created_script_copied: Record<string, never>
+  // The setup screen saw a new site's first event (lib/welcomeAnalytics.ts).
+  site_first_data: Record<string, never>
   onboarding_chip_opened: { completed_count: string }
   onboarding_item_clicked: { item: string }
   onboarding_dismissed: { completed_count: string }

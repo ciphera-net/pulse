@@ -22,6 +22,11 @@ vi.mock('@/lib/swr/dashboard', () => ({
   }),
 }))
 
+const firstData = vi.fn()
+vi.mock('@/lib/welcomeAnalytics', () => ({
+  trackSiteFirstData: (siteId: string) => firstData(siteId),
+}))
+
 vi.mock('next/link', () => ({
   default: ({ children, href, ...rest }: any) => (
     <a href={href} {...rest}>
@@ -35,6 +40,7 @@ import InstallStateBlock from '../InstallStateBlock'
 beforeEach(() => {
   status = 'never_installed'
   mutate.mockClear()
+  firstData.mockClear()
 })
 
 afterEach(() => {
@@ -101,6 +107,17 @@ describe('InstallStateBlock', () => {
     rerender(<InstallStateBlock siteId="s1" domain="example.com" onFirstEvent={second} />)
     expect(first).toHaveBeenCalledTimes(1)
     expect(second, 'the first event must be announced once, not once per render').not.toHaveBeenCalled()
+  })
+
+  it('counts the site first event for analytics once, and not while waiting', () => {
+    const { rerender } = render(<InstallStateBlock siteId="s1" domain="example.com" />)
+    expect(firstData).not.toHaveBeenCalled()
+    status = 'active'
+    // New callback identities re-run the effect, as in the onFirstEvent test above.
+    rerender(<InstallStateBlock siteId="s1" domain="example.com" onFirstEvent={vi.fn()} />)
+    rerender(<InstallStateBlock siteId="s1" domain="example.com" onFirstEvent={vi.fn()} />)
+    expect(firstData).toHaveBeenCalledTimes(1)
+    expect(firstData).toHaveBeenCalledWith('s1')
   })
 
   it('does not offer a retry once events are arriving', () => {
