@@ -15,6 +15,7 @@ import {
   trackOnboardingChipOpened,
   trackOnboardingItemClicked,
   trackOnboardingDismissed,
+  trackSiteFirstData,
 } from '@/lib/welcomeAnalytics'
 
 const track = vi.fn()
@@ -56,6 +57,15 @@ describe('welcome analytics', () => {
     expect(track).toHaveBeenNthCalledWith(1, 'onboarding_chip_opened', { completed_count: '2' }, undefined)
     expect(track).toHaveBeenNthCalledWith(2, 'onboarding_item_clicked', { item: 'goal' }, undefined)
     expect(track).toHaveBeenNthCalledWith(3, 'onboarding_dismissed', { completed_count: '3' }, undefined)
+  })
+
+  it('site first data uses the pinned name, sends no site id, and counts a site once', () => {
+    trackSiteFirstData('site-a')
+    trackSiteFirstData('site-a')
+    trackSiteFirstData('site-b')
+    expect(track).toHaveBeenCalledTimes(2)
+    expect(track).toHaveBeenNthCalledWith(1, 'site_first_data', undefined, undefined)
+    expect(track).toHaveBeenNthCalledWith(2, 'site_first_data', undefined, undefined)
   })
 
   it('dispatches the pulse_welcome CustomEvent and appends the debug queue', () => {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useInstallStatus } from '@/lib/swr/dashboard'
 import { docsUrl } from '@/lib/docs'
+import { trackSiteFirstData } from '@/lib/welcomeAnalytics'
 
 // ---------------------------------------------------------------------------
 // The first-event state, for the setup wizard (design round 24-08-2026,
@@ -75,13 +76,15 @@ export default function InstallStateBlock({
   }, [watchStartedAt, active])
 
   // Fire once, on the transition into active — not on every poll that finds it
-  // still active.
+  // still active. The analytics event rides on the same guard: it is how the
+  // sign-up funnel on Pulse's own site counts a site that started sending data.
   const firedRef = useRef(false)
   useEffect(() => {
     if (!active || firedRef.current) return
     firedRef.current = true
+    trackSiteFirstData(siteId)
     onFirstEvent?.()
-  }, [active, onFirstEvent])
+  }, [active, onFirstEvent, siteId])
 
   // Nothing is known yet — say nothing rather than guess a state.
   if (!status) return null
