@@ -27,11 +27,13 @@ import { Marks, nameOf, Place, ROW, Source, VisitorName } from './parts'
 //
 // THE VISITOR BESIDE THE LIST (R120, 20-11-2026; R121 the same night; R122 21-11-2026): from 820 px of block a 380 px
 // panel beside the list holds the visitor it points at (OpenedVisitor in its compact form, under a line naming them with their place,
-// source and device and the carets to the visitor above and below); the panel shows the page's first visitor until a
-// press picks another, and sticks under the frame's toolbar while the list scrolls. The visitor shown has the open
-// row's tint and the orange caret. » or Esc folds the panel into a strip holding the visitor's face and name, and the
-// list takes the room; a press on the strip or on any row opens it again. Under 820 px there is no room beside the
-// list: a press unfolds the visitor under the row, and none opens by itself (R119).
+// source and device and the carets to the visitor above and below), and sticks under the frame's toolbar while the
+// list scrolls. No visitor opens by itself there either (R119, held for the panel since 21-11-2026; until then it
+// showed the page's first visitor): until a press picks one the panel says to press a visitor, and every new list (a
+// page, an order, a tab, a range, a filter) starts with none. The visitor shown has the open row's tint and the orange
+// caret. » or Esc folds the panel into a strip holding the visitor's face and name (only its caret while none is
+// picked), and the list takes the room; a press on the strip or on any row opens it again. Under 820 px there is no
+// room beside the list: a press unfolds the visitor under the row, and none opens by itself (R119).
 //
 // THE LIST LAYS ITSELF OUT BY THE ROOM IT HAS (the Pages page's rule): the block is a container, and each step leaves a
 // visitor's name its whole width (the longest with its avatar and the caret: 212 px).
@@ -193,7 +195,7 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
   const [folded, setFolded] = useState(false)
   const shut = split && folded
   // A fold or an unfold from the keyboard keeps the focus in the panel's place: the control pressed is gone, so the
-  // strip takes it on a fold and the fold button on an unfold.
+  // strip takes it on a fold, and on an unfold the fold button (or the line saying to press a visitor, while none is).
   const panel = useRef<HTMLDivElement>(null)
   const refocus = useRef<'strip' | 'fold' | null>(null)
   const focusHere = () => typeof document !== 'undefined' && !!panel.current?.contains(document.activeElement)
@@ -202,7 +204,7 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
   useEffect(() => {
     const to = refocus.current
     refocus.current = null
-    if (to) panel.current?.querySelector<HTMLElement>(to === 'strip' ? '[data-split-strip]' : '[data-panel-fold]')?.focus()
+    if (to) panel.current?.querySelector<HTMLElement>(to === 'strip' ? '[data-split-strip]' : '[data-panel-fold], [data-split-panel-empty]')?.focus()
   }, [shut])
   // Esc folds the panel, unless the press is closing something else first (a menu, the filter, a dialog) or is typed
   // in a field (lib/keyboard/shortcuts.ts).
@@ -216,12 +218,11 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [split, folded])
-  // What a press chose stays chosen until the next arrival (new rows: a page or an order). Beside the list the panel
-  // shows the page's first visitor until a press picks another (R120); in place nothing opens by itself (R119,
-  // 20-11-2026; until then the first visitor of a page opened by itself).
+  // What a press chose stays chosen until the next arrival (new rows: a page or an order); a new list (a tab, a range, a
+  // filter) mounts the list again. Only a press opens a visitor, beside the list and in place (R119, 20-11-2026 in
+  // place, 21-11-2026 beside the list, where the panel showed the page's first visitor until then).
   const [open, setOpen] = useState<{ at: string; key: string | null } | null>(null)
-  const chosen = open && open.at === arrival ? open.key : null
-  const openKey = split ? chosen ?? rows[0]?.visitor_key ?? null : chosen
+  const openKey = open && open.at === arrival ? open.key : null
   const at = openKey ? rows.findIndex((r) => r.visitor_key === openKey) : -1
   const shown = split && at >= 0 ? rows[at] : null
 
@@ -250,8 +251,8 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
         <CascadeGroup flipKey={arrival} className="space-y-2">
           {rows.map((v, i) => {
             const isOpen = openKey === v.visitor_key
-            // Beside the list a press picks the visitor (the panel always shows one) and opens a folded panel on them: a
-            // press is asking to see them. In place it opens and closes them.
+            // Beside the list a press picks the visitor (a second press keeps them: the panel holds one until another is
+            // picked) and opens a folded panel on them: a press is asking to see them. In place it opens and closes them.
             const press = () => {
               setOpen({ at: arrival, key: split ? v.visitor_key : isOpen ? null : v.visitor_key })
               if (split) setFolded(false)
@@ -313,15 +314,24 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
           </CardFooter>
         </div>
       </div>
-      {shown && (
-        <div ref={panel} className={PANEL} data-split-panel={shown.visitor_key}>
+      {split && (
+        <div ref={panel} className={PANEL} data-split-panel={shown?.visitor_key ?? ''}>
           {shut ? (
-            // The folded panel: one press target, which opens it again on the same visitor.
-            <button type="button" onClick={unfold} aria-label={`Show ${nameOf(shown)} beside the list`} className={STRIP} data-split-strip="">
+            // The folded panel: one press target, which opens it again (on the visitor a press picked, if one did).
+            <button type="button" onClick={unfold} aria-label={shown ? `Show ${nameOf(shown)} beside the list` : 'Show the panel beside the list'} className={STRIP} data-split-strip="">
               <CaretDoubleLeftIcon className="h-3 w-3" weight="bold" aria-hidden="true" />
-              <Avatar seed={visitorAvatarSeed(shown.visitor_key)} size={28} />
-              <span className="text-[13px] text-neutral-300 [writing-mode:vertical-rl]">{nameOf(shown)}</span>
+              {shown && (
+                <>
+                  <Avatar seed={visitorAvatarSeed(shown.visitor_key)} size={28} />
+                  <span className="text-[13px] text-neutral-300 [writing-mode:vertical-rl]">{nameOf(shown)}</span>
+                </>
+              )}
             </button>
+          ) : !shown ? (
+            // Until a press picks a visitor (R119). It takes the focus on an unfold from the keyboard, so it can hold it.
+            <div tabIndex={-1} className="border border-white/[0.08] px-6 py-16 text-center text-sm text-neutral-500 focus:outline-none" data-split-panel-empty="">
+              Press a visitor to see what they did.
+            </div>
           ) : (
             <OpenedVisitor
               key={shown.visitor_key}
