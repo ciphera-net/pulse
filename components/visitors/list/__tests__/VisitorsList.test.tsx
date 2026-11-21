@@ -162,16 +162,22 @@ describe('VisitorsList', () => {
   /** A column's name in the list's head row (the first leaf that says it: the head comes before the rows). */
   const headOf = (word: string) => Array.from(root().querySelectorAll('span')).find((e) => e.children.length === 0 && e.textContent === word) as HTMLElement
 
-  it('keeps Place, Device and Source beside the slim panel and leaves Events out, the panel compact', () => {
+  it('keeps Place, Device and Source beside the 380 px panel, leaves Events and Visits to it, keeps names whole', () => {
     blockOf(1200)
     render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
-    expect(root().className).toContain('grid-cols-[minmax(0,1fr)_300px]')
+    expect(root().className).toContain('grid-cols-[minmax(0,1fr)_380px]')
+    // R122: the name never gets less than the widest pseudonym needs; the panel narrows their day instead.
+    expect(headOf('Visitor').className).toContain('min-w-[212px]')
+    expect(document.querySelector('[data-visitor-line="key-1"] > span')?.className).toContain('min-w-[212px]')
     expect(headOf('Place').className).toContain('cq-[700px]:block')
     expect(headOf('Device').className).toContain('cq-[700px]:block')
     expect(headOf('Source').className).toContain('cq-[760px]:block')
     // Events steps out of the list (the panel counts it), on every width the list has beside the panel.
     expect(document.querySelector('[data-visitor-events]')?.className).toMatch(/(^|\s)hidden(\s|$)/)
     expect(document.querySelector('[data-visitor-events]')?.className).not.toContain('cq-[960px]:inline-flex')
+    // R122: Visits steps out too; the panel counts it.
+    expect(document.querySelector('[data-visitor-visits]')?.className).toMatch(/(^|\s)hidden(\s|$)/)
+    expect(document.querySelector('[data-visitor-visits]')?.className).not.toContain('inline-flex')
     expect(document.querySelector('[data-opened]')?.getAttribute('data-compact')).toBe('yes')
     // The head: the place, the source and the device one to a line, and no dot between them.
     expect(document.querySelector('[data-panel-meta]')?.children).toHaveLength(3)
@@ -184,6 +190,8 @@ describe('VisitorsList', () => {
     expect(headOf('Place').className).toContain('cq-[960px]:block')
     expect(headOf('Source').className).toContain('cq-[1180px]:block')
     expect(document.querySelector('[data-visitor-events]')?.className).toContain('cq-[960px]:inline-flex')
+    expect(document.querySelector('[data-visitor-visits]')?.className).toContain('inline-flex')
+    expect(headOf('Visitor').className).not.toContain('min-w-[212px]')
     expect(root().getAttribute('data-split-fold')).toBeNull()
   })
 

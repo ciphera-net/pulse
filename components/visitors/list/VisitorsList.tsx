@@ -25,8 +25,8 @@ import { Marks, nameOf, Place, ROW, Source, VisitorName } from './parts'
 // with the full-row press, the caret, SortHead's capital names, the lead number in white and the rest dimmer; on every
 // row their day as marks (DayMarks). The server sorts and pages (25 a page); the dashboard blocks' pager pages it (R116).
 //
-// THE VISITOR BESIDE THE LIST (R120, 20-11-2026; R121 the same night): from 820 px of block a 300 px panel beside the
-// list holds the visitor it points at (OpenedVisitor in its compact form, under a line naming them with their place,
+// THE VISITOR BESIDE THE LIST (R120, 20-11-2026; R121 the same night; R122 21-11-2026): from 820 px of block a 380 px
+// panel beside the list holds the visitor it points at (OpenedVisitor in its compact form, under a line naming them with their place,
 // source and device and the carets to the visitor above and below); the panel shows the page's first visitor until a
 // press picks another, and sticks under the frame's toolbar while the list scrolls. The visitor shown has the open
 // row's tint and the orange caret. » or Esc folds the panel into a strip holding the visitor's face and name, and the
@@ -40,9 +40,11 @@ import { Marks, nameOf, Place, ROW, Source, VisitorName } from './parts'
 //   660 px         and their day, sharing the room the fixed columns leave with the name
 //   960 px         and Place, Device, Events
 //   1180 px        and Source
-// Beside the panel (R121) the list keeps Place, Device and Source in narrower columns, and Events steps out (the panel
-// counts it): Place 112 px and Device 56 from 700 px of list, Source 136 from 760 (a source's whole name: duckduckgo.com
-// needs 109 px of text), Pages and Visits 48 each, 12 px between, the name two parts of the room left to their day's one.
+// Beside the panel (R121, R122) the list keeps Place, Device and Source in narrower columns, and Events and Visits step
+// out (the panel counts both): Place 112 px and Device 56 from 700 px of list, Source 136 from 760 (a source's whole
+// name: duckduckgo.com needs 109 px of text), Pages 48, 12 px between. The name takes two parts of the room left to
+// their day's one and never less than the widest name needs, 212 px ("Thoughtful Cartographer" is 158 px of 14 px Geist,
+// the widest of the 1,024 the pseudonyms make, with its caret and avatar), so the panel narrows their day, never a name.
 // A number column alone has two sets of classes: `on` when it is the phone's pick, `off` when it is not. Written out
 // whole, so the stylesheet holds every class.
 // ---------------------------------------------------------------------------
@@ -67,8 +69,8 @@ export const PER_PAGE = 25
 
 /** Their day, from 660 px of room: it shares what the fixed columns leave with the name (half each alone). */
 const WAY = 'hidden min-w-0 flex-1 cq-[660px]:block'
-/** The number columns beside the panel (R121): Pages and Visits narrower (their figures are short), Events out. */
-const BESIDE_NUMBER: Record<Key, string> = { pageviews: 'w-12 inline-flex', visits: 'w-12 inline-flex', events: 'hidden', last_seen: 'w-16 inline-flex' }
+/** The number columns beside the panel (R121, R122): Pages narrower (its figure is short), Events and Visits out. */
+const BESIDE_NUMBER: Record<Key, string> = { pageviews: 'w-12 inline-flex', visits: 'hidden', events: 'hidden', last_seen: 'w-16 inline-flex' }
 /** The other columns, the list alone and beside the panel (R121); a head and its rows take the same classes. */
 const LAYOUT = {
   alone: {
@@ -79,7 +81,7 @@ const LAYOUT = {
     way: `${WAY} ml-4`,
   },
   beside: {
-    name: 'flex-[2]',
+    name: 'flex-[2] min-w-[212px]',
     place: 'ml-3 hidden w-28 shrink-0 cq-[700px]:block',
     device: 'ml-3 hidden w-14 shrink-0 cq-[700px]:block',
     source: 'ml-3 hidden w-[136px] shrink-0 cq-[760px]:block',
@@ -226,7 +228,7 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
   return (
     <div
       ref={root}
-      className={cn(split && 'grid', split && (shut ? 'grid-cols-[minmax(0,1fr)_44px] gap-4' : 'grid-cols-[minmax(0,1fr)_300px] gap-6'))}
+      className={cn(split && 'grid', split && (shut ? 'grid-cols-[minmax(0,1fr)_44px] gap-4' : 'grid-cols-[minmax(0,1fr)_380px] gap-6'))}
       data-visitors-list=""
       data-visitors-split={split ? '' : undefined}
       data-split-fold={split ? (shut ? 'shut' : 'open') : undefined}
@@ -284,7 +286,7 @@ export default function VisitorsList({ siteId, rows, total, page, arrival, onPag
                       <span aria-hidden="true">{formatNumber(v.pageviews)}</span>
                       <span className="sr-only">{`${v.pageviews} ${v.pageviews === 1 ? 'page' : 'pages'}, `}</span>
                     </span>
-                    <span className={cn(ROW_NUMBER, cls('visits'), 'justify-end tabular-nums')}>
+                    <span className={cn(ROW_NUMBER, cls('visits'), 'justify-end tabular-nums')} data-visitor-visits="">
                       <span aria-hidden="true">{v.visits}</span>
                       <span className="sr-only">{`${v.visits} ${v.visits === 1 ? 'visit' : 'visits'}, `}</span>
                     </span>
