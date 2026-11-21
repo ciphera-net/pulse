@@ -472,7 +472,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   check_provenance: {
     title: 'Where a check comes from',
     definition:
-      'Runs on Pulse\'s own Lighthouse runner, not Google\'s PageSpeed Insights. The engine is pinned to 13.6.0 and recorded per row, so the instrument stays fixed.',
+      'Pulse runs each check on its own Lighthouse runner, separate from Google\'s PageSpeed Insights. The Lighthouse version is pinned, and every check records the version it ran on.',
     docs: 'pagespeed#check-provenance',
   },
   median_of_three: {
