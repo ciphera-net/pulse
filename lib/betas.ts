@@ -27,9 +27,6 @@ export const BETAS: readonly Beta[] = [
   // Keyboard shortcuts (R13): a letter for each date range, C for the calendar, R for realtime and the arrows to step
   // the range. The date menu, the orb and the ? list read useFeature (lib/keyboard/shortcuts.ts KEYBOARD_SHORTCUTS_FLAG).
   { flag: 'keyboard-shortcuts', name: 'Keyboard shortcuts', revalidates: [] },
-  // The installation check (16-11-2026): "Check now" on Settings → General → Tracking script opens the homepage in a test
-  // browser and lists four steps. The section reads useFeature (TrackingScriptSection INSTALL_CHECK_FLAG).
-  { flag: 'install-check', name: 'Installation check', revalidates: [] },
   // Match any (R65): with two filters or more, the dashboard's filters box offers a switch between what fits every
   // filter and what fits at least one. The box reads useFeature (lib/filters.ts MATCH_ANY_FLAG).
   { flag: 'match-any', name: 'Match any filter', revalidates: [] },

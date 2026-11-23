@@ -3,11 +3,10 @@ import { SWRConfig } from 'swr'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { InstallCheckState } from '@/lib/api/install-check'
 
-const flag = vi.hoisted(() => ({ on: true as boolean | null, canEdit: true }))
+const perm = vi.hoisted(() => ({ canEdit: true }))
 const api = vi.hoisted(() => ({ get: vi.fn(), start: vi.fn() }))
 
-vi.mock('@/lib/features', () => ({ useFeature: () => flag.on }))
-vi.mock('@/lib/auth/permissions', () => ({ useCan: () => flag.canEdit }))
+vi.mock('@/lib/auth/permissions', () => ({ useCan: () => perm.canEdit }))
 vi.mock('@/lib/api/install-check', () => ({ getInstallCheck: api.get, startInstallCheck: api.start }))
 vi.mock('@/lib/swr/dashboard', () => ({
   useInstallStatus: () => ({ data: { install_status: 'active', last_event_at: new Date().toISOString() }, error: undefined, mutate: vi.fn() }),
@@ -49,23 +48,14 @@ const csp: InstallCheckState = {
 }
 
 beforeEach(() => {
-  flag.on = true
-  flag.canEdit = true
+  perm.canEdit = true
   api.get.mockReset()
   api.start.mockReset()
 })
 
 describe('the install check on Tracking script', () => {
-  it('offers nothing without the beta, and asks the server nothing', async () => {
-    flag.on = false
-    mount()
-    expect(screen.queryByRole('button', { name: 'Check now' })).toBeNull()
-    await act(async () => {})
-    expect(api.get).not.toHaveBeenCalled()
-  })
-
   it('offers no button to someone who cannot edit the site', async () => {
-    flag.canEdit = false
+    perm.canEdit = false
     api.get.mockResolvedValue({ status: 'none' })
     mount()
     await act(async () => {})
