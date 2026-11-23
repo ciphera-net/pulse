@@ -602,6 +602,19 @@ describe('UptimeTile', () => {
     expect(h.useUptimeStatus).toHaveBeenLastCalledWith(SITE, dateRange.start, dateRange.end, 'all')
   })
 
+  // MUST FAIL ON: rounding the figure. Two failed checks in 8,120 are 99.9754%: the Uptime page writes 99.97% (it
+  // cuts, never rounds up), and the tile wrote 99.98% beside it for the same days (seen on production 23-11-2026).
+  it('writes availability as the Uptime page does: cut at two decimals, never rounded up', () => {
+    h.useUptimeStatus.mockReturnValue(answer(status([day('d1')], { overall_uptime: 99.97536945812809 })))
+    const first = inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)
+    expect(value('uptime')).toBe('99.97%')
+    first.unmount()
+    // One failed check in a year of them must not read as a whole 100.
+    h.useUptimeStatus.mockReturnValue(answer(status([day('d1')], { overall_uptime: 99.9996 })))
+    inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)
+    expect(value('uptime')).toBe('99.99%')
+  })
+
   it('writes a whole 100% without decimals', () => {
     h.useUptimeStatus.mockReturnValue(answer(status([day('d1')], { overall_uptime: 100 })))
     inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)

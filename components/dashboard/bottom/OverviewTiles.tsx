@@ -7,7 +7,7 @@ import { HeartbeatIcon, SearchIcon } from '@ciphera-net/facet'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import ScoreGauge from '@/components/performance/ScoreGauge'
 import { Sparkline } from '@/components/ui/sparkline'
-import { bucketFill, bucketState, rangeAvgResponseMs } from '@/components/uptime/uptimeMetrics'
+import { bucketFill, bucketState, fmtUptimePct, rangeAvgResponseMs } from '@/components/uptime/uptimeMetrics'
 import { FRAME_SURFACE } from '@/lib/dashboard/frame'
 import { memberScope, scopeHref, servesPage, useOptionalSiteScope, type SitePage } from '@/lib/scope/SiteScope'
 import { useGSCDailyTotals, useGSCOverview, useGSCStatus, usePerformanceConfig, usePerformanceLatest, useUptimeStatus } from '@/lib/swr/dashboard'
@@ -175,7 +175,9 @@ export function UptimeTile({ siteId, dateRange, period }: TileOwnProps) {
           {state.word}
         </span>
       ) : null}
-      value={!uptime || none ? dash : `${uptime.overall_uptime.toFixed(uptime.overall_uptime === 100 ? 0 : 2)}%`}
+      // Written as the Uptime page writes it: cut at two decimals, never rounded up, so a range with an outage
+      // cannot read 100.00% here beside 99.99% on the page.
+      value={!uptime || none ? dash : fmtUptimePct(uptime.overall_uptime)}
       context={!uptime
         ? blank
         : none
