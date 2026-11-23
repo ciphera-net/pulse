@@ -258,8 +258,9 @@ export function humanizeCause(
 export const UPTIME_POS = '#3ECF8E'
 export const UPTIME_NEG = '#F8836B'
 export const UPTIME_DEGRADED = '#fbbf24'
-// * "Couldn't check": neither good nor bad, so a neutral, lighter than the grid's "no check at all".
-export const UPTIME_UNSEEN = '#737373'
+// * "Couldn't check": neither good nor bad, so a neutral, lighter than the grid's "no check at all". The charts'
+// * axis grey, by its variable, so it follows the theme (the same grey as before on dark).
+export const UPTIME_UNSEEN = 'var(--chart-axis)'
 
 /** The one fill rule of every availability bar on the page and on the dashboard's tile. */
 export function bucketFill(state: BucketState): string {
