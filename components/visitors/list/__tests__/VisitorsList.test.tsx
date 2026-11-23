@@ -26,15 +26,18 @@ const blockOf = (width: number) =>
 afterEach(() => { vi.restoreAllMocks() })
 const panel = () => document.querySelector('[data-split-panel]')?.getAttribute('data-split-panel') ?? null
 const opened = () => Array.from(document.querySelectorAll('[data-opened]')).map((o) => o.getAttribute('data-opened'))
-/** The panel's line while no press has picked a visitor (R119). */
-const empty = () => document.querySelector('[data-split-panel-empty]')
 const pressed = () => Array.from(document.querySelectorAll('[data-visitor-line] button')).map((b) => b.getAttribute('aria-pressed'))
 const press = (key: string) => fireEvent.click(document.querySelector(`[data-visitor-line="${key}"] button`) as HTMLElement)
-/** The panel says no visitor is picked: no visitor read, no row pressed, the line in its place. */
-const waiting = () => {
-  expect(panel()).toBe('')
+/**
+ * The panel folded into its strip on this visitor (R123): the list's first one until a press picks another. No visitor is
+ * read or open, no row pressed, and no line in the panel's place: the strip names the visitor it holds.
+ */
+const foldedOn = (key: string) => {
+  expect(document.querySelector('[data-visitors-list]')?.getAttribute('data-split-fold')).toBe('shut')
+  expect(panel()).toBe(key)
   expect(opened()).toEqual([])
-  expect(empty()).toHaveTextContent('Press a visitor to see what they did.')
+  expect(document.querySelector('[data-split-strip]')?.getAttribute('aria-label')).toMatch(/^Show .+ beside the list$/)
+  expect(document.querySelector('[data-split-panel-empty]')).toBeNull()
   expect(pressed().every((p) => p === 'false')).toBe(true)
 }
 
@@ -116,17 +119,17 @@ describe('VisitorsList', () => {
     expect(SERVER_SORT).toEqual({ pageviews: 'pageviews', visits: 'visits', events: 'own_events', last_seen: 'last_seen' })
   })
 
-  // R120: the visitor beside the list, from 820 px of block; R119 there too: only a press picks one.
-  it('puts the visitor beside the list on a wide block: none on arrival, a press picks one, the carets step', () => {
+  // R120: the visitor beside the list, from 820 px of block; R119 there too: only a press opens one; R123: until then the
+  // panel is folded into its strip on the list's first visitor.
+  it('puts the visitor beside the list on a wide block: folded on the first on arrival, a press opens one, the carets step', () => {
     blockOf(SPLIT_FROM)
     render(<VisitorsList {...base} rows={[row(1), row(2), row(3)]} total={3} page={1} onPage={() => {}} />)
     expect(document.querySelector('[data-visitors-split]')).not.toBeNull()
-    // Nothing opens by itself: the panel says to press a visitor, and nothing unfolds under a row.
-    waiting()
+    // Nothing opens by itself: the panel is folded on the first visitor, and nothing unfolds under a row.
+    foldedOn('key-1')
     press('key-3')
     expect(panel()).toBe('key-3')
     expect(opened()).toEqual(['key-3'])
-    expect(empty()).toBeNull()
     expect(pressed()).toEqual(['false', 'false', 'true'])
     // A second press keeps them: the panel holds them until another is picked.
     press('key-3')
@@ -141,7 +144,7 @@ describe('VisitorsList', () => {
     expect(panel()).toBe('key-2')
   })
 
-  it('starts a new page beside the list with nothing picked once its rows are here', async () => {
+  it('starts a new page beside the list folded on its first visitor once its rows are here', async () => {
     blockOf(1200)
     const first = Array.from({ length: PER_PAGE }, (_, i) => row(i))
     const { rerender } = render(<VisitorsList {...base} rows={first} total={60} page={1} onPage={() => {}} />)
@@ -150,30 +153,31 @@ describe('VisitorsList', () => {
     // Next asked: the rows shown are still page 1's, so the visitor picked stays.
     rerender(<VisitorsList {...base} rows={first} total={60} page={2} onPage={() => {}} />)
     expect(panel()).toBe('key-4')
-    // Page 2's rows arrive: nobody is picked, its first visitor no more than any other (R119).
+    // Page 2's rows arrive: the panel folds again, on page 2's first visitor (R123), and nobody is picked.
     const second = Array.from({ length: PER_PAGE }, (_, i) => row(PER_PAGE + i))
     rerender(<VisitorsList {...base} rows={second} total={60} page={2} arrival="last_seen.desc.2" onPage={() => {}} />)
     await waitFor(() => expect(document.querySelector(`[data-visitor-line="key-${PER_PAGE}"]`)).not.toBeNull())
-    waiting()
+    foldedOn(`key-${PER_PAGE}`)
   })
 
-  it('starts a new order or a new list beside the list (a tab, a range, a filter) with nothing picked', async () => {
+  it('starts a new order or a new list beside the list (a tab, a range, a filter) folded on its first visitor', async () => {
     blockOf(1200)
     const lines = () => Array.from(document.querySelectorAll('[data-visitor-line]')).map((l) => l.getAttribute('data-visitor-line'))
     const { rerender } = render(<VisitorsList key="all" {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
     press('key-2')
     expect(panel()).toBe('key-2')
-    // A press on a column's name: the same visitors in a new order, a new arrival. The panel waits at once; the rows
-    // flip once the old order's exit is done (AnimatePresence mode="wait"), and none of the new ones is pressed.
+    // A press on a column's name: the same visitors in a new order, a new arrival. The panel folds at once, on the new
+    // order's first visitor; the rows flip once the old order's exit is done (AnimatePresence mode="wait"), and none of
+    // the new ones is pressed.
     rerender(<VisitorsList key="all" {...base} rows={[row(2), row(1)]} total={2} page={1} arrival="pageviews.desc.1" onPage={() => {}} />)
-    expect(panel()).toBe('')
+    expect(document.querySelector('[data-visitors-list]')?.getAttribute('data-split-fold')).toBe('shut')
     await waitFor(() => expect(lines()).toEqual(['key-2', 'key-1']))
-    waiting()
+    foldedOn('key-2')
     press('key-1')
     expect(panel()).toBe('key-1')
     // A quick tab (Converted, Went on, Left after one page): the page keys the list by its list, so it mounts again.
     rerender(<VisitorsList key="went_on" {...base} rows={[row(1), row(3)]} total={2} page={1} arrival="pageviews.desc.1" onPage={() => {}} />)
-    waiting()
+    foldedOn('key-1')
   })
 
   it('has no panel under 820 px of block: nothing opens by itself, a press unfolds the visitor in place (R119)', () => {
@@ -196,8 +200,8 @@ describe('VisitorsList', () => {
   it('keeps Place, Device and Source beside the 380 px panel, leaves Events and Visits to it, keeps names whole', () => {
     blockOf(1200)
     render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
-    // The panel's room is kept while it waits for a press, so the list does not move when one picks a visitor.
-    expect(root().className).toContain('grid-cols-[minmax(0,1fr)_380px]')
+    // Folded on arrival, the strip's 44 px; a press opens the panel to its 380 px.
+    expect(root().className).toContain('grid-cols-[minmax(0,1fr)_44px]')
     press('key-1')
     expect(root().className).toContain('grid-cols-[minmax(0,1fr)_380px]')
     // R122: the name never gets less than the widest pseudonym needs; the panel narrows their day instead.
@@ -241,34 +245,37 @@ describe('VisitorsList', () => {
     expect(panel()).toBe('key-1')
     const strip = document.querySelector('[data-split-strip]') as HTMLElement
     expect(strip.getAttribute('aria-label')).toMatch(/^Show .+ beside the list$/)
-    expect(strip.getAttribute('aria-label')).not.toBe('Show the panel beside the list')
     fireEvent.click(strip)
     expect(fold()).toBe('open')
     expect(opened()).toEqual(['key-1'])
   })
 
-  it('folds the waiting panel on Esc into a strip holding only its caret, and the strip opens it again still waiting', () => {
+  it('opens the panel from the strip on arrival on the first visitor, who becomes the one picked', () => {
     blockOf(1200)
     render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
-    waiting()
-    fireEvent.keyDown(window, { key: 'Escape' })
-    expect(fold()).toBe('shut')
-    expect(panel()).toBe('')
-    expect(opened()).toEqual([])
+    foldedOn('key-1')
+    // No line waits in the panel's place: the strip is the whole panel until a press.
+    expect(screen.queryByText('Press a visitor to see what they did.')).toBeNull()
     const strip = document.querySelector('[data-split-strip]') as HTMLElement
-    expect(strip.getAttribute('aria-label')).toBe('Show the panel beside the list')
-    expect(strip.textContent).toBe('')
-    // From the keyboard the focus goes to the line saying to press a visitor: the strip it was on is gone.
     strip.focus()
     fireEvent.click(strip)
     expect(fold()).toBe('open')
-    waiting()
-    expect(document.activeElement).toBe(empty())
+    expect(opened()).toEqual(['key-1'])
+    expect(pressed()).toEqual(['true', 'false'])
+    // From the keyboard the focus goes to the fold button: the strip it was on is gone.
+    expect(document.activeElement).toBe(document.querySelector('[data-panel-fold]'))
+  })
+
+  it('draws no panel for an empty list', () => {
+    blockOf(1200)
+    render(<VisitorsList {...base} rows={[]} total={0} page={1} onPage={() => {}} />)
+    expect(document.querySelector('[data-split-panel]')).toBeNull()
   })
 
   it('folds on Esc, never on an Esc that closes something else, is typed in a field or was handled', () => {
     blockOf(1200)
     render(<VisitorsList {...base} rows={[row(1), row(2)]} total={2} page={1} onPage={() => {}} />)
+    press('key-1')
     // An Esc closing a menu: its trigger is still expanded while the press is dispatched (somethingIsOpen).
     const menu = document.createElement('button')
     menu.setAttribute('aria-expanded', 'true')
@@ -291,7 +298,7 @@ describe('VisitorsList', () => {
     expect(fold()).toBe('shut')
   })
 
-  it('opens a folded panel on the visitor a row press picks, and stays folded across a new page', async () => {
+  it('opens a folded panel on the visitor a row press picks, and folds again on a new page\'s first visitor', async () => {
     blockOf(1200)
     const { rerender } = render(<VisitorsList {...base} rows={[row(1), row(2), row(3)]} total={60} page={1} onPage={() => {}} />)
     press('key-1')
@@ -299,13 +306,12 @@ describe('VisitorsList', () => {
     press('key-3')
     expect(fold()).toBe('open')
     expect(opened()).toEqual(['key-3'])
-    fireEvent.click(screen.getByRole('button', { name: 'Fold the panel' }))
-    // The next page arrives folded, and nobody is picked: the strip holds only its caret.
+    // Open on key-3, the next page arrives: folded on its first visitor, and nobody is picked (R123).
     rerender(<VisitorsList {...base} rows={[row(4), row(5)]} total={60} page={2} arrival="last_seen.desc.2" onPage={() => {}} />)
     expect(fold()).toBe('shut')
-    expect(panel()).toBe('')
-    expect(document.querySelector('[data-split-strip]')?.getAttribute('aria-label')).toBe('Show the panel beside the list')
+    expect(panel()).toBe('key-4')
     await waitFor(() => expect(document.querySelector('[data-visitor-line="key-5"]')).not.toBeNull())
+    foldedOn('key-4')
     press('key-5')
     expect(fold()).toBe('open')
     expect(opened()).toEqual(['key-5'])
