@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import {
   getTopPages,
   getTopReferrers,
@@ -34,14 +34,6 @@ import { useSiteRead } from '@/lib/swr/site-read'
 // suggestions fails loudly instead of returning an empty list that reads as "nothing to suggest".
 // ---------------------------------------------------------------------------
 
-/**
- * How long one campaigns read serves the three campaign kinds (PUL-94). utm_source, utm_medium and utm_campaign are
- * fields of one list, and the Filter button reads every kind in one pass: they were three identical reads, each a
- * ClickHouse query on the dashboard's shared limit. Shared for one pass, then read fresh, so a later pass (the page's
- * answer refreshes every minute) never shows an old list.
- */
-export const CAMPAIGNS_SHARED_MS = 10_000
-
 export function useFilterSuggestions(
   siteId: string,
   range: { start: string; end: string } | null,
@@ -57,9 +49,6 @@ export function useFilterSuggestions(
   const start = range?.start
   const end = range?.end
   const { ref, available } = useSiteRead(siteId, 'demo')
-  // The campaigns read the three campaign kinds share: for this site, range and filters, for CAMPAIGNS_SHARED_MS.
-  const campaigns = useRef<{ key: string; at: number; read: ReturnType<typeof getCampaigns> } | null>(null)
-  const campaignsKey = [siteId, start, end, filtersParam, period, liveMinutes].join('|')
 
   return useCallback(
     async (dimension: string): Promise<FilterSuggestion[]> => {
@@ -118,19 +107,7 @@ export function useFilterSuggestions(
           case 'utm_source':
           case 'utm_medium':
           case 'utm_campaign': {
-            const now = Date.now()
-            let shared = campaigns.current
-            if (!shared || shared.key !== campaignsKey || now - shared.at > CAMPAIGNS_SHARED_MS) {
-              const read = getCampaigns(ref, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
-              const entry = { key: campaignsKey, at: now, read }
-              shared = entry
-              campaigns.current = entry
-              // A failed read is not shared: the next kind (or a retry) asks again.
-              read.catch(() => {
-                if (campaigns.current === entry) campaigns.current = null
-              })
-            }
-            const data = await shared.read
+            const data = await getCampaigns(ref, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             const map = new Map<string, number>()
             const field = dimension === 'utm_source' ? 'source' : dimension === 'utm_medium' ? 'medium' : 'campaign'
             data.forEach(c => {
@@ -172,6 +149,6 @@ export function useFilterSuggestions(
         throw err
       }
     },
-    [ref, available, start, end, filtersParam, period, liveMinutes, campaignsKey],
+    [ref, available, start, end, filtersParam, period, liveMinutes],
   )
 }

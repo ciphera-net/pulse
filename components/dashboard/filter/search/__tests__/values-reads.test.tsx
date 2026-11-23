@@ -4,9 +4,9 @@ import type { DimensionFilter, FilterSuggestion } from '@/lib/filters'
 import { SUGGESTION_READS_AT_ONCE, useFilterValues } from '../values'
 
 // PUL-94: the Filter button reads every kind's list when the pointer reaches it. Each read is a ClickHouse query on
-// the dashboard's shared limit (16 at once for every customer together), and all ~17 kinds at once made one hover more
-// than that whole limit. The lists are read SUGGESTION_READS_AT_ONCE at a time, and a reading that a newer one (other
-// filters, another range) replaces stops asking.
+// the dashboard's shared limit (16 at once for every customer together), and a hover sent them all at once (9 on the
+// dashboard: hover-requests.test.tsx counts them at the network). The lists are read SUGGESTION_READS_AT_ONCE at a
+// time, and a reading that a newer one (other filters, another range) replaces stops asking.
 
 const KINDS = Array.from({ length: 17 }, (_, i) => `kind-${i}`)
 const NO_FILTERS: DimensionFilter[] = []

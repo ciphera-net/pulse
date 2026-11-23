@@ -201,9 +201,11 @@ export function search(values: Loaded, text: string, only: string | null, perKin
 
 /**
  * How many kinds' lists one Filter button reads at once (PUL-94, 23-11-2026). Every read is a ClickHouse query on the
- * dashboard user, which allows 16 at once for every customer together; reading all ~17 kinds at once made a single
- * hover more than that whole limit (Pulse/docs/audits/23-11-2026-clickhouse-dashboard-cap-pul-93.md). The reads start
- * when the pointer reaches the button, so the lists are in by the time the panel opens.
+ * dashboard user, which allows 16 at once for every customer together. A hover on the dashboard read its lists all at
+ * once: 9 requests (the kinds the page's own answer lists make none, and the API client sends the three campaign kinds'
+ * identical read once), more than half of that limit from one person
+ * (Pulse/docs/audits/23-11-2026-clickhouse-dashboard-cap-pul-93.md). The reads start when the pointer reaches the
+ * button, so the lists are in by the time the panel opens.
  */
 export const SUGGESTION_READS_AT_ONCE = 4
 
