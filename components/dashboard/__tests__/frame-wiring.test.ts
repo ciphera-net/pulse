@@ -27,7 +27,7 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
     expect(frame).toContain('campaigns={caps.fullReads ? undefined : (dashboard?.campaigns ?? [])}')
     // No Outbound on a share link, as today: its links are the Pages block's fourth tab, and the block is handed
     // them only where their read is served.
-    expect(frame).toContain('outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff, filterByLink: eventFilters } : undefined}')
+    expect(frame).toContain('outbound={caps.fullReads ? { period, goalCounts: dashboard?.goal_counts ?? [], goalsImported: dashboard?.imported_goals, trackingOff: outboundOff } : undefined}')
     // And the Outbound block itself is not in the frame any more.
     expect(frame).not.toContain('<Outbound')
     expect(frame).not.toContain("from '@/components/dashboard/Outbound'")
@@ -91,9 +91,9 @@ describe('the surface mounts the frame for every reader, and holds nothing of th
 
   it('mounts the frame for every reader: no flag is read, public pages included (15-11-2026)', () => {
     expect(page).not.toMatch(/const frame\b/)
-    // The two flags the page reads are betas that decide what its filter offers (Match any's switch, R65, and the
-    // event filter, R45), never the frame's.
-    expect(page.match(/useFeature\([^)]*\)/g) ?? []).toEqual(['useFeature(MATCH_ANY_FLAG)', 'useFeature(EVENT_FILTERS_FLAG)'])
+    // No flag at all since 23-11-2026: the two the page read until then (Match any's switch, R65, and the event
+    // filter, R45) went to every team that day.
+    expect(page.match(/useFeature\([^)]*\)/g) ?? []).toEqual([])
     expect(page).not.toContain('NEW_DASHBOARD_FLAG')
   })
 

@@ -3,8 +3,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { MagnifyingGlass } from '@phosphor-icons/react'
-import { EVENT_FILTERS_FLAG, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND, SCOPED_DIMENSIONS, categoriesFor, eventPropertyOf, type FilterSuggestion } from '@/lib/filters'
-import { useFeature } from '@/lib/features'
+import { EVENT_PROPERTY_SCOPE, OUTBOUND_KIND, SCOPED_DIMENSIONS, categoriesFor, eventPropertyOf, type FilterSuggestion } from '@/lib/filters'
 import { DIMENSION_ICONS, iconKeyOf } from './dimensionIcons'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { moveHighlight } from './useFilterBuilder'
@@ -67,12 +66,10 @@ function KindList({ activeDimensions, onPick, onClose, allowed }: Omit<Dimension
 
   const query = search.trim().toLowerCase()
   const allowSet = useMemo(() => (allowed ? new Set(allowed) : null), [allowed])
-  // * The event filter's beta (R45): the Events group offers an event and an outbound link in place of event_name.
-  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
-
   // * Groups with their matching dimensions; `flat` is the keyboard order.
   const { groups, flat } = useMemo(() => {
-    const groups = categoriesFor(eventFilters)
+    // * The Events group offers an event and an outbound link in place of event_name (R45).
+    const groups = categoriesFor()
       .map(cat => ({
         label: cat.label,
         dimensions: cat.dimensions.filter(
@@ -82,7 +79,7 @@ function KindList({ activeDimensions, onPick, onClose, allowed }: Omit<Dimension
       }))
       .filter(g => g.dimensions.length > 0)
     return { groups, flat: groups.flatMap(g => g.dimensions) }
-  }, [query, allowSet, eventFilters])
+  }, [query, allowSet])
 
   // * Clamp the highlight when the filtered list shrinks.
   useEffect(() => {

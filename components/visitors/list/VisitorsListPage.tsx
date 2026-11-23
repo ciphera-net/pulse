@@ -19,8 +19,7 @@ import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { REALTIME_EMPTY_LINE, REALTIME_MODES, REALTIME_ROLLING_MINUTES } from '@/lib/dashboard/realtimeRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
-import { EVENT_FILTERS_FLAG, parseFiltersFromURL, readEventNameAsEvent, serializeFilters, type DimensionFilter } from '@/lib/filters'
-import { useFeature } from '@/lib/features'
+import { parseFiltersFromURL, readEventNameAsEvent, serializeFilters, type DimensionFilter } from '@/lib/filters'
 import { useDataWindow, useSite, useVisitorsList, useVisitorsSummary } from '@/lib/swr/dashboard'
 import { scopeHref, useSiteScope } from '@/lib/scope/SiteScope'
 import { FRAME_CARD_NAME, FRAME_SURFACE } from '@/lib/dashboard/frameClasses'
@@ -124,15 +123,12 @@ export default function VisitorsListPage({ siteId }: { siteId: string }) {
     [rollingMinutes, dateRange.start, dateRange.end, allToken],
   )
 
-  // The dashboard's filter: dimensions and, with the event-filters beta, events (the server answers both).
-  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
+  // The dashboard's filter: dimensions and events (the server answers both); an old address's event_name filter reads
+  // as an event (R45).
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
     const raw = asked.get('filters')
-    return raw ? parseFiltersFromURL(raw) : []
+    return raw ? readEventNameAsEvent(parseFiltersFromURL(raw)) : []
   })
-  useEffect(() => {
-    if (eventFilters) setFilters((prev) => readEventNameAsEvent(prev))
-  }, [eventFilters])
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
   const handleFilterApply = useCallback((filter: DimensionFilter, editingIndex: number | null) => {
     setFilters((prev) => {
@@ -239,7 +235,7 @@ export default function VisitorsListPage({ siteId }: { siteId: string }) {
       <RealtimeOrb count={activeNow} live={live} onToggle={toggleRealtime} />
       <div className="hidden flex-1 sm:block" />
       <FiltersBox filters={filters} onApply={handleFilterApply} onRemove={handleRemoveFilter} onClearAll={handleClearFilters} pageValues={NO_PAGE_VALUES} />
-      <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={fetchSuggestions} pageValues={NO_PAGE_VALUES} onApplySet={handleApplySet} eventFilters={eventFilters} />
+      <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={fetchSuggestions} pageValues={NO_PAGE_VALUES} onApplySet={handleApplySet} />
       <DateRangePicker {...picker} />
     </FrameToolbar>
   )

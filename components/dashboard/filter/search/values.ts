@@ -41,8 +41,8 @@ export const ALL_DIMENSIONS = GROUPS.flatMap((g) => g.dimensions)
 export { EVENT_PROPERTY_SCOPE }
 
 /**
- * The groups while the event-filters beta is on (R45): the Events group offers an event, an event's property and an
- * outbound link, each a test on a visitor's day, in place of the row test `event_name` (design section 8).
+ * The groups every page offers (R45; every team since 23-11-2026): the Events group offers an event, an event's property
+ * and an outbound link, each a test on a visitor's day, in place of the row test `event_name` (design section 8).
  */
 export const EVENT_FILTER_GROUPS: { label: string; dimensions: string[] }[] = GROUPS.map((g) =>
   g.dimensions.includes('event_name')
@@ -67,17 +67,12 @@ export function groupsOnly(groups: { label: string; dimensions: string[] }[], on
   return [...added, ...kept]
 }
 
-/** The groups a page offers: the event filter's while its beta is on. */
-export function groupsFor(eventFilters: boolean): { label: string; dimensions: string[] }[] {
-  return eventFilters ? EVENT_FILTER_GROUPS : GROUPS
-}
-
 /**
  * Every kind a page reads values for up front, in the groups' order. "Event property" is not one: its first step lists
  * the events, which the Event kind already reads, and its later steps are read when they open (useScopeList).
  */
-export function dimensionsFor(eventFilters: boolean): string[] {
-  return groupsFor(eventFilters).flatMap((g) => g.dimensions).filter((d) => d !== EVENT_PROPERTY_SCOPE)
+export function dimensionsFor(): string[] {
+  return EVENT_FILTER_GROUPS.flatMap((g) => g.dimensions).filter((d) => d !== EVENT_PROPERTY_SCOPE)
 }
 
 /** An event's name as the Events block writes it (with no list at hand: the stored name made readable). */

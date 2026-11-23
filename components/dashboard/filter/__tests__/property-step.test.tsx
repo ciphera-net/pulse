@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest'
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 
-// The older picker's "Event property" (a funnel's page, Journeys, Settings, Export), under the event-filters beta
-// (R45; design section 8): the range's events, then the picked event's keys, then the value stage takes the property
-// kind like any other. Backspace goes back one step; a failed read is said and read again on Retry.
-
-let beta = true
-vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'event-filters' ? beta : false) }))
+// The older picker's "Event property" (a funnel's page, Settings, Export; R45, design section 8, every team since
+// 23-11-2026): the range's events, then the picked event's keys, then the value stage takes the property kind like any
+// other. Backspace goes back one step; a failed read is said and read again on Retry.
 
 import DimensionStage from '../DimensionStage'
 import ValuePicker from '../ValuePicker'
@@ -17,7 +14,6 @@ beforeAll(() => {
 })
 afterEach(() => {
   cleanup()
-  beta = true
 })
 
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)) })
@@ -36,16 +32,12 @@ function renderStage(read: (d: string) => Promise<FilterSuggestion[]> = async (d
 }
 
 describe('Event property in the older picker (R45)', () => {
-  it('offers Event property by its name, between Event and Outbound link, only under the beta', () => {
+  it('offers Event property by its name, between Event and Outbound link', () => {
     renderStage()
     const kinds = screen.getAllByRole('option').map((o) => o.id.replace('filter-dim-', ''))
     const at = kinds.indexOf(EVENT_PROPERTY_SCOPE)
     expect(kinds.slice(at - 1, at + 2)).toEqual([EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND])
     expect(screen.getByRole('option', { name: /Event property/ })).toBeTruthy()
-    cleanup()
-    beta = false
-    renderStage()
-    expect(screen.getAllByRole('option').map((o) => o.id)).not.toContain(`filter-dim-${EVENT_PROPERTY_SCOPE}`)
   })
 
   it('goes event, then key, and hands the value stage the property\'s kind', async () => {

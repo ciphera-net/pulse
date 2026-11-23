@@ -106,7 +106,7 @@ describe('RealtimeOrb on the share page (display-only)', () => {
   })
 })
 
-// R does what a press on the orb does (16-11-2026, R13), while the keyboard shortcuts' beta is on.
+// R does what a press on the orb does (16-11-2026, R13), for every team since 23-11-2026 and with no beta on.
 describe('RealtimeOrb and R', () => {
   it('R switches realtime where the orb is a switch', () => {
     flag.on = true
@@ -118,19 +118,22 @@ describe('RealtimeOrb and R', () => {
     expect(screen.getByRole('button')).toHaveAttribute('aria-keyshortcuts', 'R')
   })
 
-  it('R does nothing with ⌘, in a field, or with the beta off', () => {
-    flag.on = true
+  it('R does nothing with ⌘ or in a field', () => {
     const onToggle = vi.fn()
-    const { unmount } = render(<RealtimeOrb count={3} live={false} onToggle={onToggle} />)
+    render(<RealtimeOrb count={3} live={false} onToggle={onToggle} />)
     fireEvent.keyDown(document.body, { key: 'r', metaKey: true })
     const field = document.body.appendChild(document.createElement('input'))
     fireEvent.keyDown(field, { key: 'r' })
     field.remove()
-    unmount()
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('R works with no beta on (a page with no team, the demo)', () => {
     flag.on = false
+    const onToggle = vi.fn()
     render(<RealtimeOrb count={3} live={false} onToggle={onToggle} />)
     fireEvent.keyDown(document.body, { key: 'r' })
-    expect(onToggle).not.toHaveBeenCalled()
-    expect(screen.getByRole('button')).not.toHaveAttribute('aria-keyshortcuts')
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button')).toHaveAttribute('aria-keyshortcuts', 'R')
   })
 })

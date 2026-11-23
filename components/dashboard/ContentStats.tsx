@@ -65,8 +65,6 @@ interface ContentStatsProps {
     goalsImported?: ImportedProvenance | null
     /** The site's "Outbound links" option is off. */
     trackingOff?: boolean
-    /** The event-filters beta (R45): a press on a row filters the page by its link (onFilter), the arrow opens it. */
-    filterByLink?: boolean
   }
 }
 
@@ -215,7 +213,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             liveMinutes={liveMinutes}
             trackingOff={outbound.trackingOff}
             sort={clickSort}
-            onFilter={outbound.filterByLink ? onFilter : undefined}
+            onFilter={onFilter}
           />
         ) : (
         <>

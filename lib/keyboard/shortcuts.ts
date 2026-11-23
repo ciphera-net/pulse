@@ -1,11 +1,5 @@
 import { isTourActive } from '@/lib/tour/constants'
 
-/**
- * The beta the range keys, R and the date menu's letters ship behind (02-11-2026: every new feature ships as a beta;
- * lib/betas.ts). F, `g` + a letter, `,` and `?` are older than it and stay on for everyone.
- */
-export const KEYBOARD_SHORTCUTS_FLAG = 'keyboard-shortcuts'
-
 // ─── The keys that pick a date range (16-11-2026, R13: shortcuts for the ranges and the filter) ───
 //
 // Plausible's letters (plausible.io/docs/keyboard-shortcuts, read 16-11-2026), so somebody moving

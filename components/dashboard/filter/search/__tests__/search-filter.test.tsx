@@ -34,7 +34,9 @@ describe('SearchFilter', () => {
     fireEvent.click(button)
     expect(panel()).toBeTruthy()
     const kinds = [...(panel() as HTMLElement).querySelectorAll('[data-search-filter-kind]')].map((k) => k.getAttribute('data-search-filter-kind'))
-    expect(kinds).toEqual(expect.arrayContaining(['page', 'referrer', 'country', 'device', 'event_name', 'language', 'timezone']))
+    // The Events group offers an event in place of the row test event_name (R45, every team since 23-11-2026).
+    expect(kinds).toEqual(expect.arrayContaining(['page', 'referrer', 'country', 'device', 'event', 'language', 'timezone']))
+    expect(kinds).not.toContain('event_name')
     expect((panel() as HTMLElement).querySelector('[aria-busy="true"]')).toBeNull()
     // Every kind carries its own icon.
     for (const k of (panel() as HTMLElement).querySelectorAll('[data-search-filter-kind]')) expect(k.querySelector('svg')).toBeTruthy()
@@ -219,7 +221,7 @@ describe('FiltersBox (R46: "One box")', () => {
   })
 })
 
-describe('SearchFilter with the event-filters beta (R45)', () => {
+describe('SearchFilter and the event filter (R45)', () => {
   const EVENT_PAGE = {
     event_name: [{ value: 'signup', label: 'Sign-ups', count: 12 }],
     event: [{ value: 'signup', label: 'Sign-ups', count: 12 }],
@@ -229,7 +231,7 @@ describe('SearchFilter with the event-filters beta (R45)', () => {
     const { OUTBOUND_KIND } = await import('@/lib/filters')
     const onApply = vi.fn()
     const fetch = vi.fn(async (d: string) => (d === OUTBOUND_KIND ? OUTBOUND : (LISTS[d] ?? [])))
-    render(<SearchFilter filters={filters} onApply={onApply} fetchSuggestions={fetch} pageValues={EVENT_PAGE} eventFilters />)
+    render(<SearchFilter filters={filters} onApply={onApply} fetchSuggestions={fetch} pageValues={EVENT_PAGE} />)
     return { onApply, fetch, button: screen.getByTestId('search-filter-button'), OUTBOUND_KIND }
   }
 
