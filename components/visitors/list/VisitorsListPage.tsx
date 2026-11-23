@@ -37,7 +37,7 @@ import type { VisitorLinks } from './OpenedVisitor'
 import { NAME_AN_EVENT_HREF } from './day'
 
 // ---------------------------------------------------------------------------
-// The new Visitors page (look C, rulings R98 to R116, 18 to 20-11-2026; in beta behind `new-visitors`, lib/betas.ts;
+// The Visitors page (look C, rulings R98 to R116, 18 to 20-11-2026; every team's since 23-11-2026;
 // plan Pulse/docs/plans/18-11-2026-visitors-page-overhaul-plan.md). From the top: the dashboard's toolbar (the realtime
 // orb, the Filter, its box and the date control), a strip of four figures against the period before, and the block:
 // every visitor in one list with their day as marks, the quick tabs over it, a visitor opened in place.

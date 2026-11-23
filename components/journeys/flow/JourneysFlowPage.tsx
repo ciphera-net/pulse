@@ -31,7 +31,7 @@ import FlowChart from './FlowChart'
 import { entryOnlyTotal, sliceFlow } from './flowMath'
 
 // ---------------------------------------------------------------------------
-// The new Journeys page (in beta behind `new-journeys`, components/journeys/flow/flag.ts; the owner's rulings R87 to
+// The Journeys page (every team's since 23-11-2026, a beta from 18-11; rulings R87 to
 // R96 of 18-11-2026, Pulse/docs/plans/18-11-2026-journeys-page-overhaul-plan.md). From the top: the dashboard's
 // toolbar (the Search filter with its box, the date control), one glass block with the flow (FlowChart.tsx) and its
 // Steps switch, and under it the pressed journey's card.
@@ -174,7 +174,7 @@ export default function JourneysFlowPage({ siteId }: { siteId: string }) {
   } else {
     const all = deep.total_sessions + onePage
     body = (
-      <section className={`${FRAME_SURFACE} relative min-w-0 p-6 [container-type:inline-size]`} data-journeys-block="">
+      <section className={`${FRAME_SURFACE} relative min-w-0 p-6 [container-type:inline-size]`} data-journeys-block="" data-tour="journeys-canvas">
         <UpdatingChip active={isValidating} />
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="flex items-center gap-1.5">

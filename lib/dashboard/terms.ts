@@ -542,48 +542,6 @@ export const TERMS: Record<string, GlossaryTerm> = {
     docs: 'pagespeed#trend-trailing-median',
   },
 
-  // ── user-journeys ──
-  journey_depth_density: {
-    title: 'Depth and Paths (journeys)',
-    definition:
-      'Steps plotted (2–6), and pages kept per step before the rest roll into (other). Raising the pages limit splits (other) open; it adds no sessions.',
-    docs: 'user-journeys#journey-depth-density',
-  },
-  journey_dropoff: {
-    title: 'Drop-off (journeys)',
-    definition:
-      'The change in session count from the previous step: negative when fewer reached this one, positive when paths converged. Step 1 has no previous step, so it shows nothing rather than 0%.',
-    docs: 'user-journeys#journey-dropoff',
-  },
-  journey_entry_point: {
-    title: 'Entry page (journeys)',
-    definition:
-      'Journeys start on any page. To follow the ones that began on one page, add an Entry page filter.',
-    docs: 'user-journeys#journey-entry-point',
-  },
-  journey_lens: {
-    title: 'Lens (journeys)',
-    definition:
-      'Pinning a page highlights every hop connected to it across every step it appears at, and dims the rest. Hovering without pinning highlights only that row\'s own flow.',
-    docs: 'user-journeys#journey-lens',
-  },
-  journey_other_bucket: {
-    title: '(other) — journeys',
-    definition:
-      'Pages beyond a step\'s Paths limit are rolled into one row, not dropped: counts are kept, identities collapse. (other) to (other) hops are not drawn; the footer says how many.',
-    docs: 'user-journeys#journey-other-bucket',
-  },
-  journey_step: {
-    title: 'Step (journeys)',
-    definition:
-      // The columns are LABELLED from 1 (StepHeader renders `Step {index+1}`),
-      // so this must count from 1 too — a panel that says "0" beside a header
-      // reading "Step 1" teaches the reader the wrong thing about the very
-      // label it is attached to.
-      'Each column is one hop: step 1 is where sessions started, step k is where they were after k−1 recorded hops. Counts are sessions, out of that column\'s total; a one-page session made no hop, so it is in no column.',
-    docs: 'user-journeys#journey-step',
-  },
-
   // ── funnels ──
   funnel_exit_pages: {
     title: 'Exit pages (funnels)',

@@ -1,4 +1,4 @@
-// The new Journeys page's arithmetic (in beta behind `new-journeys`, components/journeys/flow/flag.ts; the owner's
+// The Journeys page's arithmetic (every team's since 23-11-2026, a beta from 18-11;
 // rulings R87 to R96 of 18-11-2026, Pulse/docs/plans/18-11-2026-journeys-page-overhaul-plan.md). Everything here is
 // read from the journeys read as it is (GET /journeys/flow, lib/api/journeys.ts): per step its top pages with exact
 // totals, the sessions between two consecutive steps (index −1 is the pages under the cut), and, since 18-11-2026,

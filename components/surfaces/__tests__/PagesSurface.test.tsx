@@ -1,50 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-// The Pages table under each scope (PUL-34 Phase 2). It has no write control and no link of
-// its own to hide, so what this pins is the rest of the contract: the site comes from the
-// scope and never from the route (useParams throws here), and a scope that does not serve the
-// page mounts no data hook and says so plainly, instead of drawing an empty table that would
-// claim the site has no pages.
+// The Pages page under each scope. The site comes from the scope and never from the route (useParams throws here); a
+// scope that serves the page draws the list (its own suite: components/pages/list/__tests__), the demo included; a
+// scope that does not serve it says so plainly and mounts nothing that reads. No beta is asked about: the list went to
+// every team on 23-11-2026.
 
-const mockUsePagesTable = vi.fn()
-const mockUseSite = vi.fn()
-const mockUseDataWindow = vi.fn()
-let mockPeriodReady = true
-/** What /me says of the list's beta flag for this team: on, off, or not known yet (null). */
-let mockListBeta: boolean | null = false
+const mockUseFeature = vi.fn()
 
 vi.mock('next/navigation', () => ({
   useParams: () => {
     throw new Error('a surface reads the site from the scope, never from useParams')
   },
 }))
-
-vi.mock('@/lib/swr/dashboard', () => ({
-  useSite: (...a: unknown[]) => mockUseSite(...a),
-  useDataWindow: (...a: unknown[]) => mockUseDataWindow(...a),
-  usePagesTable: (...a: unknown[]) => mockUsePagesTable(...a),
-}))
-
-vi.mock('@/lib/hooks/useUrlDateRange', () => ({
-  useUrlDateRange: () => ({
-    period: '30',
-    dateRange: { start: '2026-07-27', end: '2026-08-26' },
-    periodReady: mockPeriodReady,
-    picker: {},
-  }),
-}))
-
-// The table is PagesTable's own suite; here it says how many rows it was handed.
-vi.mock('@/components/pages/PagesTable', () => ({
-  default: ({ rows }: { rows: unknown[] }) => <div data-testid="table">{rows.length} rows</div>,
-}))
-vi.mock('@/components/ui/DateRangePicker', () => ({ default: () => null }))
-// The list is its own suite (components/pages/list/__tests__); here it says which site it was handed.
+// The list says which site it was handed.
 vi.mock('@/components/pages/list/PagesListPage', () => ({
   default: ({ siteId }: { siteId: string }) => <div data-testid="list-page">{siteId}</div>,
 }))
-vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'new-pages' ? mockListBeta : false) }))
+vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => mockUseFeature(flag) }))
 
 import PagesSurface from '../PagesSurface'
 import { SITE_PAGES, SiteScopeProvider, memberScope, type SiteScope } from '@/lib/scope/SiteScope'
@@ -56,20 +29,10 @@ const demo: SiteScope = {
 const customerLink: SiteScope = {
   siteId: 'cust-site', mode: 'public', basePath: '/share/cust-site', pages: ['dashboard'], demo: false, fidelity: 'scoped',
 }
-// The case the design says cannot happen yet and must still be safe: a scoped link whose shared
-// pages list this one. The server serves a scoped link the dashboard family only, so the page
-// must not ask for what it would be refused.
+// A scoped link whose shared pages list this one: the server serves a scoped link the dashboard family only, so the
+// page must not ask for what it would be refused.
 const scopedLinkListingThePage: SiteScope = { ...customerLink, pages: SITE_PAGES }
 const demoWithoutPages: SiteScope = { ...demo, pages: ['dashboard', 'funnels'] }
-
-const ROW = { path: '/a', pageviews: 1, visitors: 1, entries: 1, exits: 1, exit_rate: null, avg_time_on_page: null, entry_bounce_rate: null, avg_scroll_depth: null, trend: [], delta: null }
-const tableState = (data: unknown, over: Record<string, unknown> = {}) => ({
-  data, error: undefined, isLoading: false, ...over,
-})
-
-/** Every link the page draws, as written in its href. */
-const hrefsIn = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll('a[href]')).map((a) => a.getAttribute('href') ?? '')
 
 const renderUnder = (scope: SiteScope) =>
   render(
@@ -79,111 +42,28 @@ const renderUnder = (scope: SiteScope) =>
   )
 
 beforeEach(() => {
-  mockPeriodReady = true
-  mockListBeta = false
-  mockUsePagesTable.mockReset().mockReturnValue(tableState({ pages: [ROW, { ...ROW, path: '/b' }] }))
-  mockUseSite.mockReset().mockReturnValue({ data: { id: 'x', timezone: 'Europe/Oslo' } })
-  mockUseDataWindow.mockReset().mockReturnValue(null)
+  mockUseFeature.mockReset().mockReturnValue(false)
 })
 
-describe('member scope: the page as it was', () => {
-  it('reads the member\'s site and draws the table', () => {
+describe('PagesSurface', () => {
+  it('draws the list for a member, on the member\'s site, asking about no beta', () => {
     renderUnder(member)
-    expect(mockUseSite).toHaveBeenCalledWith('site-1')
-    expect(mockUseDataWindow).toHaveBeenCalledWith('site-1', 'pages')
-    expect(mockUsePagesTable.mock.calls.at(-1)?.[0]).toBe('site-1')
-    expect(screen.getByTestId('table')).toHaveTextContent('2 rows')
+    expect(screen.getByTestId('list-page')).toHaveTextContent('site-1')
+    expect(mockUseFeature).not.toHaveBeenCalled()
   })
 
-  it('shows the skeleton on the first load, and an error card for a failed request', () => {
-    mockUsePagesTable.mockReturnValue(tableState(undefined, { isLoading: true }))
-    const { container, unmount } = renderUnder(member)
-    expect(screen.queryByTestId('table')).toBeNull()
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-    unmount()
-
-    mockUsePagesTable.mockReturnValue(tableState(undefined, { error: new Error('boom') }))
-    renderUnder(member)
-    expect(screen.getByText('Could not load pages')).toBeInTheDocument()
-  })
-
-  it('draws the table while the view is still being resolved, as it always did', () => {
-    // The request is switched off until the period is known (its key is null), so there is
-    // no data and nothing in flight: that is "not yet", not "not available".
-    mockPeriodReady = false
-    mockUsePagesTable.mockReturnValue(tableState(undefined))
-    renderUnder(member)
-    expect(screen.getByTestId('table')).toHaveTextContent('0 rows')
-    expect(screen.queryByText('This page is not available')).toBeNull()
-  })
-})
-
-describe('public full scope (the demo)', () => {
-  it('reads the site from the scope, never from the route', () => {
+  it('draws the list on the demo, on the scope\'s site', () => {
     renderUnder(demo)
-    expect(mockUseSite).toHaveBeenCalledWith('demo-site')
-    expect(mockUseDataWindow).toHaveBeenCalledWith('demo-site', 'pages')
-    expect(mockUsePagesTable.mock.calls.at(-1)?.[0]).toBe('demo-site')
-    expect(screen.getByTestId('table')).toHaveTextContent('2 rows')
+    expect(screen.getByTestId('list-page')).toHaveTextContent('demo-site')
   })
 
-  it('has nothing to write and nothing to follow out of the page', () => {
-    const { container } = renderUnder(demo)
-    expect(screen.queryByRole('button')).toBeNull()
-    expect(hrefsIn(container)).toEqual([])
-  })
-
-  it('says not available, not an empty table, when the read was not made', () => {
-    mockUsePagesTable.mockReturnValue(tableState(undefined))
-    renderUnder(demo)
-    expect(screen.getByText('This page is not available')).toBeInTheDocument()
-    expect(screen.queryByTestId('table')).toBeNull()
-  })
-})
-
-describe('a scope that does not serve the page', () => {
   it.each([
     ['a customer link (scoped fidelity)', customerLink],
     ['a scoped link that lists the page anyway', scopedLinkListingThePage],
     ['a scope whose owner did not share pages', demoWithoutPages],
-  ])('%s says so plainly and mounts no data hook', (_name, scope) => {
+  ])('%s says so plainly and mounts no list', (_name, scope) => {
     renderUnder(scope)
     // The shell's one state for a page this scope does not show (components/public/states.tsx).
-    expect(screen.getByRole('heading', { name: "This page isn't shared." })).toBeInTheDocument()
-    expect(screen.queryByTestId('table')).toBeNull()
-    expect(mockUsePagesTable).not.toHaveBeenCalled()
-    expect(mockUseSite).not.toHaveBeenCalled()
-    expect(mockUseDataWindow).not.toHaveBeenCalled()
-  })
-})
-
-describe('the list in beta (new-pages)', () => {
-  it('draws the list for a team that has it, and never mounts the table or its read', () => {
-    mockListBeta = true
-    renderUnder(member)
-    expect(screen.getByTestId('list-page')).toHaveTextContent('site-1')
-    expect(screen.queryByTestId('table')).toBeNull()
-    expect(mockUsePagesTable).not.toHaveBeenCalled()
-  })
-
-  it('draws neither page while the team\'s betas are not known yet, so the table never flashes by', () => {
-    mockListBeta = null
-    const { container } = renderUnder(member)
-    expect(screen.queryByTestId('list-page')).toBeNull()
-    expect(screen.queryByTestId('table')).toBeNull()
-    expect(container.querySelector('[data-pages-gate="waiting"]')).not.toBeNull()
-    expect(mockUsePagesTable).not.toHaveBeenCalled()
-  })
-
-  it('keeps the table for a team without it', () => {
-    renderUnder(member)
-    expect(screen.getByTestId('table')).toBeInTheDocument()
-    expect(screen.queryByTestId('list-page')).toBeNull()
-  })
-
-  it('still refuses a scope that does not serve the page before it asks about the beta', () => {
-    mockListBeta = true
-    renderUnder(customerLink)
     expect(screen.getByRole('heading', { name: "This page isn't shared." })).toBeInTheDocument()
     expect(screen.queryByTestId('list-page')).toBeNull()
   })

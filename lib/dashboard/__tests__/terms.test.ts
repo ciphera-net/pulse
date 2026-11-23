@@ -166,8 +166,8 @@ describe('terms registry', () => {
   //
   // Reachability has four shapes, and only the first is greppable by intent:
   // a literal at the call site (`<TermInfoTip term="peak_hours" />`,
-  // `TERMS['search_new_queries_chip']`); dot access (`TERMS.journey_other_bucket`
-  // in SankeyJourney, `TERMS.journey_entry_point` on the journeys page); a
+  // `TERMS['search_new_queries_chip']`); dot access (`TERMS.visitors` and
+  // `TERMS.bounce_rate` in CommandDeck's metric rail); a
   // card's TAB ID that equals the key and reaches the registry through
   // DimensionInfoTip's identity fallback (`'browsers'` in TechSpecs' Tab
   // union); and a VALUE in DIMENSION_TERM / UPTIME_TERM. The first three are

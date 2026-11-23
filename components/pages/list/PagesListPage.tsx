@@ -31,7 +31,7 @@ import ScrollWho from './ScrollWho'
 import { beforeState } from './before'
 
 // ---------------------------------------------------------------------------
-// The Pages page as one list (rulings R78 and R82, 17-11-2026; in beta behind `new-pages`, lib/betas.ts). From the
+// The Pages page as one list (rulings R78 and R82, 17-11-2026; every team's since 23-11-2026). From the
 // top: the dashboard's toolbar (its Filter and its date control), a strip of five headline figures against the
 // period before, and every page in one list (PagesList.tsx).
 //
