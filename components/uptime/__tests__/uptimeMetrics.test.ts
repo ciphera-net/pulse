@@ -5,6 +5,7 @@ import {
   serializeUptimeMetrics,
   toUptimeSeries,
   seriesUptimePct,
+  rangeAvgResponseMs,
   seriesSpansMultipleDays,
   incidentDurationSeconds,
   clippedDurationSeconds,
@@ -121,6 +122,51 @@ describe('series math', () => {
     expect(p.date.toISOString()).toBe('2026-08-22T01:00:00.000Z')
     const [z] = toUptimeSeries([bucket({ bucket_start: '2026-08-22T03:00:00Z' })])
     expect(z.date.toISOString()).toBe('2026-08-22T03:00:00.000Z')
+  })
+})
+
+describe('a range\'s average response time from daily rows', () => {
+  const day = (over: Partial<{ total_checks: number; inconclusive_checks: number; avg_response_time_ms: number; min_response_time_ms: number | null }> = {}) => ({
+    total_checks: 100, avg_response_time_ms: 200, min_response_time_ms: 150, ...over,
+  })
+
+  it('weighs each day by its checks', () => {
+    expect(rangeAvgResponseMs([day({ avg_response_time_ms: 100 }), day({ avg_response_time_ms: 300, total_checks: 300 })])).toBe(250)
+  })
+
+  // MUST FAIL ON: weighing a day by every check it ran. Three weeks behind a redirect stored an average of 0 over
+  // 270 checks a day, and a month's average read about half of what the site answered in.
+  it('leaves out a day the monitor never timed the site, whatever number of checks it ran', () => {
+    const unseen = day({ total_checks: 270, inconclusive_checks: 270, avg_response_time_ms: 0, min_response_time_ms: null })
+    expect(rangeAvgResponseMs([day({ avg_response_time_ms: 120 }), unseen, unseen])).toBe(120)
+  })
+
+  // The first checks of a run of bot checks show as up while the run is confirmed: two "up", no timed answer.
+  it('tells a day without a timed answer by its samples, not by its counts', () => {
+    const began = day({ total_checks: 144, inconclusive_checks: 142, avg_response_time_ms: 0, min_response_time_ms: null })
+    expect(rangeAvgResponseMs([began])).toBeNull()
+    expect(rangeAvgResponseMs([began, day({ avg_response_time_ms: 80 })])).toBe(80)
+  })
+
+  it('a day\'s bot checks weigh nothing in it: its average is over the answers that timed the site', () => {
+    // 23-11-2026 as it was: 185 checks, 62 of them bot checks, the rest answered in 90 ms.
+    const mixed = day({ total_checks: 185, inconclusive_checks: 62, avg_response_time_ms: 90 })
+    // 123 answers at 90 ms and 100 at 200 ms.
+    expect(rangeAvgResponseMs([mixed, day()])).toBeCloseTo((123 * 90 + 100 * 200) / 223, 9)
+  })
+
+  it('a day of failed connections has no average either, and a real 0 ms day still counts', () => {
+    const outage = day({ avg_response_time_ms: 0, min_response_time_ms: null })
+    expect(rangeAvgResponseMs([outage])).toBeNull()
+    expect(rangeAvgResponseMs([day({ avg_response_time_ms: 0, min_response_time_ms: 0 })])).toBe(0)
+  })
+
+  it('a row from a server that does not send the count of unseen checks weighs by all its checks', () => {
+    expect(rangeAvgResponseMs([day({ avg_response_time_ms: 100 }), day({ avg_response_time_ms: 200 })])).toBe(150)
+  })
+
+  it('no day, no figure', () => {
+    expect(rangeAvgResponseMs([])).toBeNull()
   })
 })
 

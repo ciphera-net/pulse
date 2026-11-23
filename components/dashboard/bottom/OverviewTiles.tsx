@@ -7,7 +7,7 @@ import { HeartbeatIcon, SearchIcon } from '@ciphera-net/facet'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import ScoreGauge from '@/components/performance/ScoreGauge'
 import { Sparkline } from '@/components/ui/sparkline'
-import { bucketFill, bucketState } from '@/components/uptime/uptimeMetrics'
+import { bucketFill, bucketState, rangeAvgResponseMs } from '@/components/uptime/uptimeMetrics'
 import { FRAME_SURFACE } from '@/lib/dashboard/frame'
 import { memberScope, scopeHref, servesPage, useOptionalSiteScope, type SitePage } from '@/lib/scope/SiteScope'
 import { useGSCDailyTotals, useGSCOverview, useGSCStatus, usePerformanceConfig, usePerformanceLatest, useUptimeStatus } from '@/lib/swr/dashboard'
@@ -155,10 +155,9 @@ export function UptimeTile({ siteId, dateRange, period }: TileOwnProps) {
   // No monitor is not 100%: the read answers 100 with nothing to check, and the tile says there is no monitor.
   const none = !!uptime && (uptime.total_monitors === 0 || monitors.length === 0)
   const days: Day[] = monitors[0]?.daily_stats ?? []
-  const checks = days.reduce((n, day) => n + day.total_checks, 0)
-  const ms = checks > 0
-    ? Math.round((monitors[0]?.daily_stats ?? []).reduce((n, day) => n + day.avg_response_time_ms * day.total_checks, 0) / checks)
-    : null
+  // The range's average as the Uptime page states it: a day the monitor never timed the site weighs nothing.
+  const average = rangeAvgResponseMs(monitors[0]?.daily_stats ?? [])
+  const ms = average === null ? null : Math.round(average)
   const state = uptime ? STATE[uptime.status] : null
   return (
     <Tile

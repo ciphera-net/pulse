@@ -551,7 +551,7 @@ describe('SearchTile', () => {
 })
 
 describe('UptimeTile', () => {
-  const day = (date: string, over: Partial<{ total_checks: number; successful_checks: number; failed_checks: number; degraded_checks: number; inconclusive_checks: number; avg_response_time_ms: number }> = {}) => ({
+  const day = (date: string, over: Partial<{ total_checks: number; successful_checks: number; failed_checks: number; degraded_checks: number; inconclusive_checks: number; avg_response_time_ms: number; min_response_time_ms: number | null }> = {}) => ({
     monitor_id: 'm', date, total_checks: 100, successful_checks: 100, failed_checks: 0, degraded_checks: 0, avg_response_time_ms: 200, min_response_time_ms: null, max_response_time_ms: null, p50_response_time_ms: null, p95_response_time_ms: null, ...over,
   })
   const status = (days: ReturnType<typeof day>[], over: Record<string, unknown> = {}) => ({
@@ -567,6 +567,21 @@ describe('UptimeTile', () => {
     // Weighted by each day's checks: (100*100 + 300*300) / 400.
     expect(context('uptime')).toBe('1 monitor · 250 ms on average')
     expect(tile('uptime').getAttribute('href')).toBe('/sites/site-1/uptime')
+  })
+
+  // MUST FAIL ON: averaging over every check of every day. A day the monitor never saw the site stores an average of
+  // 0 (the row's old sign for "none"), and three such weeks halved the figure of a healthy site.
+  it('leaves the days the monitor could not see the site out of the average', () => {
+    const unseen = { total_checks: 270, successful_checks: 0, inconclusive_checks: 270, avg_response_time_ms: 0, min_response_time_ms: null }
+    h.useUptimeStatus.mockReturnValue(answer(status([day('d1', { avg_response_time_ms: 120, min_response_time_ms: 60 }), day('d2', unseen), day('d3', unseen)])))
+    inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)
+    expect(context('uptime')).toBe('1 monitor · 120 ms on average')
+  })
+
+  it('states no average when no check of the range timed the site', () => {
+    h.useUptimeStatus.mockReturnValue(answer(status([day('d1', { total_checks: 270, successful_checks: 0, inconclusive_checks: 270, avg_response_time_ms: 0, min_response_time_ms: null })], { status: 'inconclusive' })))
+    inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)
+    expect(context('uptime')).toBe('1 monitor')
   })
 
   it('writes a whole 100% without decimals', () => {
