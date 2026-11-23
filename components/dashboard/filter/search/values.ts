@@ -200,10 +200,34 @@ export function search(values: Loaded, text: string, only: string | null, perKin
 }
 
 /**
+ * How many kinds' lists one Filter button reads at once (PUL-94, 23-11-2026). Every read is a ClickHouse query on the
+ * dashboard user, which allows 16 at once for every customer together; reading all ~17 kinds at once made a single
+ * hover more than that whole limit (Pulse/docs/audits/23-11-2026-clickhouse-dashboard-cap-pul-93.md). The reads start
+ * when the pointer reaches the button, so the lists are in by the time the panel opens.
+ */
+export const SUGGESTION_READS_AT_ONCE = 4
+
+/**
+ * Runs `work` on every item, at most `limit` at once, in the items' order, and resolves when all are done. Stops
+ * starting items once `stale()` says a newer reading has replaced this one. `work` must not reject.
+ */
+async function eachAtMost<T>(items: readonly T[], limit: number, stale: () => boolean, work: (item: T) => Promise<void>): Promise<void> {
+  let next = 0
+  const lane = async () => {
+    while (next < items.length && !stale()) {
+      const item = items[next++]
+      await work(item)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane))
+}
+
+/**
  * The values of every kind, read while `on` (the panel is open, or the pointer has reached the Filter button), and
  * read again when the page's answer changes. A kind with a filter on is offered its whole list from before that
  * filter (read under "Country is Norway", the countries would be Norway alone), with the counts the filters now on
- * give where they are known. A list stays on screen while its next reading is out.
+ * give where they are known. A list stays on screen while its next reading is out. The lists are read
+ * SUGGESTION_READS_AT_ONCE at a time, and a reading the next one replaces stops asking.
  */
 export function useFilterValues({
   on,
@@ -231,8 +255,11 @@ export function useFilterValues({
     const mine = ++latest.current
     const filteredOn = (dimension: string) => filters.some((f) => f.dimension === dimension)
     const next: Loaded = {}
-    void Promise.all(
-      dimensions.map(async (dimension) => {
+    void eachAtMost(
+      dimensions,
+      SUGGESTION_READS_AT_ONCE,
+      () => latest.current !== mine,
+      async (dimension) => {
         let list: FilterSuggestion[] = []
         if (pageValues[dimension]) list = pageValues[dimension]
         else {
@@ -248,7 +275,7 @@ export function useFilterValues({
           list = base.current[dimension].map((s) => (now.has(s.value) ? { ...s, count: now.get(s.value) } : s))
         }
         next[dimension] = list
-      }),
+      },
     ).then(() => {
       if (latest.current !== mine) return
       setValues(next)
