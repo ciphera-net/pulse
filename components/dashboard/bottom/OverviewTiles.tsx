@@ -150,7 +150,11 @@ function Candles({ days }: { days: Day[] }) {
 }
 
 export function UptimeTile({ siteId, dateRange, period }: TileOwnProps) {
-  const { data: uptime } = useUptimeStatus(siteId, dateRange.start, dateRange.end, period)
+  // The uptime read resolves ONE period on the server, All time (its rollup's own span). Every other view goes as the
+  // days the dashboard resolved. The dashboard's token for them ("30d", "today", "24h") is a period this read does
+  // not know: sent in place of the dates, it left the server to answer its default of 90 days, so the tile drew
+  // three months under a dashboard that said Today (until 23-11-2026).
+  const { data: uptime } = useUptimeStatus(siteId, dateRange.start, dateRange.end, period === 'all' ? 'all' : undefined)
   const monitors = uptime?.monitors ?? []
   // No monitor is not 100%: the read answers 100 with nothing to check, and the tile says there is no monitor.
   const none = !!uptime && (uptime.total_monitors === 0 || monitors.length === 0)

@@ -18,7 +18,7 @@ import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { cn } from '@/lib/utils'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { TERMS, UPTIME_TERM } from '@/lib/dashboard/terms'
-import type { UptimeIncident, UptimeMonitor } from '@/lib/api/uptime'
+import type { UptimeIncident, UptimeMonitor, UptimePeriodToken } from '@/lib/api/uptime'
 import {
   UPTIME_METRIC_ORDER,
   UPTIME_METRIC_LABEL,
@@ -83,7 +83,7 @@ interface UptimePanelProps {
    * semantics, never client date math). Optional: custom ranges never dash. */
   period?: string | null
   /** Sent instead of the dates when the SERVER resolves the view (All time). */
-  apiPeriod?: string
+  apiPeriod?: UptimePeriodToken
   /**
    * A public view (the demo, PUL-34): nobody looking at it enabled anything, so the empty
    * note drops its "of enabling" hint. Nothing else about the panel differs: it only reads.

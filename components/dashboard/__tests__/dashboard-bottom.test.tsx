@@ -561,7 +561,8 @@ describe('UptimeTile', () => {
   it('states the range\'s uptime, its state in a dot and a word, and the average answer time', () => {
     h.useUptimeStatus.mockReturnValue(answer(status([day('d1', { avg_response_time_ms: 100 }), day('d2', { avg_response_time_ms: 300, total_checks: 300 })])))
     inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} period="24h" />)
-    expect(h.useUptimeStatus).toHaveBeenCalledWith(SITE, dateRange.start, dateRange.end, '24h')
+    // The dashboard's own days, and no period: the uptime read knows none but All time.
+    expect(h.useUptimeStatus).toHaveBeenCalledWith(SITE, dateRange.start, dateRange.end, undefined)
     expect(value('uptime')).toBe('99.50%')
     expect(tile('uptime').textContent).toContain('Operational')
     // Weighted by each day's checks: (100*100 + 300*300) / 400.
@@ -582,6 +583,23 @@ describe('UptimeTile', () => {
     h.useUptimeStatus.mockReturnValue(answer(status([day('d1', { total_checks: 270, successful_checks: 0, inconclusive_checks: 270, avg_response_time_ms: 0, min_response_time_ms: null })], { status: 'inconclusive' })))
     inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)
     expect(context('uptime')).toBe('1 monitor')
+  })
+
+  // MUST FAIL ON: handing the uptime read the dashboard's period token. The read does not know "30d" or "today":
+  // sent in place of the dates, the server answered its default of 90 days, and the tile drew three months of bars
+  // and their uptime under a dashboard that said Today (found on production 23-11-2026: 91 bars on Last 30 days).
+  it('asks for the dashboard\'s own days on every view the dashboard sends the server as a token', () => {
+    for (const token of ['today', 'yesterday', '1h', '24h', '7d', '30d', 'week', 'month', 'year']) {
+      h.useUptimeStatus.mockClear()
+      const { unmount } = inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} period={token} />)
+      expect(h.useUptimeStatus, token).toHaveBeenLastCalledWith(SITE, dateRange.start, dateRange.end, undefined)
+      unmount()
+    }
+  })
+
+  it('hands on All time, the one period the uptime read resolves on the server', () => {
+    inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} period="all" />)
+    expect(h.useUptimeStatus).toHaveBeenLastCalledWith(SITE, dateRange.start, dateRange.end, 'all')
   })
 
   it('writes a whole 100% without decimals', () => {
@@ -710,7 +728,8 @@ describe('DashboardBottom', () => {
     inFrame(<DashboardBottom siteId={SITE} dateRange={dateRange} period="today" filters="v2:country|is|BE" />)
     expect(h.useFunnelListStats).toHaveBeenCalledWith(SITE, dateRange.start, dateRange.end, 'v2:country|is|BE', 'today')
     expect(h.useDailyStats).toHaveBeenCalledWith(SITE, dateRange.start, dateRange.end, 'hour', 'v2:country|is|BE')
-    expect(h.useUptimeStatus).toHaveBeenCalledWith(SITE, dateRange.start, dateRange.end, 'today')
+    // The uptime read takes the dashboard's days, never its token (it knows no period but All time).
+    expect(h.useUptimeStatus).toHaveBeenCalledWith(SITE, dateRange.start, dateRange.end, undefined)
     expect(h.usePerformanceLatest).toHaveBeenCalledWith(SITE)
     for (const hook of [h.useGSCStatus, h.useGSCOverview, h.useGSCDailyTotals, h.useUptimeStatus, h.usePerformanceLatest, h.usePerformanceConfig]) {
       expect(hook.mock.calls.flat().some((arg) => typeof arg === 'string' && arg.includes('country'))).toBe(false)

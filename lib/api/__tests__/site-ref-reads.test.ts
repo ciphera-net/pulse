@@ -98,6 +98,8 @@ const READS: ReadCase[] = [
   { name: 'funnels.getFunnelBreakdown', call: (s) => funnels.getFunnelBreakdown(s, 'f1', 2, 'country', D1, D2), rest: `/funnels/f1/breakdown?step=2&dimension=country&${RANGE}` },
 
   { name: 'uptime.getUptimeStatus', call: (s) => uptime.getUptimeStatus(s, D1, D2), rest: `/uptime/status?${RANGE}` },
+  // All time is the one period an uptime read sends as a token; the dates stay behind (the server owns the span).
+  { name: 'uptime.getUptimeStatus', call: (s) => uptime.getUptimeStatus(s, D1, D2, 'all'), rest: '/uptime/status?period=all' },
   { name: 'uptime.getUptimeIncidents', call: (s) => uptime.getUptimeIncidents(s, D1, D2), rest: `/uptime/incidents?${RANGE}&limit=200` },
   { name: 'uptime.getUptimeResponseTimes', call: (s) => uptime.getUptimeResponseTimes(s, 'm1', D1, D2), rest: `/uptime/monitors/m1/response-times?${RANGE}` },
   { name: 'uptime.getMonitorChecks', call: (s) => uptime.getMonitorChecks(s, 'm1', 50), rest: '/uptime/monitors/m1/checks?limit=50' },

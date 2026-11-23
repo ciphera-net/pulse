@@ -72,6 +72,7 @@ import {
   type UptimeIncidentsResponse,
   type UptimeResponseTimesResponse,
   type UptimeCheck,
+  type UptimePeriodToken,
 } from '@/lib/api/uptime'
 import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, getPagePreview, getPublicPagePreview, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest, type PagePreview as PagePreviewData } from '@/lib/api/performance'
 import { listGoals, type Goal } from '@/lib/api/goals'
@@ -111,9 +112,9 @@ const fetchers = {
   journeyEntryPoints: (site: SiteRef, start: string, end: string, filters?: string, period?: string) =>
     getJourneyEntryPoints(site, start, end, filters, period),
   funnels: (site: SiteRef) => listFunnels(site),
-  uptimeStatus: (site: SiteRef, start?: string, end?: string, period?: string) => getUptimeStatus(site, start, end, period),
-  uptimeIncidents: (site: SiteRef, start: string, end: string, period?: string) => getUptimeIncidents(site, start, end, 200, period),
-  uptimeResponseTimes: (site: SiteRef, monitorId: string, start: string, end: string, period?: string) =>
+  uptimeStatus: (site: SiteRef, start?: string, end?: string, period?: UptimePeriodToken) => getUptimeStatus(site, start, end, period),
+  uptimeIncidents: (site: SiteRef, start: string, end: string, period?: UptimePeriodToken) => getUptimeIncidents(site, start, end, 200, period),
+  uptimeResponseTimes: (site: SiteRef, monitorId: string, start: string, end: string, period?: UptimePeriodToken) =>
     getUptimeResponseTimes(site, monitorId, start, end, period),
   uptimeChecks: (site: SiteRef, monitorId: string, limit: number) => getMonitorChecks(site, monitorId, limit),
   performanceConfig: (site: SiteRef) => getPerformanceConfig(site),
@@ -757,7 +758,7 @@ export function useFunnelBreakdown(
 
 // * Hook for uptime status (refreshes every 30s to match original polling).
 // * start/end are UTC calendar days; omitted = the API's 90-day default.
-export function useUptimeStatus(siteId: string, start?: string, end?: string, period?: string) {
+export function useUptimeStatus(siteId: string, start?: string, end?: string, period?: UptimePeriodToken) {
   return useSiteSWR<UptimeStatusResponse>(
     siteId, 'demo',
     // 🔴 Requires the dates. This keyed on siteId ALONE, so a page withholding
@@ -775,7 +776,7 @@ export function useUptimeStatus(siteId: string, start?: string, end?: string, pe
 }
 
 // * Hook for uptime incident episodes overlapping the range
-export function useUptimeIncidents(siteId: string, start: string, end: string, period?: string) {
+export function useUptimeIncidents(siteId: string, start: string, end: string, period?: UptimePeriodToken) {
   return useSiteSWR<UptimeIncidentsResponse>(
     siteId, 'demo',
     (siteKey) => siteId && start && end ? ['uptimeIncidents', siteKey, period ?? '', start, end] : null,
@@ -791,7 +792,7 @@ export function useUptimeIncidents(siteId: string, start: string, end: string, p
 
 // * Hook for the server-bucketed latency series (the server owns hour/day
 // * granularity and echoes it — never re-bucket client-side)
-export function useUptimeResponseTimes(siteId: string, monitorId: string | undefined, start: string, end: string, period?: string) {
+export function useUptimeResponseTimes(siteId: string, monitorId: string | undefined, start: string, end: string, period?: UptimePeriodToken) {
   return useSiteSWR<UptimeResponseTimesResponse>(
     siteId, 'demo',
     (siteKey) => siteId && monitorId ? ['uptimeResponseTimes', siteKey, monitorId, period ?? '', start, end] : null,
