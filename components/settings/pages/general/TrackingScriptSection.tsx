@@ -16,11 +16,7 @@ import { CSP_DIRECTIVES, trackingScript } from '@/lib/tracking-script'
 import { scriptState, turnedAwayLine } from './status'
 import { checkView, type CheckLine } from './install-check'
 import { getInstallCheck, startInstallCheck } from '@/lib/api/install-check'
-import { useFeature } from '@/lib/features'
 import { useCan } from '@/lib/auth/permissions'
-
-/** The install check's beta (pulse-backend features.InstallCheck). */
-export const INSTALL_CHECK_FLAG = 'install-check'
 
 /** The picker in the settings copy deck's words (§3.3); onboarding keeps its own. */
 const SETTINGS_PICKER_WORDS: PlatformPickerWords = {
@@ -97,11 +93,11 @@ export function TrackingScriptSection({
   useEffect(() => setPlatformId(framework ?? ''), [framework])
   const platform = platformId ? getIntegration(platformId) : undefined
 
-  // The install check (beta): "Check now" opens the homepage in a test browser and lists four steps.
-  const installCheckOn = useFeature(INSTALL_CHECK_FLAG) === true
+  // The install check (every team since 23-11-2026): "Check now" opens the homepage in a test browser and lists four
+  // steps.
   const canEdit = useCan('sites.edit')
   const { data: check, mutate: mutateCheck } = useSWR(
-    installCheckOn ? ['install-check', siteId] : null,
+    ['install-check', siteId],
     () => getInstallCheck(siteId),
     { refreshInterval: (latest) => (latest?.status === 'running' ? 2000 : 0), revalidateOnFocus: false },
   )
@@ -169,7 +165,7 @@ export function TrackingScriptSection({
     platform && (platform.supportTier === 'plan-gated' || platform.supportTier === 'special-handling') ? platform.snippet?.note : undefined
 
   const checkButton =
-    installCheckOn && canEdit ? (
+    canEdit ? (
       <Button variant="outline" size="sm" onClick={() => void runCheck()} disabled={checking}>
         {checking ? 'Checking…' : 'Check now'}
       </Button>
@@ -220,7 +216,7 @@ export function TrackingScriptSection({
     <KitSection title="Tracking script" description="Add this script to your site to start counting visits." icon={<Code />}>
       <KitRows>
         {stateRow}
-        {installCheckOn && checkLines && (
+        {checkLines && (
           <KitBlock>
             <div data-install-check="" className="space-y-3">
               <p className="text-xs text-muted-foreground">{checkLines.head}</p>

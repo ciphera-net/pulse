@@ -20,7 +20,4 @@ export const BETAS: readonly Beta[] = [
   // The server lists GA4 among a site's import sources only while this flag is on for the team
   // (lib/import/useImportSources.ts).
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
-  // The installation check (16-11-2026): "Check now" on Settings → General → Tracking script opens the homepage in a test
-  // browser and lists four steps. The section reads useFeature (TrackingScriptSection INSTALL_CHECK_FLAG).
-  { flag: 'install-check', name: 'Installation check', revalidates: [] },
 ]
