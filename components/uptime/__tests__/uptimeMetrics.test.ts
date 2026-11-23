@@ -15,7 +15,14 @@ import {
   fmtDurationSeconds,
   fmtCheckTime,
   bucketLabel,
+  bucketState,
+  bucketFill,
+  isOutage,
+  refusesTheMonitor,
   UPTIME_DEFAULT_ACTIVE,
+  UPTIME_NEG,
+  UPTIME_POS,
+  UPTIME_UNSEEN,
 } from '../uptimeMetrics'
 import type { UptimeIncident, UptimeResponseTimeBucket } from '@/lib/api/uptime'
 
@@ -46,20 +53,55 @@ const bucket = (over: Partial<UptimeResponseTimeBucket>): UptimeResponseTimeBuck
 })
 
 describe('series math', () => {
-  it('derives up counts and range availability with degraded counting AGAINST availability', () => {
+  // The rule of 23-11-2026: availability is the checks that found the site up over the checks that found it up or
+  // down. MUST FAIL ON: dividing by every check again (a bot check or a slow answer of before would count against).
+  it('counts only what a check learned: up over up plus down', () => {
     const series = toUptimeSeries([
       bucket({ samples: 10, failed_checks: 0, degraded_checks: 0 }),
-      bucket({ bucket_start: '2026-08-10T09:00:00Z', samples: 10, failed_checks: 2, degraded_checks: 1 }),
+      bucket({ bucket_start: '2026-08-10T09:00:00Z', samples: 10, failed_checks: 2, degraded_checks: 1, inconclusive_checks: 3 }),
     ])
-    expect(series[1].up).toBe(7)
-    // * 17 up / 20 total — matches the server's uptime_percentage semantics
-    // * (successful = 'up' only; degraded is not success).
-    expect(seriesUptimePct(series)).toBeCloseTo(85.0, 9)
+    expect(series[1].up).toBe(4)
+    expect(series[1].unseen).toBe(3)
+    // 14 up of the 16 checks that saw the site: 87.5. By the old rule (up over all 20) it read 70.
+    expect(seriesUptimePct(series)).toBeCloseTo(87.5, 9)
+  })
+
+  it('reads the day of 23-11-2026 as it was: five hours of bot checks beside a healthy site is 100%', () => {
+    const day = toUptimeSeries([bucket({ samples: 185, inconclusive_checks: 62 })])
+    expect(day[0].up).toBe(123)
+    expect(seriesUptimePct(day)).toBe(100)
+  })
+
+  it('reads a server of before the rule, which sends no inconclusive count', () => {
+    const [p] = toUptimeSeries([bucket({ samples: 10, failed_checks: 1 })])
+    expect(p.unseen).toBe(0)
+    expect(p.up).toBe(9)
   })
 
   it('returns null availability for an empty range instead of fabricating 100', () => {
     expect(seriesUptimePct([])).toBeNull()
     expect(seriesUptimePct(toUptimeSeries([bucket({ samples: 0 })]))).toBeNull()
+  })
+
+  it('returns null, never 100, for a range in which no check saw the site', () => {
+    expect(seriesUptimePct(toUptimeSeries([bucket({ samples: 12, inconclusive_checks: 12 })]))).toBeNull()
+  })
+
+  // MUST FAIL ON: an outage hidden by a majority of anything; a slow answer colouring a day; a day the monitor
+  // mostly could not see drawn green.
+  it('gives every bar one state: an outage first, then the larger of seen and could not check', () => {
+    const state = (over: Partial<UptimeResponseTimeBucket>) => bucketState(toUptimeSeries([bucket(over)])[0])
+    expect(state({ samples: 0 })).toBe('none')
+    expect(state({ samples: 12 })).toBe('up')
+    expect(state({ samples: 12, failed_checks: 1, inconclusive_checks: 11 })).toBe('down')
+    expect(state({ samples: 12, inconclusive_checks: 12 })).toBe('unseen')
+    expect(state({ samples: 12, inconclusive_checks: 7 })).toBe('unseen')
+    expect(state({ samples: 12, inconclusive_checks: 6 })).toBe('up') // a tie is not "mostly"
+    expect(state({ samples: 12, degraded_checks: 12 })).toBe('up') // slow answers of before the rule: the site answered
+    expect(bucketFill('down')).toBe(UPTIME_NEG)
+    expect(bucketFill('up')).toBe(UPTIME_POS)
+    expect(bucketFill('unseen')).toBe(UPTIME_UNSEEN)
+    expect(bucketFill('none')).toBe('var(--chart-grid)')
   })
 
   it('parses naive bucket timestamps as UTC instants', () => {
@@ -114,6 +156,18 @@ describe('incident math', () => {
     expect(clippedDurationSeconds(ongoing, midStart, now, now)).toBe(30 * 60)
   })
 
+  // MUST FAIL ON: time the monitor could not see the site, or a slow stretch of before the rule, charged as downtime.
+  it('charges the range only for outages', () => {
+    const wideStart = Date.parse('2026-07-20T00:00:00Z')
+    const wideEnd = Date.parse('2026-07-28T00:00:00Z')
+    const unseen: UptimeIncident = { ...closed, id: 'u', status: 'inconclusive', started_at: '2026-07-26T09:42:00Z', ended_at: '2026-07-26T15:07:00Z' }
+    const slow: UptimeIncident = { ...closed, id: 's', status: 'degraded', started_at: '2026-07-25T09:00:00Z', ended_at: '2026-07-25T09:25:00Z' }
+    expect(isOutage(closed)).toBe(true)
+    expect(isOutage(unseen)).toBe(false)
+    expect(isOutage(slow)).toBe(false)
+    expect(totalDowntimeSeconds([closed, unseen, slow], wideStart, wideEnd, now)).toBe(32 * 60)
+  })
+
   it('derives the range window from SITE-day strings, capped at now', () => {
     const { startMs, endMs } = rangeWindowMs({ start: '2026-07-26', end: '2026-07-27' }, 'UTC', now)
     expect(startMs).toBe(Date.parse('2026-07-26T00:00:00Z'))
@@ -139,6 +193,23 @@ describe('humanizeCause', () => {
     expect(humanizeCause('request failed: x509: certificate has expired', null, 30)).toBe('TLS handshake failed')
     expect(humanizeCause('slow response: 6000ms', null, 30)).toBe('Slow response (6.00 s)')
     expect(humanizeCause('unexpected status code: 502 (expected 200)', 502, 30)).toBe('Status 502 (expected 200)')
+    expect(humanizeCause('unexpected status code: 402 (expected 200)', 402, 30)).toBe('Status 402 (expected 200)')
+  })
+  // The checker's forms of 23-11-2026 (pulse-backend internal/uptime/classify.go). MUST FAIL ON: a form the page
+  // shows verbatim, or a refusal worded as if the site were broken.
+  it('words what kept the monitor from seeing the site', () => {
+    expect(humanizeCause('bot check: cloudflare (status 403)', 403, 30)).toBe("Cloudflare's bot check answered")
+    expect(humanizeCause('bot check: aws waf (status 202)', 202, 30)).toBe("AWS WAF's bot check answered")
+    expect(humanizeCause('bot check: something new (status 403)', 403, 30)).toBe("A firewall's bot check answered")
+    expect(humanizeCause('unexpected status code: 403 (expected 200)', 403, 30)).toBe('Refused our monitor (403)')
+    expect(humanizeCause('unexpected status code: 401 (expected 200)', 401, 30)).toBe('Refused our monitor (401)')
+    expect(humanizeCause('unexpected status code: 429 (expected 200)', 429, 30)).toBe('Rate-limited our monitor (429)')
+    expect(humanizeCause(null, 429, 30)).toBe('Rate-limited our monitor (429)')
+    expect(humanizeCause('redirect not followed: 301 to shop.elsewhere.test', 301, 30)).toBe('Redirects to shop.elsewhere.test')
+    expect(humanizeCause('redirect not followed: 302', 302, 30)).toBe('Redirects to another address')
+    expect(humanizeCause('too many redirects: 5 followed, then another 308', 308, 30)).toBe('Too many redirects')
+    expect([401, 403, 407, 429].every((c) => refusesTheMonitor(c))).toBe(true)
+    expect([200, 400, 402, 404, 410, 451, 500, 503, null, undefined].some((c) => refusesTheMonitor(c))).toBe(false)
   })
   it('falls back honestly', () => {
     expect(humanizeCause('something novel went wrong', null, 30)).toBe('something novel went wrong')
