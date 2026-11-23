@@ -1,4 +1,4 @@
-import type { UptimeIncident, UptimeResponseTimeBucket } from '@/lib/api/uptime'
+import type { UptimeDailyStat, UptimeIncident, UptimeResponseTimeBucket } from '@/lib/api/uptime'
 import { zoneDayKey, zoneDayStartMs, zoneParts, shiftDayKey } from '@/lib/utils/siteTime'
 
 // ---------------------------------------------------------------------------
@@ -89,6 +89,27 @@ export function bucketState(p: Pick<UptimePoint, 'samples' | 'up' | 'failed' | '
   if (p.failed > 0) return 'down'
   // * A legacy degraded check answered (slowly, or oddly): the site was seen.
   return p.unseen > p.up + p.degraded ? 'unseen' : 'up'
+}
+
+// * A range's average response time from DAILY rows, counted as the server counts its own range summary
+// * (pulse-backend, summarizeDailyBuckets): a day's average weighs by the checks that could time the site, so its
+// * "couldn't check" answers weigh nothing, and a day without one timed answer is left out altogether.
+// * The daily row stores 0 where it has no average (a sentinel of old). A day the monitor never saw the site, or a
+// * day of nothing but failed connections, would otherwise drag the range towards 0 ms by its full number of
+// * checks. The stored minimum is taken over the same answers as the average, so it is null exactly on such a day.
+export function rangeAvgResponseMs(
+  days: Array<Pick<UptimeDailyStat, 'total_checks' | 'inconclusive_checks' | 'avg_response_time_ms' | 'min_response_time_ms'>>,
+): number | null {
+  let weighted = 0
+  let timed = 0
+  for (const day of days) {
+    if (day.avg_response_time_ms === 0 && day.min_response_time_ms == null) continue
+    const checks = day.total_checks - (day.inconclusive_checks ?? 0)
+    if (checks <= 0) continue
+    weighted += day.avg_response_time_ms * checks
+    timed += checks
+  }
+  return timed > 0 ? weighted / timed : null
 }
 
 // ─── Range anchoring ─────────────────────────────────────────────
