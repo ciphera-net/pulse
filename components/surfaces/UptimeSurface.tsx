@@ -150,9 +150,9 @@ function CouldntCheckNote({ episode, url }: { episode: UptimeIncident | undefine
       {!redirect && (
         <p className="mt-1.5 text-sm text-neutral-400">
           To let the monitor through, allow the address{' '}
-          <span className="font-mono text-neutral-300">{MONITOR_ADDRESS}</span> in your firewall. In Cloudflare that is
-          an IP Access rule with the action Allow. The monitor identifies itself as{' '}
-          <span className="font-mono text-neutral-300">{MONITOR_USER_AGENT}</span>.
+          <span className="whitespace-nowrap font-mono text-neutral-300">{MONITOR_ADDRESS}</span> in your firewall. In
+          Cloudflare that is an IP Access rule with the action Allow. The monitor identifies itself as{' '}
+          <span className="whitespace-nowrap font-mono text-neutral-300">{MONITOR_USER_AGENT}</span>.
         </p>
       )}
     </div>
