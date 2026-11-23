@@ -4,6 +4,15 @@ import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // * Types for uptime monitoring — mirrors pulse-backend internal/database/uptime.go
 // * (migration 135: TLS observation, p50/p95, incidents, response-time series).
+// *
+// * A check has three results (pulse-backend internal/uptime/classify.go, 23-11-2026): 'up', 'down', and
+// * 'inconclusive' when something answered in the site's place or refused the checker (a bot check, a 401, 403,
+// * 407 or 429, a redirect to another address). An inconclusive check counts neither for nor against
+// * availability, and the page calls it "Couldn't check". 'degraded' is the state of before that rule: no new
+// * check carries it, old rows and the demo's slow-response incident still do.
+
+/** What one check found, or what a monitor is confirmed to be. */
+export type UptimeResult = 'up' | 'down' | 'inconclusive' | 'degraded'
 
 export interface UptimeMonitor {
   id: string
@@ -15,7 +24,7 @@ export interface UptimeMonitor {
   timeout_seconds: number
   enabled: boolean
   last_checked_at: string | null
-  last_status: 'up' | 'down' | 'degraded' | 'unknown'
+  last_status: UptimeResult | 'unknown'
   last_response_time_ms: number | null
   // * Observed by the checker's own TLS handshake; null until the first HTTPS
   // * check after the 135 deploy (or for plain-HTTP endpoints).
@@ -29,8 +38,8 @@ export interface UptimeMonitor {
 export interface UptimeCheck {
   id: string
   monitor_id: string
-  status: 'up' | 'down' | 'degraded'
-  effective_status?: 'up' | 'down' | 'degraded' | null
+  status: UptimeResult
+  effective_status?: UptimeResult | null
   response_time_ms: number | null
   status_code: number | null
   error_message: string | null
@@ -44,6 +53,8 @@ export interface UptimeDailyStat {
   successful_checks: number
   failed_checks: number
   degraded_checks: number
+  /** Checks that could not see the site. Absent from a server older than 23-11-2026. */
+  inconclusive_checks?: number
   avg_response_time_ms: number
   min_response_time_ms: number | null
   max_response_time_ms: number | null
@@ -63,7 +74,7 @@ export interface MonitorStatus {
 export interface UptimeStatusResponse {
   monitors: MonitorStatus[] | null
   overall_uptime: number
-  status: 'operational' | 'degraded' | 'down'
+  status: 'operational' | 'degraded' | 'down' | 'inconclusive'
   total_monitors: number
   /** Newest pre-conversion (UTC-bucketed) rollup date within the requested
    * range, or null when every day in range is a site-timezone day. Days at or
@@ -72,13 +83,14 @@ export interface UptimeStatusResponse {
   utc_days_before: string | null
 }
 
-// * A confirmed downtime/degradation episode. ended_at null = ongoing.
+// * An episode: a run of one confirmed status other than up. 'down' is an outage; 'inconclusive' is a stretch the
+// * checker could not see the site, which is never downtime. ended_at null = ongoing.
 export interface UptimeIncident {
   id: string
   monitor_id: string
   started_at: string
   ended_at: string | null
-  status: 'down' | 'degraded'
+  status: 'down' | 'inconclusive' | 'degraded'
   first_error_message: string | null
   first_status_code: number | null
   failed_checks: number
@@ -100,6 +112,8 @@ export interface UptimeResponseTimeBucket {
   max_response_time_ms: number | null
   failed_checks: number
   degraded_checks: number
+  /** In `samples`, and on neither side of availability. Absent from a server older than 23-11-2026. */
+  inconclusive_checks?: number
 }
 
 export interface UptimeResponseTimeSummary {
@@ -111,6 +125,7 @@ export interface UptimeResponseTimeSummary {
   p95_response_time_ms: number | null
   failed_checks: number
   degraded_checks: number
+  inconclusive_checks?: number
 }
 
 export interface UptimeResponseTimesResponse {

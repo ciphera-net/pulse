@@ -6,15 +6,20 @@ import {
   incidentDurationSeconds,
   humanizeCause,
   fmtDurationSeconds,
+  isOutage,
   UPTIME_NEG,
+  UPTIME_UNSEEN,
 } from './uptimeMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { CheckCircle } from '@phosphor-icons/react'
 
 // ---------------------------------------------------------------------------
-// The incident ledger — episodes the checker confirmed, newest first. An
-// ongoing episode carries the neg accent edge and a live duration. The cause
+// The incident ledger — episodes the checker confirmed, newest first. Two
+// kinds since 23-11-2026: an outage (the site was down), and a stretch the
+// monitor could not see the site (a bot check, a refusal), marked "couldn't
+// check" in a neutral tone because it is not downtime. An ongoing episode
+// carries its kind's accent edge and a live duration. The cause
 // is humanized ("Timed out after 30 s"); the verbatim error string and the
 // confirmed-failed check count live on the row's tooltip — they are debugging
 // detail, not what the range gets judged by. No footer: the Availability
@@ -40,10 +45,12 @@ function startedLabel(iso: string, tz: string | null): string {
 }
 
 function rowTooltip(i: UptimeIncident): string {
-  const parts = [`${i.failed_checks} failed check${i.failed_checks === 1 ? '' : 's'}`]
+  // A check that could not see the site did not fail: it is counted, not called failed.
+  const noun = isOutage(i) ? 'failed check' : 'check'
+  const parts = [`${i.failed_checks} ${noun}${i.failed_checks === 1 ? '' : 's'}`]
   if (i.first_error_message) parts.push(i.first_error_message)
   else if (i.first_status_code != null) parts.push(`status ${i.first_status_code}`)
-  return parts.join(' — ')
+  return parts.join(' · ')
 }
 
 interface IncidentsTableProps {
@@ -76,18 +83,21 @@ export default function IncidentsTable({ incidents, error, timeoutSeconds, timez
         {incidents.map((i) => {
           const ongoing = i.ended_at == null
           const cause = humanizeCause(i.first_error_message, i.first_status_code, timeoutSeconds)
+          const unseen = i.status === 'inconclusive'
+          const accent = unseen ? UPTIME_UNSEEN : UPTIME_NEG
           return (
             <div
               key={i.id}
               title={rowTooltip(i)}
               className="relative flex h-9 items-center border-b border-border px-3 text-sm last:border-b-0"
             >
-              {ongoing && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px]" style={{ background: UPTIME_NEG }} />}
+              {ongoing && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px]" style={{ background: accent }} />}
               <span className="min-w-0 flex-1 truncate text-white">
                 {startedLabel(i.started_at, timezone)}
+                {unseen && <span className="ml-2 text-xs text-neutral-400">couldn&apos;t check</span>}
                 {ongoing && (
-                  <span className="ml-2" style={{ color: UPTIME_NEG }}>
-                    · ongoing
+                  <span className="ml-2" style={unseen ? undefined : { color: UPTIME_NEG }}>
+                    <span className={unseen ? 'text-neutral-400' : undefined}>· ongoing</span>
                   </span>
                 )}
                 {!ongoing && i.status === 'degraded' && <span className="ml-2 text-xs text-neutral-500">degraded</span>}

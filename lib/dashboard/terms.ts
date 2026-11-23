@@ -88,13 +88,13 @@ export const TERMS: Record<string, GlossaryTerm> = {
   availability: {
     title: 'Availability',
     definition:
-      'The share of uptime checks that came back healthy across the range. A degraded check — an unexpected status code under 500, or a response slower than 5 s — counts against it, and a failure only counts once the checker has confirmed it. Days are your site’s calendar days.',
+      "The share of checks that found your site up, out of the checks that found it up or down, across the range. A check that could not see your site (a bot check, or a refusal such as a 403 or a 429) counts neither way, and a slow answer counts as up. An outage counts once three checks in a row confirm it. Days are your site's calendar days.",
     docs: 'uptime#availability',
   },
   response_time: {
     title: 'Response time',
     definition:
-      'Average response time across every timed check, failures included. Exact p50 and p95 come from raw checks (kept 90 days) on ranges up to 8 days; longer ranges fall back to the stored daily average, labelled ‘avg’ — never an invented percentile.',
+      "Average response time across the checks that reached your site, failed ones included. The answer to a bot check is left out, since the firewall sends it. Exact p50 and p95 come from raw checks (kept 90 days) on ranges up to 8 days. Longer ranges use the stored daily average, labelled 'avg'.",
     docs: 'uptime#response-time',
   },
   checks: {
@@ -106,7 +106,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   incidents: {
     title: 'Incidents',
     definition:
-      'Confirmed down or degraded episodes — the durable record. Raw checks are purged after 90 days; incidents are kept.',
+      'Confirmed outages, and the stretches Pulse could not check your site, kept as a lasting record. Raw checks are deleted after 90 days and incidents stay.',
     docs: 'uptime#incidents',
   },
   recent_checks: {

@@ -271,7 +271,7 @@ export interface SiteOverview {
   daily: SiteOverviewDay[]
   install_status: InstallStatus
   last_event_at: string | null
-  uptime_status: 'up' | 'degraded' | 'down' | 'unknown' | null
+  uptime_status: 'up' | 'degraded' | 'down' | 'inconclusive' | 'unknown' | null
 }
 
 export async function getSitesOverview(): Promise<SiteOverview[]> {

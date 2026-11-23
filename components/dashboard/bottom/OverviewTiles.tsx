@@ -7,7 +7,7 @@ import { HeartbeatIcon, SearchIcon } from '@ciphera-net/facet'
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import ScoreGauge from '@/components/performance/ScoreGauge'
 import { Sparkline } from '@/components/ui/sparkline'
-import { UPTIME_DEGRADED, UPTIME_NEG, UPTIME_POS } from '@/components/uptime/uptimeMetrics'
+import { bucketFill, bucketState } from '@/components/uptime/uptimeMetrics'
 import { FRAME_SURFACE } from '@/lib/dashboard/frame'
 import { memberScope, scopeHref, servesPage, useOptionalSiteScope, type SitePage } from '@/lib/scope/SiteScope'
 import { useGSCDailyTotals, useGSCOverview, useGSCStatus, usePerformanceConfig, usePerformanceLatest, useUptimeStatus } from '@/lib/swr/dashboard'
@@ -107,23 +107,31 @@ const STATE: Record<string, { word: string; dot: string }> = {
   operational: { word: 'Operational', dot: 'bg-green-400' },
   degraded: { word: 'Degraded', dot: 'bg-brand-orange' },
   down: { word: 'Down', dot: 'bg-red-400' },
+  // The monitor ran and could not see the site (a bot check, a refusal): neither good nor bad, so a neutral dot.
+  inconclusive: { word: "Couldn't check", dot: 'bg-neutral-500' },
 }
 
-interface Day { date: string; total_checks: number; failed_checks: number; degraded_checks: number }
+interface Day { date: string; total_checks: number; successful_checks: number; failed_checks: number; degraded_checks: number; inconclusive_checks?: number }
 
 /**
  * The Uptime page's candles (components/uptime/UptimePanel.tsx, its availability strip): one state bar a day, all
- * one height, in the page's own colours and by its own rule. A day with a failed check is red, a day with a slow
- * one amber, a day with no check the grid's grey, and every other day green at three quarters, full while the
- * pointer is on the tile. A bar is 72% of its slot, as on the page.
+ * one height, in the page's own colours and by its own rule (bucketState and bucketFill, shared with the page). A
+ * day with an outage is red, a day the monitor mostly could not see the site a neutral grey, a day with no check
+ * the grid's grey, and every other day green at three quarters, full while the pointer is on the tile. A bar is
+ * 72% of its slot, as on the page.
  */
 function Candles({ days }: { days: Day[] }) {
   return (
     <svg className="absolute inset-x-6 bottom-4 z-0 h-10 w-[calc(100%-3rem)]" viewBox={`0 0 ${days.length} 1`} preserveAspectRatio="none" aria-hidden="true" data-candles="">
       {days.map((day, i) => {
-        const none = day.total_checks === 0
-        const state = none ? 'none' : day.failed_checks > 0 ? 'down' : day.degraded_checks > 0 ? 'degraded' : 'up'
-        const fill = state === 'none' ? 'var(--chart-grid)' : state === 'down' ? UPTIME_NEG : state === 'degraded' ? UPTIME_DEGRADED : UPTIME_POS
+        const state = bucketState({
+          samples: day.total_checks,
+          up: day.successful_checks,
+          failed: day.failed_checks,
+          degraded: day.degraded_checks,
+          unseen: day.inconclusive_checks ?? 0,
+        })
+        const fill = bucketFill(state)
         return (
           <rect
             key={day.date}

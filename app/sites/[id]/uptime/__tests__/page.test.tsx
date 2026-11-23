@@ -387,3 +387,98 @@ describe('Uptime page — a scope that cannot show it', () => {
     expect(mockStatus).toHaveBeenCalled()
   })
 })
+
+// The rule of 23-11-2026: a check that could not see the site (a bot check, a refusal, a redirect to another
+// address) is "Couldn't check": its own status, its own note with the way through, never an outage.
+describe('Uptime page — the monitor could not see the site', () => {
+  const unseen = (over: Partial<UptimeIncident> = {}) =>
+    incident({ id: 'inc-u', status: 'inconclusive', started_at: '2026-10-20T07:42:00Z', ended_at: null, failed_checks: 62, first_status_code: 403, first_error_message: 'bot check: cloudflare (status 403)', ...over })
+  const blocked = (episode: UptimeIncident) => {
+    mockStatus.mockReturnValue(swr(status({ status: 'inconclusive', monitors: [{ monitor: { ...monitor, last_status: 'inconclusive' }, daily_stats: [], overall_uptime: 100 }] })))
+    mockIncidents.mockReturnValue(swr({ incidents: [episode], start_date: '2026-09-21', end_date: '2026-10-20' }))
+  }
+  const note = (container: HTMLElement) => container.querySelector('[data-uptime-note="couldnt-check"]')
+
+  // MUST FAIL ON: the status line crashing on the new status (an unguarded lookup did), the bot check worded as an
+  // outage, or the way through left out.
+  it('says so in the status line and explains a bot check, with the address to allow', () => {
+    blocked(unseen())
+    const { container } = render(<UptimePage />)
+    expect(container.textContent).toContain("Couldn't check")
+    expect(container.textContent).not.toContain('Degraded')
+    const text = note(container)?.textContent ?? ''
+    expect(text).toContain("Pulse couldn't check this site")
+    expect(text).toContain("Cloudflare's bot check answered in place of your site.")
+    expect(text).toContain('they count neither for nor against your uptime')
+    expect(text).toContain('allow the address 179.237.92.73 in your firewall')
+    expect(text).toContain('an IP Access rule with the action Allow')
+    expect(text).toContain('Pulse-Uptime-Monitor/1.0')
+  })
+
+  it('lists the stretch as "couldn\'t check", not as an outage, and charges the range no downtime for it', () => {
+    blocked(unseen())
+    const { container } = render(<UptimePage />)
+    const ledger = container.querySelector('[data-tour="uptime-incidents"]')
+    expect(ledger?.textContent).toContain("couldn't check")
+    expect(ledger?.textContent).toContain('ongoing')
+    expect(ledger?.textContent).toContain("Cloudflare's bot check answered")
+    // The row's detail counts checks; a check that could not see the site did not fail.
+    expect(ledger?.querySelector('[title]')?.getAttribute('title')).toMatch(/^62 checks/)
+    expect(container.querySelector('[data-tour="uptime-panel"]')?.textContent).not.toMatch(/\d+ outage/)
+  })
+
+  it('words a rate limit and a refusal as what they are', () => {
+    blocked(unseen({ first_status_code: 429, first_error_message: 'unexpected status code: 429 (expected 200)' }))
+    const limited = render(<UptimePage />)
+    expect(note(limited.container)?.textContent).toContain('Your site is rate-limiting our monitor (429).')
+    limited.unmount()
+
+    blocked(unseen({ first_status_code: 403, first_error_message: 'unexpected status code: 403 (expected 200)' }))
+    const refused = render(<UptimePage />)
+    expect(note(refused.container)?.textContent).toContain('Your site is refusing our monitor (403).')
+    expect(note(refused.container)?.textContent).toContain('179.237.92.73')
+  })
+
+  it('names where a redirect leads and offers no firewall step for it', () => {
+    blocked(unseen({ first_status_code: 301, first_error_message: 'redirect not followed: 301 to shop.elsewhere.test' }))
+    const { container } = render(<UptimePage />)
+    const text = note(container)?.textContent ?? ''
+    expect(text).toContain('https://haldencycles.example sends visitors on to shop.elsewhere.test.')
+    expect(text).not.toContain('179.237.92.73')
+  })
+
+  it('still explains itself when the open stretch is outside the range', () => {
+    blocked(unseen())
+    mockIncidents.mockReturnValue(swr({ incidents: [], start_date: '2026-09-21', end_date: '2026-10-20' }))
+    const { container } = render(<UptimePage />)
+    expect(note(container)?.textContent).toContain('Something answered our monitor in place of your site.')
+    expect(note(container)?.textContent).toContain('179.237.92.73')
+  })
+
+  it('shows no such note while the site is seen', () => {
+    const { container } = render(<UptimePage />)
+    expect(note(container)).toBeNull()
+  })
+
+  // MUST FAIL ON: the lookup that took the page to its error boundary for any status outside the known ones.
+  it('reads a status it does not know as its plain word instead of crashing', () => {
+    mockStatus.mockReturnValue(swr(status({ status: 'paused' as UptimeStatusResponse['status'] })))
+    const { container } = render(<UptimePage />)
+    expect(container.textContent).toContain('paused')
+    expect(container.textContent).toContain('checked every 5 minutes')
+  })
+
+  it('words a recent check that could not see the site, and writes its status code as a number, not as code', () => {
+    mockChecks.mockReturnValue(swr([
+      check({ id: 'c1', status: 'inconclusive', effective_status: 'inconclusive', status_code: 403, response_time_ms: 96, error_message: 'bot check: cloudflare (status 403)' }),
+      check({ id: 'c2' }),
+    ]))
+    const { container, getByText } = render(<UptimePage />)
+    const cause = getByText("Cloudflare's bot check answered", { selector: '[title]' })
+    expect(cause.getAttribute('title')).toBe('bot check: cloudflare (status 403)')
+    expect(cause.className).not.toContain('font-mono')
+    const code = [...container.querySelectorAll('span')].find((el) => el.textContent === '403' && el.children.length === 0)
+    expect(code?.className).toContain('tabular-nums')
+    expect(code?.className).not.toContain('font-mono')
+  })
+})

@@ -22,9 +22,12 @@ import type { UptimeIncident, UptimeMonitor } from '@/lib/api/uptime'
 import {
   UPTIME_METRIC_ORDER,
   UPTIME_METRIC_LABEL,
-  UPTIME_POS,
   UPTIME_NEG,
   UPTIME_DEGRADED,
+  UPTIME_UNSEEN,
+  bucketState,
+  bucketFill,
+  isOutage,
   parseUptimeMetrics,
   serializeUptimeMetrics,
   toUptimeSeries,
@@ -58,9 +61,9 @@ import {
 // the SITE's timezone.
 // ---------------------------------------------------------------------------
 
-const POS = UPTIME_POS
 const NEG = UPTIME_NEG
 const DEGRADED = UPTIME_DEGRADED
+const UNSEEN = UPTIME_UNSEEN
 const INK = 'rgb(var(--instrument-ink))'
 const STRIP_H = 92
 const STRIP_MARGIN = { top: 8, right: 16, bottom: 6, left: 56 }
@@ -108,8 +111,11 @@ function AvailabilityStrip({ series }: { series: UptimePoint[] }) {
       <g transform={`translate(${margin.left},0)`}>
         <line stroke="var(--chart-grid)" strokeWidth={1} x1={0} x2={innerWidth} y1={barY + barH} y2={barY + barH} />
         {series.map((p, i) => {
-          const color = p.samples === 0 ? 'var(--chart-grid)' : p.failed > 0 ? NEG : p.degraded > 0 ? DEGRADED : POS
-          const opacity = p.samples === 0 ? 1 : p.failed > 0 || p.degraded > 0 ? 1 : 0.75
+          // An outage is red; a bucket the monitor mostly could not see is neutral; the rest is green. A slow
+          // answer is an answer: it colours nothing (23-11-2026).
+          const state = bucketState(p)
+          const color = bucketFill(state)
+          const opacity = state === 'up' ? 0.75 : 1
           return (
             <rect
               key={p.date.getTime()}
@@ -254,9 +260,11 @@ function TLSNote({ monitor }: { monitor: UptimeMonitor }) {
     )
   }
   const tone = days < 14 ? { color: DEGRADED } : undefined
+  // "expires", never "renews": the check reads the certificate's end date, and whether anything renews it is
+  // not something it can see.
   return (
     <span className="shrink-0 text-xs tabular-nums text-neutral-500" style={tone}>
-      certificate renews in {days} d
+      certificate expires in {days} d
     </span>
   )
 }
@@ -290,6 +298,10 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
 
   const uptimePct = seriesUptimePct(series)
   const totalChecks = series.reduce((n, p) => n + p.samples, 0)
+  const unseenChecks = series.reduce((n, p) => n + p.unseen, 0)
+  // Outages are the incidents the range is judged by; a stretch the monitor could not see the site is listed
+  // below with them and is never downtime.
+  const outages = incidents?.filter(isOutage)
   // * Downtime attributed to the range is CLIPPED to it — an old multi-day
   // * episode overlapping the window must not report more downtime than the
   // * window contains.
@@ -313,11 +325,15 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
           // * undefined incidents = not loaded (or failed) — that is "unknown",
           // * never presented as the claim "no incidents".
           sub:
-            incidents === undefined
+            outages === undefined
               ? '—'
-              : incidents.length === 0
-                ? 'no incidents'
-                : `${incidents.length} incident${incidents.length === 1 ? '' : 's'} · ${fmtDurationSeconds(downtime)} down`,
+              : outages.length > 0
+                ? `${outages.length} outage${outages.length === 1 ? '' : 's'} · ${fmtDurationSeconds(downtime)} down`
+                // No check in the range saw the site (all bot checks or refusals): there is no figure, and
+                // "no outages" would claim more than anyone knows.
+                : uptimePct == null && unseenChecks > 0
+                  ? "couldn't check"
+                  : 'no outages',
         }
       case 'response':
         return {
@@ -358,8 +374,8 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
     const h = p as unknown as UptimePoint
     return [
       { color: 'var(--chart-foreground-muted)', label: 'Checks', value: formatCompactNumber(h.samples) },
-      { color: NEG, label: 'Failed', value: formatCompactNumber(h.failed) },
-      { color: DEGRADED, label: 'Degraded', value: formatCompactNumber(h.degraded) },
+      { color: NEG, label: 'Down', value: formatCompactNumber(h.failed) },
+      { color: UNSEEN, label: "Couldn't check", value: formatCompactNumber(h.unseen) },
       { color: 'var(--chart-1)', label: 'Response time', value: h.avgMs == null ? '—' : fmtMs(h.avgMs) },
       { color: 'var(--chart-1)', label: 'p95', value: h.p95Ms == null ? '—' : fmtMs(h.p95Ms) },
     ]

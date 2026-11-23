@@ -41,7 +41,10 @@ export interface UptimePoint {
   samples: number
   up: number
   failed: number
+  /** Checks of before 23-11-2026 that answered slowly or oddly. On neither side of availability. */
   degraded: number
+  /** Checks that could not see the site (a bot check, a refusal). On neither side of availability. */
+  unseen: number
   avgMs: number | null
   p95Ms: number | null
 }
@@ -57,22 +60,35 @@ export function toUptimeSeries(buckets: UptimeResponseTimeBucket[]): UptimePoint
   return buckets.map((b) => ({
     date: new Date(HAS_ZONE.test(b.bucket_start) ? b.bucket_start : b.bucket_start + 'Z'),
     samples: b.samples,
-    up: Math.max(0, b.samples - b.failed_checks - b.degraded_checks),
+    up: Math.max(0, b.samples - b.failed_checks - b.degraded_checks - (b.inconclusive_checks ?? 0)),
     failed: b.failed_checks,
     degraded: b.degraded_checks,
+    unseen: b.inconclusive_checks ?? 0,
     avgMs: b.avg_response_time_ms,
     p95Ms: b.p95_response_time_ms,
   }))
 }
 
 // * Range availability from the SAME buckets the strips draw — one source of
-// * truth for the panel. Semantics match the server's daily aggregation:
-// * degraded is not "up", so it counts against availability.
+// * truth for the panel. Semantics match the server's daily aggregation
+// * (23-11-2026): the checks that found the site up over the checks that found
+// * it up or down. A check that could not see the site is on neither side, and
+// * neither is a 'degraded' one of before the rule. A range in which no check
+// * saw the site has nothing to divide: null, never a fabricated 100.
 export function seriesUptimePct(series: UptimePoint[]): number | null {
-  const total = series.reduce((n, p) => n + p.samples, 0)
-  if (total === 0) return null
   const up = series.reduce((n, p) => n + p.up, 0)
-  return (up / total) * 100
+  const down = series.reduce((n, p) => n + p.failed, 0)
+  if (up + down === 0) return null
+  return (up / (up + down)) * 100
+}
+
+/** What a bucket's bar says: an outage beats everything, then whichever of "seen up" and "couldn't check" is the larger part. */
+export type BucketState = 'none' | 'down' | 'unseen' | 'up'
+export function bucketState(p: Pick<UptimePoint, 'samples' | 'up' | 'failed' | 'degraded' | 'unseen'>): BucketState {
+  if (p.samples === 0) return 'none'
+  if (p.failed > 0) return 'down'
+  // * A legacy degraded check answered (slowly, or oddly): the site was seen.
+  return p.unseen > p.up + p.degraded ? 'unseen' : 'up'
 }
 
 // ─── Range anchoring ─────────────────────────────────────────────
@@ -89,6 +105,13 @@ export function seriesUptimePct(series: UptimePoint[]): number | null {
 // * 'UTC'), so its ranges are UTC days at the source and there is nothing to re-anchor.
 
 // ─── Incident math ───────────────────────────────────────────────
+
+// * Only a 'down' episode is an outage. An 'inconclusive' one is a stretch the
+// * checker could not see the site, and a 'degraded' one predates 23-11-2026:
+// * both are listed, neither is downtime.
+export function isOutage(i: Pick<UptimeIncident, 'status'>): boolean {
+  return i.status === 'down'
+}
 
 export function incidentDurationSeconds(i: UptimeIncident, now = Date.now()): number {
   const start = new Date(i.started_at).getTime()
@@ -107,8 +130,9 @@ export function clippedDurationSeconds(i: UptimeIncident, rangeStartMs: number, 
   return Math.max(0, Math.round((end - start) / 1000))
 }
 
+// * Outages only: time the checker could not see the site is not downtime.
 export function totalDowntimeSeconds(incidents: UptimeIncident[], rangeStartMs: number, rangeEndMs: number, now = Date.now()): number {
-  return incidents.reduce((n, i) => n + clippedDurationSeconds(i, rangeStartMs, rangeEndMs, now), 0)
+  return incidents.filter(isOutage).reduce((n, i) => n + clippedDurationSeconds(i, rangeStartMs, rangeEndMs, now), 0)
 }
 
 // * The API range strings are SITE-timezone calendar days (22-08-2026): the
@@ -178,10 +202,27 @@ export function fmtCheckTime(iso: string, tz: string | null | undefined): string
 
 // ─── Cause humanization ──────────────────────────────────────────
 
-// * The checker records Go error strings verbatim ("request failed: Get
-// * \"https://…\": context deadline exceeded") — debugging gold, terrible UI
-// * copy. The ledger shows the handful of real failure modes in words a
-// * human recognizes; the verbatim string survives on the row's tooltip.
+// * The checker records what happened in fixed forms (pulse-backend
+// * internal/uptime/classify.go and checker.go): Go error strings verbatim
+// * ("request failed: Get \"https://…\": context deadline exceeded"), "bot
+// * check: cloudflare (status 403)", "redirect not followed: 301 to host",
+// * "too many redirects: …", "unexpected status code: N (expected M)" and,
+// * before 23-11-2026, "slow response: Nms". Debugging gold, terrible UI
+// * copy. The page shows each in words a human recognizes; the verbatim string
+// * survives on the row's tooltip.
+const BOT_CHECK_VENDOR: Record<string, string> = { cloudflare: 'Cloudflare', 'aws waf': 'AWS WAF' }
+
+/** The statuses that answer our monitor, not the page: a visitor may well get the site (classify.go, refusesTheChecker). */
+export function refusesTheMonitor(statusCode: number | null | undefined): boolean {
+  return statusCode === 401 || statusCode === 403 || statusCode === 407 || statusCode === 429
+}
+
+function statusWords(code: number, expected?: string): string {
+  if (code === 429) return 'Rate-limited our monitor (429)'
+  if (refusesTheMonitor(code)) return `Refused our monitor (${code})`
+  return expected ? `Status ${code} (expected ${expected})` : `Status ${code}`
+}
+
 export function humanizeCause(
   errorMessage: string | null,
   statusCode: number | null,
@@ -196,13 +237,19 @@ export function humanizeCause(
     if (m.includes('no such host')) return 'DNS lookup failed'
     if (m.includes('connection reset')) return 'Connection reset'
     if (m.includes('certificate') || m.includes('tls:') || m.includes('x509')) return 'TLS handshake failed'
+    const bot = m.match(/^bot check: ([a-z ]+) \(status \d+\)/)
+    if (bot) return `${BOT_CHECK_VENDOR[bot[1]] ?? 'A firewall'}'s bot check answered`
+    const elsewhere = m.match(/^redirect not followed: \d+ to (\S+)/)
+    if (elsewhere) return `Redirects to ${elsewhere[1]}`
+    if (m.startsWith('redirect not followed')) return 'Redirects to another address'
+    if (m.startsWith('too many redirects')) return 'Too many redirects'
     const slow = m.match(/slow response: (\d+)ms/)
     if (slow) return `Slow response (${fmtMs(Number(slow[1]))})`
     const code = m.match(/unexpected status code: (\d+) \(expected (\d+)\)/)
-    if (code) return `Status ${code[1]} (expected ${code[2]})`
+    if (code) return statusWords(Number(code[1]), code[2])
     return m
   }
-  if (statusCode != null) return `Status ${statusCode}`
+  if (statusCode != null) return statusWords(statusCode)
   return null
 }
 
@@ -211,3 +258,29 @@ export function humanizeCause(
 export const UPTIME_POS = '#3ECF8E'
 export const UPTIME_NEG = '#F8836B'
 export const UPTIME_DEGRADED = '#fbbf24'
+// * "Couldn't check": neither good nor bad, so a neutral, lighter than the grid's "no check at all". The charts'
+// * axis grey, by its variable, so it follows the theme (the same grey as before on dark).
+export const UPTIME_UNSEEN = 'var(--chart-axis)'
+
+/** The one fill rule of every availability bar on the page and on the dashboard's tile. */
+export function bucketFill(state: BucketState): string {
+  switch (state) {
+    case 'none':
+      return 'var(--chart-grid)'
+    case 'down':
+      return UPTIME_NEG
+    case 'unseen':
+      return UPTIME_UNSEEN
+    case 'up':
+      return UPTIME_POS
+  }
+}
+
+// ─── The monitor, as a site's firewall sees it ────────────────────
+
+// * What to allow so the monitor gets through a firewall. The address is the one every check leaves from (the
+// * cluster's single outbound address, measured 23-11-2026); the user agent is the checker's own
+// * (pulse-backend internal/uptime/checker.go). 🔴 Both are printed on the page for people to put in their
+// * firewall rules: change either here only together with the thing itself.
+export const MONITOR_ADDRESS = '179.237.92.73'
+export const MONITOR_USER_AGENT = 'Pulse-Uptime-Monitor/1.0'

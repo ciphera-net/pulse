@@ -11,7 +11,7 @@ import { useCan } from '@/lib/auth/permissions'
 import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import { useSite, useUptimeStatus, useUptimeIncidents, useUptimeChecks, useDataWindow } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
-import type { UptimeMonitor } from '@/lib/api/uptime'
+import type { UptimeIncident, UptimeMonitor, UptimeStatusResponse } from '@/lib/api/uptime'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import { toast, Button } from '@ciphera-net/facet'
 import { UptimeSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
@@ -27,8 +27,12 @@ import {
   UPTIME_POS,
   UPTIME_NEG,
   UPTIME_DEGRADED,
+  UPTIME_UNSEEN,
+  MONITOR_ADDRESS,
+  MONITOR_USER_AGENT,
   fmtMs,
   fmtCheckTime,
+  humanizeCause,
 } from '@/components/uptime/uptimeMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { canWrite, servesPage, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
@@ -60,13 +64,18 @@ const cascade = (delay: number) => ({
 
 // ─── Header status line (the SyncStatusLine grammar, for the checker) ──
 
-const STATUS_LINE: Record<string, { label: string; color: string; tone?: string }> = {
+type SiteUptimeStatus = UptimeStatusResponse['status']
+
+const STATUS_LINE: Record<SiteUptimeStatus, { label: string; color: string; tone?: string }> = {
   operational: { label: 'Operational', color: UPTIME_POS },
   degraded: { label: 'Degraded', color: UPTIME_DEGRADED, tone: UPTIME_DEGRADED },
   down: { label: 'Down', color: UPTIME_NEG, tone: UPTIME_NEG },
+  // The monitor ran and something answered in the site's place (a bot check, a refusal). Neither good nor bad:
+  // a neutral dot, and the words in the page's own quiet grey.
+  inconclusive: { label: "Couldn't check", color: UPTIME_UNSEEN },
 }
 
-function UptimeStatusLine({ monitor, status }: { monitor: UptimeMonitor; status: 'operational' | 'degraded' | 'down' }) {
+function UptimeStatusLine({ monitor, status }: { monitor: UptimeMonitor; status: SiteUptimeStatus }) {
   const cadence = `checked every ${Math.round(monitor.check_interval_seconds / 60)} minutes`
   if (monitor.last_status === 'unknown') {
     return (
@@ -76,7 +85,9 @@ function UptimeStatusLine({ monitor, status }: { monitor: UptimeMonitor; status:
       </p>
     )
   }
-  const s = STATUS_LINE[status]
+  // A status this build does not know (the server is newer) reads as its plain word in the neutral tone: it must
+  // never take the page down, which an unguarded lookup did for any value outside the three of before 23-11-2026.
+  const s = STATUS_LINE[status] ?? { label: String(status), color: UPTIME_UNSEEN }
   return (
     <p className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-500">
       <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.color }} />
@@ -93,15 +104,71 @@ function UptimeStatusLine({ monitor, status }: { monitor: UptimeMonitor; status:
   )
 }
 
+// ─── "Couldn't check": what happened, and how to let the monitor through ──
+
+/**
+ * Shown while the monitor's confirmed status is "couldn't check". The reason comes from the open episode (the
+ * check that confirmed it): a bot check, a refusal, or a redirect to another address. The page's rule for colour
+ * holds here too: a small neutral dot and plain words, never a tinted panel.
+ */
+function CouldntCheckNote({ episode, url }: { episode: UptimeIncident | undefined; url: string }) {
+  const message = episode?.first_error_message ?? ''
+  const code = episode?.first_status_code ?? null
+  const bot = message.match(/^bot check: ([a-z ]+) /)
+  const elsewhere = message.match(/^redirect not followed: \d+ to (\S+)/)
+  const cause = humanizeCause(episode?.first_error_message ?? null, code)
+
+  let what: React.ReactNode
+  if (bot) {
+    what = `${cause ?? 'A bot check answered'} in place of your site.`
+  } else if (elsewhere || message.startsWith('redirect not followed')) {
+    what = (
+      <>
+        <span className="font-mono text-neutral-300">{url}</span> sends visitors on to{' '}
+        {elsewhere ? <span className="font-mono text-neutral-300">{elsewhere[1]}</span> : 'another address'}. Pulse checks
+        only your site&apos;s own address, so it never saw the page they land on.
+      </>
+    )
+  } else if (code === 429) {
+    what = 'Your site is rate-limiting our monitor (429).'
+  } else if (code != null) {
+    what = `Your site is refusing our monitor (${code}).`
+  } else {
+    what = 'Something answered our monitor in place of your site.'
+  }
+  const redirect = Boolean(elsewhere) || message.startsWith('redirect not followed')
+
+  return (
+    <div data-uptime-note="couldnt-check" className="mb-6 rounded-none border border-border bg-card px-4 py-3">
+      <p className="flex items-center gap-2 text-sm font-medium text-white">
+        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: UPTIME_UNSEEN }} />
+        Pulse couldn&apos;t check this site
+      </p>
+      <p className="mt-1.5 text-sm text-neutral-400">
+        {what} Checks like these say nothing about your site, so they count neither for nor against your uptime.
+      </p>
+      {!redirect && (
+        <p className="mt-1.5 text-sm text-neutral-400">
+          To let the monitor through, allow the address{' '}
+          <span className="whitespace-nowrap font-mono text-neutral-300">{MONITOR_ADDRESS}</span> in your firewall. In
+          Cloudflare that is an IP Access rule with the action Allow. The monitor identifies itself as{' '}
+          <span className="whitespace-nowrap font-mono text-neutral-300">{MONITOR_USER_AGENT}</span>.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── Recent checks (compact log under the ledger) ─────────────────
 
 const CHECK_DOT: Record<string, string> = {
   up: UPTIME_POS,
   degraded: UPTIME_DEGRADED,
   down: UPTIME_NEG,
+  inconclusive: UPTIME_UNSEEN,
 }
 
-function RecentChecks({ siteId, monitorId, timezone }: { siteId: string; monitorId: string | undefined; timezone: string | null }) {
+function RecentChecks({ siteId, monitorId, timezone, timeoutSeconds }: { siteId: string; monitorId: string | undefined; timezone: string | null; timeoutSeconds?: number }) {
   const { data: checks } = useUptimeChecks(siteId, monitorId, 20)
   if (!checks || checks.length === 0) return null
   return (
@@ -125,12 +192,16 @@ function RecentChecks({ siteId, monitorId, timezone }: { siteId: string; monitor
               style={{ background: CHECK_DOT[c.effective_status ?? c.status] ?? '#737373' }}
             />
             <span className="ml-2.5 shrink-0 tabular-nums text-neutral-300">{fmtCheckTime(c.checked_at, timezone)}</span>
-            {/* A failed check finally shows WHY — the error was always fetched, never rendered */}
+            {/* Why a check did not come back healthy, in the ledger's own words; the checker's verbatim line is
+                the tooltip. Sans, like every sentence on the page: it is not code. */}
             {c.error_message && (
-              <span className="ml-3 min-w-0 flex-1 truncate font-mono text-neutral-500">{c.error_message}</span>
+              <span title={c.error_message} className="ml-3 min-w-0 flex-1 truncate text-neutral-500">
+                {humanizeCause(c.error_message, c.status_code, timeoutSeconds)}
+              </span>
             )}
             {!c.error_message && <span className="min-w-0 flex-1" />}
-            <span className="ml-3 w-12 shrink-0 text-right font-mono text-neutral-400">{c.status_code ?? '—'}</span>
+            {/* A status code is a number: tabular figures, never monospace. */}
+            <span className="ml-3 w-12 shrink-0 text-right tabular-nums text-neutral-400">{c.status_code ?? '—'}</span>
             <span className="ml-3 w-16 shrink-0 text-right tabular-nums text-neutral-300">
               {c.response_time_ms == null ? '—' : fmtMs(c.response_time_ms)}
             </span>
@@ -218,6 +289,8 @@ function UptimePage({ scope }: { scope: SiteScope }) {
   // * Single monitor from the auto-managed uptime system
   const monitor = uptimeData?.monitors?.[0]?.monitor ?? null
   const overallStatus = uptimeData?.status ?? 'operational'
+  // The stretch the monitor cannot see the site right now, if any: it carries the reason the note explains.
+  const unseenNow = incidentsData?.incidents?.find((i) => i.ended_at == null && i.status === 'inconclusive')
 
   const handleToggleUptime = async (enabled: boolean) => {
     if (!site) return
@@ -346,6 +419,7 @@ function UptimePage({ scope }: { scope: SiteScope }) {
 
       {monitor ? (
         <>
+          {overallStatus === 'inconclusive' && <CouldntCheckNote episode={unseenNow} url={monitor.url} />}
           <motion.div {...cascade(0)}>
             <UptimePanel
               siteId={siteId}
@@ -370,7 +444,7 @@ function UptimePage({ scope }: { scope: SiteScope }) {
           </motion.div>
 
           <motion.div {...cascade(0.14)} className="mt-6">
-            <RecentChecks siteId={siteId} monitorId={monitor.id} timezone={displayZone.zone} />
+            <RecentChecks siteId={siteId} monitorId={monitor.id} timezone={displayZone.zone} timeoutSeconds={monitor.timeout_seconds} />
           </motion.div>
         </>
       ) : uptimeError && !uptimeData ? (

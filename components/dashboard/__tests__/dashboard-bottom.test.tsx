@@ -551,7 +551,7 @@ describe('SearchTile', () => {
 })
 
 describe('UptimeTile', () => {
-  const day = (date: string, over: Partial<{ total_checks: number; failed_checks: number; degraded_checks: number; avg_response_time_ms: number }> = {}) => ({
+  const day = (date: string, over: Partial<{ total_checks: number; successful_checks: number; failed_checks: number; degraded_checks: number; inconclusive_checks: number; avg_response_time_ms: number }> = {}) => ({
     monitor_id: 'm', date, total_checks: 100, successful_checks: 100, failed_checks: 0, degraded_checks: 0, avg_response_time_ms: 200, min_response_time_ms: null, max_response_time_ms: null, p50_response_time_ms: null, p95_response_time_ms: null, ...over,
   })
   const status = (days: ReturnType<typeof day>[], over: Record<string, unknown> = {}) => ({
@@ -576,12 +576,28 @@ describe('UptimeTile', () => {
   })
 
   it('draws the Uptime page\'s candles, one a day, by the page\'s own rule', () => {
-    h.useUptimeStatus.mockReturnValue(answer(status([day('d1'), day('d2', { failed_checks: 2 }), day('d3', { degraded_checks: 4 }), day('d4', { total_checks: 0 }), day('d5', { failed_checks: 1, degraded_checks: 3 })])))
+    h.useUptimeStatus.mockReturnValue(answer(status([
+      day('d1'),
+      day('d2', { successful_checks: 98, failed_checks: 2 }),
+      day('d3', { successful_checks: 96, degraded_checks: 4 }),
+      day('d4', { total_checks: 0, successful_checks: 0 }),
+      day('d5', { successful_checks: 10, failed_checks: 1, inconclusive_checks: 89 }),
+      day('d6', { successful_checks: 30, inconclusive_checks: 70 }),
+      day('d7', { successful_checks: 66, inconclusive_checks: 34 }),
+    ])))
     inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)
     const candles = [...tile('uptime').querySelectorAll('[data-candle]')]
-    // A failed check outranks a slow one; a day with no check is neither up nor down.
-    expect(candles.map((c) => c.getAttribute('data-candle'))).toEqual(['up', 'down', 'degraded', 'none', 'down'])
+    // An outage outranks everything; a slow answer of before 23-11-2026 colours nothing; a day with no check is
+    // neither up nor down; a day the monitor mostly could not see the site is its own neutral state.
+    expect(candles.map((c) => c.getAttribute('data-candle'))).toEqual(['up', 'down', 'up', 'none', 'down', 'unseen', 'up'])
     expect(candles.every((c) => c.getAttribute('width') === '0.72')).toBe(true)
+  })
+
+  it('says "Couldn\'t check" with a neutral dot when the monitor cannot see the site', () => {
+    h.useUptimeStatus.mockReturnValue(answer(status([day('d1', { successful_checks: 0, inconclusive_checks: 100 })], { status: 'inconclusive' })))
+    inFrame(<UptimeTile siteId={SITE} dateRange={dateRange} />)
+    expect(tile('uptime').textContent).toContain("Couldn't check")
+    expect(tile('uptime').querySelector('.bg-neutral-500')).not.toBeNull()
   })
 
   it('a site with no monitor is not 100%: a dash, a sentence, no state and no candles', () => {
