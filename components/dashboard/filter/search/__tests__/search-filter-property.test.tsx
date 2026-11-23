@@ -34,7 +34,7 @@ const READS: Record<string, FilterSuggestion[]> = {
 function renderBeta(read: (d: string) => Promise<FilterSuggestion[]> = async (d) => READS[d] ?? [], filters: DimensionFilter[] = []) {
   const onApply = vi.fn()
   const fetch = vi.fn(read)
-  render(<SearchFilter filters={filters} onApply={onApply} fetchSuggestions={fetch} pageValues={PAGE} eventFilters />)
+  render(<SearchFilter filters={filters} onApply={onApply} fetchSuggestions={fetch} pageValues={PAGE} />)
   return { onApply, fetch, button: screen.getByTestId('search-filter-button') }
 }
 const panel = () => screen.queryByTestId('search-filter-panel') as HTMLElement

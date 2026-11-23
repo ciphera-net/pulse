@@ -6,8 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { XIcon } from '@ciphera-net/facet'
 import { SPRING, TIMING } from '@/lib/motion'
 import { PERIOD_PRESETS } from '@/lib/constants/periods'
-import { CUSTOM_RANGE_KEY, FILTER_KEY, KEYBOARD_SHORTCUTS_FLAG, RANGE_KEYS, REALTIME_KEY, keyCap } from '@/lib/keyboard/shortcuts'
-import { useFeature } from '@/lib/features'
+import { CUSTOM_RANGE_KEY, FILTER_KEY, RANGE_KEYS, REALTIME_KEY, keyCap } from '@/lib/keyboard/shortcuts'
 
 interface ShortcutsOverlayProps {
   open: boolean
@@ -86,8 +85,6 @@ function Row({ shortcut }: { shortcut: ShortcutRow }) {
  * Portal-rendered to escape any parent overflow clipping.
  */
 export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
-  // The date range's keys are a beta; F is older and listed for everyone.
-  const rangeKeys = useFeature(KEYBOARD_SHORTCUTS_FLAG) === true
   useEffect(() => {
     if (!open) return
     function handler(e: KeyboardEvent) {
@@ -146,15 +143,11 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
                   </div>
                 </div>
                 <div>
-                  {rangeKeys && (
-                    <>
-                      <h3 className="text-micro-label font-semibold text-neutral-500 mb-2 mt-6 md:mt-0">Date range</h3>
-                      <div className="divide-y divide-white/[0.04]" data-shortcuts-section="date-range">
-                        {DATE_RANGE.map((s) => <Row key={s.label} shortcut={s} />)}
-                      </div>
-                    </>
-                  )}
-                  <h3 className={`text-micro-label font-semibold text-neutral-500 mb-2 ${rangeKeys ? 'mt-6' : 'mt-6 md:mt-0'}`}>Filter</h3>
+                  <h3 className="text-micro-label font-semibold text-neutral-500 mb-2 mt-6 md:mt-0">Date range</h3>
+                  <div className="divide-y divide-white/[0.04]" data-shortcuts-section="date-range">
+                    {DATE_RANGE.map((s) => <Row key={s.label} shortcut={s} />)}
+                  </div>
+                  <h3 className="text-micro-label font-semibold text-neutral-500 mb-2 mt-6">Filter</h3>
                   <div className="divide-y divide-white/[0.04]" data-shortcuts-section="filter">
                     {FILTER.map((s) => <Row key={s.label} shortcut={s} />)}
                   </div>

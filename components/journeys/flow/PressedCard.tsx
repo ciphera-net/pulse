@@ -13,8 +13,8 @@ import type { SankeyLink } from '@/lib/journeys/sankeyLayout'
 import { OTHER, nextOf, otherIndices, otherPages, otherVisits, sessionsAt, stepName, stepVisits } from './flowMath'
 
 // ---------------------------------------------------------------------------
-// The pressed journey's card (owner, 18-11-2026: "that whole strip ... we need to recreate to make sure it matches
-// pulse quality & vibe like dashboard & pages page"), in a block of its own under the chart's (12 px). Built only of
+// The pressed journey's card (rebuilt 18-11-2026 to match the dashboard and the Pages page), in a block of its own under
+// the chart's (12 px). Built only of
 // parts the Pages page already uses:
 //   the blocks' title row (their name style, the step in the small grey line; no colour mark);
 //   an opened page's measure cells (PagesList.tsx: the name at 13 px, the figure at 20 px, a line of context);

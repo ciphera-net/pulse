@@ -198,8 +198,9 @@ describe('how it is drawn: the block\'s own rows', () => {
     expect((rows()[0].lastElementChild as HTMLElement).firstElementChild?.textContent).toBe('35%')
   })
 
+  // Where the page has no filter to hand the block, the whole row is the link (with one, a press filters by it: below).
   it('a row opens its link in a new tab, and is named for a screen reader', () => {
-    inFrame(block())
+    inFrame(block(undefined, { onFilter: undefined }))
     openOutbound()
     const row = rows()[0]
     expect(row.tagName).toBe('A')
@@ -212,8 +213,11 @@ describe('how it is drawn: the block\'s own rows', () => {
   })
 
   it('carries the Pages rows\' arrow: hidden at rest, shown by the row, orange under the pointer', () => {
-    inFrame(block())
-    const pagesArrow = rows()[0].querySelector('a[aria-label^="Open "]') as HTMLElement
+    // The Pages row's arrow is a control, drawn where the page has a filter; the Outbound row's linked form has none.
+    const { unmount } = inFrame(block())
+    const pagesArrow = (rows()[0].querySelector('a[aria-label^="Open "]') as HTMLElement).cloneNode(true) as HTMLElement
+    unmount()
+    inFrame(block(undefined, { onFilter: undefined }))
     openOutbound()
     const arrow = rows()[0].querySelector('[data-testid="outbound-link-arrow"]') as HTMLElement
     const cls = new Set(arrow.className.split(/\s+/))
@@ -450,7 +454,7 @@ describe('the other three tabs are as they were', () => {
   })
 })
 
-describe('under the event-filters beta (R45): a press filters by the link, the arrow opens it', () => {
+describe('with the page\'s filter (R45): a press filters by the link, the arrow opens it', () => {
   it('filters the page by every stored address the row stands for, and keeps the link on its arrow', async () => {
     const { OUTBOUND_KIND } = await import('@/lib/filters')
     // Two stored addresses that read the same make one row (outboundLinkRows): its filter names both.
@@ -460,7 +464,7 @@ describe('under the event-filters beta (R45): a press filters by the link, the a
       isLoading: false,
     })
     const onFilter = vi.fn()
-    inFrame(block({ period: '7d', goalCounts: goalCounts as Outbound['goalCounts'], filterByLink: true }, { onFilter }))
+    inFrame(block({ period: '7d', goalCounts: goalCounts as Outbound['goalCounts'] }, { onFilter }))
     openOutbound()
     const row = rows()[0]
     expect(row.tagName).toBe('DIV')
@@ -476,8 +480,8 @@ describe('under the event-filters beta (R45): a press filters by the link, the a
     expect(arrow.getAttribute('target')).toBe('_blank')
   })
 
-  it('opens the link from the whole row without the beta, as before', () => {
-    inFrame(block())
+  it('opens the link from the whole row where the page has no filter to hand it', () => {
+    inFrame(block(undefined, { onFilter: undefined }))
     openOutbound()
     expect(rows()[0].tagName).toBe('A')
   })

@@ -337,7 +337,8 @@ describe('the new frame', () => {
 })
 
 // Match any (R65 of 16-11-2026; lib/filters.ts): the mode is part of the ONE filters string, so it reaches every read
-// and the address or none of them. The team's beta decides whether the page may be in it at all.
+// and the address or none of them. Every team has it since 23-11-2026 (a beta from 16-11): no beta is asked about, so
+// what /me says of the old flag changes nothing (`flag` below).
 describe('Match any', () => {
   const ANY = 'any:v2:country|is|NO,device|is|mobile'
   const ALL = 'v2:country|is|NO,device|is|mobile'
@@ -351,27 +352,20 @@ describe('Match any', () => {
   })
   const everywhere = (filters: string) => ({ dashboard: filters, previous: filters, block: filters, address: filters })
 
-  it('an address that asks for Any reads Any everywhere, for a team with the beta', async () => {
-    flag(true)
+  it('an address that asks for Any reads Any everywhere, whatever /me says of the old flag', async () => {
+    flag(false)
     mockSearchParams = new URLSearchParams({ filters: ANY })
     await mount()
     expect(sent()).toEqual(everywhere(ANY))
   })
 
-  it('is believed while /me has not answered: the reads go out once, as the address asks', async () => {
+  it('reads go out once, as the address asks, before /me has answered', async () => {
     flag(null)
     mockSearchParams = new URLSearchParams({ filters: ANY })
     await mount()
     expect(sent()).toEqual(everywhere(ANY))
     // No read of this page ever went out as Match all.
     expect(h.useDashboard.mock.calls.every((call) => call[4] === ANY)).toBe(true)
-  })
-
-  it('a team without the beta reads Match all, and the address is rewritten to say so', async () => {
-    flag(false)
-    mockSearchParams = new URLSearchParams({ filters: ANY })
-    await mount()
-    expect(sent()).toEqual(everywhere(ALL))
   })
 
   it('Match all stays byte for byte what it was', async () => {
@@ -420,19 +414,14 @@ describe('Match any', () => {
   })
 
   it.each([
-    ['a team without the beta', false],
-    ['a page that has not heard from /me yet', null],
-  ])('offers no switch to %s', async (_who, value) => {
+    ['/me says no', false],
+    ['/me has not answered', null],
+  ])('offers the switch when %s: no beta is asked about', async (_who, value) => {
     flag(value)
     mockSearchParams = new URLSearchParams({ filters: ALL })
     await mount()
-    // The box is what it was: no word in front of its count, pressable or not.
-    expect(screen.queryByTestId('filters-box-mode')).toBeNull()
-    expect(screen.queryByTestId('filters-box-mode-fixed')).toBeNull()
+    expect(screen.getByTestId('filters-box-mode').textContent).toBe('all')
     expect(screen.getByTestId('filters-box').textContent).toBe('2 filters')
-    fireEvent.click(screen.getByTestId('filters-box'))
-    expect(screen.getAllByTestId('filters-menu-row')).toHaveLength(2)
-    expect(screen.queryByTestId('filters-match-why')).toBeNull()
   })
 
   it('leaves Any with its second filter, and a second filter added later starts on Match all', async () => {

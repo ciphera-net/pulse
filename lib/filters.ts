@@ -134,8 +134,6 @@ export function unescapeFilterValue(value: string): string {
 // one filter alone says the same under both, so `modeFor` is the ONE place that decides the mode a set is really in.
 // ---------------------------------------------------------------------------
 
-/** The beta that offers the switch (lib/betas.ts; read with useFeature). */
-export const MATCH_ANY_FLAG = 'match-any'
 export type FilterMode = 'all' | 'any'
 export const FILTERS_ANY_PREFIX = 'any:'
 
@@ -204,12 +202,10 @@ export function filterLabel(f: DimensionFilter): string {
 //   * `event_property:<event>:<key>`: the visitors who did <event> with <key> matching. An outbound link is this
 //     kind on the event `outbound_link` and its property `url`. The key is escaped like a value (it may hold the
 //     format's delimiters); an event name cannot hold any of them (ingest's own rule), so it is written as is.
-// While the event-filters beta is on they replace `event_name` (a test on a row): an old address's `event_name` is
-// read as `event`. The server refuses the two side by side, and more than MAX_EVENT_FILTERS event filters.
+// They replace `event_name` (a test on a row; every team since 23-11-2026, a beta from 16-11): an old address's
+// `event_name` is read as `event`. The server refuses the two side by side, and more than MAX_EVENT_FILTERS event filters.
 // ---------------------------------------------------------------------------
 
-/** The beta that offers the two kinds (lib/betas.ts; read with useFeature). */
-export const EVENT_FILTERS_FLAG = 'event-filters'
 export const EVENT_KIND = 'event'
 const EVENT_PROPERTY_PREFIX = 'event_property:'
 /** The most event filters one page may carry: each is one more full read of the range on the server. */
@@ -224,13 +220,11 @@ export function eventFilterRoomFor(filter: DimensionFilter, filters: DimensionFi
   return filters.filter((f) => isEventKind(f.dimension)).length < MAX_EVENT_FILTERS
 }
 
-/**
- * The Events category while the event-filters beta is on: an event, an event's property and an outbound link in place of
- * `event_name`.
- */
-export function categoriesFor(eventFilters: boolean): { label: string; dimensions: readonly string[] }[] {
+/** The categories the older picker offers: the Events category holds an event, an event's property and an outbound link in
+ * place of `event_name`. */
+export function categoriesFor(): { label: string; dimensions: readonly string[] }[] {
   return DIMENSION_CATEGORIES.map((c) =>
-    eventFilters && c.dimensions.includes('event_name' as never)
+    c.dimensions.includes('event_name' as never)
       ? { label: c.label, dimensions: c.dimensions.flatMap((d) => (d === 'event_name' ? [EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND] : [d])) }
       : { label: c.label, dimensions: c.dimensions },
   )
@@ -287,7 +281,7 @@ export function propertyKeysEvent(scope: string): string | null {
 
 /**
  * An old address's `event_name` filters, read as `event` (R45: an old Event link takes the new meaning), the names
- * lower-cased as ingest stores every name. Only while the event-filters beta is on; every other filter passes as is.
+ * lower-cased as ingest stores every name. Every other filter passes as is.
  */
 export function readEventNameAsEvent(filters: DimensionFilter[]): DimensionFilter[] {
   if (!filters.some((f) => f.dimension === 'event_name')) return filters

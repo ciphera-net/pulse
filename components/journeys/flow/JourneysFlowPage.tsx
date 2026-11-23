@@ -15,12 +15,11 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { SkeletonCard } from '@/components/skeletons'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
-import { ENTRY_DIMENSION, JOURNEY_EVENT_FILTER_DIMENSIONS, JOURNEY_FILTER_DIMENSIONS } from '@/lib/hooks/useJourneyFilters'
+import { ENTRY_DIMENSION, JOURNEY_EVENT_FILTER_DIMENSIONS } from '@/lib/hooks/useJourneyFilters'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { dashboardCapabilities } from '@/lib/dashboard/capabilities'
 import { FRAME_CARD_NAME, FRAME_SURFACE } from '@/lib/dashboard/frameClasses'
-import { EVENT_FILTERS_FLAG, parseFiltersFromURL, serializeFilters, type DimensionFilter } from '@/lib/filters'
-import { useFeature } from '@/lib/features'
+import { parseFiltersFromURL, serializeFilters, type DimensionFilter } from '@/lib/filters'
 import { useDataWindow, useJourneyFlow, useSite } from '@/lib/swr/dashboard'
 import { canWrite, scopeHref, useSiteScope } from '@/lib/scope/SiteScope'
 import { displayDomain } from '@/lib/utils/displayDomain'
@@ -39,8 +38,8 @@ import { entryOnlyTotal, sliceFlow } from './flowMath'
 // One read: the flow at six steps. The Steps switch (3, 4, 5; 5 on arrival) cuts it in the browser (sliceFlow), so a
 // choice draws at once and the pressed card knows what came after the last step drawn.
 //
-// Filters: the journeys read answers the entry page, country, device and referrer (and an event, its property and an
-// outbound link while that beta is on), so the Search filter offers only those (SearchFilter's `only`). The entry page
+// Filters: the journeys read answers the entry page, country, device and referrer, an event, its property and an
+// outbound link, so the Search filter offers only those (SearchFilter's `only`). The entry page
 // travels as its own parameter; one at a time, as the read takes one.
 // ---------------------------------------------------------------------------
 
@@ -77,8 +76,6 @@ export default function JourneysFlowPage({ siteId }: { siteId: string }) {
   const range = fetchableRange(periodReady, dateRange)
   const apiPeriod = serverResolvedPeriod(periodReady, period)
 
-  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
-  const only = eventFilters ? JOURNEY_EVENT_FILTER_DIMENSIONS : JOURNEY_FILTER_DIMENSIONS
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
     const raw = caps.filters ? searchParams.get('filters') : null
     const allowed = new Set<string>(JOURNEY_EVENT_FILTER_DIMENSIONS)
@@ -111,7 +108,7 @@ export default function JourneysFlowPage({ siteId }: { siteId: string }) {
   const handleApplySet = useCallback((next: DimensionFilter[]) => setFilters(next), [])
   const fetchSuggestions = useFilterSuggestions(siteId, range.start && range.end ? range : null, filtersParam || undefined, apiPeriod)
 
-  // Steps: 5 on arrival (owner, 18-11-2026), kept in the address only when another is chosen.
+  // Steps: 5 on arrival (18-11-2026), kept in the address only when another is chosen.
   const [steps, setSteps] = useState<number>(() => {
     const n = Number(searchParams.get('steps'))
     return (STEPS as readonly number[]).includes(n) ? n : STEPS_DEFAULT
@@ -140,7 +137,7 @@ export default function JourneysFlowPage({ siteId }: { siteId: string }) {
       {caps.filters && (
         <>
           <FiltersBox filters={filters} onApply={handleFilterApply} onRemove={handleRemoveFilter} onClearAll={handleClearFilters} pageValues={NO_PAGE_VALUES} />
-          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={fetchSuggestions} pageValues={NO_PAGE_VALUES} onApplySet={handleApplySet} eventFilters={eventFilters} only={only} />
+          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={fetchSuggestions} pageValues={NO_PAGE_VALUES} onApplySet={handleApplySet} only={JOURNEY_EVENT_FILTER_DIMENSIONS} />
         </>
       )}
       <DateRangePicker {...picker} />

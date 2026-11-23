@@ -39,8 +39,7 @@ import FrameToolbar from '@/components/dashboard/FrameToolbar'
 // Client-only and off the critical path: driver.js only matters once the
 // dashboard is interactive, and the controller waits for the anchors anyway.
 const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
-import { type DimensionFilter, type FilterMode, serializeFilters, parseFiltersFromURL, parseFilterMode, modeFor, canMatchAny, EVENT_FILTERS_FLAG, MATCH_ANY_FLAG, readEventNameAsEvent, eventFilterRoomFor, TOO_MANY_EVENT_FILTERS } from '@/lib/filters'
-import { useFeature } from '@/lib/features'
+import { type DimensionFilter, type FilterMode, serializeFilters, parseFiltersFromURL, parseFilterMode, modeFor, canMatchAny, readEventNameAsEvent, eventFilterRoomFor, TOO_MANY_EVENT_FILTERS } from '@/lib/filters'
 import {
   useDashboard,
   useRealtime,
@@ -159,29 +158,21 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // Dimension filters state. A share link carries none: a filtered public-scoped read is
   // refused (400), so a `?filters=` in its URL is never parsed, let alone sent.
   const searchParams = useSearchParams()
+  // An old address's event_name filter reads as an event (R45): the page never sends the two side by side, which the
+  // server refuses.
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
     const raw = caps.filters ? searchParams.get('filters') : null
-    return raw ? parseFiltersFromURL(raw) : []
+    return raw ? readEventNameAsEvent(parseFiltersFromURL(raw)) : []
   })
   // Match any (R65; lib/filters.ts): the switch's state starts from the address. The mode the page is REALLY in is
-  // modeFor's: Any only with two filters or more and no event filter among them. Until /me has said whether the
-  // team has the beta, an address that asks for Any is believed (its reads go out once, as Any); a team without the
-  // beta reads Match all, and the address is rewritten to say so.
+  // modeFor's: Any only with two filters or more and no event filter among them.
   const [filterMode, setFilterMode] = useState<FilterMode>(() => parseFilterMode(caps.filters ? searchParams.get('filters') : null))
-  const matchAnyFlag = useFeature(MATCH_ANY_FLAG)
-  const mode: FilterMode = matchAnyFlag === false ? 'all' : modeFor(filters, filterMode)
+  const mode: FilterMode = modeFor(filters, filterMode)
   // The switch leaves with its second filter (or when an event filter joins), and it does not come back on by itself.
   // Put back while rendering, not in an effect: React renders again at once, before anything is drawn or read.
   if (filterMode === 'any' && !canMatchAny(filters)) setFilterMode('all')
   // ONE string for every read and for the address, so the mode reaches each of them or none.
   const filtersParam = useMemo(() => serializeFilters(filters, mode), [filters, mode])
-  // The event filter's beta (R45): the Search filter offers an event and an outbound link, and an old address's
-  // event_name filter reads as an event, once /me says the beta is on. The page never sends the two side by side,
-  // which the server refuses.
-  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
-  useEffect(() => {
-    if (eventFilters) setFilters((prev) => readEventNameAsEvent(prev))
-  }, [eventFilters])
 
   // Deck metric selection lives in the URL (?metric=) like ?period= — a shared
   // link carries it and a reload keeps it. DECOUPLED (owner decision,
@@ -597,8 +588,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
             pageValues={pageValues}
             places={places}
             mode={mode}
-            // The switch is offered where the team has the beta; without it the box is as it was.
-            onMode={matchAnyFlag === true ? setFilterMode : undefined}
+            onMode={setFilterMode}
           />
           {/* A filtered view leaves imported days out: filters select visits, and an imported day holds totals
               (M11-h). Said beside the control that did it, from the response's own provenance. */}
@@ -608,7 +598,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
               <TermInfoTip term="imported_history" />
             </span>
           )}
-          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} onApplySet={handleApplySavedFilters} mode={mode} eventFilters={eventFilters} />
+          <SearchFilter filters={filters} onApply={handleFilterApply} fetchSuggestions={handleFetchSuggestions} pageValues={pageValues} onApplySet={handleApplySavedFilters} mode={mode} />
         </>
       )}
       <DateRangePicker {...picker} />
@@ -721,7 +711,6 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           filtersParam={filtersParam}
           onCardFilter={onCardFilter}
           outboundOff={outboundOff}
-          eventFilters={eventFilters}
         />
       )}
       </EmptyFactsProvider>

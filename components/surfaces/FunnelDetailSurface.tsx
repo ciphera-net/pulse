@@ -13,8 +13,7 @@ import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
-import { type DimensionFilter, serializeFilters, parseFiltersFromURL, EVENT_FILTERS_FLAG, readEventNameAsEvent } from '@/lib/filters'
-import { useFeature } from '@/lib/features'
+import { type DimensionFilter, serializeFilters, parseFiltersFromURL, readEventNameAsEvent } from '@/lib/filters'
 import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
@@ -107,16 +106,12 @@ function FunnelDetail({ scope, funnelId }: { scope: SiteScope; funnelId: string 
   const allPeriod = serverResolvedPeriod(periodReady, period)
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
+  // An old address's event_name filter reads as an event (R45), as on the dashboard.
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
     const raw = searchParams.get('filters')
-    return raw ? parseFiltersFromURL(raw) : []
+    return raw ? readEventNameAsEvent(parseFiltersFromURL(raw)) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
-  // The event filter's beta (R45): an old address's event_name filter reads as an event, as on the dashboard.
-  const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true
-  useEffect(() => {
-    if (eventFilters) setFilters((prev) => readEventNameAsEvent(prev))
-  }, [eventFilters])
 
   useEffect(() => {
     const url = new URL(window.location.href)

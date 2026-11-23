@@ -4,7 +4,8 @@ import type { RowState } from '@/lib/view/view'
 import type { Period } from '@/lib/hooks/periodUrl'
 
 // The date menu's keys (16-11-2026, R13): a row's letter picks it from anywhere on the page, C opens the calendar,
-// the arrows step the range, each pickable row shows its letter. All of it behind the keyboard-shortcuts beta.
+// the arrows step the range, each pickable row shows its letter. For every team since 23-11-2026 (a beta from 16-11),
+// and on a page with no team (the demo): no beta is asked about.
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 const flag = vi.hoisted(() => ({ on: true }))
 vi.mock('@/lib/features', () => ({ useFeature: () => flag.on }))
@@ -159,18 +160,16 @@ describe('the letters in the menu', () => {
   })
 })
 
-describe('with the beta off', () => {
-  it('no key does anything and the menu shows no letter', () => {
+describe('with no beta on (a page with no team, the demo)', () => {
+  it('the keys still work and the menu still shows the letters', () => {
     flag.on = false
     const { onPick, onShift } = renderPicker()
     key('w')
     key('ArrowLeft')
-    key('c')
-    expect(onPick).not.toHaveBeenCalled()
-    expect(onShift).not.toHaveBeenCalled()
-    expect(document.querySelector('[data-view-switcher]')).toBeNull()
+    expect(onPick).toHaveBeenCalledWith('7')
+    expect(onShift).toHaveBeenCalledWith(-1)
     open()
-    expect(document.querySelectorAll('[data-view-list] kbd')).toHaveLength(0)
-    expect(document.querySelector('[data-row="7"]')).not.toHaveAttribute('aria-keyshortcuts')
+    expect(document.querySelectorAll('[data-view-list] kbd').length).toBeGreaterThan(0)
+    expect(document.querySelector('[data-row="7"]')).toHaveAttribute('aria-keyshortcuts', 'W')
   })
 })

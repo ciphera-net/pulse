@@ -15,10 +15,10 @@ import {
   type FilterSuggestion,
 } from '@/lib/filters'
 import {
+  EVENT_FILTER_GROUPS,
   columnLabelOf,
   dimensionsFor,
   drillOf,
-  groupsFor,
   isTextKind,
   labelOf,
   pageValuesFrom,
@@ -44,17 +44,15 @@ describe('the steps of Event property are never a filter', () => {
     }
   })
 
-  it('stands between Event and Outbound link in both pickers, under the beta only', () => {
-    const events = (eventFilters: boolean) => categoriesFor(eventFilters).find((c) => c.label === 'Events')?.dimensions
-    expect(events(true)).toEqual([EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND])
-    expect(events(false)).toEqual(['event_name'])
-    expect(groupsFor(true).find((g) => g.label === 'Events')?.dimensions).toEqual([EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND])
-    expect(groupsFor(false).flatMap((g) => g.dimensions)).not.toContain(EVENT_PROPERTY_SCOPE)
+  it('stands between Event and Outbound link in both pickers, in place of event_name', () => {
+    expect(categoriesFor().find((c) => c.label === 'Events')?.dimensions).toEqual([EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND])
+    expect(EVENT_FILTER_GROUPS.find((g) => g.label === 'Events')?.dimensions).toEqual([EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND])
+    expect(categoriesFor().flatMap((c) => c.dimensions)).not.toContain('event_name')
   })
 
   it('is no kind read up front: its first step lists the events the Event kind reads', () => {
-    expect(dimensionsFor(true)).toEqual(expect.arrayContaining([EVENT_KIND, OUTBOUND_KIND]))
-    expect(dimensionsFor(true)).not.toContain(EVENT_PROPERTY_SCOPE)
+    expect(dimensionsFor()).toEqual(expect.arrayContaining([EVENT_KIND, OUTBOUND_KIND]))
+    expect(dimensionsFor()).not.toContain(EVENT_PROPERTY_SCOPE)
   })
 })
 
@@ -69,7 +67,7 @@ describe('where a row of each step leads', () => {
   })
 
   it('reads a step when it opens only where no list is read up front', () => {
-    const known = dimensionsFor(true)
+    const known = dimensionsFor()
     expect(readsOnOpen(propertyKeysScope('signup'), known)).toBe(true)
     expect(readsOnOpen(eventPropertyKind('signup', 'plan'), known)).toBe(true)
     expect(readsOnOpen(OUTBOUND_KIND, known)).toBe(false)
@@ -161,7 +159,7 @@ describe('names, as the Events block gives them', () => {
 describe('useScopeList: a step read when it opens', () => {
   const KEYS = propertyKeysScope('signup')
   const LIST: FilterSuggestion[] = [{ value: 'plan', label: 'Plan', count: 10 }]
-  const known = dimensionsFor(true)
+  const known = dimensionsFor()
 
   it('reads a step once, keeps it, and reads nothing for a scope read up front', async () => {
     const read = vi.fn(async () => LIST)

@@ -2,45 +2,44 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-// Source-level pins for the event filter's beta (R45 of 15-11-2026), the idiom of frame-wiring.test.ts: each surface
-// that offers the filter reads the one flag and hands it on, and the two that restore filters from an address read an
-// old event_name as an event. Dropping one leaves every component test green while a page offers the wrong kinds or
-// sends the server a row test beside a visitor test, which it refuses.
+// Source-level pins for the event filter (R45 of 15-11-2026; a beta until it went to every team on 23-11-2026), the idiom
+// of frame-wiring.test.ts: each page that restores filters from an address reads an old event_name as an event on its
+// first parse, and each place that offers the filter offers the event kinds. Dropping one leaves every component test
+// green while a page offers the wrong kinds or sends the server a row test beside a visitor test, which it refuses.
 const read = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
 
-describe('the event filter beta is wired where the filter is offered', () => {
-  it('reads an old event_name as an event on the dashboard and a funnel\'s page, only once the beta is on', () => {
-    for (const rel of ['components/surfaces/DashboardSurface.tsx', 'components/surfaces/FunnelDetailSurface.tsx']) {
+describe('the event filter is wired where the filter is offered', () => {
+  it('reads an old event_name as an event on the dashboard, a funnel\'s page and the Visitors page, from the first parse', () => {
+    for (const rel of ['components/surfaces/DashboardSurface.tsx', 'components/surfaces/FunnelDetailSurface.tsx', 'components/visitors/list/VisitorsListPage.tsx']) {
       const page = read(rel)
-      expect(page, rel).toContain('const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true')
-      expect(page, rel).toContain('if (eventFilters) setFilters((prev) => readEventNameAsEvent(prev))')
+      expect(page, rel).toContain('return raw ? readEventNameAsEvent(parseFiltersFromURL(raw)) : []')
     }
   })
 
-  it('hands the beta to the dashboard\'s filter and its Outbound rows', () => {
-    const page = read('components/surfaces/DashboardSurface.tsx')
-    expect(page).toContain('eventFilters={eventFilters} />')
-    expect(page).toContain('          eventFilters={eventFilters}\n')
+  it('asks about no beta: the flag is gone from the filters, the pages and the Beta tab', () => {
+    expect(read('lib/filters.ts')).not.toContain('EVENT_FILTERS_FLAG')
+    expect(read('lib/betas.ts')).not.toContain("flag: 'event-filters'")
+    for (const rel of ['components/surfaces/DashboardSurface.tsx', 'components/surfaces/FunnelDetailSurface.tsx', 'components/visitors/list/VisitorsListPage.tsx', 'components/journeys/flow/JourneysFlowPage.tsx', 'components/dashboard/filter/DimensionStage.tsx', 'components/dashboard/filter/search/SearchFilter.tsx']) {
+      expect(read(rel), rel).not.toContain('eventFilters')
+    }
   })
 
-  it('offers Journeys the two kinds only under the beta, beside its own four', () => {
-    // The Journeys page every team has since 23-11-2026 (its Search filter's `only`).
-    const page = read('components/journeys/flow/JourneysFlowPage.tsx')
-    expect(page).toContain('const only = eventFilters ? JOURNEY_EVENT_FILTER_DIMENSIONS : JOURNEY_FILTER_DIMENSIONS')
-    expect(page).toContain('const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true')
+  it('offers Journeys the event kinds beside its own four', () => {
+    expect(read('components/journeys/flow/JourneysFlowPage.tsx')).toContain('only={JOURNEY_EVENT_FILTER_DIMENSIONS}')
   })
 
-  it('keeps the older picker (a funnel\'s page, Journeys, Settings, Export) to two event filters, as the Search filter does', () => {
+  it('keeps the older picker (a funnel\'s page, Settings, Export) to two event filters, as the Search filter does', () => {
     const builder = read('components/dashboard/filter/FilterBuilder.tsx')
     expect(builder).toContain('if (draft.editingIndex === null && !eventFilterRoomFor(next, filters)) {')
     expect(builder).toContain('toast.error(TOO_MANY_EVENT_FILTERS)')
-    expect(read('components/dashboard/filter/DimensionStage.tsx')).toContain('categoriesFor(eventFilters)')
+    expect(read('components/dashboard/filter/DimensionStage.tsx')).toContain('categoriesFor()')
   })
 
-  it('hands the Events block the page\'s card filter only under the beta, through its card', () => {
-    expect(read('components/surfaces/DashboardFrame.tsx')).toContain('onFilter={eventFilters ? onCardFilter : undefined}')
+  it('hands the Events block and the Outbound rows the page\'s card filter, through their cards', () => {
+    expect(read('components/surfaces/DashboardFrame.tsx')).toContain('onFilter={onCardFilter}')
     expect(read('components/dashboard/ContentSignals.tsx')).toContain('onFilter={props.onFilter}')
     expect(read('components/dashboard/events/EventsBlock.tsx')).toContain('onFilter={onFilter}')
+    expect(read('components/dashboard/ContentStats.tsx')).not.toContain('filterByLink')
   })
 
   it('keeps a row\'s press on the dashboard to two event filters, as the pickers are kept', () => {
@@ -50,13 +49,8 @@ describe('the event filter beta is wired where the filter is offered', () => {
     expect(page).toMatch(/const handleAddFilter = useCallback\(\(filter: DimensionFilter\) => \{[\s\S]*?\}, \[filters\]\)/)
   })
 
-  it('offers Journeys Event property under the beta, and hands the older picker the reads its steps need', () => {
+  it('offers Journeys Event property, and hands the older picker the reads its steps need', () => {
     expect(read('lib/hooks/useJourneyFilters.ts')).toContain('[...JOURNEY_FILTER_DIMENSIONS, EVENT_KIND, EVENT_PROPERTY_SCOPE, OUTBOUND_KIND]')
     expect(read('components/dashboard/filter/FilterBuilder.tsx')).toContain('fetchSuggestions={fetchSuggestions}\n        />\n      ) : (')
-  })
-
-  it('is no longer a beta the Beta tab names (every team has it since 23-11-2026), while the pickers still read the flag', () => {
-    expect(read('lib/betas.ts')).not.toContain("flag: 'event-filters'")
-    expect(read('lib/filters.ts')).toContain("export const EVENT_FILTERS_FLAG = 'event-filters'")
   })
 })
