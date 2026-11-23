@@ -20,26 +20,4 @@ export const BETAS: readonly Beta[] = [
   // The server lists GA4 among a site's import sources only while this flag is on for the team
   // (lib/import/useImportSources.ts).
   { flag: 'ga4-import', name: 'Google Analytics import', revalidates: ['importSources'] },
-  // The event filter (R45 of 15-11-2026): an event and an outbound link as a filter on the dashboard, a funnel's page,
-  // Journeys and Settings, Export. Their pickers read useFeature (lib/filters.ts EVENT_FILTERS_FLAG); the server
-  // answers a condition for every team.
-  { flag: 'event-filters', name: 'Event filters', revalidates: [] },
-  // Keyboard shortcuts (R13): a letter for each date range, C for the calendar, R for realtime and the arrows to step
-  // the range. The date menu, the orb and the ? list read useFeature (lib/keyboard/shortcuts.ts KEYBOARD_SHORTCUTS_FLAG).
-  { flag: 'keyboard-shortcuts', name: 'Keyboard shortcuts', revalidates: [] },
-  // Match any (R65): with two filters or more, the dashboard's filters box offers a switch between what fits every
-  // filter and what fits at least one. The box reads useFeature (lib/filters.ts MATCH_ANY_FLAG).
-  { flag: 'match-any', name: 'Match any filter', revalidates: [] },
-  // The Pages page as one list (R78, R82): every page with its days as bars and its change, and a page that opens
-  // in place with its trend and its scroll depth. PagesSurface reads useFeature (components/pages/list/flag.ts
-  // NEW_PAGES_FLAG); the table stays for every team without it.
-  { flag: 'new-pages', name: 'New Pages page', revalidates: [] },
-  // The new Journeys page (R87 to R96, 18-11-2026): the flow in the dashboard's frame, a count on every page, where
-  // visits left at every step, a pressed journey and its card. JourneysSurface reads useFeature
-  // (components/journeys/flow/flag.ts NEW_JOURNEYS_FLAG); today's page stays for every team without it.
-  { flag: 'new-journeys', name: 'New Journeys page', revalidates: [] },
-  // The new Visitors page (R98 to R116, 18 to 20-11-2026): every visitor in one list in the dashboard's frame, their day
-  // as marks, quick tabs, a strip of four figures and a visitor opened in place. app/sites/[id]/visitors/page.tsx reads
-  // useFeature (components/visitors/list/flag.ts NEW_VISITORS_FLAG); today's roster stays for every team without it.
-  { flag: 'new-visitors', name: 'New Visitors page', revalidates: [] },
 ]

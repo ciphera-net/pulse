@@ -24,8 +24,9 @@ describe('the event filter beta is wired where the filter is offered', () => {
   })
 
   it('offers Journeys the two kinds only under the beta, beside its own four', () => {
-    const page = read('components/surfaces/JourneysSurface.tsx')
-    expect(page).toContain('allowedDimensions={eventFilters ? JOURNEY_EVENT_FILTER_DIMENSIONS : JOURNEY_FILTER_DIMENSIONS}')
+    // The Journeys page every team has since 23-11-2026 (its Search filter's `only`).
+    const page = read('components/journeys/flow/JourneysFlowPage.tsx')
+    expect(page).toContain('const only = eventFilters ? JOURNEY_EVENT_FILTER_DIMENSIONS : JOURNEY_FILTER_DIMENSIONS')
     expect(page).toContain('const eventFilters = useFeature(EVENT_FILTERS_FLAG) === true')
   })
 
@@ -54,8 +55,8 @@ describe('the event filter beta is wired where the filter is offered', () => {
     expect(read('components/dashboard/filter/FilterBuilder.tsx')).toContain('fetchSuggestions={fetchSuggestions}\n        />\n      ) : (')
   })
 
-  it('lists the beta for the Beta tab under the flag the pickers read', () => {
-    expect(read('lib/betas.ts')).toContain("{ flag: 'event-filters', name: 'Event filters', revalidates: [] }")
+  it('is no longer a beta the Beta tab names (every team has it since 23-11-2026), while the pickers still read the flag', () => {
+    expect(read('lib/betas.ts')).not.toContain("flag: 'event-filters'")
     expect(read('lib/filters.ts')).toContain("export const EVENT_FILTERS_FLAG = 'event-filters'")
   })
 })

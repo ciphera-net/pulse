@@ -307,7 +307,7 @@ describe('what an opened page says of the period before', () => {
   const lines = () => Array.from(document.querySelectorAll('[data-measure-context]')).map((l) => l.textContent)
   const changes = () => Array.from(document.querySelectorAll('[data-line-change]')).map((c) => c.textContent)
 
-  // 18-11-2026, the owner, of "— in the period before": "this needs fixing". The server sends null where a figure
+  // 18-11-2026: "— in the period before" read as a gap, not a sentence. The server sends null where a figure
   // had nothing to stand on: time and scroll when no view reported them, bounce when no visit started on the page.
   it('says in words why a figure had no value then, and never puts a dash in a sentence', () => {
     const quiet = [page('/', 1250, { avg_time_on_page: null, avg_scroll_depth: null, entry_bounce_rate: null }), ...PREV.slice(1)]

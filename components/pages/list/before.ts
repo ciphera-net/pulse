@@ -6,7 +6,7 @@
 //   failed    its read failed: the line says so, never "no period before"
 //   ready     in hand
 // Where it is in hand and a figure had no value then, the line says why in words. It never puts a dash in a
-// sentence: the owner, 18-11-2026, of "— in the period before": "this needs fixing".
+// sentence (18-11-2026: "— in the period before" read as a gap, not a sentence).
 // ---------------------------------------------------------------------------
 
 export type BeforeState = 'none' | 'loading' | 'failed' | 'ready'

@@ -42,7 +42,6 @@ const POPUPS: Record<string, string> = {
   'components/dashboard/filter/search/FiltersBox.tsx': 'the filters on, and the menu that saves one',
   'components/dashboard/TabMenu.tsx': "a tab's menu",
   'components/dashboard/bottom/ConversionBlock.tsx': "the funnel chart's hover card",
-  'components/journeys/SankeyJourney.tsx': "the journey flow's hover card",
   'components/onboarding/OnboardingChip.tsx': 'the getting-started list',
   'components/keyboard/ShortcutsOverlay.tsx': 'the keyboard shortcuts dialog',
   'components/ui/DateRangePicker.tsx': 'the date menu',

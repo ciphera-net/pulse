@@ -9,8 +9,6 @@ import {
   formatVisitStart,
   visitorLocalTime,
 } from '../format'
-import * as visitorsRange from '../range'
-import { VISITORS_MIN_DATE, presenceTicks } from '../range'
 
 describe('visitorPseudonym', () => {
   it('is deterministic — the same key always names the same reader', () => {
@@ -150,53 +148,5 @@ describe('dates render in the SITE calendar, never the reader’s', () => {
     expect(formatShortDate('not-a-date', 'UTC')).toBe(EM_DASH)
     expect(formatLastSeen('not-a-date', 'UTC')).toBe(EM_DASH)
     expect(formatVisitStart('not-a-date', 'UTC')).toBe(EM_DASH)
-  })
-})
-
-describe('the range declaration', () => {
-  it('floors at the identity-rebuild cutover', () => {
-    // 🔴 Must agree with database.VisitorIdentityEpoch on the server
-    // (2026-08-26T11:17:46Z). Earlier days hold no visitor identity at all.
-    expect(VISITORS_MIN_DATE).toBe('2026-08-26')
-  })
-
-  it('retired the live-window presets (PULSE-20, 25-09-2026) — realtime is the orb MODE now', () => {
-    // While both existed, picking a rolling window here would have become the
-    // whole app's one remembered view (plan §11.13 item 4). VISITORS_PRESETS and
-    // VISITORS_ROLLING_MINUTES are gone from the module, not merely unused —
-    // `import * as` so a re-added export fails this even if nothing local
-    // references it by name.
-    expect(visitorsRange).not.toHaveProperty('VISITORS_PRESETS')
-    expect(visitorsRange).not.toHaveProperty('VISITORS_ROLLING_MINUTES')
-  })
-
-  it('gives a rolling window minute ticks, not day ticks', () => {
-    const { from, to, ticks } = presenceTicks({ start: '2026-08-26', end: '2026-08-30' }, 30, 'Europe/Brussels')
-    expect(to - from).toBe(30 * 60_000)
-    for (const t of ticks) expect(t.label).toMatch(/^\d{2}:\d{2}$/)
-  })
-
-  it('anchors a date range to the SITE’s midnights, not the reader’s', () => {
-    // 🔴 The domain used to be `new Date('2026-08-26T00:00:00')` — no zone
-    // suffix, so BROWSER midnight — while start/end are the days the SERVER
-    // resolved in the site's zone and queried with. A reader in New York was
-    // positioning Brussels dots against an axis six hours out of step with the
-    // window the rows came from.
-    const brussels = presenceTicks({ start: '2026-08-26', end: '2026-08-30' }, null, 'Europe/Brussels')
-    const auckland = presenceTicks({ start: '2026-08-26', end: '2026-08-30' }, null, 'Pacific/Auckland')
-
-    // 26 August 00:00 CEST is 25 August 22:00 UTC.
-    expect(brussels.from).toBe(Date.parse('2026-08-25T22:00:00Z'))
-    // 26 August 00:00 NZST is 25 August 12:00 UTC — ten hours earlier again.
-    expect(auckland.from).toBe(Date.parse('2026-08-25T12:00:00Z'))
-    expect(brussels.from).not.toBe(auckland.from)
-
-    // A dot for an event at 23:50 on the final day belongs INSIDE the field,
-    // not past its right edge: the domain runs to that day's last second.
-    expect(brussels.to).toBe(Date.parse('2026-08-30T21:59:59Z'))
-    expect(brussels.to).toBeGreaterThan(brussels.from)
-    for (const t of brussels.ticks) expect(t.label).toMatch(/^\d{2}\/\d{2}$/)
-    // The first gridline is the site's own first day.
-    expect(brussels.ticks[0].label).toBe('26/08')
   })
 })

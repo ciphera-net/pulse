@@ -17,15 +17,14 @@ const read = (rel: string) =>
 // also pinned is the dashboard surface in scoped mode now (app/sites/[id]/__tests__/dashboard-scopes.test.tsx).
 const SWITCHER_PAGES: Record<string, string> = {
   dashboard: 'components/surfaces/DashboardSurface.tsx',
-  pages: 'components/surfaces/PagesSurface.tsx',
-  // The Visitors route is a beta gate since 20-11-2026 (app/sites/[id]/visitors/page.tsx): today's roster for a team
-  // without `new-visitors`, the new list page for a team with it. Both draw the switcher.
-  visitors: 'components/visitors/VisitorsRoster.tsx',
-  'visitors (new, beta)': 'components/visitors/list/VisitorsListPage.tsx',
+  // Pages, Journeys and Visitors draw their pages in the dashboard's frame since they left beta (23-11-2026): the
+  // switcher is in each list page, the surface or route only chooses the scope.
+  pages: 'components/pages/list/PagesListPage.tsx',
+  visitors: 'components/visitors/list/VisitorsListPage.tsx',
   'visitors (detail)': 'app/sites/[id]/visitors/[key]/page.tsx',
   funnels: 'components/surfaces/FunnelsSurface.tsx',
   'funnels (detail)': 'components/surfaces/FunnelDetailSurface.tsx',
-  journeys: 'components/surfaces/JourneysSurface.tsx',
+  journeys: 'components/journeys/flow/JourneysFlowPage.tsx',
   search: 'components/surfaces/SearchSurface.tsx',
   cdn: 'components/surfaces/CdnSurface.tsx',
   uptime: 'components/surfaces/UptimeSurface.tsx',
@@ -49,24 +48,17 @@ describe('every switcher page renders the one menu from the one hook', () => {
 })
 
 describe('Visitors', () => {
-  const page = read('components/visitors/VisitorsRoster.tsx')
   const list = read('components/visitors/list/VisitorsListPage.tsx')
 
-  it('puts the orb directly before the switcher (approved mock d1-visitors)', () => {
-    expect(page).toMatch(/<RealtimeOrb [^>]*onToggle=\{toolbar\.onToggleLive\} \/>\s*<DateRangePicker \{\.\.\.toolbar\.picker\} \/>/)
-  })
-
-  it('the new page (beta) puts the orb first in the frame\'s toolbar, where the dashboard has it', () => {
+  it('puts the orb first in the frame\'s toolbar, where the dashboard has it', () => {
     expect(list).toMatch(/<FrameToolbar>\s*<RealtimeOrb count=\{activeNow\} live=\{live\} onToggle=\{toggleRealtime\} \/>/)
   })
 
-  for (const [name, src] of [['the roster', page], ['the new page (beta)', list]] as const) {
-    it(`${name} is on the realtime mode, and sends All time as the token`, () => {
-      expect(src).toContain('modes: REALTIME_MODES')
-      expect(src).toContain('rollingMinutes: REALTIME_ROLLING_MINUTES')
-      expect(src).toContain('serverResolvedPeriod(periodReady, period)')
-    })
-  }
+  it('is on the realtime mode, and sends All time as the token', () => {
+    expect(list).toContain('modes: REALTIME_MODES')
+    expect(list).toContain('rollingMinutes: REALTIME_ROLLING_MINUTES')
+    expect(list).toContain('serverResolvedPeriod(periodReady, period)')
+  })
 })
 
 describe('the top bar', () => {

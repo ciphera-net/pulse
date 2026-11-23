@@ -26,7 +26,7 @@ import {
 import PressedCard from './PressedCard'
 
 // ---------------------------------------------------------------------------
-// The new Journeys page's flow (in beta behind `new-journeys`; the owner's rulings R87 to R96 of 18-11-2026,
+// The Journeys page's flow (every team's since 23-11-2026, a beta from 18-11; rulings R87 to R96 of 18-11-2026,
 // Pulse/docs/plans/18-11-2026-journeys-page-overhaul-plan.md, picked and refined on the lab). The dashboard's own
 // Journeys block (MiniFlow) grown to the page: the same layout (lib/journeys/sankeyLayout) and the same hover, with
 //   a count beside every page, and the rest of a step as "Other pages" with the STEP'S OWN figure (the layout's
@@ -71,8 +71,8 @@ const EXTRA = 10
 const GUTTER = 210
 const LABEL_GAP = 18
 /**
- * The page names stand out from the routes (the owner, 18-11-2026, of names "barely visible (too small & sometimes not
- * visible due to the color)"; picked from two rounds of options: "Quieter routes, louder names"): 14 px semibold names
+ * The page names stand out from the routes (R102, 18-11-2026: names were too small and sometimes lost in the routes' colour;
+ * picked from two rounds of options, "Quieter routes, louder names"): 14 px semibold names
  * over routes drawn at ROUTE_STRENGTH of their old opacity, the pointer's orange left as it was. A name off a lit
  * journey stays readable in grey 400 (it was grey 700, close to the block's own colour, and the page always opens with
  * a journey pressed). Pulse/docs/plans/18-11-2026-journeys-page-overhaul-plan.md, "The page names".

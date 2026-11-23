@@ -1,135 +1,23 @@
 'use client'
 
-import { FileText } from '@phosphor-icons/react'
-import DateRangePicker from '@/components/ui/DateRangePicker'
-import PagesTable from '@/components/pages/PagesTable'
 import PagesListPage from '@/components/pages/list/PagesListPage'
-import { NEW_PAGES_FLAG } from '@/components/pages/list/flag'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { NotShared } from '@/components/public/states'
-import { ErrorCard } from '@/components/ui/ErrorCard'
-import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
-import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
-import { useSite, usePagesTable, useDataWindow } from '@/lib/swr/dashboard'
 import { servesPage, useSiteScope } from '@/lib/scope/SiteScope'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
-import { useFeature } from '@/lib/features'
-import { siteDaysCaption } from '@/lib/utils/timezones'
-import { SkeletonBar } from '@/components/skeletons'
 
 // ---------------------------------------------------------------------------
-// The Pages surface (PULSE-18). Design + two options rounds:
-// docs/plans/22-09-2026-pages-surface-design.md
-//
-// Why this exists: the dashboard's Pages card shows SEVEN rows. Production's
-// busiest site has 520 distinct paths and only 49.3% of its pageviews in the
-// top ten, so roughly half that site's traffic had no surface at all. The
-// browsable set is ~123 pages there — far past a card, and small enough for one
-// searchable table.
-//
-// P1 is deliberately TABLE ONLY (owner, 22-09-2026): rows do not open a detail
-// view yet. Worth knowing that every competitor gets this wrong too — Rybbit's
-// dedicated Pages rows have no click handler at all, OpenPanel's only work if
-// you connect Search Console, and PostHog's per-page report is a dead-end you
-// paste a URL into.
-//
-// ⚠️ DEFERRED, NOT FORGOTTEN: the dashboard filter bar. Every other analytics
-// tab carries one and the endpoint already accepts `filters`, so this is purely
-// the UI half. It is left out of P1 to keep the first cut reviewable rather than
-// half-wiring the filter popover's state. Adding it is additive.
+// The Pages page: every page of the site as one list in the dashboard's frame
+// (components/pages/list/PagesListPage.tsx), for a member and for every public scope that serves the page (the
+// demo). It was a beta from 17-11-2026 (flag `new-pages`) and went to every team on 23-11-2026; the table it replaced
+// is gone. A scope that does not serve the page (a share link) says so and reads nothing.
 // ---------------------------------------------------------------------------
-
-function PagesNotAvailable() {
-  return (
-    <EmptyState
-      icon={<FileText />}
-      title="This page is not available"
-      description="The site owner has not shared it."
-    />
-  )
-}
 
 export default function PagesSurface() {
   const scope = useSiteScope()
   if (!servesPage(scope, 'pages')) return <NotShared scope={scope} />
-  return <PagesGate siteId={scope.siteId} />
-}
-
-/**
- * The Pages page as one list is in beta (`new-pages`, lib/betas.ts): a team that has it gets the list
- * (components/pages/list/PagesListPage.tsx), every other team and the public pages keep the table below.
- * While /me is on the way the answer is not known, and NEITHER page is drawn: a team in the beta never sees the
- * table flash by, and no read is made for a page that is about to be replaced.
- */
-function PagesGate({ siteId }: { siteId: string }) {
-  const list = useFeature(NEW_PAGES_FLAG)
-  if (list === null) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-4" aria-hidden="true" data-pages-gate="waiting">
-        <SkeletonBar className="rounded-none border border-border bg-card h-96 animate-pulse" />
-      </div>
-    )
-  }
-  if (list) {
-    return (
-      <DashboardFrameProvider>
-        <PagesListPage siteId={siteId} />
-      </DashboardFrameProvider>
-    )
-  }
-  return <PagesTablePage siteId={siteId} />
-}
-
-function PagesTablePage({ siteId }: { siteId: string }) {
-  const { data: site } = useSite(siteId)
-
-  const dataWindow = useDataWindow(siteId, 'pages')
-  const { period, dateRange, periodReady, picker } = useUrlDateRange({
-    surface: 'pages',
-    window: dataWindow,
-    timezone: site?.timezone,
-    retentionMonths: site?.data_retention_months,
-  })
-
-  // 🔴 Never fetch on a period the user did not choose. Before the range-memory
-  // read lands, `period` is a PLACEHOLDER — fetching with it is what once showed
-  // a customer 30 days of data under a "Today" label (useUrlDateRange:194).
-  const range = fetchableRange(periodReady, dateRange)
-
-  const { data, error, isLoading } = usePagesTable(
-    siteId, range.start, range.end, 500, undefined, serverResolvedPeriod(periodReady, period)
-  )
-
-  const rows = data?.pages ?? []
-
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-4">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="min-w-0">
-          <h1 className="text-lg font-medium text-white">Pages</h1>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            Every page on this site, with how long people stayed on it.
-            {site?.timezone ? ` ${siteDaysCaption(site.timezone)}` : ''}
-          </p>
-        </div>
-        <DateRangePicker {...picker} />
-      </div>
-
-      {error ? (
-        <ErrorCard
-          title="Could not load pages"
-          description="The request failed. This is usually temporary."
-        />
-      ) : isLoading && rows.length === 0 ? (
-        <SkeletonBar className="rounded-none border border-border bg-card h-96 animate-pulse" aria-hidden="true" />
-      ) : periodReady && !data ? (
-        // * The request was switched on (the view is known) and there is still no table, no error
-        // * and nothing in flight: the read was not made, because the scope does not answer it.
-        // * That is "not available", never an empty table, which would claim a site with no pages.
-        <PagesNotAvailable />
-      ) : (
-        <PagesTable rows={rows} total={rows.length} showTitle={false} />
-      )}
-    </div>
+    <DashboardFrameProvider>
+      <PagesListPage siteId={scope.siteId} />
+    </DashboardFrameProvider>
   )
 }
