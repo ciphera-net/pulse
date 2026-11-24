@@ -262,6 +262,8 @@ export interface SiteOverviewDay {
  * `today` is the resolved current date in the SITE's timezone: the server owns
  * timezone resolution, the client prints it and never computes its own range.
  * `daily` is exactly 7 site-local days (today-6 … today), zero-filled.
+ * `visitors_7d` is the visitors of those 7 days and `visitors_prev_7d` of the 7 before them (pulse-backend since
+ * 24-11-2026; absent from a server before that, hence optional).
  * `uptime_status` is null when the site has no enabled monitor.
  */
 export interface SiteOverview {
@@ -269,6 +271,8 @@ export interface SiteOverview {
   today: string
   visitors_today: number
   daily: SiteOverviewDay[]
+  visitors_7d?: number
+  visitors_prev_7d?: number
   install_status: InstallStatus
   last_event_at: string | null
   uptime_status: 'up' | 'degraded' | 'down' | 'inconclusive' | 'unknown' | null

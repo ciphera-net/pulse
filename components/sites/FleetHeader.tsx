@@ -9,6 +9,8 @@ interface FleetHeaderProps {
   /** null = unlimited plan (counter shows a plain count). */
   siteLimit: number | null
   canCreate: boolean
+  /** The add button's words: "Add site" under the new-sites beta (sentence case, 24-11-2026), "Add Site" before. */
+  addLabel?: string
 }
 
 /**
@@ -17,7 +19,7 @@ interface FleetHeaderProps {
  * counter). No caption row. At the plan limit the control hands over to the
  * established SiteLimitUpgradeButton (same fused anatomy, upgrade action).
  */
-export default function FleetHeader({ siteCount, siteLimit, canCreate }: FleetHeaderProps) {
+export default function FleetHeader({ siteCount, siteLimit, canCreate, addLabel = 'Add Site' }: FleetHeaderProps) {
   const counter = siteLimit != null ? `${siteCount}/${siteLimit}` : `${siteCount} ${siteCount === 1 ? 'site' : 'sites'}`
 
   return (
@@ -32,7 +34,7 @@ export default function FleetHeader({ siteCount, siteLimit, canCreate }: FleetHe
         >
           <span className="flex items-center gap-2 pl-4 pr-3 font-medium">
             <PlusIcon className="h-3.5 w-3.5" />
-            Add Site
+            {addLabel}
           </span>
           <span className="flex items-center border-l border-input px-3 text-xs tabular-nums text-neutral-400">
             {counter}

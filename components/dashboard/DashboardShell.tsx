@@ -27,6 +27,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { useSites } from '@/lib/swr/sites'
+import { useFeature } from '@/lib/features'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
 import { canHaveFavicon, siteFaviconUrl } from '@/lib/utils/favicon'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
@@ -87,6 +88,8 @@ const HOME_PAGE_META: Record<string, PageMeta> = {
 
 function useHomePageMeta(): PageMeta {
   const pathname = usePathname()
+  // The new-sites beta (24-11-2026): the page at /sites is called what its heading says, Your Sites (it read Sites).
+  const newSites = useFeature('new-sites')
 
   if (pathname.startsWith('/settings')) {
     // The page's name and icon are the settings registry's (nav.ts), the same the rail and the page header read, so
@@ -104,7 +107,16 @@ function useHomePageMeta(): PageMeta {
   }
 
   const segment = pathname.split('/').filter(Boolean)[0] ?? ''
+  if (segment === 'sites' && newSites === true) return HOME_PAGE_META['']
   return HOME_PAGE_META[segment] ?? { title: segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Your Sites', icon: GlobeIcon }
+}
+
+/**
+ * Whether the Your Sites crumb leaves a site's trail: under the new-sites beta a team with ONE site never sees that
+ * page (it opens the site's dashboard, R124), so the crumb would lead back to where the person is. Pure.
+ */
+export function hidesYourSitesCrumb(newSites: boolean | null, siteCount: number): boolean {
+  return newSites === true && siteCount === 1
 }
 
 /**
@@ -334,6 +346,9 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
 
   const pageMeta = usePageMeta()
   const homeMeta = useHomePageMeta()
+  // SWR-cached and deduped with the Sidebar's own useSites(): no extra request.
+  const { sites: teamSites } = useSites()
+  const hideYourSites = hidesYourSitesCrumb(useFeature('new-sites'), teamSites.length)
   const currentMeta = siteId ? pageMeta : homeMeta
   const PageIcon = currentMeta.icon
 
@@ -363,19 +378,22 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
             Non-interactive: there is nowhere else to switch to.
           */}
           <span className="inline-flex items-center gap-1 text-neutral-500">Pulse</span>
-          <CaretRight className="w-3 h-3 text-neutral-600" />
+          {/* With the Your Sites crumb gone, nothing follows "Pulse" until the site's name arrives: no trailing caret. */}
+          {!(siteId && hideYourSites && !siteName) && <CaretRight className="w-3 h-3 text-neutral-600" />}
           {siteId ? (
             <>
               {/* "Your Sites" does not depend on the site: while the name loads, and
                   for a site this session cannot read (PULSE-87), the trail ends here
                   instead of trailing off after "Pulse ›". */}
-              <AppLink href="/" className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
-                <GlobeIcon className="w-3.5 h-3.5" />
-                Your Sites
-              </AppLink>
+              {!hideYourSites && (
+                <AppLink href="/" className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                  <GlobeIcon className="w-3.5 h-3.5" />
+                  Your Sites
+                </AppLink>
+              )}
               {siteName ? (
               <>
-                <CaretRight className="w-3 h-3 text-neutral-600" />
+                {!hideYourSites && <CaretRight className="w-3 h-3 text-neutral-600" />}
                 <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
                 <CaretRight className="w-3 h-3 text-neutral-600" />
                 {currentMeta.parent && (
