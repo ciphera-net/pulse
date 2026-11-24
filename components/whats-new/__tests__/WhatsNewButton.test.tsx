@@ -164,6 +164,17 @@ describe('WhatsNewButton', () => {
     expect(dialog.querySelector('img.whats-new-shot')).toBeNull()
     expect(dialog.textContent).toContain('Pulse plans now count events.')
   })
+
+  it('draws the panel only once it is placed under its button (no frame without a position)', () => {
+    hook.data = answer([week])
+    render(<WhatsNewButton />)
+    fireEvent.click(screen.getByRole('button', { name: "What's new" }))
+    const dialog = screen.getByRole('dialog', { name: "What's new" }) as HTMLElement
+    expect(dialog.style.left).not.toBe('')
+    expect(dialog.style.top).not.toBe('')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: "What's new" })).toBeNull()
+  })
 })
 
 describe('arrange', () => {

@@ -11,12 +11,11 @@
  * the panel portals to document.body with fixed positioning to escape overflow.
  */
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { XIcon } from '@ciphera-net/facet'
 import { ArrowClockwise, ArrowUpRight, Sparkle } from '@phosphor-icons/react'
-import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { cdnUrl } from '@/lib/cdn'
 import { useWhatsNew } from '@/lib/hooks/useWhatsNew'
 import { usePreloadImages } from '@/lib/hooks/usePreloadImages'
@@ -226,9 +225,23 @@ export default function WhatsNewButton() {
     setFixedPos({ left, top, width })
   }, [])
 
-  useEffect(() => {
-    if (open) updatePosition()
+  // 🔑 Placed BEFORE the browser paints, and drawn only once placed, as the Filter panel and the date menu are
+  // (components/dashboard/filter/search/SearchFilter.tsx). Placed in an ordinary effect, the panel's first frame was
+  // drawn with no left or top and the next one under the button: the panel flickered as it opened (24-11-2026).
+  useLayoutEffect(() => {
+    if (!open) return
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    return () => window.removeEventListener('resize', updatePosition)
   }, [open, updatePosition, snapshot, data])
+  // Once drawn, its height is known: kept inside the window before that frame is painted. Only a changed place is set.
+  const placed = open && fixedPos !== null
+  useLayoutEffect(() => {
+    if (!placed || !panelRef.current || !buttonRef.current) return
+    const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
+    const top = Math.min(buttonRef.current.getBoundingClientRect().bottom + 8, Math.max(8, maxTop))
+    setFixedPos((p) => (p && p.top !== top ? { ...p, top } : p))
+  }, [placed])
 
   // Opening records the posts as seen. Opened before the first answer arrived, it records them when the answer lands.
   const pendingSeenRef = useRef(false)
@@ -240,6 +253,7 @@ export default function WhatsNewButton() {
   }
   const closePanel = useCallback(() => {
     setOpen(false)
+    setFixedPos(null)
     setSnapshot(null)
     pendingSeenRef.current = false
   }, [])
@@ -277,20 +291,24 @@ export default function WhatsNewButton() {
 
   const panel = (
     <AnimatePresence>
-      {open && (
+      {open && fixedPos && (
+        // The date menu's and the Filter panel's entry: 150 ms, from 4 px under and 98 %.
         <motion.div
+          key="whats-new"
           ref={panelRef}
           id={panelId}
           role="dialog"
           aria-label="What's new"
-          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          initial={{ opacity: 0, y: 4, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          exit={{ opacity: 0, y: 4, scale: 0.98 }}
+          transition={{ duration: 0.15 }}
           className={`fixed z-[100] origin-top-right overflow-y-auto rounded-none ${panelSurface(glass)}`}
           style={{
             maxHeight: 'calc(100vh - 16px)',
-            ...(fixedPos ? { left: fixedPos.left, top: fixedPos.top, width: fixedPos.width } : { width: PANEL_MAX_WIDTH }),
+            left: fixedPos.left,
+            top: fixedPos.top,
+            width: fixedPos.width,
           }}
         >
           {updateReady && (
