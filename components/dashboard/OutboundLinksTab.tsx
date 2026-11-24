@@ -70,7 +70,7 @@ export interface OutboundLinksTabProps {
   /** The order the block's head asks for (its clicks column, 16-11-2026). Clicks, high to low, when absent. */
   sort?: Sort<'clicks'>
   /**
-   * The event-filters beta (R45; design 15-11-2026-event-and-outbound-link-filter-design.md, section 8): a press on a row
+   * Event filters (R45, every team since 23-11-2026; design 15-11-2026-event-and-outbound-link-filter-design.md, section 8): a press on a row
    * filters the page by its link (every stored address the row stands for) and the small arrow opens it, the Pages and
    * Referrers rows' device. Without it the whole row opens the link, as before.
    */

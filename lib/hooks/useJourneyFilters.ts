@@ -31,7 +31,7 @@ export const ENTRY_DIMENSION = 'entry_path'
 export const JOURNEY_FILTER_DIMENSIONS = [ENTRY_DIMENSION, 'country', 'device', 'referrer'] as const
 
 /**
- * The same while the event-filters beta is on (R45): an event, an event's property and an outbound link too. The
+ * With event filters (R45, every team since 23-11-2026): an event, an event's property and an outbound link too. The
  * server tests them on each journey's session (journey_flows), so a journey is kept whole (design
  * 15-11-2026-event-and-outbound-link-filter-design.md, section 7).
  */

@@ -317,7 +317,7 @@ export default function VisitorDetailPage() {
 
       {site && (
         <p className="mt-4 text-xs text-neutral-600">
-          Blank cells are data {site.domain} does not collect — not data we are hiding.
+          Blank cells are data {site.domain} does not collect.
         </p>
       )}
     </div>
