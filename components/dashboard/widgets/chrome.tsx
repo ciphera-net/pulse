@@ -25,7 +25,7 @@ export const editChrome: Chrome = ({ placed, index, count, dragging, siteId }) =
   if (!def || dragging) return null
   // The widget's own header stays readable under the veil; the mode's controls sit in the middle, over its rows.
   return (
-    <div className="absolute inset-0 z-20 cursor-grab touch-none select-none bg-neutral-950/70 ring-1 ring-inset ring-white/[0.14] transition-colors duration-fast ease-apple hover:ring-brand-orange/80" data-edit-veil="">
+    <div className="absolute inset-0 z-20 cursor-grab touch-none select-none bg-neutral-950/90 ring-1 ring-inset ring-white/[0.14] transition-colors duration-fast ease-apple hover:ring-brand-orange/80" data-edit-veil="">
       <button
         type="button"
         className="absolute -right-2 -top-2 z-10 inline-flex h-6 w-6 items-center justify-center border border-white/[0.18] bg-neutral-900 text-neutral-300 transition-colors duration-fast ease-apple hover:border-brand-orange hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
