@@ -57,7 +57,7 @@
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "driver.js": "^1.8.0",
-    "fflate": "^0.8.2",
+    "fflate": "^0.8.3",
     "framer-motion": "^12.23.26",
     "i18n-iso-countries": "^7.14.0",
     "iso-3166-2": "^1.0.0",
