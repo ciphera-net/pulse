@@ -54,7 +54,7 @@ interface ContentSignalsProps {
    * over these visitors. Today's card shows no share and takes none.
    */
   totals?: { pageviews: number; visitors: number }
-  /** The new frame only, under the event-filters beta (R45): a press on one of the Events block's values filters the page. */
+  /** The new frame only (R45, every team since 23-11-2026): a press on one of the Events block's values filters the page. */
   onFilter?: (filter: DimensionFilter) => void
 }
 

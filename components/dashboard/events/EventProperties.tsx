@@ -25,7 +25,7 @@ import { COL, COL_SHARE, GAP, LABEL_BOX, LIMIT } from './columns'
 // Its keys are tabs, ONE property at a time, in the orange every block's tabs have (R41). Each value carries its
 // events and its share of the events that carry the property, seven to a page with the blocks' pager; both
 // columns sort, high to low and low to high (R41, R51). The reads follow the page's filters, so under a filter the
-// values add up to the count the event's row shows. Under the event-filters beta (R45) a value is a filter: a press
+// values add up to the count the event's row shows. With event filters (R45, every team since 23-11-2026) a value is a filter: a press
 // keeps the visitors who did this event with this value that day, the Pages rows' device (an overlay button).
 // ---------------------------------------------------------------------------
 
@@ -91,7 +91,7 @@ interface EventPropertiesProps {
   /** Below `lg` the pane takes the list's place: back to the list. */
   onBack: () => void
   /**
-   * The event-filters beta (R45; design 15-11-2026-event-and-outbound-link-filter-design.md, section 8: "a property
+   * Event filters (R45, every team since 23-11-2026; design 15-11-2026-event-and-outbound-link-filter-design.md, section 8: "a property
    * value by its value"): a press on a value filters the page by it, every stored value a merged row stands for.
    * Without it the rows are not controls.
    */
@@ -119,7 +119,7 @@ export function EventProperties({ siteId, row, name, windowKey, dateRange, perio
   const shown = ordered?.slice((page - 1) * LIMIT, page * LIMIT) ?? []
   // Against the largest of all, whatever the order: low to high puts the smallest first.
   const max = rows ? rows.reduce((m, value) => Math.max(m, value.count), 0) : 0
-  // Under the event-filters beta a value filters the page: the visitors who did this event with it that day.
+  // A value filters the page (event filters, R45): the visitors who did this event with it that day.
   const filterBy = onFilter && activeKey
     ? (value: PropertyValueRow) => onFilter({ dimension: eventPropertyKind(event, activeKey), operator: 'is', values: value.values })
     : null

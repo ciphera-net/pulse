@@ -49,7 +49,7 @@ import {
 //     about to be. The values are read from the moment the pointer reaches the button.
 //   * It enters and leaves as the date menu does (components/ui/DateRangePicker: 150 ms, from 4 px under and 98 %
 //     of its size), and the button carries the date button's caret, a quarter turn while it is open.
-// Under the event-filters beta (R45), "Event property" is a kind that narrows in three steps: the page's events, then
+// With event filters (R45, every team since 23-11-2026), "Event property" is a kind that narrows in three steps: the page's events, then
 // the picked event's keys, then that property's values, each row of the first two ending in the caret that says a
 // press opens something. Backspace in an empty field goes back one step.
 // Not here, because the server does not do it yet: "match any".

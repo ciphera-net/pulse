@@ -44,7 +44,7 @@ import { EventProperties, PaneLine } from './EventProperties'
 // list alone, with nothing to press.
 //
 // A PRESS FILTERS once an event can filter the page (R62 of 16-11-2026, option B1 of the Events rows round): with the
-// event-filters beta on (`onFilter`), a press on a row filters the page by its event, as a press on a Pages or
+// page passing `onFilter` (event filters, every team since 23-11-2026), a press on a row filters the page by its event, as a press on a Pages or
 // Referrers row filters by its page or source, and the caret at the row's end is a button of its own (a 24 px box)
 // that opens the event's properties. Without the beta the press opens the properties, as before.
 // ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ export interface EventsBlockProps {
   /** The page's filters. The rows already follow them; the pane's own reads send them too. */
   filters?: string
   /**
-   * The event-filters beta (R45): a press on a row filters the page by its event, the row's caret opens its
+   * Event filters (R45, every team since 23-11-2026): a press on a row filters the page by its event, the row's caret opens its
    * properties (R62), and a press on one of the pane's values filters the page by it.
    */
   onFilter?: (filter: DimensionFilter) => void
