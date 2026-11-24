@@ -30,6 +30,11 @@ import { serializeFilters } from '@/lib/filters'
 // ─── The seams ───────────────────────────────────────────────────────────────────
 let mockSearchParams = new URLSearchParams()
 const mockReplace = vi.fn()
+// Today's frame: the dashboard as widgets (beta `dashboard-widgets`) is off here; components/dashboard/widgets tests it.
+vi.mock('@/components/dashboard/widgets/store', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/components/dashboard/widgets/store')>()),
+  useDashboardWidgets: () => ({ on: false, ready: true, layout: [], canCustomize: false, done: async () => {}, readError: null }),
+}))
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'site-1' }),
   usePathname: () => '/scope-under-test',

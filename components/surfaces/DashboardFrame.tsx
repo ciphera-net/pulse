@@ -11,8 +11,11 @@ import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import type { DashboardCapabilities } from '@/lib/dashboard/capabilities'
 import { DashboardFrameProvider } from '@/lib/dashboard/frame'
 import type { DimensionFilter } from '@/lib/filters'
+import { useDashboardWidgets } from '@/components/dashboard/widgets/store'
 
 const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
+// The dashboard as widgets (PUL-88, beta `dashboard-widgets`): loaded only for a reader it is on for.
+const WidgetsFrame = dynamic(() => import('@/components/dashboard/widgets/WidgetsFrame'))
 const DashboardBottom = dynamic(() => import('@/components/dashboard/DashboardBottom'))
 
 // ---------------------------------------------------------------------------
@@ -74,6 +77,20 @@ export default function DashboardFrame({
   onCardFilter,
   outboundOff,
 }: DashboardFrameProps) {
+  // The beta `dashboard-widgets`: the team's layout of widgets in place of this arrangement (PUL-88). Off, nothing
+  // below changes.
+  const widgets = useDashboardWidgets(siteId)
+  if (widgets.on || !widgets.ready) {
+    if (!widgets.ready) return <div className="min-h-[60vh]" data-dashboard-widgets-loading="" aria-busy="true" />
+    return (
+      <WidgetsFrame
+        deck={deck} dashboard={dashboard} site={site} siteId={siteId} caps={caps} isLive={isLive} liveMinutes={liveMinutes}
+        dateRange={dateRange} period={period} rangeTotals={totals} previousVisitors={previousVisitors}
+        filtersParam={filtersParam} onCardFilter={onCardFilter} outboundOff={outboundOff}
+        layout={widgets.layout} canCustomize={widgets.canCustomize}
+      />
+    )
+  }
   return (
     <DashboardFrameProvider>
       <div className="flex flex-col gap-3" data-dashboard-frame="">

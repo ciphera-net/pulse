@@ -23,4 +23,7 @@ export const BETAS: readonly Beta[] = [
   // The Your Sites page's new cards, and a team with one site going straight to its dashboard (24-11-2026). Its
   // screens read useFeature, so no list needs re-reading.
   { flag: 'new-sites', name: 'The new Your Sites page', revalidates: [] },
+  // The site dashboard as widgets a team arranges (24-11-2026). Its screens read useFeature, so no list needs
+  // re-reading.
+  { flag: 'dashboard-widgets', name: 'Arrange your dashboard', revalidates: [] },
 ]

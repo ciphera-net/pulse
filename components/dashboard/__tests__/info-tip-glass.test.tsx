@@ -297,7 +297,7 @@ describe('the small tooltip is glass too, wherever the app draws one', () => {
     }
     for (const root of ['app', 'components', 'lib', 'hooks']) walk(join(process.cwd(), root))
     // A scan that found none would pass on nothing.
-    expect(drawers.sort()).toEqual(['components/dashboard/Sidebar.tsx', 'components/funnels/FunnelRail.tsx', 'components/theme/ThemeMenuSwitch.tsx', 'components/ui/compact-number.tsx'])
+    expect(drawers.sort()).toEqual(['components/dashboard/Sidebar.tsx', 'components/dashboard/widgets/CustomizeControls.tsx', 'components/funnels/FunnelRail.tsx', 'components/theme/ThemeMenuSwitch.tsx', 'components/ui/compact-number.tsx'])
     expect(unmarked).toEqual([])
   })
 

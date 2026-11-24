@@ -51,7 +51,7 @@ function Tile({ page, siteId, icon: TileIcon, label, right, value, context, floo
   return (
     <Link
       href={scopeHref(scope, page)}
-      className={`${FRAME_SURFACE} group relative flex h-[164px] min-w-0 flex-col overflow-hidden px-6 pt-5 transition-colors duration-fast ease-apple hover:border-white/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange ${className}`}
+      className={`${FRAME_SURFACE} group relative flex h-full min-h-[164px] min-w-0 flex-col overflow-hidden px-6 pt-5 transition-colors duration-fast ease-apple hover:border-white/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange ${className}`}
       data-overview-tile={page}
     >
       <div className="relative z-10 flex items-center justify-between gap-2">
