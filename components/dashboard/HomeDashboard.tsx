@@ -8,6 +8,10 @@ import { useSites, useSitesOverview, useDeletedSites, useRefreshSiteLists } from
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import FleetDeck from '@/components/sites/FleetDeck'
 import FleetHeader from '@/components/sites/FleetHeader'
+import SitesDeck from '@/components/sites/SitesDeck'
+import DeletedSitesList from '@/components/sites/DeletedSitesList'
+import { oneSiteTarget } from '@/components/sites/oneSite'
+import { useFeature } from '@/lib/features'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import { Badge, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useCan } from '@/lib/auth/permissions'
@@ -28,8 +32,15 @@ export default function HomeDashboard() {
   // * delete confirmed on the site's own settings page commits here, through
   // * useRefreshSiteLists, well after this page may have been navigated to
   // * and mounted fresh (PUL-28).
-  const { deletedSites } = useDeletedSites()
+  const { deletedSites, isLoading: deletedLoading } = useDeletedSites()
   const refreshSiteLists = useRefreshSiteLists()
+  // * The new Your Sites page (beta new-sites, 24-11-2026; plan Pulse/docs/plans/23-11-2026-your-sites-page-overhaul-plan.md).
+  // * null until /me answers: the page holds its skeleton rather than show one page and then the other.
+  const newSites = useFeature('new-sites')
+  // * R124: a team with ONE site goes straight to its dashboard, decided once both lists are in (a site waiting to be
+  // * deleted keeps the page, where it can be restored). Computed in render so the list never flashes before it.
+  const oneSite = newSites === true && !sitesLoading && !deletedLoading ? oneSiteTarget(sites.map((s) => s.id), deletedSites.length) : null
+  const deciding = newSites === null || (newSites === true && (sitesLoading || deletedLoading))
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
   // * null = redirect decision pending (hold the skeleton, don't flash the list)
@@ -44,6 +55,10 @@ export default function HomeDashboard() {
     setEntryRedirect(target ?? false)
     if (target) router.replace(`/sites/${target}`)
   }, [sitesLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (oneSite) router.replace(`/sites/${oneSite}`)
+  }, [oneSite]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadSubscription()
@@ -73,7 +88,7 @@ export default function HomeDashboard() {
   const handleRestore = async (id: string) => {
     try {
       await restoreSite(id)
-      toast.success('Site restored successfully')
+      toast.success(newSites ? 'Site restored' : 'Site restored successfully')
       refreshSiteLists()
     } catch (error: unknown) {
       toast.error(getAuthErrorMessage(error) || 'Failed to restore site')
@@ -97,16 +112,17 @@ export default function HomeDashboard() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <FleetHeader siteCount={sites.length} siteLimit={siteLimit} canCreate={canCreateSite} />
+      <FleetHeader siteCount={sites.length} siteLimit={siteLimit} canCreate={canCreateSite} addLabel={newSites ? 'Add site' : undefined} />
       {atLimit && deletedSites.length > 0 && (
         <p className="-mt-3 mb-4 text-sm text-neutral-400">
           You have a site pending deletion. Restore it or permanently delete it to free the slot.
         </p>
       )}
 
-      {showSkeleton || entryRedirect !== false ? (
-        /* also held while the entry redirect is pending or in flight, so the
-           list never flashes before navigation */
+      {showSkeleton || entryRedirect !== false || deciding || oneSite ? (
+        /* also held while the entry redirect is pending or in flight, while the
+           beta is unknown, and while a one-site team is on its way to its site
+           (R124), so the list never flashes before navigation */
         <SitesListSkeleton rows={4} />
       ) : sites.length === 0 ? (
         // Pulse's one empty state (R57, 16-11-2026), in a card like the sites it waits for.
@@ -118,6 +134,13 @@ export default function HomeDashboard() {
             action={canCreateSite ? { label: 'New site', href: '/sites/new' } : undefined}
           />
         </div>
+      ) : newSites ? (
+        <SitesDeck
+          sites={sites}
+          overviewBySite={overviewBySite}
+          overviewError={!!overviewError}
+          onRetryOverview={() => mutateOverview()}
+        />
       ) : (
         <FleetDeck
           sites={sites}
@@ -136,7 +159,9 @@ export default function HomeDashboard() {
         permanentOnly
       />
 
-      {deletedSites.length > 0 && (
+      {newSites && <DeletedSitesList sites={deletedSites} onRestore={handleRestore} onDeleteNow={handlePermanentDelete} />}
+
+      {!newSites && deletedSites.length > 0 && (
         <div className="mt-8">
           <h3 className="text-sm font-medium text-neutral-400 mb-4">Scheduled for Deletion</h3>
           <div className="space-y-3">

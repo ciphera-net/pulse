@@ -54,6 +54,15 @@ vi.mock('@/components/sites/FleetDeck', () => ({
 vi.mock('@/components/sites/FleetHeader', () => ({
   default: () => <div data-testid="fleet-header" />,
 }))
+vi.mock('@/components/sites/SitesDeck', () => ({
+  default: ({ sites }: { sites: Array<{ id: string }> }) => (
+    <div data-testid="sites-deck">{sites.map((s) => s.id).join(',')}</div>
+  ),
+}))
+
+// The new-sites beta (24-11-2026): off unless a test turns it on; null is /me not answered yet.
+let newSitesFlag: boolean | null = false
+vi.mock('@/lib/features', () => ({ useFeature: (flag: string) => (flag === 'new-sites' ? newSitesFlag : false) }))
 
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
 vi.mock('@/lib/plans', () => ({ getSitesLimitForPlan: () => null }))
@@ -84,6 +93,7 @@ const activeSite = { id: 's1', name: 'Acme', domain: 'acme.com' }
 const scheduled = { id: 's2', name: 'Old Co', domain: 'old.co', deleted_at: '2026-10-07T00:00:00Z' }
 
 beforeEach(() => {
+  newSitesFlag = false
   push.mockClear()
   replace.mockClear()
   listSites.mockReset().mockResolvedValue([activeSite])
@@ -192,3 +202,49 @@ describe('HomeDashboard, Scheduled for deletion (PUL-28)', () => {
     await waitFor(() => expect(screen.getByText('Old Co')).toBeInTheDocument())
   })
 })
+
+describe('HomeDashboard, the new-sites beta (R124, 24-11-2026)', () => {
+  it('sends a team with one site straight to its dashboard, and never shows the list', async () => {
+    newSitesFlag = true
+    listDeletedSites.mockReset().mockResolvedValue([])
+    render(withFreshCache(<HomeDashboard />))
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/sites/s1'))
+    expect(screen.queryByTestId('sites-deck')).toBeNull()
+    expect(screen.queryByTestId('fleet-deck')).toBeNull()
+  })
+
+  it('keeps the page while a site waits to be deleted, with the new rows and buttons', async () => {
+    newSitesFlag = true
+    render(withFreshCache(<HomeDashboard />))
+    await screen.findByTestId('sites-deck')
+    expect(replace).not.toHaveBeenCalled()
+    expect(screen.getByText('Scheduled for deletion')).toBeInTheDocument()
+    expect(screen.getByText('Old Co')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete now' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete Now' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }))
+    await waitFor(() => expect(restoreSite).toHaveBeenCalledWith('s2'))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Site restored'))
+  })
+
+  it('shows two sites as the new cards and sends nobody anywhere', async () => {
+    newSitesFlag = true
+    listSites.mockReset().mockResolvedValue([activeSite, { id: 's3', name: 'Beta', domain: 'beta.io' }])
+    listDeletedSites.mockReset().mockResolvedValue([])
+    render(withFreshCache(<HomeDashboard />))
+    expect((await screen.findByTestId('sites-deck')).textContent).toBe('s1,s3')
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('holds its skeleton until it knows whether the beta is on', async () => {
+    newSitesFlag = null
+    listDeletedSites.mockReset().mockResolvedValue([])
+    render(withFreshCache(<HomeDashboard />))
+    await waitFor(() => expect(listSites).toHaveBeenCalled())
+    expect(screen.getByTestId('skeleton')).toBeInTheDocument()
+    expect(screen.queryByTestId('sites-deck')).toBeNull()
+    expect(screen.queryByTestId('fleet-deck')).toBeNull()
+    expect(replace).not.toHaveBeenCalled()
+  })
+})
+
