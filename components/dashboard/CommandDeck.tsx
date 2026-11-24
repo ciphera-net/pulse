@@ -79,6 +79,12 @@ interface CommandDeckProps {
   prevRange?: { start: string; end: string } | null
   /** The first day the dashboard has data for (data window `from`): earlier previous buckets stay empty. */
   prevFloor?: string | null
+  /**
+   * The Key numbers widget (dashboard widgets, PUL-88, ruling W14): the rail as a READOUT beside a chart that owns
+   * the metric. No row is selected and no orange line is drawn, and a row is not a button, because pressing it would
+   * change nothing. The trace still lifts on hover, as the rail's does.
+   */
+  readout?: boolean
 }
 
 // The previous period's ink: the established secondary-line token (grey in both
@@ -194,6 +200,7 @@ export default function CommandDeck({
   prevData,
   prevRange,
   prevFloor,
+  readout = false,
 }: CommandDeckProps) {
   const frame = useDashboardFrame()
   // On by default; the legend's "Previous period" entry hides it (PUL-19).
@@ -285,25 +292,30 @@ export default function CommandDeck({
     // In the new frame the deck is glass like the blocks under it (styles/globals.css, `.glass-block`): the fill
     // comes from the class, so the Card's own is switched off.
     <Card className={cn('w-full overflow-hidden rounded-none', frame && 'glass-block border-white/[0.08] bg-transparent')}>
-      <div className="grid md:grid-cols-[236px_1fr] md:grid-rows-[500px]">
+      <div className="grid md:grid-cols-[236px_1fr] md:grid-rows-[500px]" data-deck-grid="">
         {/* KPI rail. On md+ the rows flex-stretch so the rail bottoms out level
             with the chart; on mobile it is a 2-column grid above the chart. */}
         <div data-tour="metric-rail" className="grid grid-cols-2 border-b border-neutral-800 md:flex md:flex-col md:border-b-0 md:border-r">
-          {rows.map((m, i) => (
-            <button
+          {rows.map((m, i) => {
+            const selected = !readout && metric === m.key
+            const Row = readout ? 'div' : 'button'
+            return (
+            <Row
               key={m.key}
-              onClick={() => onMetricChange(m.key)}
+              {...(readout ? {} : { type: 'button' as const, onClick: () => onMetricChange(m.key) })}
+              data-deck-row={m.key}
               // The canonical sentence, reachable by screen readers without a
               // control nested inside this button (metric info layer,
               // 22-08-2026). It replaces a title= attribute that no touch or
               // keyboard user could ever reach; sighted users read the same
               // sentence in the toolbar InfoTip once the row is selected.
-              aria-describedby={`deck-def-${m.key}`}
+              aria-describedby={`deck-def-${m.key}${readout ? '-readout' : ''}`}
               className={cn(
-                'group relative flex-1 cursor-pointer overflow-hidden px-4 py-3 text-start transition-colors ease-apple',
+                'group relative flex-1 overflow-hidden px-4 py-3 text-start transition-colors ease-apple',
+                readout ? 'cursor-default' : 'cursor-pointer',
                 'border-neutral-800 max-md:odd:border-r max-md:[&:nth-child(-n+4)]:border-b',
                 i > 0 && 'md:border-t',
-                metric === m.key && 'bg-neutral-800/40',
+                selected && 'bg-neutral-800/40',
               )}
             >
               {/* The ghost trace: grey at rest, orange on hover, orange while
@@ -315,22 +327,23 @@ export default function CommandDeck({
                 // by VISITS (migration-164 rule), never re-derived per person.
                 data={chartData}
                 dataKey={m.key}
-                active={metric === m.key}
+                active={selected}
                 dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])}
                 // Mirror the big chart's missing-as-zero rule (its VisxArea
                 // flag below) — the mini must draw the shape the chart draws.
                 missingAsZero={plotsMissingAsZero(m.key)}
               />
-              {metric === m.key && (
+              {selected && (
                 <motion.span
+                  data-deck-active-line=""
                   layoutId="deckActiveMetric"
                   className="absolute bottom-0 left-0 top-0 z-10 w-[2px] bg-brand-orange"
                   transition={SPRING}
                 />
               )}
               <div className="relative z-10">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={cn('truncate text-[13px]', metric === m.key ? 'text-brand-ink' : 'text-neutral-400')}>
+                <div className="flex items-baseline justify-between gap-2" data-deck-row-head="">
+                  <span className={cn('truncate text-[13px]', selected ? 'text-brand-ink' : 'text-neutral-400')} data-deck-row-label="">
                     {m.label}
                   </span>
                   <RailDelta change={m.change} invert={m.isNegative} />
@@ -344,20 +357,21 @@ export default function CommandDeck({
                         </CompactNumber>
                       )
                     : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
-                <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
+                <span className="mt-0.5 block truncate text-[11px] text-neutral-500" data-deck-row-context="">
                   {m.context}
                   {railImported && IMPORT_MERGED_METRICS.has(m.key) && ' · incl. imported days'}
                 </span>
               </div>
-              <span id={`deck-def-${m.key}`} className="sr-only">
+              <span id={`deck-def-${m.key}${readout ? '-readout' : ''}`} className="sr-only">
                 {m.title}
               </span>
-            </button>
-          ))}
+            </Row>
+            )
+          })}
         </div>
 
         {/* Hero chart — fills the deck; the rail stretches to match. */}
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-col" data-deck-chart="">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3">
             {/* The toolbar names the selected metric, so ONE resident glyph
                 here reaches all six definitions — the rail rows stay clean
@@ -403,7 +417,7 @@ export default function CommandDeck({
               what flex-1 gives it and the rail tiles flex-stretch into the
               same 500. Mobile keeps its smaller floor. fillParent (not
               aspectRatio) lets the plot use all of it. */}
-          <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1">
+          <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1" data-deck-plot="">
             {!hasData || !hasAnyNonZero ? (
               // One state for the chart with nothing to draw. In realtime it reads the realtime line (or, while
               // somebody is on the site, that the window has no visits), as every block does.

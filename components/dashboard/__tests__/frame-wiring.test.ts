@@ -34,8 +34,10 @@ describe('the new dashboard frame: every block is wired as on today\'s page', ()
   })
 
   it('hands every block the live window, so a block never describes the calendar day in realtime', () => {
-    // Sources, Pages (and its Outbound tab through it), Locations, Technology, Events.
-    expect(frame.match(/liveMinutes=\{liveMinutes\}/g)?.length).toBe(5)
+    // Sources, Pages (and its Outbound tab through it), Locations, Technology, Events, and the hand-off to the
+    // dashboard as widgets (PUL-88), which gives the same blocks the same window (widgets/registry.tsx).
+    expect(frame.match(/liveMinutes=\{liveMinutes\}/g)?.length).toBe(6)
+    expect(frame).toMatch(/<WidgetsFrame\n[^>]*liveMinutes=\{liveMinutes\}/)
   })
 
   it('orders the blocks Sources, Pages / Locations, Technology / Events, then the bottom', () => {
@@ -114,7 +116,8 @@ describe('the surface mounts the frame for every reader, and holds nothing of th
   })
 
   it('keeps the toolbar at the top in the frame, on the failed-load page too', () => {
-    expect(page).toContain('<FrameToolbar>{toolbarControls()}</FrameToolbar>')
+    // With the dashboard as widgets (PUL-88), Customize's controls wrap the same controls inside the same toolbar.
+    expect(page).toMatch(/<FrameToolbar>\s*\{dashboardWidgets\.on && dashboardWidgets\.ready\s*\? <CustomizeControls [^>]*>\{toolbarControls\(\)\}<\/CustomizeControls>\s*: toolbarControls\(\)\}\s*<\/FrameToolbar>/)
     // One definition of the toolbar row, used by the page and by the failed-load state.
     expect(page.match(/\{toolbarRow\(\)\}/g)?.length).toBe(2)
   })

@@ -302,6 +302,8 @@ const HOW_ROWS_STAY_APART: Record<string, { by: string[] | null; why: string }> 
   'components/dashboard/events/EventsBlock.tsx': { by: ['eventLabels('], why: 'A row is one event, so two are never merged: names that read alike each read their stored name instead.' },
   'components/dashboard/events/EventProperties.tsx': { by: ['propertyValueRows('], why: 'propertyValueRows merges values that read the same.' },
   'components/dashboard/MetricRowStat.tsx': { by: null, why: 'Defines the row and draws none.' },
+  'components/dashboard/widgets/compact.tsx': { by: ['mergeSameRows(', 'mergeReferrersByDisplayName(', 'eventLabels('], why: 'A dashboard block at a widget\'s smaller sizes: its rows merge by the name they draw, referrers by their display name first and events named apart by eventLabels.' },
+  'components/dashboard/widgets/tiles.tsx': { by: null, why: 'The Funnels tile: a row is one step of one funnel, so two steps stay two rows.' },
   'components/pages/list/PagesList.tsx': { by: null, why: 'The Pages list: a page is drawn as the path that is stored, so the stored value is the row.' },
 }
 

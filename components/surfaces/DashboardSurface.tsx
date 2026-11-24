@@ -35,6 +35,8 @@ import { pageValuesFrom, placeCountriesFrom } from '@/components/dashboard/filte
 const CommandDeck = dynamic(() => import('@/components/dashboard/CommandDeck'), { ssr: false })
 import DashboardFrame from '@/components/surfaces/DashboardFrame'
 import FrameToolbar from '@/components/dashboard/FrameToolbar'
+import CustomizeControls from '@/components/dashboard/widgets/CustomizeControls'
+import { useDashboardWidgets } from '@/components/dashboard/widgets/store'
 
 // Client-only and off the critical path: driver.js only matters once the
 // dashboard is interactive, and the controller waits for the anchors anyway.
@@ -117,6 +119,8 @@ function SiteDashboardWithRecord({ scope, caps }: { scope: SiteScope; caps: Dash
 }
 
 function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: DashboardCapabilities; facts: SiteFacts | null }) {
+  // The dashboard as widgets (PUL-88, beta `dashboard-widgets`): DashboardFrame draws them, the toolbar holds Customize.
+  const dashboardWidgets = useDashboardWidgets(scope.siteId)
   const siteId = scope.siteId
   // The dashboard is the frame (lib/dashboard/frame.tsx says what it is) for every reader since 15-11-2026: every
   // team (the `new-dashboard` flag went to everyone at 20:32 UTC), and public pages too (the demo, a share link).
@@ -606,7 +610,15 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   )
 
   // The toolbar stays at the top while the page moves under it (components/dashboard/FrameToolbar).
-  const toolbarRow = () => <FrameToolbar>{toolbarControls()}</FrameToolbar>
+  // With the dashboard as widgets (PUL-88), the toolbar also holds Customize, and becomes Customize's own row while it
+  // is on.
+  const toolbarRow = () => (
+    <FrameToolbar>
+      {dashboardWidgets.on && dashboardWidgets.ready
+        ? <CustomizeControls layout={dashboardWidgets.layout} canCustomize={dashboardWidgets.canCustomize} done={dashboardWidgets.done}>{toolbarControls()}</CustomizeControls>
+        : toolbarControls()}
+    </FrameToolbar>
+  )
 
   // PULSE-87: the view waits for the SITE's timezone before it can resolve a
   // range, and a site that failed to load never supplies one — so that failure
