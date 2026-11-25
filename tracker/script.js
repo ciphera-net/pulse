@@ -18,6 +18,13 @@
  * what it never records. If you are auditing what Pulse collects, read both files — this one
  * is not the whole story once interactions are on.
  *
+ * v1.11.0 (26-11-2026): the engagement report carries the page's human-signal bits (`hs`, the
+ * same bits the pageview sends), so the server learns whether anyone touched the mouse, the
+ * keyboard or the screen on a page that was left by a full page load, which the pageview of the
+ * next page cannot know. A trusted pointer press, wheel or click now counts as input too, and an
+ * event a page script dispatches never does. No new data: the bits name kinds of input, never
+ * where or what.
+ *
  * v1.10.0 (17-11-2026): a pageview or a custom event that cannot be delivered goes out again
  * while the page stays open, for up to 30 minutes (send, below), so a short outage or a dropped
  * connection no longer loses it. Each event carries its own random `idempotency_key`, made for
@@ -286,20 +293,19 @@
     if (navigator.languages && navigator.languages.length > 1) humanSignals |= 32;
     if (!document.hidden) humanSignals |= 4;
 
-    // * Bit 1: a person's own input (a pointer moved, a touch, a key). The listeners stay for the
-    // * page's life (1.10.0; they removed themselves before, which cost bytes and saved nothing:
-    // * setting a bit that is already set is free, and the idle window below listens to the same
-    // * events anyway).
-    function onHumanInput() {
-      humanSignals |= 1;
+    // * Bit 1: a person's own input on this page: a pointer moved or pressed, a touch, a key, a
+    // * wheel or a click (1.11.0 added the press, the wheel and the click, so a screen reader's
+    // * activation and a trackpad scroll count too). Only events the BROWSER made count: one a
+    // * page script dispatches carries isTrusted false. The listeners stay for the page's life.
+    function onHumanInput(e) {
+      if (e.isTrusted) humanSignals |= 1;
     }
 
     // * Activity for the idle window: anything a person does to a page. Scroll is added
     // * below where it is measured.
-    ['mousemove', 'mousedown', 'pointerdown', 'keydown', 'touchstart', 'wheel', 'click'].forEach(function (name, i) {
+    ['mousemove', 'mousedown', 'pointerdown', 'keydown', 'touchstart', 'wheel', 'click'].forEach(function (name) {
       document.addEventListener(name, noteActivity, { passive: true, capture: true });
-      // * mousemove, keydown and touchstart (0, 3, 4) are also the human-input signal above.
-      if (!i || i > 2 && i < 5) document.addEventListener(name, onHumanInput, { passive: true });
+      document.addEventListener(name, onHumanInput, { passive: true });
     });
 
     // * Engagement goes out as a keepalive fetch, NOT sendBeacon (v1.6.1, PULSE-169). Browsers
@@ -368,6 +374,10 @@
       var wallSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
       var payload = {
         event_id: currentEventId,
+        // * The page's human-signal bits as they stand now (1.11.0). The pageview sent them at
+        // * load, before anyone could touch the page; this report is the only place the input on
+        // * a page that is left by a full page load is ever seen.
+        hs: humanSignals,
         duration: wallSec,
         visible_duration: Math.round(visibleMs / 1000),
         engaged_duration: Math.round(engagedMs / 1000)
