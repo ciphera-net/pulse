@@ -345,3 +345,59 @@ describe('time on page is engaged time', () => {
     expect(next.body.engaged_duration).toBeGreaterThanOrEqual(1)
   })
 })
+
+describe('the engagement report carries the page input bits (1.11.0)', () => {
+  // * The pageview sends its human-signal bits at load, before anyone can touch the page. Input on
+  // * a page that is left by a full page load therefore only ever reaches the server on that page's
+  // * engagement report, which now carries `hs`. Bit 1 is a person's own input; jsdom marks every
+  // * event a test dispatches as untrusted (isTrusted false), exactly as a browser marks an event a
+  // * page script dispatches, so a trusted event is delivered by calling the tracker's listener.
+  const INPUT = 1
+  const INPUT_EVENTS = ['mousemove', 'mousedown', 'pointerdown', 'keydown', 'touchstart', 'wheel', 'click']
+
+  function recordDocumentListeners() {
+    const seen: Array<[string, any]> = []
+    const add = doc.addEventListener.bind(doc)
+    ;(doc as any).addEventListener = (type: string, fn: any, opts?: any) => {
+      seen.push([type, fn])
+      return add(type, fn, opts)
+    }
+    return (type: string) => {
+      for (const [t, fn] of seen) if (t === type && typeof fn === 'function') fn({ type, isTrusted: true })
+    }
+  }
+
+  it('a page with no input reports its bits without the input bit', async () => {
+    installScript()
+    await flush(10_000)
+    win.dispatchEvent(new win.Event('pagehide'))
+    const hs = lastBeacon().body.hs
+    expect(typeof hs).toBe('number')
+    expect(hs & 8).toBe(8)
+    expect(hs & INPUT).toBe(0)
+  })
+
+  it('an event a page script dispatches is not input', async () => {
+    installScript()
+    await flush(10)
+    for (const name of INPUT_EVENTS) doc.dispatchEvent(new win.Event(name))
+    await flush(10_000)
+    win.dispatchEvent(new win.Event('pagehide'))
+    const hs = lastBeacon().body.hs
+    expect(typeof hs).toBe('number')
+    expect(hs & INPUT).toBe(0)
+  })
+
+  it.each(INPUT_EVENTS)('a trusted %s is input, reported when the page ends', async (name) => {
+    const fireTrusted = recordDocumentListeners()
+    installScript()
+    await flush(10)
+    expect(pageviews).toHaveLength(1)
+    expect(pageviews[0].hs & INPUT).toBe(0)
+
+    fireTrusted(name)
+    await flush(5_000)
+    win.dispatchEvent(new win.Event('pagehide'))
+    expect(lastBeacon().body.hs & INPUT).toBe(INPUT)
+  })
+})
