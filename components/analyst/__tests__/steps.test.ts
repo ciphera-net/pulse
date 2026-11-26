@@ -535,6 +535,43 @@ describe('the figures behind each lookup', () => {
     expect(rows(stored, 1)).toEqual([['Declared crawlers', '890 events', ''], ['Excluded by hand', '56 events', '']])
   })
 
+  it("draws the bot filter's answer: each window in its two units, then the last 7 days by rule", () => {
+    const week = {
+      window: 'last_7_days', page_views_turned_away: 259, visits_filtered: 118,
+      by_rule: [
+        { rule: 'known_bot', name: 'Known bot', page_views_turned_away: 107, visits_filtered: null },
+        { rule: 'datacenter', name: 'Hosting network', page_views_turned_away: 85, visits_filtered: 3 },
+        { rule: 'no_sign_of_life', name: 'No sign of life', page_views_turned_away: null, visits_filtered: 79 },
+        { rule: 'automation', name: 'Automation', page_views_turned_away: 0, visits_filtered: null },
+        { rule: 'a_newer_rule', page_views_turned_away: null, visits_filtered: 1 },
+      ],
+    }
+    const v = view('get_excluded_traffic', {}, {
+      windows: [
+        { window: 'last_24_hours', page_views_turned_away: 1, visits_filtered: 0 },
+        week,
+        { window: 'last_90_days', page_views_turned_away: 1436, visits_filtered: 620 },
+      ],
+    })
+    expect(titles(v)).toEqual([['Traffic kept out of your stats', null], ['Kept out, by rule', 'Last 7 days']])
+    // * The two units side by side, never one sum: a page view turned away never became part of a visit.
+    expect(rows(v, 0)).toEqual([
+      ['Last 24 hours', '1 page view turned away', '0 visits filtered'],
+      ['Last 7 days', '259 page views turned away', '118 visits filtered'],
+      ['Last 90 days', '1,436 page views turned away', '620 visits filtered'],
+    ])
+    // * Named by the server; a rule with nothing to count is left out, and a rule without a name keeps its key's words.
+    expect(rows(v, 1)).toEqual([
+      ['Known bot', '107 page views', ''],
+      ['Hosting network', '85 page views, 3 visits', ''],
+      ['No sign of life', '79 visits', ''],
+      ['a newer rule', '1 visit', ''],
+    ])
+    // * Without the beta the server sends no by_rule: the totals alone.
+    const plain = view('get_excluded_traffic', {}, { windows: [{ window: 'last_7_days', page_views_turned_away: 259, visits_filtered: 118 }] })
+    expect(titles(plain)).toEqual([['Traffic kept out of your stats', null]])
+  })
+
   it('draws the totals, rates and durations rounded as the dashboard prints them', () => {
     const v = view('get_stats', { period: '30d' }, {
       range: { from: '2026-10-13', to: '2026-11-11' }, filters: [], visitors: 278, pageviews: 721,

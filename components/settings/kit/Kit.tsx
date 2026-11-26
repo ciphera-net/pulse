@@ -161,14 +161,19 @@ export function KitRow({
   )
 }
 
-/** Figures side by side, a label over each number (General's bot counts, Billing's plan, R35). */
-export function KitStats({ items }: { items: { label: string; value: React.ReactNode }[] }) {
+/**
+ * Figures side by side, a label over each number (General's bot counts, Billing's plan, R35), three to a row unless
+ * `cols` says two. A `note` under a number finishes its sentence in the caption's size ("visits, and 76 page views
+ * turned away").
+ */
+export function KitStats({ items, cols = 3 }: { items: { label: string; value: React.ReactNode; note?: React.ReactNode }[]; cols?: 2 | 3 }) {
   return (
-    <div className="grid grid-cols-3 divide-x divide-border">
+    <div className={cn('grid divide-x divide-border', cols === 2 ? 'grid-cols-2' : 'grid-cols-3')}>
       {items.map((it, i) => (
         <div key={it.label} className={cn('min-w-0 py-4', i === 0 ? 'pr-5' : 'px-5')}>
           <p className="text-xs text-muted-foreground">{it.label}</p>
           <p className="mt-1 text-xl font-semibold tracking-tight text-foreground tabular-nums">{it.value}</p>
+          {it.note && <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{it.note}</p>}
         </div>
       ))}
     </div>

@@ -11,7 +11,6 @@ import type { ReactNode } from 'react'
 const useSiteMock = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: () => useSiteMock(),
-  useQuarantineStats: () => ({ data: { total_quarantined: 0, last_7d: 0, last_24h: 0 }, error: undefined, mutate: vi.fn() }),
 }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
 vi.mock('@/lib/hold/pending', () => ({ usePendingKeys: () => new Set<string>() }))
@@ -22,8 +21,10 @@ vi.mock('@/lib/api/sites', () => ({ updateSite: (...a: unknown[]) => updateSite(
 // The save bar portals into a slot the settings shell owns and renders nothing without one.
 vi.mock('@/components/settings/shell-slots', () => ({ useSaveSlot: () => document.body, useHeaderSlot: () => null }))
 
-// The script section and the two dialogs have their own hooks and tests; this file is about the switches and the save.
+// The script section, the kept-out section and the two dialogs have their own hooks and tests; this file is about the
+// switches and the save.
 vi.mock('../TrackingScriptSection', () => ({ TrackingScriptSection: () => null }))
+vi.mock('../KeptOutSection', () => ({ KeptOutSection: () => null }))
 vi.mock('@/components/sites/DeleteSiteModal', () => ({ default: () => null }))
 vi.mock('@/components/settings/unified/ResetDataModal', () => ({ default: () => null }))
 

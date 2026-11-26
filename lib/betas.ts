@@ -26,4 +26,7 @@ export const BETAS: readonly Beta[] = [
   // The site dashboard as widgets a team arranges (24-11-2026). Its screens read useFeature, so no list needs
   // re-reading.
   { flag: 'dashboard-widgets', name: 'Arrange your dashboard', revalidates: [] },
+  // Settings → General's "Kept out of your stats", by rule (26-11-2026): the server sends the rows by rule only while
+  // this flag is on for the team, so the counts are read again after a switch.
+  { flag: 'bot-filter-rules', name: 'Kept out of your stats, by rule', revalidates: ['botFilterSummary'] },
 ]

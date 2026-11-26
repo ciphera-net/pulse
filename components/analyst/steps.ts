@@ -424,9 +424,9 @@ function engagementBlocks(result: Record<string, unknown>, args: Record<string, 
 }
 
 /**
- * What each kind of traffic kept out is called in a row: every verdict family pulse-backend can return
- * (cerberus.VerdictFamily), named from what the server says was observed for it. A kind added there later is named by
- * its key until it is named here.
+ * What each kind of traffic kept out is called in a row of an answer from the previous bot filter (stored before the
+ * bot filter's ingest switch, 26-11-2026): every verdict family it returned (cerberus.VerdictFamily), named from what
+ * the server said was observed for it.
  */
 const KEPT_OUT_KINDS: Record<string, string> = {
   population_statistic: 'Bot and spam patterns',
@@ -438,11 +438,51 @@ const KEPT_OUT_KINDS: Record<string, string> = {
   physical: 'Impossible for one person',
 }
 
+/** The windows of the bot filter's answer, named as the dashboard names its ranges. */
+const KEPT_OUT_WINDOWS: Record<string, string> = {
+  last_24_hours: 'Last 24 hours',
+  last_7_days: 'Last 7 days',
+  last_90_days: 'Last 90 days',
+}
+
 /**
- * The traffic kept out, by period as Settings shows it, then by kind in a block of its own: the kinds count every event
- * still kept, never the last 30 days (measured 12-11-2026: a model read them as the last 30 days).
+ * The bot filter's answer (pulse-backend#1392): each window in its two units, the page views turned away as they arrived
+ * and the visits filtered after they ended, side by side and never added together, as Settings → General keeps them;
+ * then the last 7 days by rule, which the server sends only to a team with the beta (`by_rule`). Each rule is named by
+ * the server in the docs page's words, so a rule added there needs nothing here, and a row with nothing to count is
+ * left out, as Settings leaves it out.
+ */
+function botFilterBlocks(windows: Record<string, unknown>[]): FigureBlock[] {
+  const rows = windows.flatMap((w) => {
+    const name = KEPT_OUT_WINDOWS[str(w.window) ?? '']
+    const pageViews = num(w.page_views_turned_away)
+    const visits = num(w.visits_filtered)
+    if (!name || pageViews === null || visits === null) return []
+    return [figure(name, counted(pageViews, 'page view turned away', 'page views turned away'), counted(visits, 'visit filtered', 'visits filtered'))]
+  })
+  const week = windows.find((w) => w.window === 'last_7_days')
+  const rules = list(week?.by_rule).flatMap((r) => {
+    const name = str(r.name) ?? str(r.rule)?.replace(/_/g, ' ')
+    const parts: string[] = []
+    const pageViews = num(r.page_views_turned_away)
+    const visits = num(r.visits_filtered)
+    if (pageViews) parts.push(counted(pageViews, 'page view', 'page views'))
+    if (visits) parts.push(counted(visits, 'visit', 'visits'))
+    return name && parts.length > 0 ? [figure(name, parts.join(', '))] : []
+  })
+  const blocks: FigureBlock[] = []
+  if (rows.length > 0) blocks.push({ title: 'Traffic kept out of your stats', range: null, rows, more: 0 })
+  if (rules.length > 0) blocks.push({ title: 'Kept out, by rule', range: 'Last 7 days', rows: rules, more: 0 })
+  return blocks
+}
+
+/**
+ * The traffic kept out. An answer from the bot filter carries `windows`; an answer stored before its switch carries the
+ * previous filter's events, drawn by period as Settings showed them, then by kind in a block of its own: the kinds
+ * count every event still kept, never the last 30 days (measured 12-11-2026: a model read them as the last 30 days).
  */
 function excludedBlocks(result: Record<string, unknown>): FigureBlock[] {
+  if (Array.isArray(result.windows)) return botFilterBlocks(list(result.windows))
   const periods: [string, string][] = [
     ['Last 24 hours', 'events_last_24_hours'],
     ['Last 7 days', 'events_last_7_days'],

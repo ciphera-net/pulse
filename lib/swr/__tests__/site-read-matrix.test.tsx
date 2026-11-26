@@ -47,7 +47,7 @@ vi.mock('@/lib/api/funnels', () => rec.make('funnels', ['listFunnels', 'getFunne
 vi.mock('@/lib/api/uptime', () => rec.make('uptime', ['getUptimeStatus', 'getUptimeIncidents', 'getUptimeResponseTimes', 'getMonitorChecks']))
 vi.mock('@/lib/api/performance', () => rec.make('performance', ['getPerformanceConfig', 'getPerformanceLatest', 'getPerformanceHistory', 'getPagePreview', 'getPublicPagePreview']))
 vi.mock('@/lib/api/goals', () => rec.make('goals', ['listGoals']))
-vi.mock('@/lib/api/quarantine', () => rec.make('quarantine', ['getQuarantineStats']))
+vi.mock('@/lib/api/quarantine', () => rec.make('quarantine', ['getBotFilterSummary']))
 vi.mock('@/lib/api/gsc', () => rec.make('gsc', [
   'getGSCStatus', 'getGSCOverview', 'getGSCTopQueries', 'getGSCTopPages', 'getGSCDailyTotals', 'getGSCNewQueries',
   'getGSCTopCountries', 'getGSCTopDevices', 'getGSCOpportunities', 'getGSCQueryPages', 'getGSCPageQueries', 'getGSCQueryTrend',
