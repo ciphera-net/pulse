@@ -4,19 +4,6 @@ import apiRequest from './client'
 // Types
 // ============================================================================
 
-export interface QuarantineStats {
-  total_quarantined: number
-  by_reason: Record<string, number>
-  by_method: Record<string, number>
-  last_24h: number
-  last_7d: number
-  last_30d: number
-}
-
-export async function getQuarantineStats(siteId: string): Promise<QuarantineStats> {
-  return apiRequest(`/sites/${siteId}/quarantine/stats`)
-}
-
 /**
  * One row of what the bot filter kept out: one of its rules (its own name, a published contract),
  * `manual` (visits Ciphera held by hand), or `earlier`, the filter Pulse used before. A count is

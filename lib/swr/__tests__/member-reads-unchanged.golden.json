@@ -1671,9 +1671,9 @@
       ]
     ]
   },
-  "useQuarantineStats": {
+  "useBotFilterSummary": {
     "key": [
-      "quarantineStats",
+      "botFilterSummary",
       "site-1"
     ],
     "config": {
@@ -1688,7 +1688,7 @@
     },
     "api": [
       [
-        "quarantine.getQuarantineStats",
+        "quarantine.getBotFilterSummary",
         [
           "site-1"
         ]

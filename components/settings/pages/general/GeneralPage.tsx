@@ -2,20 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Input, Select, Toggle, toast } from '@ciphera-net/facet'
-import { ChartBar, IdentificationCard, Monitor, Robot, Warning, WarningCircle } from '@phosphor-icons/react'
-import { useQuarantineStats, useSite } from '@/lib/swr/dashboard'
+import { ChartBar, IdentificationCard, Monitor, Warning } from '@phosphor-icons/react'
+import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { usePendingKeys } from '@/lib/hold/pending'
 import { timezoneGroupsFor } from '@/lib/utils/timezones'
 import { choicesFrom, featuresPayload, type ScriptChoices } from '@/lib/tracking-script'
-import { KitPage, KitRow, KitRows, KitSection, KitStats } from '@/components/settings/kit/Kit'
+import { KitPage, KitRow, KitRows, KitSection } from '@/components/settings/kit/Kit'
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
+import { KeptOutSection } from './KeptOutSection'
 import { TrackingScriptSection } from './TrackingScriptSection'
 
 /**
@@ -29,7 +30,6 @@ import { TrackingScriptSection } from './TrackingScriptSection'
  */
 
 const MAX_NAME = 100
-const num = (n: number) => Math.round(n).toLocaleString('en-GB')
 
 interface Draft {
   name: string
@@ -49,7 +49,6 @@ function nameProblem(name: string): string | null {
 
 export default function GeneralPage({ siteId }: { siteId: string }) {
   const { data: site, error, isValidating, mutate } = useSite(siteId)
-  const { data: bots, error: botsError, mutate: retryBots } = useQuarantineStats(siteId)
   const canEdit = useCan('sites.edit')
   // The server allows a reset to the owner alone (copy deck §4.7): the row shows only to people who may use it, rather
   // than turning them away after the 6-second hold.
@@ -230,27 +229,7 @@ export default function GeneralPage({ siteId }: { siteId: string }) {
         </KitRows>
       </KitSection>
 
-      <KitSection title="Kept out of your stats" description="Events from bots and spam that Pulse left out." icon={<Robot />}>
-        {botsError && !bots ? (
-          <KitRows>
-            <KitRow
-              state
-              icon={<WarningCircle weight="fill" />}
-              tone="orange"
-              label="Couldn't load these numbers."
-              control={<Button variant="outline" size="sm" onClick={() => void retryBots()}>Try again</Button>}
-            />
-          </KitRows>
-        ) : (
-          <KitStats
-            items={[
-              { label: 'All time', value: bots ? num(bots.total_quarantined) : '…' },
-              { label: 'Last 7 days', value: bots ? num(bots.last_7d) : '…' },
-              { label: 'Last 24 hours', value: bots ? num(bots.last_24h) : '…' },
-            ]}
-          />
-        )}
-      </KitSection>
+      <KeptOutSection siteId={siteId} layout="a" />
 
       <KitSection title="Dashboard display" description="Changes how the dashboard shows data, not what Pulse collects." icon={<Monitor />}>
         <KitRows>
