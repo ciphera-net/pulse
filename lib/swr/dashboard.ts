@@ -76,7 +76,7 @@ import {
 } from '@/lib/api/uptime'
 import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, getPagePreview, getPublicPagePreview, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest, type PagePreview as PagePreviewData } from '@/lib/api/performance'
 import { listGoals, type Goal } from '@/lib/api/goals'
-import { getQuarantineStats, type QuarantineStats } from '@/lib/api/quarantine'
+import { getBotFilterSummary, getQuarantineStats, type BotFilterSummary, type QuarantineStats } from '@/lib/api/quarantine'
 import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities, getGSCQueryPages, getGSCPageQueries, getGSCQueryTrend } from '@/lib/api/gsc'
 import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse, GSCQueryTrendPoint } from '@/lib/api/gsc'
 import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyRegions, getBunnyLive } from '@/lib/api/bunny'
@@ -1058,6 +1058,16 @@ export function useSubscription() {
     }
   )
   return withAvailability(swr, available)
+}
+
+// * Hook for what the bot filter kept out, by window (and by rule for a team with the beta). Route class `member`.
+export function useBotFilterSummary(siteId: string | undefined) {
+  return useSiteSWR<BotFilterSummary>(
+    siteId, 'member',
+    (siteKey) => siteId ? ['botFilterSummary', siteKey] : null,
+    () => getBotFilterSummary(siteId!),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000 }
+  )
 }
 
 // * Hook for quarantine stats (Cerberus). Route class `member`.
