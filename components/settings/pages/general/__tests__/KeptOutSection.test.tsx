@@ -41,7 +41,9 @@ function summary(withRules: boolean): BotFilterSummary {
 
 const section = () => document.querySelector('section[data-kit-section="Kept out of your stats"]') as HTMLElement
 
-beforeEach(() => hook.mockReset())
+beforeEach(() => {
+  hook.mockReset()
+})
 
 describe('the two figures, then each rule', () => {
   it('shows the week apart, then a row per rule that kept something out', () => {
