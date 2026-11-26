@@ -43,10 +43,10 @@ const section = () => document.querySelector('section[data-kit-section="Kept out
 
 beforeEach(() => hook.mockReset())
 
-describe('option A, two figures then each rule', () => {
+describe('the two figures, then each rule', () => {
   it('shows the week apart, then a row per rule that kept something out', () => {
     hook.mockReturnValue({ data: summary(true), error: undefined, mutate: vi.fn() })
-    render(<KeptOutSection siteId="s" layout="a" />)
+    render(<KeptOutSection siteId="s" />)
     const s = within(section())
     expect(s.getByText('Page views turned away as they arrived').nextElementSibling?.textContent).toBe('259')
     expect(s.getByText('Visits filtered after they ended').nextElementSibling?.textContent).toBe('118')
@@ -58,45 +58,23 @@ describe('option A, two figures then each rule', () => {
 
   it('draws no row for a team without the beta', () => {
     hook.mockReturnValue({ data: summary(false), error: undefined, mutate: vi.fn() })
-    render(<KeptOutSection siteId="s" layout="a" />)
+    render(<KeptOutSection siteId="s" />)
     expect(within(section()).getByText('259')).toBeTruthy()
     expect(within(section()).queryByText('Known bot')).toBeNull()
-  })
-})
-
-describe('option B, three windows', () => {
-  it('shows each window as visits, with its page views under it', () => {
-    hook.mockReturnValue({ data: summary(true), error: undefined, mutate: vi.fn() })
-    render(<KeptOutSection siteId="s" layout="b" />)
-    const s = within(section())
-    expect(s.getByText('865')).toBeTruthy()
-    expect(s.getByText('visits, and 1,436 page views turned away')).toBeTruthy()
-    // * No rule names in B, beta or not.
-    expect(s.queryByText('Known bot')).toBeNull()
-  })
-})
-
-describe('option C, each rule on a line', () => {
-  it('says both totals in the sentence, then the rows', () => {
-    hook.mockReturnValue({ data: summary(true), error: undefined, mutate: vi.fn() })
-    render(<KeptOutSection siteId="s" layout="c" />)
-    const s = within(section())
-    expect(s.getByText('In the last 7 days, Pulse turned away 259 page views from bots as they arrived and filtered 118 visits after they ended.')).toBeTruthy()
-    expect(s.getByText('107 page views')).toBeTruthy()
   })
 })
 
 describe('loading and failure', () => {
   it('holds the figures while loading', () => {
     hook.mockReturnValue({ data: undefined, error: undefined, mutate: vi.fn() })
-    render(<KeptOutSection siteId="s" layout="a" />)
+    render(<KeptOutSection siteId="s" />)
     expect(within(section()).getAllByText('…')).toHaveLength(2)
   })
 
   it('says a failed read and offers to try again', () => {
     const mutate = vi.fn()
     hook.mockReturnValue({ data: undefined, error: new Error('down'), mutate })
-    render(<KeptOutSection siteId="s" layout="a" />)
+    render(<KeptOutSection siteId="s" />)
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(mutate).toHaveBeenCalled()
     expect(screen.getByText("Couldn't load these numbers.")).toBeTruthy()

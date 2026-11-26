@@ -229,7 +229,7 @@ export default function GeneralPage({ siteId }: { siteId: string }) {
         </KitRows>
       </KitSection>
 
-      <KeptOutSection siteId={siteId} layout="a" />
+      <KeptOutSection siteId={siteId} />
 
       <KitSection title="Dashboard display" description="Changes how the dashboard shows data, not what Pulse collects." icon={<Monitor />}>
         <KitRows>
