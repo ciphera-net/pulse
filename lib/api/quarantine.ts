@@ -18,10 +18,10 @@ export async function getQuarantineStats(siteId: string): Promise<QuarantineStat
 }
 
 /**
- * One row of what the bot filter kept out: one of its rules (its own name, a published contract) or
- * `earlier`, the filter Pulse used before. A count is `null` when the rule never judges at that
- * moment: the user-agent rules cannot judge a stored visit, and the end-of-visit rules never see a
- * page view arrive.
+ * One row of what the bot filter kept out: one of its rules (its own name, a published contract),
+ * `manual` (visits Ciphera held by hand), or `earlier`, the filter Pulse used before. A count is
+ * `null` when the row never counts at that moment: the user-agent rules cannot judge a stored visit,
+ * and the end-of-visit rules never see a page view arrive.
  */
 export interface BotFilterRuleCount {
   rule: string
