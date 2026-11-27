@@ -141,11 +141,18 @@ const APP_HOST = (() => {
   }
 })()
 
-// * The zone that serves those chunks. Kept as a constant because it appears in FOUR CSP
-// * directives and a typo in any one of them is a blank page, not an error.
-// * ⚠️ It is a `.b-cdn.net` host, so it is NOT covered by the `https://*.ciphera.net`
-// * already present in connect-src — every directive needs it spelled out.
-const ASSET_CDN = 'https://ciphera-app-static.b-cdn.net'
+// * The zone that serves those chunks, under BOTH of its names since
+// * 27-11-2026: `static.ciphera.net`, Ciphera's own name (a CNAME to the same zone, the same
+// * dedicated bucket: NOT cdn.ciphera.net, see script-src below), and `ciphera-app-static.b-cdn.net`,
+// * the name every build used until then. The b-cdn name stays for 30 days after the builds move
+// * to the new name: open tabs, cached pages and installed apps' service workers still ask for it.
+// * Plan: Pulse/docs/plans/27-11-2026-first-party-static-host-plan.md.
+// * Kept as a constant because it appears in FOUR CSP directives and a typo in any one of them is
+// * a blank page, not an error; lib/__tests__/csp-asset-host.test.ts fails a build whose asset
+// * prefix (.woodpecker/push.yml) names a host these four directives do not allow.
+// * ⚠️ The b-cdn name is NOT covered by the `https://*.ciphera.net` already present in
+// * connect-src, so every directive spells out both names.
+const ASSET_CDN = 'https://static.ciphera.net https://ciphera-app-static.b-cdn.net'
 
 // * CSP directives — restrict resource loading to known origins.
 // *
