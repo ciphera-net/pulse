@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import PublicDemoRoot from '@/components/public/PublicDemoRoot'
-import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { shareCardImages, shareCardTwitter } from '@/lib/og'
 
 // /demo is the product itself, in a public read-only mode (PUL-34): the real dashboard,
 // Pages, Journeys, Funnels, Performance, Uptime, Search and CDN pages over a sample shop's
@@ -28,8 +28,11 @@ export const metadata: Metadata = {
     title: 'Live demo of the Pulse dashboard',
     description,
     siteName: 'Pulse Analytics',
-    images: DEFAULT_OG_IMAGES,
+    images: shareCardImages('demo'),
   },
+  // Declared so X gets the demo's card and title: without it the root layout's whole block applies, the site's
+  // title included. Next fills the title and description from `openGraph` above.
+  twitter: shareCardTwitter('demo'),
 }
 
 export default function DemoLayout({ children }: { children: React.ReactNode }) {

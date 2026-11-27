@@ -9,7 +9,7 @@ import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import type { Metadata, Viewport } from 'next'
 import { Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
-import { DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGES } from '@/lib/og'
+import { shareCardImages, shareCardTwitter } from '@/lib/og'
 import { themeBootScript } from '@/lib/theme'
 import '@ciphera-net/facet/styles'
 import '../styles/globals.css'
@@ -68,9 +68,10 @@ export const metadata: Metadata = {
   },
   // * Site-wide social defaults. Next.js shallow-merges metadata per top-level
   // * field: a child that declares its own `openGraph`/`twitter` REPLACES this
-  // * block wholesale, so any route needing the share image must re-declare it.
-  // * The homepage inherits this whole block (it declares no openGraph of its
-  // * own) and only adds a canonical — see app/page.tsx.
+  // * block wholesale, so any route needing a share card must re-declare it.
+  // * Every page here without a title of its own (sign-in, sign-up, an
+  // * invitation, the plan claims) shows this block, and with it the home
+  // * page's card (lib/og.ts).
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -78,15 +79,9 @@ export const metadata: Metadata = {
     siteName: 'Pulse Analytics',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: DEFAULT_OG_IMAGES,
+    images: shareCardImages('home'),
   },
-  twitter: {
-    card: 'summary_large_image',
-    site: '@CipheraNET',
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    images: [DEFAULT_OG_IMAGE],
-  },
+  twitter: shareCardTwitter('home', { title: SITE_TITLE, description: SITE_DESCRIPTION }),
 }
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import PublicShareRoot from '@/components/public/PublicShareRoot'
-import { DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGES } from '@/lib/og'
+import { shareCardImages, shareCardTwitter } from '@/lib/og'
 
 // * Static, static-safe metadata for the public share dashboard.
 // *
@@ -13,6 +13,10 @@ import { DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGES } from '@/lib/og'
 // * link for no observable benefit. A plain static object guarantees a sane
 // * title/description card with zero runtime dependency on the API being
 // * reachable.
+// The page's name, as the settings call it; the root layout's template adds " | Pulse Analytics".
+const title = 'Public dashboard'
+const description = "View this site's public stats in Pulse, privacy-first web analytics."
+
 export const metadata: Metadata = {
   // 🔴 noindex, and it is not belt-and-braces with robots.txt — it is the half that
   // works. app/robots.ts already sends `Disallow: /share/`, but robots.txt is an
@@ -21,25 +25,21 @@ export const metadata: Metadata = {
   // was reading the app's default `index, follow` and being told to index a customer
   // dashboard. The two directives disagreed; now they agree.
   robots: { index: false, follow: false, nocache: true },
-  title: 'Public Dashboard | Pulse',
-  description: 'Privacy-first web analytics — view this site\'s public stats.',
+  title,
+  description,
   openGraph: {
-    title: 'Public Dashboard | Pulse',
-    description: 'Privacy-first web analytics — view this site\'s public stats.',
+    title,
+    description,
     siteName: 'Pulse Analytics',
     type: 'website',
-    images: DEFAULT_OG_IMAGES,
+    images: shareCardImages('share'),
   },
-  // summary_large_image + the site card, matching the root layout: 'summary'
+  // summary_large_image + the share link's card, as on every other page: 'summary'
   // with no image rendered share links as a bare small-format stub on X while
   // LinkedIn (og: tags) got the full card — the two crawlers saw different
-  // pages for the single most-shared URL family in the product.
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Public Dashboard | Pulse',
-    description: 'Privacy-first web analytics — view this site\'s public stats.',
-    images: [DEFAULT_OG_IMAGE],
-  },
+  // pages for the single most-shared URL family in the product. Next fills the
+  // title and description from `openGraph` above.
+  twitter: shareCardTwitter('share'),
 }
 
 // A share link is the product's pages in a public read-only mode (PUL-34): this layout mounts
