@@ -29,4 +29,7 @@ export const BETAS: readonly Beta[] = [
   // Settings → General's "Kept out of your stats", by rule (26-11-2026): the server sends the rows by rule only while
   // this flag is on for the team, so the counts are read again after a switch.
   { flag: 'bot-filter-rules', name: 'Kept out of your stats, by rule', revalidates: ['botFilterSummary'] },
+  // The email on 1 January with each site's last year (pulse-backend's yearly summary job, 27-11-2026). Its settings
+  // row reads useFeature.
+  { flag: 'yearly-summary', name: 'Yearly summary email', revalidates: [] },
 ]
