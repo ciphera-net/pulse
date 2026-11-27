@@ -19,14 +19,22 @@ const withPWA = withPWAInit({
   // * (lib/swr/dashboard.ts), and the session refresh listens for `online` itself.
   // * __tests__/pwa-precache.test.ts pins this value.
   reloadOnOnline: false,
-  // * 🔴 NO START-URL CACHE (27-11-2026). The manifest's start_url is `/`, which answers a
+  // * 🔴 NO START-URL RULE (27-11-2026). The manifest's start_url is `/`, which answers a
   // * signed-in visitor with a redirect to /sites; next-pwa's start-url rule turned that redirect
   // * into an EMPTY 200 and kept it, so the installed app opened offline on a blank page that
-  // * holds no script and never recovered (measured 27-11, audit §7). Without the rule, `/` falls
-  // * to the `pages` rule like every page. An offline launch then either follows the kept redirect
-  // * to the stored /sites page (which carries the recovery script, lib/boot-recovery.ts) or gets
-  // * the browser's own offline page, which reloads by itself when the network returns. Neither is
-  // * a page that stays blank.
+  // * holds no script and never recovered (measured 27-11, audit §7).
+  // * 🔴 THE SWITCH IS `dynamicStartUrl`, NOT `cacheStartUrl`. next-pwa 10.2.9 adds the rule
+  // * whenever `dynamicStartUrl` is true (its default) and never reads `cacheStartUrl`: the worker
+  // * built with only `cacheStartUrl: false` (pulse#1126) still registered it, measured on the
+  // * deployed /sw.js 27-11. `cacheStartUrl` stays false so a plugin version that does read it
+  // * cannot precache `/` instead. scripts/check-pwa-output.mjs (postbuild) reads the BUILT sw.js
+  // * and fails a build that registers the rule; __tests__/pwa-precache.test.ts pins both values
+  // * and proves which one the plugin reads.
+  // * Without the rule, `/` falls to the `pages` rule like every page, which keeps the redirect
+  // * itself (an opaqueredirect, not an empty 200). An offline launch follows it to the stored
+  // * /sites page, which draws itself when the network returns (measured 27-11 with /signup, the
+  // * same middleware redirect: drawn 2 s after the network returned, no reload).
+  dynamicStartUrl: false,
   cacheStartUrl: false,
   // * The tracker must NOT be in the SW precache.
   // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
