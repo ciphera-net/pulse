@@ -165,16 +165,22 @@ describe('the app does not reload itself when the network comes back', () => {
   })
 
   // The start-url rule stored a signed-in visitor's redirect from `/` as an EMPTY 200, so the
-  // installed app opened offline on a blank page with no script in it (audit §7).
-  it('turns off the start-url cache', async () => {
+  // installed app opened offline on a blank page with no script in it (audit §7). pulse#1126 turned
+  // off `cacheStartUrl`, which next-pwa 10.2.9 never reads, and the deployed worker kept the rule:
+  // a test of the config value alone passed. So the control below proves which option the plugin
+  // reads, and scripts/check-pwa-output.mjs checks the built sw.js itself.
+  it('turns off the start-url rule', async () => {
     const { pwa } = await load()
+    expect(pwa.dynamicStartUrl).toBe(false)
     expect(pwa.cacheStartUrl).toBe(false)
   })
 
-  it('control: the plugin caches the start URL unless told not to', async () => {
+  it('control: the plugin adds the start-url rule on dynamicStartUrl, which defaults to true', async () => {
     const fs = await vi.importActual<typeof import('fs')>('fs')
     const source = fs.readFileSync(requireHere.resolve('@ducanh2912/next-pwa'), 'utf8')
-    expect(source).toMatch(/cacheStartUrl:\s*[A-Za-z_$][\w$]*\s*=\s*!0/)
+    expect(source).toMatch(/dynamicStartUrl:\s*[A-Za-z_$][\w$]*\s*=\s*!0/)
+    // The gate: `options.dynamicStartUrl && rules.unshift({ urlPattern: basePath, … cacheName: "start-url" … })`.
+    expect(source).toMatch(/options\.dynamicStartUrl\s*&&\s*[A-Za-z_$][\w$]*\.unshift\(\{[\s\S]{0,240}?cacheName:\s*"start-url"/)
   })
 })
 
