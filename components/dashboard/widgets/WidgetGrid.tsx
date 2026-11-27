@@ -25,6 +25,33 @@ import { WIDGET, SPAN, GRID, baseId, type FrameCtx } from './registry'
 import { widgets, type Placed } from './store'
 import { SetupAction, SetupState } from './setup'
 
+/** How far the pointer must travel after a move before the next one may happen. */
+export const MOVE_TRAVEL_PX = 24
+
+/**
+ * Whether dragging over `overId` may move the dragged widget now. Pure, so the loop it stops is pinned by a test
+ * (__tests__/widgets.test.ts).
+ *   * Over itself, or over the widget the last move pushed aside: no. With two sizes side by side, the pushed widget
+ *     can land back under the pointer, and the two would trade places forever.
+ *   * A move changes the layout under a STILL pointer, and with widgets of different sizes that can put the pointer
+ *     over another widget, whose move puts it back: measured 24-11-2026, the wide chart traded places with Pages and
+ *     Sources 27 times without the pointer moving, until React stopped the page (a black screen). So after a move,
+ *     nothing moves again until the pointer itself has travelled MOVE_TRAVEL_PX. A keyboard move always travels a
+ *     whole widget.
+ */
+export function mayReorder({ activeId, overId, pushedId, lastMoveAt, delta }: {
+  activeId: string
+  overId: string
+  pushedId: string | null
+  /** The drag's delta at the last move, or null before the first. */
+  lastMoveAt: { x: number; y: number } | null
+  delta: { x: number; y: number }
+}): boolean {
+  if (overId === activeId || overId === pushedId) return false
+  if (lastMoveAt && Math.hypot(delta.x - lastMoveAt.x, delta.y - lastMoveAt.y) < MOVE_TRAVEL_PX) return false
+  return true
+}
+
 /** The grid makes room by reordering, so no neighbour is translated while a widget is dragged. */
 const noShift: SortingStrategy = () => null
 
@@ -82,12 +109,7 @@ export default function WidgetGrid({ ctx, list, sortable, chrome, after, wholeHa
     if (!over) return
     const overId = String(over.id)
     if (overId === String(a.id)) { pushed.current = null; return }
-    if (overId === pushed.current) return
-    // A move changes the layout under a STILL pointer, and with widgets of different sizes that can put the pointer
-    // over another widget, whose move puts it back: measured 24-11-2026, the wide chart traded places with Pages and
-    // Sources 27 times without the pointer moving, until React stopped the page. So after a move, nothing moves
-    // again until the pointer itself has travelled 24 px. A keyboard move always travels a whole widget.
-    if (movedAt.current && Math.hypot(delta.x - movedAt.current.x, delta.y - movedAt.current.y) < 24) return
+    if (!mayReorder({ activeId: String(a.id), overId, pushedId: pushed.current, lastMoveAt: movedAt.current, delta })) return
     movedAt.current = { x: delta.x, y: delta.y }
     setOrder((current) => {
       const l = [...(current ?? list)]

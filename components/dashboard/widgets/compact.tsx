@@ -139,6 +139,7 @@ export function CompactBlock({ blockId, ctx, size, placed }: { blockId: string; 
   const view = views.find((v) => v.value === chosen) ?? views[0]
   const pick = (v: string) => (placed && editing ? widgets.setView(placed.id, v) : setLocal(v))
   const perColumn = 3
+  // Full width draws two columns of rows; below 768 px, where the dashboard is one column (W7), they stack.
   const columns = size === 'row' ? 2 : 1
   // Rows that read the same are one row, as in the blocks (lib/dashboard/sameRows.ts): two stored values a list
   // would draw alike ("mobile" and "Mobile") count together, and a press filters by both.
@@ -183,7 +184,7 @@ export function CompactBlock({ blockId, ctx, size, placed }: { blockId: string; 
         {top.length === 0 ? (
           <span className="text-[11px] text-neutral-500">{view.empty}</span>
         ) : (
-          <CascadeGroup flipKey={view.value} className={columns === 2 ? 'grid grid-cols-2 gap-x-10 [&>*+*]:mt-0' : 'space-y-2'}>
+          <CascadeGroup flipKey={view.value} className={columns === 2 ? 'grid grid-cols-1 gap-y-2 md:grid-cols-2 md:gap-x-10 [&>*+*]:mt-0' : 'space-y-2'}>
             {columns === 2
               ? [0, 1].map((col) => (
                   <div key={col} className="min-w-0 space-y-2">{top.slice(col * perColumn, col * perColumn + perColumn).map((row, i) => draw(row, col * perColumn + i))}</div>

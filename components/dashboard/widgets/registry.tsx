@@ -240,14 +240,17 @@ export function sizeName(def: WidgetDef, z: WidgetSize): string {
 }
 
 /**
- * The grid: four columns from 1,024 px, two from 640 px, one on a phone; every row 215 px, so a block (two rows and the
- * gap between them) is today's 442 px, and two small widgets stacked beside it fill its height exactly.
+ * The grid: four columns from 1,024 px, two from 768 px, every row 215 px, so a block (two rows and the gap between
+ * them) is today's 442 px, and two small widgets stacked beside it fill its height exactly.
+ * Below 768 px (phones, ruling W7): one column in the team's order, each widget at its natural height, as today's
+ * frame draws them. Fixed rows there cut the chart: below 768 px the deck puts its numbers above the chart and needs
+ * 627 px on a phone, measured 27-11-2026 (review §3, F1). 768 px is where the deck changes layout, so the two agree.
  */
-export const GRID = 'grid grid-flow-row-dense grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 auto-rows-[215px]'
+export const GRID = 'grid grid-flow-row-dense grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4 md:auto-rows-[215px]'
 export const SPAN: Record<WidgetSize, string> = {
-  s: 'col-span-1 row-span-1',
-  m: 'col-span-1 sm:col-span-2 row-span-1',
-  l: 'col-span-1 sm:col-span-2 row-span-2',
-  xl: 'col-span-1 sm:col-span-2 lg:col-span-4 row-span-2',
-  row: 'col-span-1 sm:col-span-2 lg:col-span-4 row-span-1',
+  s: 'col-span-1 md:row-span-1',
+  m: 'col-span-1 md:col-span-2 md:row-span-1',
+  l: 'col-span-1 md:col-span-2 md:row-span-2',
+  xl: 'col-span-1 md:col-span-2 lg:col-span-4 md:row-span-2',
+  row: 'col-span-1 md:col-span-2 lg:col-span-4 md:row-span-1',
 }
