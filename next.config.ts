@@ -19,6 +19,15 @@ const withPWA = withPWAInit({
   // * (lib/swr/dashboard.ts), and the session refresh listens for `online` itself.
   // * __tests__/pwa-precache.test.ts pins this value.
   reloadOnOnline: false,
+  // * 🔴 NO START-URL CACHE (27-11-2026). The manifest's start_url is `/`, which answers a
+  // * signed-in visitor with a redirect to /sites; next-pwa's start-url rule turned that redirect
+  // * into an EMPTY 200 and kept it, so the installed app opened offline on a blank page that
+  // * holds no script and never recovered (measured 27-11, audit §7). Without the rule, `/` falls
+  // * to the `pages` rule like every page. An offline launch then either follows the kept redirect
+  // * to the stored /sites page (which carries the recovery script, lib/boot-recovery.ts) or gets
+  // * the browser's own offline page, which reloads by itself when the network returns. Neither is
+  // * a page that stays blank.
+  cacheStartUrl: false,
   // * The tracker must NOT be in the SW precache.
   // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
   // * script.js is exactly the kind of URL content blockers kill — one blocked

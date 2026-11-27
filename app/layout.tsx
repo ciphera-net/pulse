@@ -11,6 +11,7 @@ import { Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
 import { shareCardImages, shareCardTwitter } from '@/lib/og'
 import { themeBootScript } from '@/lib/theme'
+import { bootRecoveryScript } from '@/lib/boot-recovery'
 import '@ciphera-net/facet/styles'
 import '../styles/globals.css'
 
@@ -98,6 +99,10 @@ export default function RootLayout({
           ThemeSync takes over once React runs. */}
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript() }} />
+        {/* A page that loaded without its files (the static host unreachable for a moment)
+            reloads itself once the host answers, instead of staying on the bare skip link.
+            Inline so it runs when every file failed; bounded (lib/boot-recovery.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: bootRecoveryScript() }} />
       </head>
       <body className="antialiased min-h-screen flex flex-col bg-background text-foreground">
         {/* Warm up the CDN connection so the LCP hero image (served from

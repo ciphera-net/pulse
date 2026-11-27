@@ -2,4 +2,4 @@
 product: pulse
 type: fixed
 ---
-Pulse no longer reloads itself when your computer reconnects to the internet. That reload could leave the page showing only "Skip to content" until you reloaded it yourself.
+A Pulse page that loads while your connection is still coming back, for example right after your computer wakes, now reloads by itself as soon as the connection works. Before, it could stay on a page showing only "Skip to content". Pulse also no longer reloads itself the moment your computer reconnects.
