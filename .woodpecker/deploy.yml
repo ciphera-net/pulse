@@ -642,9 +642,11 @@ steps:
           exit 1
         fi
 
-  # Purge AFTER the production deploy: `bunny-push` reads back that MC runs this build's digest (the cluster copy
-  # it used to wait for was retired 18-11-2026). Purging mid-rollout re-caches the old build's 404s for the new chunk
-  # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
+  # Purge AFTER the production deploy: `bunny-push` reads back that the MC app's template names this build's digest
+  # (the cluster copy it used to wait for was retired 18-11-2026). ⚠️ The template changes at once; the containers
+  # follow over about ten minutes, and only `verify-live-assets` waits for that (status active). Purging mid-rollout
+  # re-caches the old build's 404s for the new chunk paths under a 30-day max-age — exactly what blanked
+  # pulse-staging on 22-07-2026.
   purge-cdn:
     image: registry.ops.ciphera.net/ciphera-net/ci-deploy:v1
     pull: true
@@ -707,40 +709,13 @@ steps:
           exit 1
         fi
       - echo "Purged pulse.ciphera.net cached HTML (/demo*)"
-      # ═══ 🔴 ASSERT THE PREFIX ACTUALLY SHIPPED ═══
-      # next.config.ts defaults NEXT_PUBLIC_ASSET_PREFIX to EMPTY, so a missing build arg
-      # degrades safely to same-origin assets instead of 404ing every chunk. The cost of
-      # that safe default is that the protection can be silently OFF — so it is ASSERTED
-      # here against the LIVE HTML rather than trusted. A feature that fails open needs a
-      # positive check; this is the same lesson as LIGHTHOUSE_RUNNER_URL being unset.
-      # Runs last, after the HTML purge, so what it reads is this build's markup.
-      - |
-        HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse.ciphera.net/login") \
-          || { echo "FAIL: could not fetch https://pulse.ciphera.net/login to verify assetPrefix"; exit 1; }
-        case "$HTML" in
-          *"https://static.ciphera.net/pulse/_next/static"*)
-            echo "assetPrefix verified live: chunks come from https://static.ciphera.net/pulse" ;;
-          *)
-            echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
-            echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
-            echo "🔴 that gates the Magic Containers migration is OFF."
-            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the BuildKit build:"
-            echo "🔴   .woodpecker/push.yml -> the buildctl line MUST carry"
-            echo "🔴   --opt build-arg:NEXT_PUBLIC_ASSET_PREFIX=\$NEXT_PUBLIC_ASSET_PREFIX,"
-            echo "🔴   or the environment: entry above it is INERT."
-            echo "🔴   (This said settings.build-args-from-env until 21-08-2026, which was"
-            echo "🔴    the kaniko plugin setting and no longer exists.)"
-            echo "🔴 Then confirm the Dockerfile declares the matching ARG."
-            echo "🔴 NOTE: build.yml no longer exists on this branch (deleted 20-08-2026);"
-            echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
-            exit 1 ;;
-        esac
   # ═══ 🔴 EVERY ASSET THE LIVE DASHBOARD NAMES MUST LOAD (19-11-2026) ═══
   # The HTML can answer 200 while a script it needs is missing from ciphera-app-static: the app then crashes in the
   # browser on every page and no HTTP check notices. On 19-11-2026 a restarted pipeline shipped exactly that for two
   # hours (see upload-static). This waits until Magic Containers reports the app active on the digest this pipeline
-  # resolved, reads the live /login three times, and requires every /_next/static file it references, plus the live
-  # build's own _buildManifest.js (present only if upload-static uploaded THIS build), to answer 200.
+  # resolved, asserts the asset prefix in the live HTML, reads the live /login three times, and requires every
+  # /_next/static file it references, plus the live build's own _buildManifest.js (present only if upload-static
+  # uploaded THIS build), to answer 200.
   # A failure means the deploy SHIPPED broken and every dashboard page is down: copy the missing files from the
   # running image's /app/.next/static into ciphera-app-static/pulse/_next/static (content-addressed, so adding them is
   # safe), then find out why upload-static did not.
@@ -776,6 +751,37 @@ steps:
           sleep 15
         done
         [ "$OK" = "yes" ] || { echo "FAIL: Magic Containers did not report active on $DIGEST within 20 minutes (last: $ST $DG)"; exit 1; }
+      # ═══ 🔴 ASSERT THE PREFIX ACTUALLY SHIPPED ═══
+      # next.config.ts defaults NEXT_PUBLIC_ASSET_PREFIX to EMPTY, so a missing build arg
+      # degrades safely to same-origin assets instead of 404ing every chunk. The cost of
+      # that safe default is that the protection can be silently OFF — so it is ASSERTED
+      # here against the LIVE HTML rather than trusted. A feature that fails open needs a
+      # positive check; this is the same lesson as LIGHTHOUSE_RUNNER_URL being unset.
+      # 🔑 Runs only once Magic Containers reports active on this build (the command above), so every container that
+      # can answer is this build. Until 27-11-2026 it ran in purge-cdn, right after bunny-push, which waits for the
+      # app's TEMPLATE to name the digest and not for the ~10-minute rollout: an old container's answer passed while
+      # the prefix never changed, and would have failed the move to static.ciphera.net on a healthy deploy.
+      - |
+        HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse.ciphera.net/login") \
+          || { echo "FAIL: could not fetch https://pulse.ciphera.net/login to verify assetPrefix"; exit 1; }
+        case "$HTML" in
+          *"https://static.ciphera.net/pulse/_next/static"*)
+            echo "assetPrefix verified live: chunks come from https://static.ciphera.net/pulse" ;;
+          *)
+            echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
+            echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
+            echo "🔴 that gates the Magic Containers migration is OFF."
+            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the BuildKit build:"
+            echo "🔴   .woodpecker/push.yml -> the buildctl line MUST carry"
+            echo "🔴   --opt build-arg:NEXT_PUBLIC_ASSET_PREFIX=\$NEXT_PUBLIC_ASSET_PREFIX,"
+            echo "🔴   or the environment: entry above it is INERT."
+            echo "🔴   (This said settings.build-args-from-env until 21-08-2026, which was"
+            echo "🔴    the kaniko plugin setting and no longer exists.)"
+            echo "🔴 Then confirm the Dockerfile declares the matching ARG."
+            echo "🔴 NOTE: build.yml no longer exists on this branch (deleted 20-08-2026);"
+            echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
+            exit 1 ;;
+        esac
       - |
         # The build id sits in the page's flight data as \"b\":\"<21 characters>\". The pattern matches each of those
         # backslashes with a dot and holds none itself, and neither does any pattern below: Woodpecker turns every
