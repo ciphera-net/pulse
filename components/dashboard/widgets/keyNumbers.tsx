@@ -23,7 +23,8 @@ const VARIANT: Record<WidgetSize, string> = { s: 'numbers-s', m: 'numbers', l: '
 export function KeyNumbers({ ctx, size, placed }: { ctx: FrameCtx; size: WidgetSize; placed?: Placed }) {
   const [local, setLocal] = useState<string | null>(null)
   // In Customize the pick is the team's (the draft Done saves); outside it, it changes this view only.
-  const { editing } = useWidgetsState()
+  // `editing` names the site being arranged: a draft is only ever this dashboard's.
+  const editing = useWidgetsState().editing === ctx.siteId
   const chosen = KEY_NUMBERS.find((k) => k.value === (editing ? placed?.view : local ?? placed?.view))?.value ?? 'visitors'
   const pick = (v: string) => (placed && editing ? widgets.setView(placed.id, v) : setLocal(v))
   const deck = isValidElement(ctx.deck)

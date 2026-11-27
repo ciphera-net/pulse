@@ -134,7 +134,8 @@ export function CompactBlock({ blockId, ctx, size, placed }: { blockId: string; 
   // The widget's own choice of view when it has one; a gallery preview keeps its choice for the moment.
   const [local, setLocal] = useState<string | null>(null)
   // In Customize the pick is the team's (the draft Done saves); outside it, it changes this view only.
-  const { editing } = useWidgetsState()
+  // `editing` names the site being arranged: a draft is only ever this dashboard's.
+  const editing = useWidgetsState().editing === ctx.siteId
   const chosen = (editing ? placed?.view : local ?? placed?.view) ?? views[0].value
   const view = views.find((v) => v.value === chosen) ?? views[0]
   const pick = (v: string) => (placed && editing ? widgets.setView(placed.id, v) : setLocal(v))
