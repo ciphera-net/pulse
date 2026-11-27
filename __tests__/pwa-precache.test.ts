@@ -148,6 +148,36 @@ describe('the import worker is never served stale', () => {
   })
 })
 
+// 27-11-2026: next-pwa reloads every open page on the browser's `online` event unless told not to. A Mac
+// fires that event at wake, before the static host answers, and the reload left an open window showing
+// only "Skip to content" with nothing retrying (audits/16-11-2026-blank-dashboard-and-performance-reports.md §7).
+describe('the app does not reload itself when the network comes back', () => {
+  it('turns off next-pwa reloadOnOnline', async () => {
+    const { pwa } = await load()
+    expect(pwa.reloadOnOnline).toBe(false)
+  })
+
+  it('control: the plugin reloads on reconnect unless told not to', async () => {
+    const fs = await vi.importActual<typeof import('fs')>('fs')
+    const source = fs.readFileSync(requireHere.resolve('@ducanh2912/next-pwa'), 'utf8')
+    // The plugin's option destructuring, with its default: `reloadOnOnline: y = !0` (true).
+    expect(source).toMatch(/reloadOnOnline:\s*[A-Za-z_$][\w$]*\s*=\s*!0/)
+  })
+
+  // The start-url rule stored a signed-in visitor's redirect from `/` as an EMPTY 200, so the
+  // installed app opened offline on a blank page with no script in it (audit §7).
+  it('turns off the start-url cache', async () => {
+    const { pwa } = await load()
+    expect(pwa.cacheStartUrl).toBe(false)
+  })
+
+  it('control: the plugin caches the start URL unless told not to', async () => {
+    const fs = await vi.importActual<typeof import('fs')>('fs')
+    const source = fs.readFileSync(requireHere.resolve('@ducanh2912/next-pwa'), 'utf8')
+    expect(source).toMatch(/cacheStartUrl:\s*[A-Za-z_$][\w$]*\s*=\s*!0/)
+  })
+})
+
 // End-to-end encrypted team names (design §6.5, review L3): the two GETs (the person's sealed key
 // and a team's directory) live on the API's origin, which is not the app's, so the default
 // `cross-origin` rule would keep them NetworkFirst in Cache Storage for an hour.

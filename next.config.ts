@@ -9,6 +9,25 @@ const withPWA = withPWAInit({
   // * pulse.ciphera.net's home page frames never installs the dashboard's worker.
   register: false,
   disable: process.env.NODE_ENV === "development",
+  // * 🔴 NO RELOAD WHEN THE NETWORK COMES BACK (27-11-2026). next-pwa's client entry calls
+  // * location.reload() on every `online` event unless this is false. A Mac fires `online`
+  // * the moment it wakes, before DNS and the static host (ciphera-app-static.b-cdn.net)
+  // * answer, so the reload loaded the page without its stylesheets and scripts and left an
+  // * open window showing only "Skip to content", with nothing retrying (reproduced 27-11:
+  // * Pulse/docs/audits/16-11-2026-blank-dashboard-and-performance-reports.md §7). Data still
+  // * refreshes on reconnect without it: the dashboard's SWR config revalidates on reconnect
+  // * (lib/swr/dashboard.ts), and the session refresh listens for `online` itself.
+  // * __tests__/pwa-precache.test.ts pins this value.
+  reloadOnOnline: false,
+  // * 🔴 NO START-URL CACHE (27-11-2026). The manifest's start_url is `/`, which answers a
+  // * signed-in visitor with a redirect to /sites; next-pwa's start-url rule turned that redirect
+  // * into an EMPTY 200 and kept it, so the installed app opened offline on a blank page that
+  // * holds no script and never recovered (measured 27-11, audit §7). Without the rule, `/` falls
+  // * to the `pages` rule like every page. An offline launch then either follows the kept redirect
+  // * to the stored /sites page (which carries the recovery script, lib/boot-recovery.ts) or gets
+  // * the browser's own offline page, which reloads by itself when the network returns. Neither is
+  // * a page that stays blank.
+  cacheStartUrl: false,
   // * The tracker must NOT be in the SW precache.
   // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
   // * script.js is exactly the kind of URL content blockers kill — one blocked

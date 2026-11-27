@@ -14,8 +14,8 @@ type WorkboxWindow = Window & { workbox?: { register: () => Promise<unknown> } }
  * prospect who opened the home page got the dashboard's worker fronting the marketing pages.
  *
  * next.config.ts now sets `register: false`, which turns off exactly one line of next-pwa's
- * client entry: it still creates `window.workbox` on every page (and still reloads on
- * reconnect). This component makes the call next-pwa made, `window.workbox.register()` (which
+ * client entry: it still creates `window.workbox` on every page. (Its reload on reconnect is off
+ * too, `reloadOnOnline: false`, 27-11-2026.) This component makes the call next-pwa made, `window.workbox.register()` (which
  * waits for the page's load event), minus the frame. No `window.workbox` means next-pwa did not
  * set one up (dev, or no service-worker support), and then nothing registers, as before.
  */
