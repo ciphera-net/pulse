@@ -22,6 +22,7 @@ import { ChartPicker } from './ChartPicker'
 import { CompactBlock } from './compact'
 import { KeyNumbers } from './keyNumbers'
 import { CdnTile, FunnelsTile, LiveTile } from './tiles'
+import { EventTile } from './EventTile'
 import type { Placed, WidgetSize } from './store'
 
 const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
@@ -43,6 +44,8 @@ export interface FrameCtx {
   filtersParam: string
   onCardFilter: ((filter: DimensionFilter) => void) | undefined
   outboundOff: boolean
+  /** The ids on the dashboard right now (A1: the Full chart drops its numbers while Key numbers is on it). */
+  layoutIds?: string[]
 }
 
 export interface WidgetDef {
@@ -67,12 +70,18 @@ const bottomShown = (c: FrameCtx) => !c.isLive && c.caps.hourlyBuckets && c.caps
 export const WIDGETS: WidgetDef[] = [
   {
     id: 'chart', name: 'Chart', blurb: 'The key numbers and the chart over time. The smaller sizes show the chart alone.', icon: ChartLine, group: 'blocks', sizes: ['xl', 'l', 'm'], size: 'xl',
-    render: (c, size) => (
-      <div className="relative h-full overflow-hidden" data-chart-variant={size}>
-        {c.deck}
-        {(size === 'l' || size === 'm') && <ChartPicker deck={c.deck} />}
-      </div>
-    ),
+    render: (c, size) => {
+      // The chart alone, its metric picked in place of its title: Large, Wide, and Full whenever Key numbers is on the
+      // dashboard too, so no number shows twice (review A1, owner W21: "by itself", nothing to choose).
+      const fullAlone = size === 'xl' && (c.layoutIds ?? []).includes('numbers')
+      const alone = size === 'l' || size === 'm' || fullAlone
+      return (
+        <div className="relative h-full overflow-hidden" data-chart-variant={fullAlone ? 'xl-chart' : size}>
+          {c.deck}
+          {alone && <ChartPicker deck={c.deck} />}
+        </div>
+      )
+    },
   },
   {
     id: 'numbers', name: 'Key numbers', blurb: 'Visitors, pageviews, pages a visit, bounce rate and visit duration, each with its trend. Small shows the one you pick.', icon: Hash, group: 'blocks', sizes: ['s', 'l', 'row'], size: 'row',
@@ -209,6 +218,10 @@ export const WIDGETS: WidgetDef[] = [
   {
     id: 'funnels', name: 'Funnels', blurb: 'One funnel of your choice: how many make it from the first step to the last.', icon: FunnelIcon, group: 'pages', sizes: ['s', 'm'], size: 's', shown: bottomShown, multi: true,
     render: (c, _size, placed) => <FunnelsTile siteId={c.siteId} dateRange={c.dateRange} period={c.period} filters={c.filtersParam || undefined} funnelId={placed?.funnel} />,
+  },
+  {
+    id: 'event', name: 'One event', blurb: 'One event of your choice: how often it happened and how many visitors did it, day by day.', icon: CursorClick, group: 'pages', sizes: ['s', 'm'], size: 's', multi: true,
+    render: (c, _size, placed) => <EventTile ctx={c} placed={placed} />,
   },
   {
     id: 'cdn', name: 'CDN', blurb: 'Bandwidth served, the share from cache, and requests.', icon: CloudUploadIcon, group: 'pages', sizes: ['s', 'm'], size: 's', shown: bottomShown,

@@ -64,6 +64,11 @@ function useGallery(ctx: FrameCtx, only?: WidgetDef['group']) {
   // A second Funnels widget starts on a funnel no Funnels widget shows yet, so it never repeats one.
   const { data: funnels } = useFunnels(ctx.siteId)
   const { data: funnelStats } = useFunnelListStats(ctx.siteId, ctx.dateRange.start, ctx.dateRange.end, ctx.filtersParam || undefined, ctx.period)
+  // A new event tile starts on the event fired most that no event tile shows yet.
+  const nextEvent = () => {
+    const shown = new Set(placed.filter((p) => p.id.split(':')[0] === 'event').map((p) => p.event).filter(Boolean))
+    return [...(ctx.dashboard?.goal_counts ?? [])].sort((a, b) => b.count - a.count).find((e) => !shown.has(e.event_name))?.event_name
+  }
   const nextFunnel = () => {
     const shown = placed.filter((p) => p.id.split(':')[0] === 'funnels')
     if (shown.length === 0 || !funnels) return undefined
@@ -75,7 +80,7 @@ function useGallery(ctx: FrameCtx, only?: WidgetDef['group']) {
   const add = (id = current?.id, z = chosen) => {
     if (!id || !z) return
     const def = WIDGETS.find((w) => w.id === id)
-    widgets.add(id, z, { multi: def?.multi, funnel: def?.multi ? nextFunnel() : undefined })
+    widgets.add(id, z, { multi: def?.multi, funnel: id === 'funnels' ? nextFunnel() : undefined, event: id === 'event' ? nextEvent() : undefined })
     close()
   }
   return { open: s.galleryOpen, available, current, chosen, setPick, setSize, close, add }

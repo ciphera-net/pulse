@@ -18,6 +18,8 @@ const NUMBER_KEYS = ['visitors', 'pageviews', 'pages_per_visit', 'bounce_rate', 
 export const CHART_VARIANTS_CSS = `
 @media (min-width: 768px) {
   [data-chart-variant="xl"] ${GRID} { grid-template-rows: 440px; }
+  [data-chart-variant="xl-chart"] ${GRID} { grid-template-columns: minmax(0, 1fr); grid-template-rows: 440px; }
+  [data-chart-variant="xl-chart"] [data-deck-plot] { min-height: 0; }
   [data-chart-variant="l"] ${GRID} { grid-template-columns: minmax(0, 1fr); grid-template-rows: 440px; }
   [data-chart-variant="m"] ${GRID} { grid-template-columns: minmax(0, 1fr); grid-template-rows: 213px; }
   [data-chart-variant="numbers"] ${GRID}, [data-chart-variant="numbers-s"] ${GRID} { grid-template-columns: minmax(0, 1fr); grid-template-rows: 213px; }
@@ -29,7 +31,8 @@ export const CHART_VARIANTS_CSS = `
 [data-chart-variant] > :not([data-chart-picker]) { height: 100%; }
 /* The chart alone: no rail, and its metric is named by the picker that takes the title's place. In a fixed cell the
    plot gives up its floor; below 768 px the cell has no height of its own, so the plot keeps it (W7, review F1). */
-[data-chart-variant="m"] ${RAIL}, [data-chart-variant="l"] ${RAIL} { display: none; }
+[data-chart-variant="m"] ${RAIL}, [data-chart-variant="l"] ${RAIL}, [data-chart-variant="xl-chart"] ${RAIL} { display: none; }
+[data-chart-variant="xl-chart"] [data-tour="chart-toolbar"] { visibility: hidden; }
 @media (min-width: 768px) {
   [data-chart-variant="m"] [data-deck-plot], [data-chart-variant="l"] [data-deck-plot] { min-height: 0; }
 }

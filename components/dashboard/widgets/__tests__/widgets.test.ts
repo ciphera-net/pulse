@@ -1,5 +1,11 @@
-import { describe, expect, it, beforeEach } from 'vitest'
-import { DEFAULT_LAYOUT, isDefaultLayout, widgets, widgetsMode, useWidgetsState, type Placed } from '../store'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
+import { toast } from '@ciphera-net/facet'
+import type { DeferredAction } from '@ciphera-net/facet-hold'
+import { ApiError } from '@/lib/api/client'
+import { layoutConflict, type TeamLayout } from '@/lib/api/dashboardLayout'
+import type { GoalCountStat } from '@/lib/api/stats'
+import { DEFAULT_LAYOUT, deferDone, isDefaultLayout, widgets, widgetsMode, useWidgetsState, type Placed } from '../store'
+import { eventFor } from '../EventTile'
 import { WIDGETS } from '../registry'
 import { VIEWS } from '../compact'
 import { KEY_NUMBERS } from '../keyNumbers'
@@ -46,6 +52,7 @@ describe('a saved layout', () => {
     expect(isDefaultLayout(DEFAULT_LAYOUT.map((p) => ({ ...p })))).toBe(true)
     expect(isDefaultLayout([...DEFAULT_LAYOUT].reverse())).toBe(false)
     expect(isDefaultLayout(DEFAULT_LAYOUT.map((p, i) => (i === 1 ? { ...p, view: 'channels' } : p)))).toBe(false)
+    expect(isDefaultLayout(DEFAULT_LAYOUT.map((p, i) => (i === 1 ? { ...p, event: 'signup' } : p)))).toBe(false)
   })
 })
 
@@ -59,7 +66,7 @@ describe('Customize', () => {
   })
 
   it('edits a copy, moves by press, resizes and removes', () => {
-    widgets.startEdit(DEFAULT_LAYOUT)
+    widgets.startEdit('site-1', DEFAULT_LAYOUT, '')
     widgets.move(0, 1)
     expect(draft()?.slice(0, 2).map((p) => p.id)).toEqual(['sources', 'chart'])
     widgets.setSize('chart', 'm')
@@ -72,7 +79,7 @@ describe('Customize', () => {
   })
 
   it('adds a widget once, and a Funnels widget as often as asked, each its own instance', () => {
-    widgets.startEdit([])
+    widgets.startEdit('site-1', [], '')
     widgets.add('live', 's')
     widgets.add('live', 's')
     widgets.add('funnels', 's', { multi: true })
@@ -84,7 +91,7 @@ describe('Customize', () => {
   })
 
   it('resets the draft to today\'s dashboard', () => {
-    widgets.startEdit([{ id: 'live', size: 's' }])
+    widgets.startEdit('site-1', [{ id: 'live', size: 's' }], '')
     widgets.reset()
     expect(isDefaultLayout(draft() ?? [])).toBe(true)
   })
@@ -123,3 +130,109 @@ describe('a drag never loops (the black page of 24-11-2026)', () => {
     expect(mayReorder({ ...base, overId: 'sources', pushedId: 'pages', lastMoveAt: { x: 0, y: 40 }, delta: { x: 0, y: 40 + MOVE_TRAVEL_PX } })).toBe(true)
   })
 })
+
+// The state as a page reads it, outside React.
+const now = () => renderHook(() => useWidgetsState()).result.current
+
+describe('Done waits on the Undo bar (review I4, owner W21)', () => {
+  const site = 'site-1'
+  const moved: Placed[] = [{ id: 'sources', size: 'l' }, { id: 'chart', size: 'xl' }]
+  let action: DeferredAction | null = null
+  const defer = (a: DeferredAction) => { action = a }
+  const io = () => ({ save: vi.fn(async (): Promise<TeamLayout> => ({ layout: moved, revision: 'r2' })), landed: vi.fn(async () => undefined) })
+  const arrange = (on = site) => { widgets.startEdit(on, [{ id: 'chart', size: 'xl' }, { id: 'sources', size: 'l' }], 'r1'); widgets.move(0, 1) }
+  beforeEach(() => { widgets.cancelEdit(); action = null; vi.restoreAllMocks() })
+
+  it('closes Customize at once and draws the draft while the bar counts down; Undo sends nothing', () => {
+    const w = io()
+    arrange()
+    deferDone(site, defer, w)
+    expect(now().editing).toBeNull()
+    expect(now().pending).toEqual({ siteId: site, layout: moved })
+    expect(action?.message).toBe('Layout saved for your team')
+    action?.onUndo?.()
+    expect(now().pending).toBeNull()
+    expect(w.save).not.toHaveBeenCalled()
+  })
+
+  it('sends the draft with the revision Customize started from, in the same tick when the page is left', async () => {
+    const w = io()
+    arrange()
+    deferDone(site, defer, w)
+    const sent = action!.commit({ keepalive: true })
+    // 🔴 keepalive: the request must start before anything awaits (apiRequest's team-gate note).
+    expect(w.save).toHaveBeenCalledWith(moved, { base: 'r1', keepalive: true })
+    await action!.onCommitted?.(await sent)
+    expect(w.landed).toHaveBeenCalledWith({ layout: moved, revision: 'r2' })
+    expect(now().pending).toBeNull()
+  })
+
+  it('opens Customize again on the draft with theirs when someone else saved meanwhile (I3)', () => {
+    const errorToast = vi.spyOn(toast, 'error').mockImplementation(() => '')
+    arrange()
+    deferDone(site, defer, io())
+    const theirs = [{ id: 'pages', size: 'l' }]
+    action!.onError?.(new ApiError('Someone else changed this layout.', 409, { code: 'layout_changed', layout: theirs, revision: 'r9' }))
+    const s = now()
+    expect(s.editing).toBe(site)
+    expect(s.draft).toEqual(moved)
+    expect(s.conflict).toEqual({ layout: theirs, revision: 'r9' })
+    expect(s.base).toBe('r1')
+    expect(s.pending).toBeNull()
+    expect(errorToast).not.toHaveBeenCalled()
+  })
+
+  it('opens Customize again with the reason on any other failure, and says so wherever the reader is', () => {
+    const errorToast = vi.spyOn(toast, 'error').mockImplementation(() => '')
+    arrange()
+    deferDone(site, defer, io())
+    action!.onError?.(new ApiError('Server error', 500))
+    expect(now().editing).toBe(site)
+    expect(now().error).toMatch(/could not be saved/)
+    expect(now().conflict).toBeNull()
+    expect(errorToast).toHaveBeenCalledOnce()
+  })
+
+  it('leaves another site\'s Customize alone when the save fails meanwhile', () => {
+    vi.spyOn(toast, 'error').mockImplementation(() => '')
+    arrange()
+    deferDone(site, defer, io())
+    widgets.startEdit('site-2', [{ id: 'live', size: 's' }], '')
+    action!.onError?.(new ApiError('Server error', 500))
+    expect(now().editing).toBe('site-2')
+    expect(now().draft).toEqual([{ id: 'live', size: 's' }])
+    expect(now().error).toBeNull()
+  })
+
+  it('moves a Customize opened while the save waited onto the revision the save made', async () => {
+    arrange()
+    deferDone(site, defer, io())
+    widgets.startEdit(site, moved, 'r1')
+    await action!.onCommitted?.({ layout: moved, revision: 'r2' })
+    expect(now().base).toBe('r2')
+  })
+})
+
+describe('a save someone else beat (I3)', () => {
+  it('reads theirs from the 409, and nothing from any other refusal', () => {
+    const layout = [{ id: 'chart', size: 'l' }]
+    expect(layoutConflict(new ApiError('x', 409, { code: 'layout_changed', layout, revision: '17' }))).toEqual({ layout, revision: '17' })
+    expect(layoutConflict(new ApiError('x', 409, { code: 'layout_changed', layout: null, revision: '' }))).toEqual({ layout: null, revision: '' })
+    expect(layoutConflict(new ApiError('x', 409, { code: 'something_else' }))).toBeNull()
+    expect(layoutConflict(new ApiError('x', 500, { code: 'layout_changed' }))).toBeNull()
+    expect(layoutConflict(new Error('offline'))).toBeNull()
+  })
+})
+
+describe('an event tile', () => {
+  const events = [{ event_name: 'signup', count: 5, visitors: 4 }, { event_name: 'purchase', count: 9, visitors: 7 }] as GoalCountStat[]
+  it('shows its own event, and with none of it in the range shows it at zero under its own name', () => {
+    expect(eventFor(events, 'signup')?.count).toBe(5)
+    expect(eventFor(events, 'newsletter')).toMatchObject({ event_name: 'newsletter', count: 0, visitors: 0 })
+  })
+  it('starts on the event fired most when it names none, and on nothing when the site has none', () => {
+    expect(eventFor(events, undefined)?.event_name).toBe('purchase')
+    expect(eventFor([], undefined)).toBeNull()
+  })
+})
+

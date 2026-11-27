@@ -57,7 +57,7 @@ const noShift: SortingStrategy = () => null
 
 const collide: CollisionDetection = (args) => (args.pointerCoordinates ? pointerWithin(args) : closestCenter(args))
 
-export type Chrome = (p: { placed: Placed; index: number; count: number; handle: Handle; dragging: boolean; siteId: string }) => ReactNode
+export type Chrome = (p: { placed: Placed; index: number; count: number; handle: Handle; dragging: boolean; siteId: string; ctx: FrameCtx }) => ReactNode
 /** The drag handle's props: on the whole widget in Customize mode. */
 export interface Handle { ref: (el: HTMLElement | null) => void; props: Record<string, unknown> }
 
@@ -194,7 +194,7 @@ function Cell({ placed, index, count, ctx, sortable, chrome, wholeHandle, moved 
       <div className={`relative h-full ${isDragging ? 'invisible' : ''}`} data-widget-body={placed.id}>
         <SetupState id={baseId(placed.id)} siteId={ctx.siteId} range={{ ...ctx.dateRange, period: ctx.period }}>{(unset) => (unset ? <SetupAction id={baseId(placed.id)} siteId={ctx.siteId} /> : def.render(ctx, placed.size, placed))}</SetupState>
       </div>
-      {chrome?.({ placed, index, count, handle, dragging: isDragging, siteId: ctx.siteId })}
+      {chrome?.({ placed, index, count, handle, dragging: isDragging, siteId: ctx.siteId, ctx })}
       {isDragging && <div className="pointer-events-none absolute inset-0 border border-brand-orange/70 bg-brand-orange/[0.04]" data-widget-slot="" aria-hidden="true" />}
       {moved && <div className="pointer-events-none absolute inset-0 border border-brand-orange" data-widget-moved="" aria-hidden="true" />}
     </motion.div>

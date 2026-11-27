@@ -16,7 +16,9 @@ import Gallery from './Gallery'
 import { AddSlot, editChrome } from './chrome'
 import { CHART_VARIANTS_CSS } from './chartVariants'
 import { WIDGET, type FrameCtx } from './registry'
-import { useWidgetsState, widgets, type Placed } from './store'
+import { useDashboardWidgets, useWidgetsState, widgets, type Placed } from './store'
+import CopyLayout from './CopyLayout'
+import { Button } from '@ciphera-net/facet'
 
 /**
  * A saved layout as this build can draw it. Widgets it does not know, a second copy of a widget that may be there only
@@ -37,7 +39,7 @@ export function drawable(list: Placed[]): Placed[] {
 
 export default function WidgetsFrame({ layout, canCustomize, ...props }: FrameCtx & { deck: ReactNode; layout: Placed[]; canCustomize: boolean }) {
   const s = useWidgetsState()
-  const ctx: FrameCtx = props
+  const actions = useDashboardWidgets(props.siteId)
   // The orange outline after a move by press or keyboard shows for a moment, then goes.
   useEffect(() => {
     if (!s.moved) return
@@ -47,8 +49,9 @@ export default function WidgetsFrame({ layout, canCustomize, ...props }: FrameCt
   // Leaving the page (or the site) leaves Customize: a draft is never carried to another dashboard.
   useEffect(() => () => widgets.cancelEdit(), [props.siteId])
 
-  const editing = s.editing && canCustomize
+  const editing = s.editing === props.siteId && canCustomize
   const list = drawable(editing && s.draft ? s.draft : layout)
+  const ctx: FrameCtx = { ...props, layoutIds: list.map((p) => p.id.split(':')[0]) }
 
   const body = !editing && list.length === 0 ? (
     // Everything removed: the dashboard says so, in Pulse's one empty state, and offers the way back.
@@ -57,7 +60,7 @@ export default function WidgetsFrame({ layout, canCustomize, ...props }: FrameCt
         icon={<SquaresFour />}
         title="This dashboard is empty"
         description={canCustomize ? 'Add the widgets your team wants to see here. Reset in Customize brings back the standard dashboard.' : 'Someone who can edit this site can add widgets to it.'}
-        action={canCustomize ? { label: 'Add a widget', onClick: () => { widgets.startEdit(layout); widgets.openGallery(true) } } : undefined}
+        action={canCustomize ? { label: 'Add a widget', onClick: () => { widgets.startEdit(props.siteId, layout, actions.revision); widgets.openGallery(true) } } : undefined}
         className="py-16"
       />
     </div>
@@ -78,10 +81,21 @@ export default function WidgetsFrame({ layout, canCustomize, ...props }: FrameCt
       <MotionConfig reducedMotion="user">
         <style data-chart-variants="">{CHART_VARIANTS_CSS}</style>
         <div className="flex flex-col gap-3" data-dashboard-frame="" data-dashboard-widgets={editing ? 'editing' : ''}>
-          {s.error && editing && <p role="alert" className="text-sm text-red-400" data-widgets-error="">{s.error}</p>}
+          {s.error && editing && <p role="alert" className="text-sm text-destructive" data-widgets-error="">{s.error}</p>}
+          {/* Two people arranging at once (review I3, owner W21: a line above the widgets). */}
+          {s.conflict && editing && (
+            <div role="alert" className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" data-widgets-conflict="">
+              <span className="text-neutral-200">Someone on your team saved this layout while you were arranging it.</span>
+              <span className="flex gap-2">
+                <Button variant="chrome" size="sm" onClick={() => { void actions.seeTheirs() }}>See theirs</Button>
+                <Button size="sm" onClick={() => { void actions.keepMine() }}>Keep mine</Button>
+              </span>
+            </div>
+          )}
           {body}
         </div>
         {editing && <Gallery ctx={ctx} />}
+        <CopyLayout siteId={props.siteId} />
       </MotionConfig>
     </DashboardFrameProvider>
   )
