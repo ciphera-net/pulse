@@ -329,7 +329,7 @@ steps:
         const API = origin("EXPECT_API_URL", need("EXPECT_API_URL"));
         const APP = origin("EXPECT_APP_URL", need("EXPECT_APP_URL"));
         const HOST = new URL(APP).host;
-        const PREFIX = "https://ciphera-app-static.b-cdn.net/" + need("DEST_PREFIX");
+        const PREFIX = "https://static.ciphera.net/" + need("DEST_PREFIX");
         const RETIRED_API_HOST = "pulse-api-staging.ciphera.net";
         let cfg = null;
         try { cfg = JSON.parse(fs.readFileSync(ROOT + "/.next/required-server-files.json", "utf8")).config; }
@@ -718,8 +718,8 @@ steps:
         HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse.ciphera.net/login") \
           || { echo "FAIL: could not fetch https://pulse.ciphera.net/login to verify assetPrefix"; exit 1; }
         case "$HTML" in
-          *"https://ciphera-app-static.b-cdn.net/pulse/_next/static"*)
-            echo "assetPrefix verified live: chunks come from https://ciphera-app-static.b-cdn.net/pulse" ;;
+          *"https://static.ciphera.net/pulse/_next/static"*)
+            echo "assetPrefix verified live: chunks come from https://static.ciphera.net/pulse" ;;
           *)
             echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
             echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
@@ -797,12 +797,16 @@ steps:
           fi
           GOT=$((GOT + 1))
           case " $BUILDS " in *" $B "*) ;; *) BUILDS="$BUILDS $B" ;; esac
-          URLS="$URLS $(printf '%s' "$R" | grep -oE 'https://ciphera-app-static\.b-cdn\.net/pulse/_next/static/[^"\ ]+\.(js|css)')"
-          URLS="$URLS https://ciphera-app-static.b-cdn.net/pulse/_next/static/$B/_buildManifest.js"
+          URLS="$URLS $(printf '%s' "$R" | grep -oE 'https://static\.ciphera\.net/pulse/_next/static/[^"\ ]+\.(js|css)')"
+          URLS="$URLS https://static.ciphera.net/pulse/_next/static/$B/_buildManifest.js"
           [ "$GOT" -ge 3 ] && break
           sleep 10
         done
         [ "$GOT" -ge 3 ] || { echo "FAIL: the live /login carried no build id in 12 reads (this check reads the flight data's \"b\" key)"; exit 1; }
+        # The HTML must name files on the zone: a grep that stops matching (the prefix moved) would otherwise check the
+        # build manifest alone and pass (27-11-2026, the asset zone's move to static.ciphera.net).
+        REFS=$(printf '%s\n' $URLS | grep -v '_buildManifest.js$' | sort -u | grep -c .)
+        [ "$REFS" -ge 3 ] || { echo "FAIL: the live HTML names $REFS files on https://static.ciphera.net/pulse (a build names dozens): the prefix moved or this grep is stale"; exit 1; }
         MISSING=""; N=0
         for U in $(printf '%s\n' $URLS | sort -u); do
           N=$((N + 1))

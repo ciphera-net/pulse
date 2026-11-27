@@ -160,7 +160,7 @@ steps:
         from_secret: next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
-      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
+      NEXT_PUBLIC_ASSET_PREFIX: https://static.ciphera.net/pulse
       # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
       # This repo commits a project-level .npmrc containing
       #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
@@ -394,7 +394,7 @@ steps:
         from_secret: staging_next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
-      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
+      NEXT_PUBLIC_ASSET_PREFIX: https://static.ciphera.net/pulse-staging
       # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
       # This repo commits a project-level .npmrc containing
       #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
