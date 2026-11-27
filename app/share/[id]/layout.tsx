@@ -13,6 +13,10 @@ import { shareCardImages, shareCardTwitter } from '@/lib/og'
 // * link for no observable benefit. A plain static object guarantees a sane
 // * title/description card with zero runtime dependency on the API being
 // * reachable.
+// The page's name, as the settings call it; the root layout's template adds " | Pulse Analytics".
+const title = 'Public dashboard'
+const description = "View this site's public stats in Pulse, privacy-first web analytics."
+
 export const metadata: Metadata = {
   // 🔴 noindex, and it is not belt-and-braces with robots.txt — it is the half that
   // works. app/robots.ts already sends `Disallow: /share/`, but robots.txt is an
@@ -21,11 +25,11 @@ export const metadata: Metadata = {
   // was reading the app's default `index, follow` and being told to index a customer
   // dashboard. The two directives disagreed; now they agree.
   robots: { index: false, follow: false, nocache: true },
-  title: 'Public Dashboard | Pulse',
-  description: 'Privacy-first web analytics — view this site\'s public stats.',
+  title,
+  description,
   openGraph: {
-    title: 'Public Dashboard | Pulse',
-    description: 'Privacy-first web analytics — view this site\'s public stats.',
+    title,
+    description,
     siteName: 'Pulse Analytics',
     type: 'website',
     images: shareCardImages('share'),

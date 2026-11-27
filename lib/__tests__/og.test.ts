@@ -83,9 +83,12 @@ describe('every public page names its card in both blocks', () => {
     expect((metadata.twitter as { title?: unknown }).title).toBeUndefined()
   })
 
-  it('a public share link', async () => {
+  it("a public share link, titled once (the root layout's template adds the brand)", async () => {
     const { metadata } = await import('@/app/share/[id]/layout')
     expectCard(metadata, 'share')
+    expect(metadata.title).toBe('Public dashboard')
+    expect((metadata.openGraph as { title?: unknown }).title).toBe('Public dashboard')
+    expect(`${metadata.description}`).not.toMatch(/[—–]/)
   })
 
   it('a shared report, still with no og:url and no referrer', async () => {
