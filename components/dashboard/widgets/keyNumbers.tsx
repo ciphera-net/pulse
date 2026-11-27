@@ -4,8 +4,10 @@
 //   Small       one number, chosen with the compact blocks' view picker in place of its label
 //   Large       the five stacked, as the rail beside the chart draws them, full width of the cell
 //   Full width  the five in a row (the size it had)
-// The deck draws the readout (its `readout` prop); chartVariants.ts fits the rail to each size.
+// The deck draws the readout (its `readout` prop) at each size (its `layout`, review I1).
 import { cloneElement, isValidElement, useState, type ReactElement } from 'react'
+import type { DeckLayout } from '@/components/dashboard/CommandDeck'
+import type { MetricType } from '@/lib/dashboard/metrics'
 import { ViewPicker } from './compact'
 import type { FrameCtx } from './registry'
 import { useWidgetsState, widgets, type Placed, type WidgetSize } from './store'
@@ -19,6 +21,8 @@ export const KEY_NUMBERS = [
 ]
 
 const VARIANT: Record<WidgetSize, string> = { s: 'numbers-s', m: 'numbers', l: 'numbers-l', xl: 'numbers', row: 'numbers' }
+/** Small: one number; Large: the five stacked in a block; Full width (and any other): the five in a row. */
+const RAIL: Record<WidgetSize, DeckLayout['rail']> = { s: 'one', m: 'row', l: 'stack', xl: 'row', row: 'row' }
 
 export function KeyNumbers({ ctx, size, placed }: { ctx: FrameCtx; size: WidgetSize; placed?: Placed }) {
   const [local, setLocal] = useState<string | null>(null)
@@ -27,11 +31,12 @@ export function KeyNumbers({ ctx, size, placed }: { ctx: FrameCtx; size: WidgetS
   const editing = useWidgetsState().editing === ctx.siteId
   const chosen = KEY_NUMBERS.find((k) => k.value === (editing ? placed?.view : local ?? placed?.view))?.value ?? 'visitors'
   const pick = (v: string) => (placed && editing ? widgets.setView(placed.id, v) : setLocal(v))
+  const layout: DeckLayout = { chart: 'none', rail: RAIL[size], height: size === 'l' ? 440 : 213, pick: chosen as MetricType }
   const deck = isValidElement(ctx.deck)
-    ? cloneElement(ctx.deck as ReactElement<{ readout?: boolean }>, { readout: true })
+    ? cloneElement(ctx.deck as ReactElement<{ readout?: boolean; layout?: DeckLayout }>, { readout: true, layout })
     : null
   return (
-    <div className="relative h-full overflow-hidden" data-chart-variant={VARIANT[size]} data-numbers-pick={size === 's' ? chosen : undefined}>
+    <div className="relative h-full overflow-hidden" data-chart-variant={VARIANT[size]}>
       {deck}
       {size === 's' && (
         <div className="absolute left-4 top-3 z-20 flex h-7" data-chart-picker="">

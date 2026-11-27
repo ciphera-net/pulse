@@ -3,7 +3,7 @@
 // they are today, plus the small tiles. Each one renders the app's REAL component with the props the frame gives it
 // (components/surfaces/DashboardFrame.tsx), so a widget is the block a customer already knows. Pinned against the
 // frame's props by components/dashboard/__tests__/frame-wiring.test.ts.
-import type { ComponentType, ReactNode } from 'react'
+import { cloneElement, isValidElement, type ComponentType, type ReactElement, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import { ArrowSquareIn, Broadcast, CalendarDots, ChartLine, Hash, CardsThree, CursorClick, Desktop, Gauge, GlobeHemisphereWest } from '@phosphor-icons/react'
 import { CloudUploadIcon, FunnelIcon, HeartbeatIcon, SearchIcon } from '@ciphera-net/facet'
@@ -14,6 +14,7 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 import ConversionBlock from '@/components/dashboard/bottom/ConversionBlock'
 import WeekHeat from '@/components/dashboard/bottom/WeekHeat'
 import { PerformanceTile, SearchTile, UptimeTile } from '@/components/dashboard/bottom/OverviewTiles'
+import type { DeckLayout } from '@/components/dashboard/CommandDeck'
 import type { DashboardData } from '@/lib/api/stats'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import type { DashboardCapabilities } from '@/lib/dashboard/capabilities'
@@ -72,12 +73,14 @@ export const WIDGETS: WidgetDef[] = [
     id: 'chart', name: 'Chart', blurb: 'The key numbers and the chart over time. The smaller sizes show the chart alone.', icon: ChartLine, group: 'blocks', sizes: ['xl', 'l', 'm'], size: 'xl',
     render: (c, size) => {
       // The chart alone, its metric picked in place of its title: Large, Wide, and Full whenever Key numbers is on the
-      // dashboard too, so no number shows twice (review A1, owner W21: "by itself", nothing to choose).
+      // dashboard too, so no number shows twice (review A1, owner W21: "by itself", nothing to choose). The deck draws
+      // each size itself (its `layout`, review I1).
       const fullAlone = size === 'xl' && (c.layoutIds ?? []).includes('numbers')
       const alone = size === 'l' || size === 'm' || fullAlone
+      const layout: DeckLayout = { rail: alone ? 'none' : 'side', height: size === 'm' ? 213 : 440 }
       return (
         <div className="relative h-full overflow-hidden" data-chart-variant={fullAlone ? 'xl-chart' : size}>
-          {c.deck}
+          {isValidElement(c.deck) ? cloneElement(c.deck as ReactElement<{ layout?: DeckLayout }>, { layout }) : c.deck}
           {alone && <ChartPicker deck={c.deck} />}
         </div>
       )

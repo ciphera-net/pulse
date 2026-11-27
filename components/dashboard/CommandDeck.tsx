@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type CSSProperties } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, ReferenceLine as VisxReferenceLine } from '@/components/ui/area-chart'
 import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
@@ -85,6 +85,38 @@ interface CommandDeckProps {
    * change nothing. The trace still lifts on hover, as the rail's does.
    */
   readout?: boolean
+  /**
+   * How a dashboard widget draws the deck (PUL-88, review I1). Left out, the deck is exactly as it has always been:
+   * no class below changes. See DeckLayout.
+   */
+  layout?: DeckLayout
+}
+
+/**
+ * The deck at a dashboard widget's size (PUL-88, review I1; agreed with the deck's owners 27-11-2026). Replaces the
+ * stylesheet that widgets/chartVariants.ts laid over the deck's data-deck-* hooks: a size is the deck's own now, so
+ * restyling the deck cannot silently undo one.
+ *   rail    'side' (the rail beside the chart, as the page draws it), 'none' (the chart alone; its title gives way to
+ *           the widget's metric picker), 'row' (the five across, from 768 px), 'stack' (the five stacked at the
+ *           cell's full width) or 'one' (`pick`'s row alone, its label giving way to the widget's picker).
+ *   chart   'show', or 'none': no chart at all (Key numbers).
+ *   height  the deck's height in px from 768 px up (the widget's cell); below it the deck keeps its natural height.
+ */
+export interface DeckLayout {
+  rail?: 'side' | 'none' | 'row' | 'stack' | 'one'
+  chart?: 'show' | 'none'
+  height?: number
+  pick?: MetricType
+}
+
+// The rail's container at each of a widget's rails (DeckLayout). 'side' is the page's own, unchanged: a 2-column grid
+// over the chart on a phone, the column beside it from 768 px.
+const RAIL_CLASS: Record<NonNullable<DeckLayout['rail']>, string> = {
+  side: 'grid grid-cols-2 border-b border-neutral-800 md:flex md:flex-col md:border-b-0 md:border-r',
+  none: 'hidden',
+  row: 'grid grid-cols-2 border-b border-neutral-800 md:h-full md:grid-cols-5 md:border-b-0',
+  stack: 'flex h-full flex-col',
+  one: 'flex h-full flex-col',
 }
 
 // The previous period's ink: the established secondary-line token (grey in both
@@ -201,8 +233,15 @@ export default function CommandDeck({
   prevRange,
   prevFloor,
   readout = false,
+  layout,
 }: CommandDeckProps) {
   const frame = useDashboardFrame()
+  // A widget's layout (DeckLayout); without one, 'side' and a chart: the page's deck.
+  const rail = layout?.rail ?? 'side'
+  const besideChart = rail === 'side' && layout?.chart !== 'none'
+  // A row's figure: the tiles' size, or the Small widget's larger one (one number in a tile). Plain strings in the
+  // page's own order, so the deck without a layout renders byte for byte as before.
+  const figure = (rest: string) => (rail === 'one' ? `mt-3 block text-3xl ${rest}` : `mt-0.5 block text-xl ${rest}`)
   // On by default; the legend's "Previous period" entry hides it (PUL-19).
   const [showPrev, setShowPrev] = useState(true)
   const endsNow = Boolean(period && PERIOD_ENDS_NOW[period])
@@ -291,12 +330,18 @@ export default function CommandDeck({
   return (
     // In the new frame the deck is glass like the blocks under it (styles/globals.css, `.glass-block`): the fill
     // comes from the class, so the Card's own is switched off.
-    <Card className={cn('w-full overflow-hidden rounded-none', frame && 'glass-block border-white/[0.08] bg-transparent')}>
-      <div className="grid md:grid-cols-[236px_1fr] md:grid-rows-[500px]" data-deck-grid="">
+    <Card className={cn('w-full overflow-hidden rounded-none', frame && 'glass-block border-white/[0.08] bg-transparent', layout && 'h-full')}>
+      <div
+        className={layout
+          ? cn('grid md:grid-rows-[var(--deck-h)]', besideChart ? 'md:grid-cols-[236px_1fr]' : 'md:grid-cols-[minmax(0,1fr)]')
+          : 'grid md:grid-cols-[236px_1fr] md:grid-rows-[500px]'}
+        style={layout ? ({ '--deck-h': `${layout.height ?? 500}px` } as CSSProperties) : undefined}
+        data-deck-grid=""
+      >
         {/* KPI rail. On md+ the rows flex-stretch so the rail bottoms out level
             with the chart; on mobile it is a 2-column grid above the chart. */}
-        <div data-tour="metric-rail" className="grid grid-cols-2 border-b border-neutral-800 md:flex md:flex-col md:border-b-0 md:border-r">
-          {rows.map((m, i) => {
+        <div data-tour="metric-rail" className={RAIL_CLASS[rail]}>
+          {(rail === 'one' ? rows.filter((m) => m.key === (layout?.pick ?? 'visitors')) : rows).map((m, i) => {
             const selected = !readout && metric === m.key
             const Row = readout ? 'div' : 'button'
             return (
@@ -311,10 +356,15 @@ export default function CommandDeck({
               // sentence in the toolbar InfoTip once the row is selected.
               aria-describedby={`deck-def-${m.key}${readout ? '-readout' : ''}`}
               className={cn(
-                'group relative flex-1 overflow-hidden px-4 py-3 text-start transition-colors ease-apple',
+                rail === 'stack'
+                  ? 'group relative flex-1 overflow-hidden px-6 py-3.5 text-start transition-colors ease-apple'
+                  : rail === 'one'
+                    ? 'group relative flex flex-1 flex-col justify-start overflow-hidden px-4 pb-0 pt-3 text-start transition-colors ease-apple'
+                    : 'group relative flex-1 overflow-hidden px-4 py-3 text-start transition-colors ease-apple',
                 readout ? 'cursor-default' : 'cursor-pointer',
-                'border-neutral-800 max-md:odd:border-r max-md:[&:nth-child(-n+4)]:border-b',
-                i > 0 && 'md:border-t',
+                rail === 'stack' ? 'border-neutral-800' : rail === 'one' ? null : 'border-neutral-800 max-md:odd:border-r max-md:[&:nth-child(-n+4)]:border-b',
+                rail === 'row' && 'md:flex md:min-w-0 md:flex-col md:justify-start md:px-6 md:pb-0 md:pt-5',
+                i > 0 && (rail === 'row' ? 'md:border-l' : rail === 'stack' ? 'border-t' : rail === 'one' ? null : 'md:border-t'),
                 selected && 'bg-neutral-800/40',
               )}
             >
@@ -342,21 +392,21 @@ export default function CommandDeck({
                 />
               )}
               <div className="relative z-10">
-                <div className="flex items-baseline justify-between gap-2" data-deck-row-head="">
-                  <span className={cn('truncate text-[13px]', selected ? 'text-brand-ink' : 'text-neutral-400')} data-deck-row-label="">
+                <div className={rail === 'one' ? 'flex min-h-7 items-center justify-between gap-2' : 'flex items-baseline justify-between gap-2'} data-deck-row-head="">
+                  <span className={cn('truncate text-[13px]', selected ? 'text-brand-ink' : 'text-neutral-400', rail === 'one' && 'invisible')} data-deck-row-label="">
                     {m.label}
                   </span>
                   <RailDelta change={m.change} invert={m.isNegative} />
                 </div>
                 {m.value == null
-                  ? <span className="mt-0.5 block text-xl font-semibold text-neutral-600">—</span>
+                  ? <span className={figure('font-semibold text-neutral-600')}>—</span>
                   : m.isCount
                     ? (
-                        <CompactNumber value={m.value} className="mt-0.5 block text-xl font-semibold tabular-nums text-white">
+                        <CompactNumber value={m.value} className={figure('font-semibold tabular-nums text-white')}>
                           <AnimatedNumber value={m.value} format={m.format as (v: number) => string} />
                         </CompactNumber>
                       )
-                    : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
+                    : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className={figure('font-semibold tabular-nums text-white')} />}
                 <span className="mt-0.5 block truncate text-[11px] text-neutral-500" data-deck-row-context="">
                   {m.context}
                   {railImported && IMPORT_MERGED_METRICS.has(m.key) && ' · incl. imported days'}
@@ -371,12 +421,13 @@ export default function CommandDeck({
         </div>
 
         {/* Hero chart — fills the deck; the rail stretches to match. */}
+        {layout?.chart !== 'none' && (
         <div className="flex min-w-0 flex-col" data-deck-chart="">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3">
             {/* The toolbar names the selected metric, so ONE resident glyph
                 here reaches all six definitions — the rail rows stay clean
                 (metric info layer, 22-08-2026). */}
-            <span data-tour="chart-toolbar" className="flex items-center gap-1 text-xs font-medium text-neutral-400">
+            <span data-tour="chart-toolbar" className={cn('flex items-center gap-1 text-xs font-medium text-neutral-400', rail === 'none' && 'invisible')}>
               {metric === 'visitors' && interval === 'day' ? 'Daily unique visitors' : activeMetric?.label}
               <MetricInfoTip metric={metric} example={buildExample(metric, stats)} />
             </span>
@@ -417,7 +468,7 @@ export default function CommandDeck({
               what flex-1 gives it and the rail tiles flex-stretch into the
               same 500. Mobile keeps its smaller floor. fillParent (not
               aspectRatio) lets the plot use all of it. */}
-          <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1" data-deck-plot="">
+          <div className={cn('min-h-[288px] flex-1 px-2.5 pb-2 pt-1', rail === 'none' && 'md:min-h-0')} data-deck-plot="">
             {!hasData || !hasAnyNonZero ? (
               // One state for the chart with nothing to draw. In realtime it reads the realtime line (or, while
               // somebody is on the site, that the window has no visits), as every block does.
@@ -579,6 +630,7 @@ export default function CommandDeck({
             )}
           </div>
         </div>
+        )}
       </div>
     </Card>
   )
