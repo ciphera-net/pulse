@@ -5,6 +5,7 @@ import { Button, Toggle, toast } from '@ciphera-net/facet'
 import { EnvelopeSimple, WarningCircle } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useTeamState } from '@/lib/hooks/useTeamState'
+import { useFeature } from '@/lib/features'
 import {
   getPrefsDocument,
   updatePrefs,
@@ -50,7 +51,12 @@ const CAPTIONS: Record<string, string> = {
   lifecycle: 'Help with setting up a site, the first visits arriving, and a note if your team goes quiet.',
   summary: "Every Monday: last week's visitors, top pages and top sources for each site that had visits.",
   summary_monthly: "On the 1st of each month: last month's visitors, top pages and top sources for each site that had visits.",
+  summary_yearly: "On 1 January: last year's visitors, top pages and top sources for each site that had visits.",
 }
+
+// The yearly summary is a beta (lib/betas.ts): its row shows only once /me says the beta is on for the team, so nobody
+// is offered a switch for an email their team does not get. null (not known yet) hides it.
+const YEARLY_SUMMARY_BETA = 'yearly-summary'
 
 /** Iris's preferences document: null until the first answer; `failed` when the read failed with nothing to show. */
 function usePrefsDocument() {
@@ -87,6 +93,7 @@ export default function NotificationsPage() {
   const alone = useTeamState() === 'alone'
   const { doc, setDoc, failed, retry, retrying } = usePrefsDocument()
   const [saving, setSaving] = useState(false)
+  const yearlyBeta = useFeature(YEARLY_SUMMARY_BETA) === true
 
   // One group's write. The server's answer is the new state; a refusal (a 422 from Iris's trigger, or anything else)
   // leaves the switch where the server last said it was.
@@ -110,12 +117,14 @@ export default function NotificationsPage() {
   // (Ciphera ID's own, and internal ones for staff), so a group is drawn only when this list names it (§12.11.1).
   // Team is drawn for everyone, somebody alone in this team included: the switches are the person's across every team
   // (one document per person), so they may have teammates elsewhere (§13.3). The weekly summary is drawn for everyone
-  // too since 09-11-2026, when it left beta, and the monthly summary since 16-11-2026.
+  // too since 09-11-2026, when it left beta, and the monthly summary since 16-11-2026. The yearly summary is drawn only
+  // while its beta is on for the team.
   const groups = useMemo(() => {
     const byId = new Map((doc?.categories ?? []).map((c) => [c.category_id, c]))
-    return NOTIFICATION_CATEGORIES.map((k) => byId.get(k.id))
+    return NOTIFICATION_CATEGORIES.filter((k) => k.id !== 'summary_yearly' || yearlyBeta)
+      .map((k) => byId.get(k.id))
       .filter((c): c is CategoryPreferenceDoc => c !== undefined)
-  }, [doc])
+  }, [doc, yearlyBeta])
 
   if (!user || (!doc && !failed)) return <SettingsLoadingState rows={6} />
 
