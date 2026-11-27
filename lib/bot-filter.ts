@@ -24,6 +24,10 @@ export const BOT_FILTER_ROWS: Record<string, { label: string; caption: string }>
   no_sign_of_life: { label: 'No sign of life', caption: 'A computer opened one page and did nothing on it.' },
   clock_mismatch: { label: 'Clock mismatch', caption: "Its clock did not match the visitor's country." },
   no_input_navigation: { label: 'No input', caption: 'A computer reached a second page without a click, a key or a touch.' },
+  square_window_foreign_clock: {
+    label: 'Square window, foreign clock',
+    caption: "A computer had a nearly square window and a clock set to another country's time zone.",
+  },
   manual: { label: 'Checked by hand', caption: 'Ciphera checked these visits by hand and left them out.' },
   earlier: { label: 'Earlier checks', caption: 'The filter left these out before it used the rules above.' },
 }
