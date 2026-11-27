@@ -615,7 +615,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   const toolbarRow = () => (
     <FrameToolbar>
       {dashboardWidgets.on && dashboardWidgets.ready
-        ? <CustomizeControls layout={dashboardWidgets.layout} canCustomize={dashboardWidgets.canCustomize} done={dashboardWidgets.done}>{toolbarControls()}</CustomizeControls>
+        ? <CustomizeControls siteId={scope.siteId} layout={dashboardWidgets.layout} revision={dashboardWidgets.revision} canCustomize={dashboardWidgets.canCustomize} done={dashboardWidgets.done}>{toolbarControls()}</CustomizeControls>
         : toolbarControls()}
     </FrameToolbar>
   )

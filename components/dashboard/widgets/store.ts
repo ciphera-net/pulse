@@ -2,13 +2,16 @@
 // The site dashboard's widgets (PUL-88, beta `dashboard-widgets`; plan Pulse/docs/plans/24-11-2026-dashboard-widgets-
 // build-plan.md). The SAVED layout is the team's and lives on the server (lib/api/dashboardLayout.ts, read through
 // useDashboardWidgets below). This store holds only what this page knows: whether Customize is on, the draft it edits,
-// the gallery, and the widget a press last moved (for its brief outline). Done sends the draft; Cancel drops it.
+// the gallery, and the widget a press last moved (for its brief outline). Done sends the draft when Pulse's Undo bar
+// runs out (review I4, owner W21); Cancel drops it.
 import { useSyncExternalStore } from 'react'
+import { toast } from '@ciphera-net/facet'
+import type { DeferredAction } from '@ciphera-net/facet-hold'
 import { useCan } from '@/lib/auth/permissions'
 import { useFeature } from '@/lib/features'
 import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 import { useSiteSWR } from '@/lib/swr/site-read'
-import { getDashboardLayout, resetDashboardLayout, saveDashboardLayout, type PlacedWidget, type WidgetSize } from '@/lib/api/dashboardLayout'
+import { getDashboardLayout, layoutConflict, resetDashboardLayout, saveDashboardLayout, type LayoutWrite, type PlacedWidget, type TeamLayout, type WidgetSize } from '@/lib/api/dashboardLayout'
 
 export type { WidgetSize }
 export type Placed = PlacedWidget
@@ -31,7 +34,11 @@ export const DEFAULT_LAYOUT: Placed[] = [
 ]
 
 interface State {
-  editing: boolean
+  /**
+   * The site whose layout Customize is arranging; null outside Customize. The store is the whole app's, so a page
+   * reads it for its own site only: a draft never shows on another site's dashboard.
+   */
+  editing: string | null
   /** Customize's copy: Done sends it, Cancel drops it. */
   draft: Placed[] | null
   galleryOpen: boolean
@@ -40,9 +47,26 @@ interface State {
   saving: boolean
   /** Why the last Done failed; Customize stays open with the draft while it is set. */
   error: string | null
+  /**
+   * The revision Customize started from, which Done sends as its base (review I3): "" the standard dashboard, null
+   * unknown (the read failed), which saves over whatever is stored.
+   */
+  base: string | null
+  /**
+   * The last Done met a layout someone else saved meanwhile (I3): theirs, as the server answered with the 409.
+   * Customize stays open on the draft until the reader keeps theirs or this one.
+   */
+  conflict: TeamLayout | null
+  /** The layout the Copy to other sites dialog copies (A3), or null while it is closed. */
+  copying: Placed[] | null
+  /**
+   * A Done whose save waits for its Undo window (I4, Pulse's Undo bar, PUL-28). The page draws it until the save
+   * lands, or Undo drops it and nothing is sent. Keyed by site: the store is the whole app's.
+   */
+  pending: { siteId: string; layout: Placed[] } | null
 }
 
-const IDLE: State = { editing: false, draft: null, galleryOpen: false, moved: null, saving: false, error: null }
+const IDLE: State = { editing: null, draft: null, galleryOpen: false, moved: null, saving: false, error: null, base: null, conflict: null, copying: null, pending: null }
 let state: State = IDLE
 const listeners = new Set<() => void>()
 function set(next: Partial<State>) {
@@ -58,6 +82,11 @@ export function useWidgetsState(): State {
   return useSyncExternalStore(subscribe, () => state, () => IDLE)
 }
 
+/** Only the waiting save (I4), so the page's own hook re-renders when it changes and not on every drag. */
+function usePending(): State['pending'] {
+  return useSyncExternalStore(subscribe, () => state.pending, () => null)
+}
+
 /** Changes the draft; outside Customize nothing changes (the layout is the team's, and only Done saves it). */
 function write(list: Placed[], moved: string | null = null) {
   if (!state.editing || !state.draft) return
@@ -65,8 +94,10 @@ function write(list: Placed[], moved: string | null = null) {
 }
 
 export const widgets = {
-  startEdit(saved: Placed[]) { set({ ...IDLE, editing: true, draft: [...saved] }) },
-  cancelEdit() { set(IDLE) },
+  /** Customize on the layout on screen; `revision` is the one it started from (null: unknown). */
+  startEdit(siteId: string, saved: Placed[], revision: string | null) { set({ ...IDLE, pending: state.pending, editing: siteId, draft: [...saved], base: revision }) },
+  cancelEdit() { set({ ...IDLE, pending: state.pending }) },
+  openCopy(layout: Placed[] | null) { set({ copying: layout }) },
   /** Back to today's dashboard, in the draft: Done saves it as "no layout". */
   reset() { write(DEFAULT_LAYOUT.map((p) => ({ ...p }))) },
   move(from: number, to: number) {
@@ -86,9 +117,10 @@ export const widgets = {
       return funnel ? { ...p, funnel } : { id: p.id, size: p.size, ...(p.view ? { view: p.view } : {}) }
     }), id)
   },
+  setEvent(id: string, event: string) { write((state.draft ?? []).map((p) => (p.id === id ? { ...p, event } : p)), id) },
   remove(id: string) { write((state.draft ?? []).filter((p) => p.id !== id)) },
   /** A widget that may be there more than once gets the next free instance id (`funnels:2`). */
-  add(id: string, size: WidgetSize, opts: { multi?: boolean; funnel?: string } = {}) {
+  add(id: string, size: WidgetSize, opts: { multi?: boolean; funnel?: string; event?: string } = {}) {
     const list = state.draft ?? []
     let placedId = id
     if (list.some((p) => p.id === id)) {
@@ -97,7 +129,7 @@ export const widgets = {
       while (list.some((p) => p.id === `${id}:${n}`)) n++
       placedId = `${id}:${n}`
     }
-    write([...list, { id: placedId, size, ...(opts.funnel ? { funnel: opts.funnel } : {}) }], placedId)
+    write([...list, { id: placedId, size, ...(opts.funnel ? { funnel: opts.funnel } : {}), ...(opts.event ? { event: opts.event } : {}) }], placedId)
   },
   openGallery(open: boolean) { set({ galleryOpen: open }) },
   clearMoved() { if (state.moved) set({ moved: null }) },
@@ -107,7 +139,7 @@ export const widgets = {
 export function isDefaultLayout(list: Placed[]): boolean {
   return list.length === DEFAULT_LAYOUT.length && list.every((p, i) => {
     const d = DEFAULT_LAYOUT[i]
-    return p.id === d.id && p.size === d.size && !p.view && !p.funnel
+    return p.id === d.id && p.size === d.size && !p.view && !p.funnel && !p.event
   })
 }
 
@@ -141,28 +173,89 @@ export function useDashboardWidgets(siteId: string) {
   const flag = useFeature(DASHBOARD_WIDGETS_FLAG)
   const canEdit = useCan('sites.edit')
   const enabled = isPublic || flag === true
-  const read = useSiteSWR<Placed[] | null>(
+  const read = useSiteSWR<TeamLayout>(
     siteId, 'customer',
     (siteKey) => (enabled ? ['dashboardLayout', siteKey] : null),
     (ref) => getDashboardLayout(ref),
     { revalidateOnFocus: false, dedupingInterval: 60_000 },
   )
-  const saved = read.data ?? null
+  const saved = read.data?.layout ?? null
+  const revision = read.data ? read.data.revision : null
   const { on, ready } = widgetsMode({ isPublic, flag, answered: read.data !== undefined || read.error != null, saved })
-  const layout = saved ?? DEFAULT_LAYOUT
+  const pending = usePending()
+  const layout = (pending?.siteId === siteId ? pending.layout : null) ?? saved ?? DEFAULT_LAYOUT
 
-  /** Done: the draft becomes the team's layout. Customize closes only once the server has it. */
-  const done = async () => {
+  /**
+   * Writes a layout as the team's: today's dashboard is stored as no layout. 🔴 With `keepalive` the request must start
+   * in this tick (the Undo window was cut short by the page being left), so no await comes before the API call.
+   */
+  const saveForTeam = (list: Placed[], write: LayoutWrite): Promise<TeamLayout> =>
+    isDefaultLayout(list) ? resetDashboardLayout(siteId, write) : saveDashboardLayout(siteId, list, write)
+
+  const done = (defer: (action: DeferredAction) => void) =>
+    deferDone(siteId, defer, { save: saveForTeam, landed: (next) => read.mutate(next, { revalidate: false }) })
+  /** I3, the reader keeps theirs: the draft replaces whatever is stored now, at once. */
+  const keepMine = async () => {
     const draft = state.draft
-    if (!draft) return set(IDLE)
+    if (!draft) return
     set({ saving: true, error: null })
     try {
-      const next = isDefaultLayout(draft) ? (await resetDashboardLayout(siteId), null) : await saveDashboardLayout(siteId, draft)
+      const next = await saveForTeam(draft, {})
       await read.mutate(next, { revalidate: false })
-      set(IDLE)
+      set({ ...IDLE, pending: state.pending })
     } catch {
-      set({ saving: false, error: 'The layout could not be saved. Check your connection and press Done again.' })
+      set({ saving: false, error: SAVE_FAILED })
     }
   }
-  return { on, ready, layout, canCustomize: !isPublic && flag === true && canEdit === true, done, readError: read.error ?? null }
+  /** I3, the reader takes the layout someone else saved: the draft is dropped and theirs is drawn. */
+  const seeTheirs = async () => {
+    const theirs = state.conflict
+    set({ ...IDLE, pending: state.pending })
+    await (theirs ? read.mutate(theirs, { revalidate: false }) : read.mutate())
+  }
+  return { on, ready, layout, revision, canCustomize: !isPublic && flag === true && canEdit === true, done, keepMine, seeTheirs, readError: read.error ?? null }
+}
+
+const SAVE_FAILED = 'The layout could not be saved. Check your connection and press Done again.'
+
+/**
+ * Done (I4, owner W21: Pulse's Undo bar): the draft becomes the team's layout. Customize closes at once and the page
+ * draws the draft (`pending`); the save is sent when the Undo bar runs out (`defer`, from the page's UndoProvider), or
+ * at once with keepalive when the page is left. Undo sends nothing. The save names the revision Customize started
+ * from, so a layout someone else saved meanwhile is answered with 409 (I3): Customize opens again on the draft with
+ * theirs to choose from. Any other failure opens it again with the reason. Nothing arranged is lost either way.
+ * Outside the hook so that every path can be tested without React: `io.save` writes, `io.landed` puts the answer in
+ * the page's cache before the waiting copy goes, so the page never flashes the old layout.
+ */
+export function deferDone(
+  siteId: string,
+  defer: (action: DeferredAction) => void,
+  io: { save: (draft: Placed[], write: LayoutWrite) => Promise<TeamLayout>; landed: (next: TeamLayout) => Promise<unknown> },
+): void {
+  const draft = state.draft
+  if (!draft) return set({ ...IDLE, pending: state.pending })
+  const base = state.base ?? undefined
+  set({ ...IDLE, pending: { siteId, layout: draft } })
+  defer({
+    message: 'Layout saved for your team',
+    commit: ({ keepalive }) => io.save(draft, { base, keepalive }),
+    onUndo: () => set({ pending: null }),
+    onCommitted: async (next) => {
+      await io.landed(next as TeamLayout)
+      // A Customize opened while this save waited started from the revision it replaced: it starts from this one.
+      set(state.editing === siteId && state.base === (base ?? null) ? { pending: null, base: (next as TeamLayout).revision } : { pending: null })
+    },
+    onError: (e) => {
+      const theirs = layoutConflict(e)
+      const why = theirs ? { conflict: theirs } : { error: SAVE_FAILED }
+      // The page may be another one by now (the Undo bar outlives a route change), so a failure is also said where the
+      // reader is. A conflict waits for the dashboard, where theirs can be seen.
+      if (!theirs) toast.error('Your dashboard layout could not be saved. Open the dashboard to try again.')
+      // Arranging this site again: keep that draft and say why. Arranging another: leave it alone. Otherwise open
+      // Customize again on the draft that failed.
+      if (state.editing === siteId) set({ pending: null, ...why })
+      else if (state.editing) set({ pending: null })
+      else set({ ...IDLE, editing: siteId, draft, base: base ?? null, ...why })
+    },
+  })
 }

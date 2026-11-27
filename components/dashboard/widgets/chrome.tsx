@@ -10,6 +10,9 @@ import { WIDGET, SPAN, sizeName } from './registry'
 import { widgets, type Placed, type WidgetSize } from './store'
 import { VIEWS } from './compact'
 import { KEY_NUMBERS } from './keyNumbers'
+import { eventFor } from './EventTile'
+import { eventName } from '@/lib/dashboard/events'
+import type { FrameCtx } from './registry'
 import type { Chrome } from './WidgetGrid'
 
 /** Stops a press on a control from starting a drag of the widget under it. */
@@ -20,7 +23,7 @@ const own = {
 
 const iconButton = 'inline-flex h-7 w-7 items-center justify-center text-neutral-400 transition-colors duration-fast ease-apple hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange disabled:pointer-events-none disabled:text-neutral-700'
 
-export const editChrome: Chrome = ({ placed, index, count, dragging, siteId }) => {
+export const editChrome: Chrome = ({ placed, index, count, dragging, siteId, ctx }) => {
   const def = WIDGET.get(placed.id)
   if (!def || dragging) return null
   // The widget's own header stays readable under the veil; the mode's controls sit in the middle, over its rows.
@@ -59,6 +62,7 @@ export const editChrome: Chrome = ({ placed, index, count, dragging, siteId }) =
           </button>
         </div>
         {placed.id.split(':')[0] === 'funnels' && <div {...own}><FunnelChoice siteId={siteId} id={placed.id} value={placed.funnel} /></div>}
+        {placed.id.split(':')[0] === 'event' && <div {...own}><EventChoice ctx={ctx} placed={placed} /></div>}
         <ViewChoice placed={placed} />
       </div>
     </div>
@@ -121,5 +125,27 @@ function ViewChoice({ placed }: { placed: Placed }) {
         className="w-[180px]"
       />
     </div>
+  )
+}
+
+/**
+ * An event tile's one setting, in Customize: which event it shows, from the events of the range, busiest first. Its
+ * own event stays in the list when the range has none of it, so the picker never names another one.
+ */
+function EventChoice({ ctx, placed }: { ctx: FrameCtx; placed: Placed }) {
+  const events = [...(ctx.dashboard?.goal_counts ?? [])].sort((a, b) => b.count - a.count)
+  const current = eventFor(events, placed.event)
+  const options = events.map((e) => ({ value: e.event_name, label: eventName(e) }))
+  if (current && !events.some((e) => e.event_name === current.event_name)) options.push({ value: current.event_name, label: eventName(current) })
+  if (options.length < 2) return null
+  return (
+    <Select
+      size="sm"
+      aria-label="Event"
+      value={current?.event_name ?? options[0].value}
+      onChange={(v) => widgets.setEvent(placed.id, v)}
+      options={options}
+      className="w-[200px]"
+    />
   )
 }
