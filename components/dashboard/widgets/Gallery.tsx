@@ -4,7 +4,8 @@
 // numbers. A press picks one (orange border), a double press adds it; the footer holds its name, its sizes, Cancel
 // and Add.
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Button, Modal, Switcher } from '@ciphera-net/facet'
+import { Button, Switcher } from '@ciphera-net/facet'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { WIDGETS, sizeName, type FrameCtx, type WidgetDef } from './registry'
 import { useWidgetsState, widgets, type WidgetSize } from './store'
 import { SetupAction, SetupState } from './setup'
@@ -132,7 +133,13 @@ function LivePreviews({ ctx, only }: { ctx: FrameCtx; only?: WidgetDef['group'] 
   const inTab = list.find((w) => w.id === g.current?.id) ?? list[0] ?? null
   useEffect(() => { if (inTab && inTab.id !== g.current?.id) g.setPick(inTab.id) }, [inTab?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Modal isOpen={g.open} onClose={g.close} title="Add a widget" className="w-[min(94vw,1000px)] max-w-none">
+    // Pulse's own glass dialog (components/ui/dialog.tsx), as the Copy to other sites dialog and the funnel dialog.
+    <Dialog open={g.open} onOpenChange={(open) => { if (!open) g.close() }}>
+      <DialogContent className="flex max-h-[90vh] w-[min(94vw,1000px)] max-w-none flex-col gap-0 p-0 sm:max-w-none" data-gallery-dialog="">
+        <div className="shrink-0 border-b border-border px-6 py-4">
+          <DialogTitle className="text-lg font-semibold text-white">Add a widget</DialogTitle>
+        </div>
+        <div className="min-h-0 flex-1 px-6 py-5">
       {!g.current || !g.chosen ? EMPTY : (
         <div data-gallery="" data-gallery-look="b">
           <Tabs g={g} tab={tab} setTab={setTab} />
@@ -177,7 +184,9 @@ function LivePreviews({ ctx, only }: { ctx: FrameCtx; only?: WidgetDef['group'] 
           />
         </div>
       )}
-    </Modal>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
