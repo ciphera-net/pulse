@@ -9,6 +9,16 @@ const withPWA = withPWAInit({
   // * pulse.ciphera.net's home page frames never installs the dashboard's worker.
   register: false,
   disable: process.env.NODE_ENV === "development",
+  // * 🔴 NO RELOAD WHEN THE NETWORK COMES BACK (27-11-2026). next-pwa's client entry calls
+  // * location.reload() on every `online` event unless this is false. A Mac fires `online`
+  // * the moment it wakes, before DNS and the static host (ciphera-app-static.b-cdn.net)
+  // * answer, so the reload loaded the page without its stylesheets and scripts and left an
+  // * open window showing only "Skip to content", with nothing retrying (reproduced 27-11:
+  // * Pulse/docs/audits/16-11-2026-blank-dashboard-and-performance-reports.md §7). Data still
+  // * refreshes on reconnect without it: the dashboard's SWR config revalidates on reconnect
+  // * (lib/swr/dashboard.ts), and the session refresh listens for `online` itself.
+  // * __tests__/pwa-precache.test.ts pins this value.
+  reloadOnOnline: false,
   // * The tracker must NOT be in the SW precache.
   // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
   // * script.js is exactly the kind of URL content blockers kill — one blocked
