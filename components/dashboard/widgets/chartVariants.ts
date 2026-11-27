@@ -27,9 +27,12 @@ export const CHART_VARIANTS_CSS = `
   [data-chart-variant="numbers"] ${RAIL} > ${ROW} + ${ROW} { border-left-width: 1px; }
 }
 [data-chart-variant] > :not([data-chart-picker]) { height: 100%; }
-/* The chart alone: no rail, and its metric is named by the picker that takes the title's place. */
+/* The chart alone: no rail, and its metric is named by the picker that takes the title's place. In a fixed cell the
+   plot gives up its floor; below 768 px the cell has no height of its own, so the plot keeps it (W7, review F1). */
 [data-chart-variant="m"] ${RAIL}, [data-chart-variant="l"] ${RAIL} { display: none; }
-[data-chart-variant="m"] [data-deck-plot], [data-chart-variant="l"] [data-deck-plot] { min-height: 0; }
+@media (min-width: 768px) {
+  [data-chart-variant="m"] [data-deck-plot], [data-chart-variant="l"] [data-deck-plot] { min-height: 0; }
+}
 [data-chart-variant="l"] [data-tour="chart-toolbar"], [data-chart-variant="m"] [data-tour="chart-toolbar"] { visibility: hidden; }
 /* Key numbers: the rail alone. */
 [data-chart-variant^="numbers"] [data-deck-chart] { display: none; }

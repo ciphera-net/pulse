@@ -4,6 +4,7 @@ import { WIDGETS } from '../registry'
 import { VIEWS } from '../compact'
 import { KEY_NUMBERS } from '../keyNumbers'
 import { drawable } from '../WidgetsFrame'
+import { MOVE_TRAVEL_PX, mayReorder } from '../WidgetGrid'
 import { renderHook } from '@testing-library/react'
 
 // The server checks a layout's shape (pulse-backend internal/api/dashboard_layout.go): these are its patterns, so a
@@ -32,12 +33,13 @@ describe('the registry', () => {
 })
 
 describe('a saved layout', () => {
-  it('drops a widget this build does not know, and a size it no longer draws', () => {
+  it('drops a widget this build does not know, a second copy of a single widget and a repeated id', () => {
     const saved: Placed[] = [
       { id: 'chart', size: 'xl' }, { id: 'retired-widget', size: 's' }, { id: 'performance', size: 's' }, { id: 'funnels:2', size: 's' },
       { id: 'numbers:2', size: 'row' }, { id: 'chart', size: 'l' },
     ]
-    expect(drawable(saved)).toEqual([{ id: 'chart', size: 'xl' }, { id: 'funnels:2', size: 's' }])
+    // Performance draws at Wide only, so its Small falls back to Wide (F2): retiring a size never removes a widget.
+    expect(drawable(saved)).toEqual([{ id: 'chart', size: 'xl' }, { id: 'performance', size: 'm' }, { id: 'funnels:2', size: 's' }])
   })
 
   it('is the standard dashboard when it is today\'s order and sizes, with nothing chosen', () => {
@@ -100,5 +102,24 @@ describe('which frame a page draws', () => {
     ['a share link of a team with a layout', { isPublic: true, flag: false, answered: true, saved }, { on: true, ready: true }],
   ] as const)('%s', (_name, input, want) => {
     expect(widgetsMode({ ...input, saved: input.saved as Placed[] | null })).toEqual(want)
+  })
+})
+
+describe('a drag never loops (the black page of 24-11-2026)', () => {
+  const base = { activeId: 'chart', pushedId: null as string | null, lastMoveAt: null as { x: number; y: number } | null }
+  it('moves on the first pass over another widget', () => {
+    expect(mayReorder({ ...base, overId: 'pages', delta: { x: 0, y: 40 } })).toBe(true)
+  })
+  it('never moves over itself, or back over the widget it just pushed aside', () => {
+    expect(mayReorder({ ...base, overId: 'chart', delta: { x: 0, y: 40 } })).toBe(false)
+    expect(mayReorder({ ...base, overId: 'pages', pushedId: 'pages', delta: { x: 0, y: 400 } })).toBe(false)
+  })
+  it('does not move again under a still pointer, even when the layout put another widget under it', () => {
+    // The move just made at this delta put Sources under the pointer; the pointer has not moved.
+    expect(mayReorder({ ...base, overId: 'sources', pushedId: 'pages', lastMoveAt: { x: 0, y: 40 }, delta: { x: 0, y: 40 } })).toBe(false)
+    expect(mayReorder({ ...base, overId: 'sources', pushedId: 'pages', lastMoveAt: { x: 0, y: 40 }, delta: { x: 10, y: 50 } })).toBe(false)
+  })
+  it('moves again once the pointer has travelled far enough', () => {
+    expect(mayReorder({ ...base, overId: 'sources', pushedId: 'pages', lastMoveAt: { x: 0, y: 40 }, delta: { x: 0, y: 40 + MOVE_TRAVEL_PX } })).toBe(true)
   })
 })

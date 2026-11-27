@@ -19,18 +19,20 @@ import { WIDGET, type FrameCtx } from './registry'
 import { useWidgetsState, widgets, type Placed } from './store'
 
 /**
- * A saved layout as this build can draw it: widgets it does not know, sizes they no longer draw, a second copy of a
- * widget that may be there only once, and any id twice are dropped.
+ * A saved layout as this build can draw it. Widgets it does not know, a second copy of a widget that may be there only
+ * once, and any id twice are dropped. A size the widget no longer draws becomes its default size, so retiring a size
+ * never takes a widget off a team's dashboard (review §3, F2).
  */
 export function drawable(list: Placed[]): Placed[] {
   const seen = new Set<string>()
-  return list.filter((p) => {
+  const out: Placed[] = []
+  for (const p of list) {
     const def = WIDGET.get(p.id)
-    if (!def || !def.sizes.includes(p.size) || seen.has(p.id)) return false
-    if (p.id.includes(':') && !def.multi) return false
+    if (!def || seen.has(p.id) || (p.id.includes(':') && !def.multi)) continue
     seen.add(p.id)
-    return true
-  })
+    out.push(def.sizes.includes(p.size) ? p : { ...p, size: def.size })
+  }
+  return out
 }
 
 export default function WidgetsFrame({ layout, canCustomize, ...props }: FrameCtx & { deck: ReactNode; layout: Placed[]; canCustomize: boolean }) {
