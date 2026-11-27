@@ -54,8 +54,12 @@ function CopyBody({ siteId, copying, close }: { siteId: string; copying: Placed[
           <div className="mt-5 space-y-3">
             <Checkbox checked={all} indeterminate={picked.size > 0 && !all} onChange={() => setPicked(all ? new Set() : new Set(others.map((s) => s.id)))} label="All the team's other sites" />
             <div className="space-y-3 border-t border-border pt-3">
+              {/* Each site in a block of its own: Facet's Checkbox is inline-flex, so two sites with short names shared a
+                  line. The block keeps the line box, so long names sit exactly where they did. */}
               {others.map((s) => (
-                <Checkbox key={s.id} checked={picked.has(s.id)} onChange={() => toggle(s.id)} label={<span>{s.name} <span className="text-neutral-500">{s.domain}</span></span>} />
+                <div key={s.id}>
+                  <Checkbox checked={picked.has(s.id)} onChange={() => toggle(s.id)} label={<span>{s.name} <span className="text-neutral-500">{s.domain}</span></span>} />
+                </div>
               ))}
             </div>
           </div>
