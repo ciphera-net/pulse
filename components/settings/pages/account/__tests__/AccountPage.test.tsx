@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 
@@ -155,7 +155,11 @@ import { resetDeferred, commitLast, deferred } from '@/lib/hold/__tests__/facetH
 
 // --- Data ------------------------------------------------------------------
 
-const NOW = Date.now()
+// A fixed clock. The activity list's Today and Yesterday are UTC days (the display zone is mocked to UTC), decided when
+// it renders, and these fixtures were built from the wall clock when the file loaded: a CI run that crossed midnight
+// UTC drew "Yesterday" where the R40 test looks for "Today". Noon keeps every fixture, minutes to days old, on the side
+// of midnight it was written for. Only Date is faked, and it keeps moving (as in ga4Flow.test.tsx).
+const NOW = Date.parse('2026-11-18T12:00:00Z')
 const iso = (msAgo: number) => new Date(NOW - msAgo).toISOString()
 
 function device(i: number, over: Partial<{ is_current: boolean; last: number }> = {}) {
@@ -200,6 +204,8 @@ function section(title: string): HTMLElement {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] })
+  vi.setSystemTime(NOW)
   lastOnSave = undefined
   h.user = { id: 'u1', email: 'ada@example.com', display_name: 'Ada', totp_enabled: false }
   h.teamState = 'team'
@@ -220,6 +226,10 @@ beforeEach(() => {
   vi.mocked(toast.success).mockClear()
   vi.mocked(toast.error).mockClear()
   resetDeferred()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 // --- Tests -----------------------------------------------------------------
