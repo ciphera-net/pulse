@@ -28,6 +28,10 @@ export const BOT_FILTER_ROWS: Record<string, { label: string; caption: string }>
     label: 'Square window, foreign clock',
     caption: "A computer had a nearly square window and a clock set to another country's time zone.",
   },
+  tall_window_no_input: {
+    label: 'Tall window, no input',
+    caption: 'A computer had a very tall window and no click, key or touch on any page.',
+  },
   manual: { label: 'Checked by hand', caption: 'Ciphera checked these visits by hand and left them out.' },
   earlier: { label: 'Earlier checks', caption: 'The filter left these out before it used the rules above.' },
 }
