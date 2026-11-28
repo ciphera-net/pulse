@@ -40,8 +40,9 @@ import { EmptyState } from '@/components/ui/EmptyState'
 const CAPTIONS: Record<string, string> = {
   billing: 'Renewals, plan changes and event use. Invoices, failed payments and refunds go to the billing email.',
   security: 'A new API key, or a dashboard shared by link, in your team.',
-  // The inactive-team emails (13-11-2026, options round A): the two warnings and the confirmation, always on.
-  account: 'Two warnings before an inactive team is deleted, 30 and 7 days ahead, and the email that confirms the deletion.',
+  // The Account emails, always on: the inactive-team emails (13-11-2026, options round A) and the data-deletion notice
+  // (28-11-2026, ruled with round 23).
+  account: "A notice 30 days before a site's oldest visits are first deleted, two warnings 30 and 7 days before an inactive team is deleted, and the email that confirms the deletion.",
   uptime: 'A monitored site going down or coming back, a certificate about to expire, and a tracking script that goes quiet.',
   // The scheduled report email is in this group, so its line names growth reports (§13.2, found while drawing 1).
   site: "Performance scores that drop or recover, pages losing visits, a named event's first conversion, finished imports and growth reports.",
