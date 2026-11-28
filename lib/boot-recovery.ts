@@ -2,7 +2,7 @@
  * A page that loaded without its files recovers by itself (27-11-2026).
  *
  * The dashboard draws everything with JavaScript, and its stylesheets and scripts come from the
- * static host (ciphera-app-static.b-cdn.net). A load at a moment that host cannot be reached (a
+ * static host (static.ciphera.net). A load at a moment that host cannot be reached (a
  * Mac waking, a reconnect, a flaky network) left the page showing only the skip link, and
  * nothing retried: Pulse/docs/audits/16-11-2026-blank-dashboard-and-performance-reports.md §7.
  *

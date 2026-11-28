@@ -11,7 +11,7 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
   // * 🔴 NO RELOAD WHEN THE NETWORK COMES BACK (27-11-2026). next-pwa's client entry calls
   // * location.reload() on every `online` event unless this is false. A Mac fires `online`
-  // * the moment it wakes, before DNS and the static host (ciphera-app-static.b-cdn.net)
+  // * the moment it wakes, before DNS and the static host (static.ciphera.net)
   // * answer, so the reload loaded the page without its stylesheets and scripts and left an
   // * open window showing only "Skip to content", with nothing retrying (reproduced 27-11:
   // * Pulse/docs/audits/16-11-2026-blank-dashboard-and-performance-reports.md §7). Data still
